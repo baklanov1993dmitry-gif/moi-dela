@@ -16,12 +16,12 @@
   html,body{height:100%}
   body{overflow:hidden;background:#0f172a}
   input,textarea,select{outline:none;font-family:inherit}
-  button{cursor:pointer;border:none;background:transparent;font-family:inherit;color:inherit}
+  button{cursor:pointer;border:none;background:transparent;font-family:inherit;font-size:inherit;color:inherit}
   .scroll::-webkit-scrollbar{width:8px;height:8px}
   .scroll::-webkit-scrollbar-thumb{border-radius:8px;background:rgba(128,128,128,.35)}
   .fade{animation:f .22s ease}
   @keyframes f{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-  #app{height:100vh;height:100dvh;display:flex;overflow:hidden;transition:background .4s ease}
+  #app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;transition:background .4s ease}
   .pane{display:flex;flex-direction:column;overflow:hidden}
   .chip{display:flex;align-items:center;gap:9px;border-radius:10px;cursor:pointer;font-size:14px}
   .taskrow{display:flex;align-items:flex-start;gap:12px;border-radius:12px;margin-bottom:8px;cursor:pointer}
@@ -51,18 +51,17 @@
 `))throw Error(`@supabase/auth-js: Invalid SIWE message field "statement". Statement must not include '\\n'. Provided value: ${e.statement}`);let f=Ci(e.address),p=`${l?`${l}://${n}`:n} wants you to sign in with your Ethereum account:\n${f}\n\n${e.statement?`${e.statement}\n`:``}`,m=`URI: ${u}\nVersion: ${d}\nChain ID: ${t}${a?`\nNonce: ${a}`:``}\nIssued At: ${i.toISOString()}`;if(r&&(m+=`\nExpiration Time: ${r.toISOString()}`),o&&(m+=`\nNot Before: ${o.toISOString()}`),s&&(m+=`\nRequest ID: ${s}`),c){let e=`
 Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/auth-js: Invalid SIWE message field "resources". Every resource must be a valid string. Provided value: ${t}`);e+=`\n- ${t}`}m+=e}return`${p}\n${m}`}var Q=class extends Error{constructor({message:e,code:t,cause:n,name:r}){super(e,{cause:n}),this.__isWebAuthnError=!0,this.name=r??(n instanceof Error?n.name:void 0)??`Unknown Error`,this.code=t}toJSON(){return{name:this.name,message:this.message,code:this.code}}},Di=class extends Q{constructor(e,t){super({code:`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`,cause:t,message:e}),this.name=`WebAuthnUnknownError`,this.originalError=t}};function Oi({error:e,options:t}){let{publicKey:n}=t;if(!n)throw Error(`options was missing required publicKey property`);if(e.name===`AbortError`){if(t.signal instanceof AbortSignal)return new Q({message:`Registration ceremony was sent an abort signal`,code:`ERROR_CEREMONY_ABORTED`,cause:e})}else if(e.name===`ConstraintError`){if(n.authenticatorSelection?.requireResidentKey===!0)return new Q({message:`Discoverable credentials were required but no available authenticator supported it`,code:`ERROR_AUTHENTICATOR_MISSING_DISCOVERABLE_CREDENTIAL_SUPPORT`,cause:e});if(t.mediation===`conditional`&&n.authenticatorSelection?.userVerification===`required`)return new Q({message:`User verification was required during automatic registration but it could not be performed`,code:`ERROR_AUTO_REGISTER_USER_VERIFICATION_FAILURE`,cause:e});if(n.authenticatorSelection?.userVerification===`required`)return new Q({message:`User verification was required but no available authenticator supported it`,code:`ERROR_AUTHENTICATOR_MISSING_USER_VERIFICATION_SUPPORT`,cause:e})}else if(e.name===`InvalidStateError`)return new Q({message:`The authenticator was previously registered`,code:`ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED`,cause:e});else if(e.name===`NotAllowedError`)return new Q({message:e.message,code:`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`,cause:e});else if(e.name===`NotSupportedError`)return n.pubKeyCredParams.filter(e=>e.type===`public-key`).length===0?new Q({message:`No entry in pubKeyCredParams was of type "public-key"`,code:`ERROR_MALFORMED_PUBKEYCREDPARAMS`,cause:e}):new Q({message:`No available authenticator supported any of the specified pubKeyCredParams algorithms`,code:`ERROR_AUTHENTICATOR_NO_SUPPORTED_PUBKEYCREDPARAMS_ALG`,cause:e});else if(e.name===`SecurityError`){let t=window.location.hostname;if(Fi(t)){if(n.rp.id!==t)return new Q({message:`The RP ID "${n.rp.id}" is invalid for this domain`,code:`ERROR_INVALID_RP_ID`,cause:e})}else return new Q({message:`${window.location.hostname} is an invalid domain`,code:`ERROR_INVALID_DOMAIN`,cause:e})}else if(e.name===`TypeError`){if(n.user.id.byteLength<1||n.user.id.byteLength>64)return new Q({message:`User ID was not between 1 and 64 characters`,code:`ERROR_INVALID_USER_ID_LENGTH`,cause:e})}else if(e.name===`UnknownError`)return new Q({message:`The authenticator was unable to process the specified options, or could not create a new credential`,code:`ERROR_AUTHENTICATOR_GENERAL_ERROR`,cause:e});return new Q({message:`a Non-Webauthn related error has occurred`,code:`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`,cause:e})}function ki({error:e,options:t}){let{publicKey:n}=t;if(!n)throw Error(`options was missing required publicKey property`);if(e.name===`AbortError`){if(t.signal instanceof AbortSignal)return new Q({message:`Authentication ceremony was sent an abort signal`,code:`ERROR_CEREMONY_ABORTED`,cause:e})}else if(e.name===`NotAllowedError`)return new Q({message:e.message,code:`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`,cause:e});else if(e.name===`SecurityError`){let t=window.location.hostname;if(Fi(t)){if(n.rpId!==t)return new Q({message:`The RP ID "${n.rpId}" is invalid for this domain`,code:`ERROR_INVALID_RP_ID`,cause:e})}else return new Q({message:`${window.location.hostname} is an invalid domain`,code:`ERROR_INVALID_DOMAIN`,cause:e})}else if(e.name===`UnknownError`)return new Q({message:`The authenticator was unable to process the specified options, or could not create a new assertion signature`,code:`ERROR_AUTHENTICATOR_GENERAL_ERROR`,cause:e});return new Q({message:`a Non-Webauthn related error has occurred`,code:`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`,cause:e})}let Ai=new class{createNewAbortSignal(){if(this.controller){let e=Error(`Cancelling existing WebAuthn API call for new one`);e.name=`AbortError`,this.controller.abort(e)}let e=new AbortController;return this.controller=e,e.signal}cancelCeremony(){if(this.controller){let e=Error(`Manually cancelling existing WebAuthn API call`);e.name=`AbortError`,this.controller.abort(e),this.controller=void 0}}};function ji(e){if(!e)throw Error(`Credential creation options are required`);if(typeof PublicKeyCredential<`u`&&`parseCreationOptionsFromJSON`in PublicKeyCredential&&typeof PublicKeyCredential.parseCreationOptionsFromJSON==`function`)return PublicKeyCredential.parseCreationOptionsFromJSON(e);let{challenge:n,user:r,excludeCredentials:i}=e,a=t(e,[`challenge`,`user`,`excludeCredentials`]),o=Sr(n).buffer,s=Object.assign(Object.assign({},r),{id:Sr(r.id).buffer}),c=Object.assign(Object.assign({},a),{challenge:o,user:s});if(i&&i.length>0){c.excludeCredentials=Array(i.length);for(let e=0;e<i.length;e++){let t=i[e];c.excludeCredentials[e]=Object.assign(Object.assign({},t),{id:Sr(t.id).buffer,type:t.type||`public-key`,transports:t.transports})}}return c}function Mi(e){if(!e)throw Error(`Credential request options are required`);if(typeof PublicKeyCredential<`u`&&`parseRequestOptionsFromJSON`in PublicKeyCredential&&typeof PublicKeyCredential.parseRequestOptionsFromJSON==`function`)return PublicKeyCredential.parseRequestOptionsFromJSON(e);let{challenge:n,allowCredentials:r}=e,i=t(e,[`challenge`,`allowCredentials`]),a=Sr(n).buffer,o=Object.assign(Object.assign({},i),{challenge:a});if(r&&r.length>0){o.allowCredentials=Array(r.length);for(let e=0;e<r.length;e++){let t=r[e];o.allowCredentials[e]=Object.assign(Object.assign({},t),{id:Sr(t.id).buffer,type:t.type||`public-key`,transports:t.transports})}}return o}function Ni(e){if(`toJSON`in e&&typeof e.toJSON==`function`)return e.toJSON();let t=e;return{id:e.id,rawId:e.id,response:{attestationObject:z(new Uint8Array(e.response.attestationObject)),clientDataJSON:z(new Uint8Array(e.response.clientDataJSON))},type:`public-key`,clientExtensionResults:e.getClientExtensionResults(),authenticatorAttachment:t.authenticatorAttachment??void 0}}function Pi(e){if(`toJSON`in e&&typeof e.toJSON==`function`)return e.toJSON();let t=e,n=e.getClientExtensionResults(),r=e.response;return{id:e.id,rawId:e.id,response:{authenticatorData:z(new Uint8Array(r.authenticatorData)),clientDataJSON:z(new Uint8Array(r.clientDataJSON)),signature:z(new Uint8Array(r.signature)),userHandle:r.userHandle?z(new Uint8Array(r.userHandle)):void 0},type:`public-key`,clientExtensionResults:n,authenticatorAttachment:t.authenticatorAttachment??void 0}}function Fi(e){return e===`localhost`||/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i.test(e)}function Ii(){return!!(B()&&`PublicKeyCredential`in window&&window.PublicKeyCredential&&`credentials`in navigator&&typeof(navigator==null?void 0:navigator.credentials)?.create==`function`&&typeof(navigator==null?void 0:navigator.credentials)?.get==`function`)}async function Li(e){try{let t=await navigator.credentials.create(e);return t?t instanceof PublicKeyCredential?{data:t,error:null}:{data:null,error:new Di(`Browser returned unexpected credential type`,t)}:{data:null,error:new Di(`Empty credential response`,t)}}catch(t){return{data:null,error:Oi({error:t,options:e})}}}async function Ri(e){try{let t=await navigator.credentials.get(e);return t?t instanceof PublicKeyCredential?{data:t,error:null}:{data:null,error:new Di(`Browser returned unexpected credential type`,t)}:{data:null,error:new Di(`Empty credential response`,t)}}catch(t){return{data:null,error:ki({error:t,options:e})}}}let zi={hints:[`security-key`],authenticatorSelection:{authenticatorAttachment:`cross-platform`,requireResidentKey:!1,userVerification:`preferred`,residentKey:`discouraged`},attestation:`direct`},Bi={userVerification:`preferred`,hints:[`security-key`],attestation:`direct`};function Vi(...e){let t=e=>typeof e==`object`&&!!e&&!Array.isArray(e),n=e=>e instanceof ArrayBuffer||ArrayBuffer.isView(e),r={};for(let i of e)if(i)for(let e in i){let a=i[e];if(a!==void 0)if(Array.isArray(a))r[e]=a;else if(n(a))r[e]=a;else if(t(a)){let n=r[e];t(n)?r[e]=Vi(n,a):r[e]=Vi(a)}else r[e]=a}return r}function Hi(e,t){return Vi(zi,e,t||{})}function Ui(e,t){return Vi(Bi,e,t||{})}var Wi=class{constructor(e){this.client=e,this.enroll=this._enroll.bind(this),this.challenge=this._challenge.bind(this),this.verify=this._verify.bind(this),this.authenticate=this._authenticate.bind(this),this.register=this._register.bind(this)}async _enroll(e){return this.client.mfa.enroll(Object.assign(Object.assign({},e),{factorType:`webauthn`}))}async _challenge({factorId:e,webauthn:t,friendlyName:n,signal:r},i){try{let{data:a,error:o}=await this.client.mfa.challenge({factorId:e,webauthn:t});if(!a)return{data:null,error:o};let s=r??Ai.createNewAbortSignal();if(a.webauthn.type===`create`){let{user:e}=a.webauthn.credential_options.publicKey;if(!e.name){let t=n;if(t)e.name=`${e.id}:${t}`;else{let t=(await this.client.getUser()).data.user,n=t?.user_metadata?.name||t?.email||t?.id||`User`;e.name=`${e.id}:${n}`}}e.displayName||=e.name}switch(a.webauthn.type){case`create`:{let{data:t,error:n}=await Li({publicKey:Hi(a.webauthn.credential_options.publicKey,i?.create),signal:s});return t?{data:{factorId:e,challengeId:a.id,webauthn:{type:a.webauthn.type,credential_response:t}},error:null}:{data:null,error:n}}case`request`:{let t=Ui(a.webauthn.credential_options.publicKey,i?.request),{data:n,error:r}=await Ri(Object.assign(Object.assign({},a.webauthn.credential_options),{publicKey:t,signal:s}));return n?{data:{factorId:e,challengeId:a.id,webauthn:{type:a.webauthn.type,credential_response:n}},error:null}:{data:null,error:r}}}}catch(e){return P(e)?{data:null,error:e}:{data:null,error:new F(`Unexpected error in challenge`,e)}}}async _verify({challengeId:e,factorId:t,webauthn:n}){return this.client.mfa.verify({factorId:t,challengeId:e,webauthn:n})}async _authenticate({factorId:e,webauthn:{rpId:t=typeof window<`u`?window.location.hostname:void 0,rpOrigins:n=typeof window<`u`?[window.location.origin]:void 0,signal:r}={}},i){if(!t)return{data:null,error:new Xn(`rpId is required for WebAuthn authentication`)};try{if(!Ii())return{data:null,error:new F(`Browser does not support WebAuthn`,null)};let{data:a,error:o}=await this.challenge({factorId:e,webauthn:{rpId:t,rpOrigins:n},signal:r},{request:i});if(!a)return{data:null,error:o};let{webauthn:s}=a;return this._verify({factorId:e,challengeId:a.challengeId,webauthn:{type:s.type,rpId:t,rpOrigins:n,credential_response:s.credential_response}})}catch(e){return P(e)?{data:null,error:e}:{data:null,error:new F(`Unexpected error in authenticate`,e)}}}async _register({friendlyName:e,webauthn:{rpId:t=typeof window<`u`?window.location.hostname:void 0,rpOrigins:n=typeof window<`u`?[window.location.origin]:void 0,signal:r}={}},i){if(!t)return{data:null,error:new Xn(`rpId is required for WebAuthn registration`)};try{if(!Ii())return{data:null,error:new F(`Browser does not support WebAuthn`,null)};let{data:a,error:o}=await this._enroll({friendlyName:e});if(!a)return await this.client.mfa.listFactors().then(t=>t.data?.all.find(t=>t.factor_type===`webauthn`&&t.friendly_name===e&&t.status===`unverified`)).then(e=>e?this.client.mfa.unenroll({factorId:e?.id}):void 0),{data:null,error:o};let{data:s,error:c}=await this._challenge({factorId:a.id,friendlyName:a.friendly_name,webauthn:{rpId:t,rpOrigins:n},signal:r},{create:i});return s?this._verify({factorId:a.id,challengeId:s.challengeId,webauthn:{rpId:t,rpOrigins:n,type:s.webauthn.type,credential_response:s.webauthn.credential_response}}):{data:null,error:c}}catch(e){return P(e)?{data:null,error:e}:{data:null,error:new F(`Unexpected error in register`,e)}}}};Si();let Gi={url:`http://localhost:9999`,storageKey:`supabase.auth.token`,autoRefreshToken:!0,persistSession:!0,detectSessionInUrl:!0,headers:Kn,flowType:`implicit`,debug:!1,hasCustomAuthorizationHeader:!1,throwOnError:!1,lockAcquireTimeout:5e3,skipAutoInitialize:!1,experimental:{}},$={},Ki=!1;var qi=class e{get jwks(){return $[this.storageKey]?.jwks??{keys:[]}}set jwks(e){$[this.storageKey]=Object.assign(Object.assign({},$[this.storageKey]),{jwks:e})}get jwks_cached_at(){return $[this.storageKey]?.cachedAt??-(2**53-1)}set jwks_cached_at(e){$[this.storageKey]=Object.assign(Object.assign({},$[this.storageKey]),{cachedAt:e})}constructor(t){var n;this.userStorage=null,this.memoryStorage=null,this.stateChangeEmitters=new Map,this.autoRefreshTicker=null,this.autoRefreshTickTimeout=null,this.visibilityChangedCallback=null,this.refreshingDeferred=null,this.lastRefreshFailure=null,this._sessionRemovalEpoch=0,this.initializePromise=null,this._pendingInitNotifications=null,this.detectSessionInUrl=!0,this.hasCustomAuthorizationHeader=!1,this.suppressGetSessionWarning=!1,this.lock=null,this.lockAcquired=!1,this.pendingInLock=[],this.broadcastChannel=null,this.logger=console.log;let r=Object.assign(Object.assign({},Gi),t);if(this.storageKey=r.storageKey,this.instanceID=e.nextInstanceID[this.storageKey]??0,e.nextInstanceID[this.storageKey]=this.instanceID+1,this.logDebugMessages=!!r.debug,typeof r.debug==`function`&&(this.logger=r.debug),this.instanceID>0&&B()){let e=`${this._logPrefix()} Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key.`;console.warn(e),this.logDebugMessages&&console.trace(e)}if(this.persistSession=r.persistSession,this.autoRefreshToken=r.autoRefreshToken,this.experimental=r.experimental??{},this.admin=new mi({url:r.url,headers:r.headers,fetch:r.fetch,experimental:this.experimental}),this.url=r.url,this.headers=r.headers,this.fetch=Or(r.fetch),this.detectSessionInUrl=r.detectSessionInUrl,this.flowType=r.flowType,this.hasCustomAuthorizationHeader=r.hasCustomAuthorizationHeader,this.throwOnError=r.throwOnError,this.lockAcquireTimeout=r.lockAcquireTimeout,r.lock!=null&&(this.lock=r.lock,Ki||(Ki=!0,console.warn(`${this._logPrefix()} The "lock" option is deprecated and will be removed in v3. The client now coordinates session refreshes without a lock, so most apps can drop the option. See https://github.com/supabase/supabase-js/blob/master/packages/core/auth-js/migrations/lockless-coordination.md`))),this.jwks||(this.jwks={keys:[]},this.jwks_cached_at=-(2**53-1)),this.mfa={verify:this._verify.bind(this),enroll:this._enroll.bind(this),unenroll:this._unenroll.bind(this),challenge:this._challenge.bind(this),listFactors:this._listFactors.bind(this),challengeAndVerify:this._challengeAndVerify.bind(this),getAuthenticatorAssuranceLevel:this._getAuthenticatorAssuranceLevel.bind(this),webauthn:new Wi(this),recoveryCodes:{getStatus:this._getRecoveryCodesStatus.bind(this),generate:this._generateRecoveryCodes.bind(this),verify:this._verifyRecoveryCode.bind(this),regenerate:this._regenerateRecoveryCodes.bind(this),unenroll:this._unenrollRecoveryCodes.bind(this)}},this.oauth={getAuthorizationDetails:this._getAuthorizationDetails.bind(this),approveAuthorization:this._approveAuthorization.bind(this),denyAuthorization:this._denyAuthorization.bind(this),listGrants:this._listOAuthGrants.bind(this),revokeGrant:this._revokeOAuthGrant.bind(this)},this.passkey={startRegistration:this._startPasskeyRegistration.bind(this),verifyRegistration:this._verifyPasskeyRegistration.bind(this),startAuthentication:this._startPasskeyAuthentication.bind(this),verifyAuthentication:this._verifyPasskeyAuthentication.bind(this),list:this._listPasskeys.bind(this),update:this._updatePasskey.bind(this),delete:this._deletePasskey.bind(this)},this.persistSession?(r.storage?this.storage=r.storage:Er()?this.storage=globalThis.localStorage:(this.memoryStorage={},this.storage=hi(this.memoryStorage)),r.userStorage&&(this.userStorage=r.userStorage)):(this.memoryStorage={},this.storage=hi(this.memoryStorage)),B()&&globalThis.BroadcastChannel&&this.persistSession&&this.storageKey){try{this.broadcastChannel=new globalThis.BroadcastChannel(this.storageKey)}catch(e){console.error(`Failed to create a new BroadcastChannel, multi-tab state changes will not be available`,e)}(n=this.broadcastChannel)==null||n.addEventListener(`message`,async e=>{this._debug(`received broadcast notification from other tab or client`,e),(e.data.event===`TOKEN_REFRESHED`||e.data.event===`SIGNED_IN`)&&(this.lastRefreshFailure=null);try{await this._notifyAllSubscribers(e.data.event,e.data.session,!1)}catch(e){this._debug(`#broadcastChannel`,`error`,e)}})}r.skipAutoInitialize||this.initialize().catch(e=>{this._debug(`#initialize()`,`error`,e)})}isThrowOnErrorEnabled(){return this.throwOnError}_returnResult(e){if(this.throwOnError&&e&&e.error)throw e.error;return e}_logPrefix(){return`GoTrueClient@${this.storageKey}:${this.instanceID} (${Wn}) ${new Date().toISOString()}`}_debug(...e){return this.logDebugMessages&&this.logger(this._logPrefix(),...e),this}async initialize(){if(this.initializePromise)return await this.initializePromise;this._pendingInitNotifications=[],this.initializePromise=(async()=>this.lock==null?await this._initialize():await this._acquireLock(this.lockAcquireTimeout,async()=>await this._initialize()))();let e=await this.initializePromise,t=this._pendingInitNotifications??[];this._pendingInitNotifications=null;for(let e of t)await this._notifyAllSubscribers(e.event,e.session,e.broadcast);return e}async _initialize(){try{let e={},t=`none`;if(B()&&(e=Dr(window.location.href),this._isImplicitGrantCallback(e)?t=`implicit`:await this._isPKCECallback(e)&&(t=`pkce`)),B()&&this.detectSessionInUrl&&t!==`none`){let{data:n,error:r}=await this._getSessionFromURL(e,t);if(r){if(this._debug(`#_initialize()`,`error detecting session from URL`,r),nr(r)){let e=r.details?.code;if(e===`identity_already_exists`||e===`identity_not_found`||e===`single_identity_not_deletable`)return{error:r}}return{error:r}}let{session:i,redirectType:a}=n;return this._debug(`#_initialize()`,`detected session in URL`,i,`redirect type`,a),await this._saveSession(i),setTimeout(async()=>{a===`recovery`?await this._notifyAllSubscribers(`PASSWORD_RECOVERY`,i):await this._notifyAllSubscribers(`SIGNED_IN`,i)},0),{error:null}}return await this._recoverAndRefresh(),{error:null}}catch(e){return P(e)?this._returnResult({error:e}):this._returnResult({error:new F(`Unexpected error during initialization`,e)})}finally{await this._handleVisibilityChange(),this._debug(`#_initialize()`,`end`)}}async signInAnonymously(e){try{let{data:t,error:n}=await J(this.fetch,`POST`,`${this.url}/signup`,{headers:this.headers,body:{data:e?.options?.data??{},gotrue_meta_security:{captcha_token:e?.options?.captchaToken}},xform:Y});if(n||!t)return this._returnResult({data:{user:null,session:null},error:n});let r=t.session,i=t.user;return t.session&&(await this._saveSession(t.session),await this._notifyAllSubscribers(`SIGNED_IN`,r)),this._returnResult({data:{user:i,session:r},error:null})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async signUp(e){let t=null;try{let n;if(`email`in e){let{email:r,password:i,options:a}=e,o=null,s=null;this.flowType===`pkce`&&([o,s,t]=await this._getCodeChallengeAndMethod()),n=await J(this.fetch,`POST`,`${this.url}/signup`,{headers:this.headers,redirectTo:this._maybeAppendFlowIdToRedirect(a?.emailRedirectTo,t),body:{email:r,password:i,data:a?.data??{},gotrue_meta_security:{captcha_token:a?.captchaToken},code_challenge:o,code_challenge_method:s},xform:Y})}else if(`phone`in e){let{phone:t,password:r,options:i}=e;n=await J(this.fetch,`POST`,`${this.url}/signup`,{headers:this.headers,body:{phone:t,password:r,data:i?.data??{},channel:i?.channel??`sms`,gotrue_meta_security:{captcha_token:i?.captchaToken}},xform:Y})}else throw new er(`You must provide either an email or phone number and a password`);let{data:r,error:i}=n;if(i||!r)return await G(this.storage,this.storageKey,t),this._returnResult({data:{user:null,session:null},error:i});let a=r.session,o=r.user;return r.session&&(await this._saveSession(r.session),await this._notifyAllSubscribers(`SIGNED_IN`,a)),this._returnResult({data:{user:o,session:a},error:null})}catch(e){if(await G(this.storage,this.storageKey,t),P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async signInWithPassword(e){try{let t;if(`email`in e){let{email:n,password:r,options:i}=e;t=await J(this.fetch,`POST`,`${this.url}/token?grant_type=password`,{headers:this.headers,body:{email:n,password:r,gotrue_meta_security:{captcha_token:i?.captchaToken}},xform:ci})}else if(`phone`in e){let{phone:n,password:r,options:i}=e;t=await J(this.fetch,`POST`,`${this.url}/token?grant_type=password`,{headers:this.headers,body:{phone:n,password:r,gotrue_meta_security:{captcha_token:i?.captchaToken}},xform:ci})}else throw new er(`You must provide either an email or phone number and a password`);let{data:n,error:r}=t;if(r)return this._returnResult({data:{user:null,session:null},error:r});if(!n||!n.session||!n.user){let e=new R;return this._returnResult({data:{user:null,session:null},error:e})}return n.session&&(await this._saveSession(n.session),await this._notifyAllSubscribers(`SIGNED_IN`,n.session)),this._returnResult({data:Object.assign({user:n.user,session:n.session},n.weak_password?{weakPassword:n.weak_password}:null),error:r})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async signInWithOAuth(e){return await this._handleProviderSignIn(e.provider,{redirectTo:e.options?.redirectTo,scopes:e.options?.scopes,queryParams:e.options?.queryParams,skipBrowserRedirect:e.options?.skipBrowserRedirect})}async exchangeCodeForSession(e,t){return await this.initializePromise,this.lock==null?this._exchangeCodeForSession(e,t):this._acquireLock(this.lockAcquireTimeout,async()=>this._exchangeCodeForSession(e,t))}async signInWithWeb3(e){let{chain:t}=e;switch(t){case`ethereum`:return await this.signInWithEthereum(e);case`solana`:return await this.signInWithSolana(e);default:throw Error(`@supabase/auth-js: Unsupported chain "${t}"`)}}async signInWithEthereum(e){let t,n;if(`message`in e)t=e.message,n=e.signature;else{let{chain:r,wallet:i,statement:a,options:o}=e,s;if(B())if(typeof i==`object`)s=i;else{let e=window;if(`ethereum`in e&&typeof e.ethereum==`object`&&`request`in e.ethereum&&typeof e.ethereum.request==`function`)s=e.ethereum;else throw Error(`@supabase/auth-js: No compatible Ethereum wallet interface on the window object (window.ethereum) detected. Make sure the user already has a wallet installed and connected for this app. Prefer passing the wallet interface object directly to signInWithWeb3({ chain: 'ethereum', wallet: resolvedUserWallet }) instead.`)}else{if(typeof i!=`object`||!o?.url)throw Error(`@supabase/auth-js: Both wallet and url must be specified in non-browser environments.`);s=i}let c=new URL(o?.url??window.location.href),l=await s.request({method:`eth_requestAccounts`}).then(e=>e).catch(()=>{throw Error(`@supabase/auth-js: Wallet method eth_requestAccounts is missing or invalid`)});if(!l||l.length===0)throw Error(`@supabase/auth-js: No accounts available. Please ensure the wallet is connected.`);let u=Ci(l[0]),d=o?.signInWithEthereum?.chainId;d||=wi(await s.request({method:`eth_chainId`})),t=Ei({domain:c.host,address:u,statement:a,uri:c.href,version:`1`,chainId:d,nonce:o?.signInWithEthereum?.nonce,issuedAt:o?.signInWithEthereum?.issuedAt??new Date,expirationTime:o?.signInWithEthereum?.expirationTime,notBefore:o?.signInWithEthereum?.notBefore,requestId:o?.signInWithEthereum?.requestId,resources:o?.signInWithEthereum?.resources}),n=await s.request({method:`personal_sign`,params:[Ti(t),u]})}try{let{data:r,error:i}=await J(this.fetch,`POST`,`${this.url}/token?grant_type=web3`,{headers:this.headers,body:Object.assign({chain:`ethereum`,message:t,signature:n},e.options?.captchaToken?{gotrue_meta_security:{captcha_token:e.options?.captchaToken}}:null),xform:Y});if(i)throw i;if(!r||!r.session||!r.user){let e=new R;return this._returnResult({data:{user:null,session:null},error:e})}return r.session&&(await this._saveSession(r.session),await this._notifyAllSubscribers(`SIGNED_IN`,r.session)),this._returnResult({data:Object.assign({},r),error:i})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async signInWithSolana(e){let t,n;if(`message`in e)t=e.message,n=e.signature;else{let{chain:r,wallet:i,statement:a,options:o}=e,s;if(B())if(typeof i==`object`)s=i;else{let e=window;if(`solana`in e&&typeof e.solana==`object`&&(`signIn`in e.solana&&typeof e.solana.signIn==`function`||`signMessage`in e.solana&&typeof e.solana.signMessage==`function`))s=e.solana;else throw Error(`@supabase/auth-js: No compatible Solana wallet interface on the window object (window.solana) detected. Make sure the user already has a wallet installed and connected for this app. Prefer passing the wallet interface object directly to signInWithWeb3({ chain: 'solana', wallet: resolvedUserWallet }) instead.`)}else{if(typeof i!=`object`||!o?.url)throw Error(`@supabase/auth-js: Both wallet and url must be specified in non-browser environments.`);s=i}let c=new URL(o?.url??window.location.href);if(`signIn`in s&&s.signIn){let e=await s.signIn(Object.assign(Object.assign(Object.assign({issuedAt:new Date().toISOString()},o?.signInWithSolana),{version:`1`,domain:c.host,uri:c.href}),a?{statement:a}:null)),r;if(Array.isArray(e)&&e[0]&&typeof e[0]==`object`)r=e[0];else if(e&&typeof e==`object`&&`signedMessage`in e&&`signature`in e)r=e;else throw Error(`@supabase/auth-js: Wallet method signIn() returned unrecognized value`);if(`signedMessage`in r&&`signature`in r&&(typeof r.signedMessage==`string`||r.signedMessage instanceof Uint8Array)&&r.signature instanceof Uint8Array)t=typeof r.signedMessage==`string`?r.signedMessage:new TextDecoder().decode(r.signedMessage),n=r.signature;else throw Error(`@supabase/auth-js: Wallet method signIn() API returned object without signedMessage and signature fields`)}else{if(!(`signMessage`in s)||typeof s.signMessage!=`function`||!(`publicKey`in s)||typeof s!=`object`||!s.publicKey||!(`toBase58`in s.publicKey)||typeof s.publicKey.toBase58!=`function`)throw Error(`@supabase/auth-js: Wallet does not have a compatible signMessage() and publicKey.toBase58() API`);t=[`${c.host} wants you to sign in with your Solana account:`,s.publicKey.toBase58(),...a?[``,a,``]:[``],`Version: 1`,`URI: ${c.href}`,`Issued At: ${o?.signInWithSolana?.issuedAt??new Date().toISOString()}`,...o?.signInWithSolana?.notBefore?[`Not Before: ${o.signInWithSolana.notBefore}`]:[],...o?.signInWithSolana?.expirationTime?[`Expiration Time: ${o.signInWithSolana.expirationTime}`]:[],...o?.signInWithSolana?.chainId?[`Chain ID: ${o.signInWithSolana.chainId}`]:[],...o?.signInWithSolana?.nonce?[`Nonce: ${o.signInWithSolana.nonce}`]:[],...o?.signInWithSolana?.requestId?[`Request ID: ${o.signInWithSolana.requestId}`]:[],...o?.signInWithSolana?.resources?.length?[`Resources`,...o.signInWithSolana.resources.map(e=>`- ${e}`)]:[]].join(`
 `);let e=await s.signMessage(new TextEncoder().encode(t),`utf8`);if(!e||!(e instanceof Uint8Array))throw Error(`@supabase/auth-js: Wallet signMessage() API returned an recognized value`);n=e}}try{let{data:r,error:i}=await J(this.fetch,`POST`,`${this.url}/token?grant_type=web3`,{headers:this.headers,body:Object.assign({chain:`solana`,message:t,signature:z(n)},e.options?.captchaToken?{gotrue_meta_security:{captcha_token:e.options?.captchaToken}}:null),xform:Y});if(i)throw i;if(!r||!r.session||!r.user){let e=new R;return this._returnResult({data:{user:null,session:null},error:e})}return r.session&&(await this._saveSession(r.session),await this._notifyAllSubscribers(`SIGNED_IN`,r.session)),this._returnResult({data:Object.assign({},r),error:i})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async _exchangeCodeForSession(e,t){let n=t?.flowId!=null,r=n?zr(t?.flowId):B()?zr(Dr(window.location.href)[N]):null;n&&!r&&this._debug(`#_exchangeCodeForSession()`,`provided flowId is not a valid flow id`,t?.flowId);let{verifier:i,flowId:a}=n&&!r?{verifier:null,flowId:null}:await Gr(this.storage,this.storageKey,r),[o,s]=(i??``).split(`/`);try{if(!o&&this.flowType===`pkce`)throw new ir;let{data:t,error:n}=await J(this.fetch,`POST`,`${this.url}/token?grant_type=pkce`,{headers:this.headers,body:{auth_code:e,code_verifier:o},xform:Y});if(await G(this.storage,this.storageKey,a),n)throw n;if(!t||!t.session||!t.user){let e=new R;return this._returnResult({data:{user:null,session:null,redirectType:null},error:e})}return t.session&&(await this._saveSession(t.session),await this._notifyAllSubscribers(s===`recovery`?`PASSWORD_RECOVERY`:`SIGNED_IN`,t.session)),this._returnResult({data:Object.assign(Object.assign({},t),{redirectType:s??null}),error:n})}catch(e){if(await G(this.storage,this.storageKey,a),P(e))return this._returnResult({data:{user:null,session:null,redirectType:null},error:e});throw e}}async signInWithIdToken(e){try{let{options:t,provider:n,token:r,access_token:i,nonce:a}=e,{data:o,error:s}=await J(this.fetch,`POST`,`${this.url}/token?grant_type=id_token`,{headers:this.headers,body:{provider:n,id_token:r,access_token:i,nonce:a,gotrue_meta_security:{captcha_token:t?.captchaToken}},xform:Y});if(s)return this._returnResult({data:{user:null,session:null},error:s});if(!o||!o.session||!o.user){let e=new R;return this._returnResult({data:{user:null,session:null},error:e})}return o.session&&(await this._saveSession(o.session),await this._notifyAllSubscribers(`SIGNED_IN`,o.session)),this._returnResult({data:o,error:s})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async signInWithOtp(e){let t=null;try{if(`email`in e){let{email:n,options:r}=e,i=null,a=null;this.flowType===`pkce`&&([i,a,t]=await this._getCodeChallengeAndMethod());let{error:o}=await J(this.fetch,`POST`,`${this.url}/otp`,{headers:this.headers,body:{email:n,data:r?.data??{},create_user:r?.shouldCreateUser??!0,gotrue_meta_security:{captcha_token:r?.captchaToken},code_challenge:i,code_challenge_method:a},redirectTo:this._maybeAppendFlowIdToRedirect(r?.emailRedirectTo,t)});return this._returnResult({data:{user:null,session:null},error:o})}if(`phone`in e){let{phone:t,options:n}=e,{data:r,error:i}=await J(this.fetch,`POST`,`${this.url}/otp`,{headers:this.headers,body:{phone:t,data:n?.data??{},create_user:n?.shouldCreateUser??!0,gotrue_meta_security:{captcha_token:n?.captchaToken},channel:n?.channel??`sms`}});return this._returnResult({data:{user:null,session:null,messageId:r?.message_id},error:i})}throw new er(`You must provide either an email or phone number.`)}catch(e){if(await G(this.storage,this.storageKey,t),P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async verifyOtp(e){try{let t,n;`options`in e&&(t=e.options?.redirectTo,n=e.options?.captchaToken);let{data:r,error:i}=await J(this.fetch,`POST`,`${this.url}/verify`,{headers:this.headers,body:Object.assign(Object.assign({},e),{gotrue_meta_security:{captcha_token:n}}),redirectTo:t,xform:Y});if(i)throw i;if(!r)throw Error(`An error occurred on token verification.`);let a=r.session,o=r.user;return a?.access_token&&(await this._saveSession(a),await this._notifyAllSubscribers(e.type==`recovery`?`PASSWORD_RECOVERY`:`SIGNED_IN`,a)),this._returnResult({data:{user:o,session:a},error:null})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async signInWithSSO(e){let t=null;try{let n=null,r=null;this.flowType===`pkce`&&([n,r,t]=await this._getCodeChallengeAndMethod());let i=await J(this.fetch,`POST`,`${this.url}/sso`,{body:Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({},`providerId`in e?{provider_id:e.providerId}:null),`domain`in e?{domain:e.domain}:null),{redirect_to:this._maybeAppendFlowIdToRedirect(e.options?.redirectTo,t)}),e?.options?.captchaToken?{gotrue_meta_security:{captcha_token:e.options.captchaToken}}:null),{skip_http_redirect:!0,code_challenge:n,code_challenge_method:r}),headers:this.headers,xform:li});return i.data?.url&&B()&&!e.options?.skipBrowserRedirect&&window.location.assign(i.data.url),this._returnResult(i)}catch(e){if(await G(this.storage,this.storageKey,t),P(e))return this._returnResult({data:null,error:e});throw e}}async reauthenticate(){return await this.initializePromise,this.lock==null?await this._reauthenticate():await this._acquireLock(this.lockAcquireTimeout,async()=>await this._reauthenticate())}async _reauthenticate(){try{return await this._useSession(async e=>{let{data:{session:t},error:n}=e;if(n)throw n;if(!t)throw new L;let{error:r}=await J(this.fetch,`GET`,`${this.url}/reauthenticate`,{headers:this.headers,jwt:t.access_token});return this._returnResult({data:{user:null,session:null},error:r})})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async resend(e){let t=null;try{let n=`${this.url}/resend`;if(`email`in e){let{email:r,type:i,options:a}=e,o=null,s=null;this.flowType===`pkce`&&([o,s,t]=await this._getCodeChallengeAndMethod());let{error:c}=await J(this.fetch,`POST`,n,{headers:this.headers,body:{email:r,type:i,gotrue_meta_security:{captcha_token:a?.captchaToken},code_challenge:o,code_challenge_method:s},redirectTo:this._maybeAppendFlowIdToRedirect(a?.emailRedirectTo,t)});return c&&await G(this.storage,this.storageKey,t),this._returnResult({data:{user:null,session:null},error:c})}else if(`phone`in e){let{phone:t,type:r,options:i}=e,{data:a,error:o}=await J(this.fetch,`POST`,n,{headers:this.headers,body:{phone:t,type:r,gotrue_meta_security:{captcha_token:i?.captchaToken}}});return this._returnResult({data:{user:null,session:null,messageId:a?.message_id},error:o})}throw new er(`You must provide either an email or phone number and a type`)}catch(e){if(await G(this.storage,this.storageKey,t),P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async getSession(){return await this.initializePromise,this.lock==null?await this._useSession(async e=>e):await this._acquireLock(this.lockAcquireTimeout,async()=>this._useSession(async e=>e))}async _acquireLock(e,t){this._debug(`#_acquireLock`,`begin`,e);try{if(this.lockAcquired){let e=this.pendingInLock.length?this.pendingInLock[this.pendingInLock.length-1]:Promise.resolve(),n=(async()=>(await e,await t()))();return this.pendingInLock.push((async()=>{try{await n}catch{}})()),n}return await this.lock(`lock:${this.storageKey}`,e,async()=>{this._debug(`#_acquireLock`,`lock acquired for storage key`,this.storageKey);try{this.lockAcquired=!0;let e=t();for(this.pendingInLock.push((async()=>{try{await e}catch{}})()),await e;this.pendingInLock.length;){let e=[...this.pendingInLock];await Promise.all(e),this.pendingInLock.splice(0,e.length)}return await e}finally{this._debug(`#_acquireLock`,`lock released for storage key`,this.storageKey),this.lockAcquired=!1}})}finally{this._debug(`#_acquireLock`,`end`)}}async _useSession(e){this._debug(`#_useSession`,`begin`);try{return await e(await this.__loadSession())}finally{this._debug(`#_useSession`,`end`)}}async __loadSession(){this._debug(`#__loadSession()`,`begin`),this.lock!=null&&!this.lockAcquired&&this._debug(`#__loadSession()`,`used outside of an acquired lock!`,Error().stack);try{let e=null,t=await U(this.storage,this.storageKey);if(this._debug(`#getSession()`,`session from storage`,t),t!==null&&(this._isValidSession(t)?e=t:(this._debug(`#getSession()`,`session from storage is not valid`),await this._removeSession())),!e)return{data:{session:null},error:null};let n=e.expires_at?e.expires_at*1e3-Date.now()<Gn:!1;if(this._debug(`#__loadSession()`,`session has${n?``:` not`} expired`,`expires_at`,e.expires_at),!n)return{data:{session:await this._hydrateSessionUser(e)},error:null};let{data:r,error:i}=await this._callRefreshToken(e.refresh_token);if(i){let e=await U(this.storage,this.storageKey);return e&&this._isValidSession(e)&&e.expires_at&&e.expires_at*1e3>Date.now()?this._returnResult({data:{session:await this._hydrateSessionUser(e)},error:null}):this._returnResult({data:{session:null},error:i})}return this._returnResult({data:{session:r},error:null})}finally{this._debug(`#__loadSession()`,`end`)}}async _hydrateSessionUser(e){if(this.userStorage){let t=await U(this.userStorage,this.storageKey+`-user`);e.user=t?.user?t.user:ti()}if(this.storage.isServer&&e.user&&!e.user.__isUserNotAvailableProxy){let t={value:this.suppressGetSessionWarning};e.user=ni(e.user,t),t.value&&(this.suppressGetSessionWarning=!0)}return e}async getUser(e){if(e)return await this._getUser(e);await this.initializePromise;let t;return t=this.lock==null?await this._getUser():await this._acquireLock(this.lockAcquireTimeout,async()=>await this._getUser()),t.data.user&&(this.suppressGetSessionWarning=!0),t}async _getUser(e){try{return e?await J(this.fetch,`GET`,`${this.url}/user`,{headers:this.headers,jwt:e,xform:X}):await this._useSession(async e=>{let{data:t,error:n}=e;if(n)throw n;return!t.session?.access_token&&!this.hasCustomAuthorizationHeader?{data:{user:null},error:new L}:await J(this.fetch,`GET`,`${this.url}/user`,{headers:this.headers,jwt:t.session?.access_token??void 0,xform:X})})}catch(e){if(P(e))return $n(e)&&await this._removeSession(),this._returnResult({data:{user:null},error:e});throw e}}async updateUser(e,t={}){return await this.initializePromise,this.lock==null?await this._updateUser(e,t):await this._acquireLock(this.lockAcquireTimeout,async()=>await this._updateUser(e,t))}async _updateUser(e,t={}){let n=null;try{return await this._useSession(async r=>{let{data:i,error:a}=r;if(a)throw a;if(!i.session)throw new L;let o=i.session,s=null,c=null;this.flowType===`pkce`&&e.email!=null&&([s,c,n]=await this._getCodeChallengeAndMethod());let{data:l,error:u}=await J(this.fetch,`PUT`,`${this.url}/user`,{headers:this.headers,redirectTo:this._maybeAppendFlowIdToRedirect(t?.emailRedirectTo,n),body:Object.assign(Object.assign({},e),{code_challenge:s,code_challenge_method:c}),jwt:o.access_token,xform:X});if(u)throw u;return o.user=l.user,await this._saveSession(o),await this._notifyAllSubscribers(`USER_UPDATED`,o),this._returnResult({data:{user:o.user},error:null})})}catch(e){if(await G(this.storage,this.storageKey,n),P(e))return this._returnResult({data:{user:null},error:e});throw e}}async setSession(e){return await this.initializePromise,this.lock==null?await this._setSession(e):await this._acquireLock(this.lockAcquireTimeout,async()=>await this._setSession(e))}async _setSession(e){try{if(!e.access_token||!e.refresh_token)throw new L;let t=Date.now()/1e3,n=t,r=!0,i=null,{payload:a}=jr(e.access_token);if(a.exp&&(n=a.exp,r=n<=t),r){let{data:t,error:n}=await this._callRefreshToken(e.refresh_token);if(n)return this._returnResult({data:{user:null,session:null},error:n});if(!t)return{data:{user:null,session:null},error:null};i=t}else{let{data:r,error:a}=await this._getUser(e.access_token);if(a)return this._returnResult({data:{user:null,session:null},error:a});i={access_token:e.access_token,refresh_token:e.refresh_token,user:r.user,token_type:`bearer`,expires_in:n-t,expires_at:n},await this._saveSession(i),await this._notifyAllSubscribers(`SIGNED_IN`,i)}return this._returnResult({data:{user:i.user,session:i},error:null})}catch(e){if(P(e))return this._returnResult({data:{session:null,user:null},error:e});throw e}}async refreshSession(e){return await this.initializePromise,this.lock==null?await this._refreshSession(e):await this._acquireLock(this.lockAcquireTimeout,async()=>await this._refreshSession(e))}async _refreshSession(e){try{return await this._useSession(async t=>{if(!e){let{data:n,error:r}=t;if(r)throw r;e=n.session??void 0}if(!e?.refresh_token)throw new L;let{data:n,error:r}=await this._callRefreshToken(e.refresh_token);return r?this._returnResult({data:{user:null,session:null},error:r}):n?this._returnResult({data:{user:n.user,session:n},error:null}):this._returnResult({data:{user:null,session:null},error:null})})}catch(e){if(P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}}async _getSessionFromURL(e,t){try{if(!B())throw new tr(`No browser detected.`);if(e.error||e.error_description||e.error_code)throw new tr(e.error_description||`Error in URL with unspecified error_description`,{error:e.error||`unspecified_error`,code:e.error_code||`unspecified_code`});switch(t){case`implicit`:if(this.flowType===`pkce`)throw new rr(`Not a valid PKCE flow url.`);break;case`pkce`:if(this.flowType===`implicit`)throw new tr(`Not a valid implicit grant flow url.`);break;default:}if(t===`pkce`){if(this._debug(`#_initialize()`,`begin`,`is PKCE flow`,!0),!e.code)throw new rr(`No code detected.`);let{data:t,error:n}=await this._exchangeCodeForSession(e.code,{flowId:e[N]});if(n)throw n;let r=new URL(window.location.href);return r.searchParams.delete(`code`),r.searchParams.delete(N),window.history.replaceState(window.history.state,``,r.toString()),{data:{session:t.session,redirectType:t.redirectType??null},error:null}}let{provider_token:n,provider_refresh_token:r,access_token:i,refresh_token:a,expires_in:o,expires_at:s,token_type:c}=e;if(!i||!o||!a||!c)throw new tr(`No session defined in URL`);let l=Math.round(Date.now()/1e3),u=parseInt(o),d=l+u;s&&(d=parseInt(s));let f=d-l;f*1e3<=M&&console.warn(`@supabase/gotrue-js: Session as retrieved from URL expires in ${f}s, should have been closer to ${u}s`);let p=d-u;l-p>=120?console.warn(`@supabase/gotrue-js: Session as retrieved from URL was issued over 120s ago, URL could be stale`,p,d,l):l-p<0&&console.warn(`@supabase/gotrue-js: Session as retrieved from URL was issued in the future? Check the device clock for skew`,p,d,l);let{data:m,error:h}=await this._getUser(i);if(h)throw h;let g={provider_token:n,provider_refresh_token:r,access_token:i,expires_in:u,expires_at:d,refresh_token:a,token_type:c,user:m.user};return window.location.hash=``,this._debug(`#_getSessionFromURL()`,`clearing window.location.hash`),this._returnResult({data:{session:g,redirectType:e.type},error:null})}catch(e){if(P(e))return this._returnResult({data:{session:null,redirectType:null},error:e});throw e}}_isImplicitGrantCallback(e){return typeof this.detectSessionInUrl==`function`?this.detectSessionInUrl(new URL(window.location.href),e):!!(e.access_token||e.error||e.error_description||e.error_code)}async _isPKCECallback(e){if(!e.code)return!1;let t=zr(e[N]);return t&&await U(this.storage,Vr(this.storageKey,t))?!0:!!await U(this.storage,`${this.storageKey}-code-verifier`)}async signOut(e={scope:`global`}){return await this.initializePromise,this.lock==null?await this._signOut(e):await this._acquireLock(this.lockAcquireTimeout,async()=>await this._signOut(e))}async _signOut({scope:e}={scope:`global`}){return await this._useSession(async t=>{let n=async()=>{await this._removeSession()},{data:r,error:i}=t;if(i&&!$n(i))return this._returnResult({error:i});let a=r.session?.access_token;if(a){let{error:t}=await this.admin.signOut(a,e);if(t&&!(Qn(t)&&(t.status===404||t.status===401||t.status===403)||$n(t)))return e!==`others`&&await n(),this._returnResult({error:t})}return e!==`others`&&await n(),this._returnResult({error:null})})}onAuthStateChange(e){let t=Tr(),n={id:t,callback:e,unsubscribe:()=>{this._debug(`#unsubscribe()`,`state change callback with id removed`,t),this.stateChangeEmitters.delete(t)}};return this._debug(`#onAuthStateChange()`,`registered callback with id`,t),this.stateChangeEmitters.set(t,n),(async()=>{await this.initializePromise,this.lock==null?await this._emitInitialSession(t):await this._acquireLock(this.lockAcquireTimeout,async()=>{this._emitInitialSession(t)})})(),{data:{subscription:n}}}async _emitInitialSession(e){return await this._useSession(async t=>{try{let{data:{session:n},error:r}=t;if(r)throw r;await this.stateChangeEmitters.get(e)?.callback(`INITIAL_SESSION`,n),this._debug(`INITIAL_SESSION`,`callback id`,e,`session`,n)}catch(t){if(await this.stateChangeEmitters.get(e)?.callback(`INITIAL_SESSION`,null),this._debug(`INITIAL_SESSION`,`callback id`,e,`error`,t),lr(t))return;$n(t)||sr(t)||Qn(t)&&(t.code===`refresh_token_not_found`||t.code===`refresh_token_already_used`||t.code===`session_expired`)?console.warn(t):console.error(t)}})}async resetPasswordForEmail(e,t={}){let n=null,r=null,i=null;this.flowType===`pkce`&&([n,r,i]=await this._getCodeChallengeAndMethod(!0));try{return await J(this.fetch,`POST`,`${this.url}/recover`,{body:{email:e,code_challenge:n,code_challenge_method:r,gotrue_meta_security:{captcha_token:t.captchaToken}},headers:this.headers,redirectTo:this._maybeAppendFlowIdToRedirect(t.redirectTo,i)})}catch(e){if(await G(this.storage,this.storageKey,i),P(e))return this._returnResult({data:null,error:e});throw e}}async getUserIdentities(){try{let{data:e,error:t}=await this.getUser();if(t)throw t;return this._returnResult({data:{identities:e.user.identities??[]},error:null})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async linkIdentity(e){return`token`in e?this.linkIdentityIdToken(e):this.linkIdentityOAuth(e)}async linkIdentityOAuth(e){let t=null;try{let{data:n,error:r}=await this._useSession(async n=>{let{data:r,error:i}=n;if(i)throw i;let{url:a,flowId:o}=await this._getUrlForProvider(`${this.url}/user/identities/authorize`,e.provider,{redirectTo:e.options?.redirectTo,scopes:e.options?.scopes,queryParams:e.options?.queryParams,skipBrowserRedirect:!0});return t=o,await J(this.fetch,`GET`,a,{headers:this.headers,jwt:r.session?.access_token??void 0})});if(r)throw r;return B()&&!e.options?.skipBrowserRedirect&&window.location.assign(n?.url),this._returnResult({data:{provider:e.provider,url:n?.url,flowId:t},error:null})}catch(n){if(P(n))return this._returnResult({data:{provider:e.provider,url:null,flowId:t},error:n});throw n}}async linkIdentityIdToken(e){return await this._useSession(async t=>{try{let{error:n,data:{session:r}}=t;if(n)throw n;let{options:i,provider:a,token:o,access_token:s,nonce:c}=e,{data:l,error:u}=await J(this.fetch,`POST`,`${this.url}/token?grant_type=id_token`,{headers:this.headers,jwt:r?.access_token??void 0,body:{provider:a,id_token:o,access_token:s,nonce:c,link_identity:!0,gotrue_meta_security:{captcha_token:i?.captchaToken}},xform:Y});return u?this._returnResult({data:{user:null,session:null},error:u}):!l||!l.session||!l.user?this._returnResult({data:{user:null,session:null},error:new R}):(l.session&&(await this._saveSession(l.session),await this._notifyAllSubscribers(`USER_UPDATED`,l.session)),this._returnResult({data:l,error:u}))}catch(e){if(await G(this.storage,this.storageKey,null),P(e))return this._returnResult({data:{user:null,session:null},error:e});throw e}})}async unlinkIdentity(e){try{return await this._useSession(async t=>{let{data:n,error:r}=t;if(r)throw r;return await J(this.fetch,`DELETE`,`${this.url}/user/identities/${e.identity_id}`,{headers:this.headers,jwt:n.session?.access_token??void 0})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _refreshAccessToken(e){let t=`#_refreshAccessToken()`;this._debug(t,`begin`);try{let n=Date.now();return await Nr(async n=>(n>0&&await Mr(200*2**(n-1)),this._debug(t,`refreshing attempt`,n),await J(this.fetch,`POST`,`${this.url}/token?grant_type=refresh_token`,{body:{refresh_token:e},headers:this.headers,xform:Y})),(e,t)=>{let r=200*2**e;return t&&sr(t)&&Date.now()+r-n<M})}catch(e){if(this._debug(t,`error`,e),P(e))return this._returnResult({data:{session:null,user:null},error:e});throw e}finally{this._debug(t,`end`)}}_isValidSession(e){return typeof e==`object`&&!!e&&`access_token`in e&&`refresh_token`in e&&`expires_at`in e}async _handleProviderSignIn(e,t){let{url:n,flowId:r}=await this._getUrlForProvider(`${this.url}/authorize`,e,{redirectTo:t.redirectTo,scopes:t.scopes,queryParams:t.queryParams});return this._debug(`#_handleProviderSignIn()`,`provider`,e,`options`,t,`url`,n),B()&&!t.skipBrowserRedirect&&window.location.assign(n),{data:{provider:e,url:n,flowId:r},error:null}}async _recoverAndRefresh(){let e=`#_recoverAndRefresh()`;this._debug(e,`begin`);try{let t=await U(this.storage,this.storageKey);if(t&&this.userStorage){let e=await U(this.userStorage,this.storageKey+`-user`);!this.storage.isServer&&Object.is(this.storage,this.userStorage)&&!e&&(e={user:t.user},await H(this.userStorage,this.storageKey+`-user`,e)),t.user=e?.user??ti()}else if(t&&!t.user&&!t.user){let e=await U(this.storage,this.storageKey+`-user`);e&&e?.user?(t.user=e.user,await W(this.storage,this.storageKey+`-user`),await H(this.storage,this.storageKey,t)):t.user=ti()}if(this._debug(e,`session from storage`,t),!this._isValidSession(t)){this._debug(e,`session is not valid`),t!==null&&await this._removeSession();return}let n=(t.expires_at??1/0)*1e3-Date.now()<Gn;if(this._debug(e,`session has${n?``:` not`} expired with margin of ${Gn}s`),n){if(this.autoRefreshToken&&t.refresh_token){let{error:n}=await this._callRefreshToken(t.refresh_token);n&&(lr(n)?this._debug(e,`refresh discarded by commit guard`,n):this._debug(e,`refresh failed`,n))}}else if(t.user&&t.user.__isUserNotAvailableProxy===!0)try{let{data:n,error:r}=await this._getUser(t.access_token);!r&&n?.user?(t.user=n.user,await this._saveSession(t),await this._notifyAllSubscribers(`SIGNED_IN`,t)):this._debug(e,`could not get user data, skipping SIGNED_IN notification`)}catch(t){console.error(`Error getting user data:`,t),this._debug(e,`error getting user data, skipping SIGNED_IN notification`,t)}else await this._notifyAllSubscribers(`SIGNED_IN`,t)}catch(t){this._debug(e,`error`,t),sr(t)?console.warn(t):console.error(t);return}finally{this._debug(e,`end`)}}async _callRefreshToken(e){var t,n;if(!e)throw new L;if(this.refreshingDeferred)return this.refreshingDeferred.promise;if(this.lastRefreshFailure&&this.lastRefreshFailure.refreshToken===e&&Date.now()<this.lastRefreshFailure.expiresAt)return this._debug(`#_callRefreshToken()`,`returning cached failure (cooldown active)`),this.lastRefreshFailure.result;let r=`#_callRefreshToken()`;this._debug(r,`begin`);try{this.refreshingDeferred=new Ar,this.refreshingDeferred.promise.then(void 0,()=>{});let t=await U(this.storage,this.storageKey),{data:n,error:i}=await this._refreshAccessToken(e);if(i)throw i;if(!n.session)throw new L;let a=await U(this.storage,this.storageKey);if(t!==null&&(a===null||a.refresh_token!==t.refresh_token)){this._debug(r,`commit guard: storage changed since refresh started, discarding rotated tokens`,{startedWith:`present`,nowHolds:a?`replaced`:`cleared`});let e={data:null,error:new cr};return this.refreshingDeferred.resolve(e),e}let o=this._sessionRemovalEpoch;if(await this._saveSession(n.session),this._sessionRemovalEpoch!==o){this._debug(r,`commit guard (post-save): _removeSession ran during _saveSession, undoing write`),await W(this.storage,this.storageKey),this.userStorage&&await W(this.userStorage,this.storageKey+`-user`);let e={data:null,error:new cr};return this.refreshingDeferred.resolve(e),e}await this._notifyAllSubscribers(`TOKEN_REFRESHED`,n.session);let s={data:n.session,error:null};return this.lastRefreshFailure=null,this.refreshingDeferred.resolve(s),s}catch(i){if(this._debug(r,`error`,i),P(i)){let n={data:null,error:i};if(!sr(i)){let e=await U(this.storage,this.storageKey);e?.expires_at&&e.expires_at*1e3>Date.now()?this._debug(r,`proactive refresh failed, access token still valid — preserving session`):await this._removeSession()}return this.lastRefreshFailure={refreshToken:e,result:n,expiresAt:Date.now()+6e4},(t=this.refreshingDeferred)==null||t.resolve(n),n}throw(n=this.refreshingDeferred)==null||n.reject(i),i}finally{this.refreshingDeferred=null,this._debug(r,`end`)}}async _notifyAllSubscribers(e,t,n=!0){if(this._pendingInitNotifications!==null&&n){this._pendingInitNotifications.push({event:e,session:t,broadcast:n});return}let r=`#_notifyAllSubscribers(${e})`;this._debug(r,`begin`,t,`broadcast = ${n}`);try{this.broadcastChannel&&n&&this.broadcastChannel.postMessage({event:e,session:t});let r=[],i=Array.from(this.stateChangeEmitters.values()).map(async n=>{try{await n.callback(e,t)}catch(e){r.push(e)}});if(await Promise.all(i),r.length>0){for(let e=0;e<r.length;e+=1)console.error(r[e]);throw r[0]}}finally{this._debug(r,`end`)}}async _saveSession(e){this._debug(`#_saveSession()`,e),this.suppressGetSessionWarning=!0;let t=Object.assign({},e),n=t.user&&t.user.__isUserNotAvailableProxy===!0;if(this.userStorage){!n&&t.user&&await H(this.userStorage,this.storageKey+`-user`,{user:t.user});let e=Object.assign({},t);delete e.user;let r=ri(e);await H(this.storage,this.storageKey,r)}else{let e=ri(t);await H(this.storage,this.storageKey,e)}}async _removeSession(){this._sessionRemovalEpoch+=1,this._debug(`#_removeSession()`),this.lastRefreshFailure=null,this.suppressGetSessionWarning=!1,await W(this.storage,this.storageKey),await Kr(this.storage,this.storageKey),await W(this.storage,this.storageKey+`-user`),this.userStorage&&await W(this.userStorage,this.storageKey+`-user`),await this._notifyAllSubscribers(`SIGNED_OUT`,null)}_removeVisibilityChangedCallback(){this._debug(`#_removeVisibilityChangedCallback()`);let e=this.visibilityChangedCallback;this.visibilityChangedCallback=null;try{e&&B()&&window!=null&&window.removeEventListener&&window.removeEventListener(`visibilitychange`,e)}catch(e){console.error(`removing visibilitychange callback failed`,e)}}async _startAutoRefresh(){await this._stopAutoRefresh(),this._debug(`#_startAutoRefresh()`);let e=setInterval(()=>this._autoRefreshTokenTick(),M);this.autoRefreshTicker=e,e&&typeof e==`object`&&typeof e.unref==`function`?e.unref():typeof Deno<`u`&&typeof Deno.unrefTimer==`function`&&Deno.unrefTimer(e);let t=setTimeout(async()=>{await this.initializePromise,await this._autoRefreshTokenTick()},0);this.autoRefreshTickTimeout=t,t&&typeof t==`object`&&typeof t.unref==`function`?t.unref():typeof Deno<`u`&&typeof Deno.unrefTimer==`function`&&Deno.unrefTimer(t)}async _stopAutoRefresh(){this._debug(`#_stopAutoRefresh()`);let e=this.autoRefreshTicker;this.autoRefreshTicker=null,e&&clearInterval(e);let t=this.autoRefreshTickTimeout;this.autoRefreshTickTimeout=null,t&&clearTimeout(t)}async startAutoRefresh(){this._removeVisibilityChangedCallback(),await this._startAutoRefresh()}async stopAutoRefresh(){this._removeVisibilityChangedCallback(),await this._stopAutoRefresh()}async dispose(){var e;this._removeVisibilityChangedCallback(),await this._stopAutoRefresh(),(e=this.broadcastChannel)==null||e.close(),this.broadcastChannel=null,this.stateChangeEmitters.clear()}async _autoRefreshTokenTick(){if(this._debug(`#_autoRefreshTokenTick()`,`begin`),this.lock!=null){try{await this._acquireLock(0,async()=>{try{let e=Date.now();try{return await this._useSession(async t=>{let{data:{session:n}}=t;if(!n||!n.refresh_token||!n.expires_at){this._debug(`#_autoRefreshTokenTick()`,`no session`);return}let r=Math.floor((n.expires_at*1e3-e)/M);this._debug(`#_autoRefreshTokenTick()`,`access token expires in ${r} ticks, a tick lasts ${M}ms, refresh threshold is 3 ticks`),r<=3&&await this._callRefreshToken(n.refresh_token)})}catch(e){console.error(`Auto refresh tick failed with error. This is likely a transient error.`,e)}}finally{this._debug(`#_autoRefreshTokenTick()`,`end`)}})}catch(e){if(e instanceof gi)this._debug(`auto refresh token tick lock not available`);else throw e}return}if(this.refreshingDeferred!==null){this._debug(`#_autoRefreshTokenTick()`,`refresh already in flight, skipping`);return}try{let e=Date.now();try{await this._useSession(async t=>{let{data:{session:n}}=t;if(!n||!n.refresh_token||!n.expires_at){this._debug(`#_autoRefreshTokenTick()`,`no session`);return}let r=Math.floor((n.expires_at*1e3-e)/M);this._debug(`#_autoRefreshTokenTick()`,`access token expires in ${r} ticks, a tick lasts ${M}ms, refresh threshold is 3 ticks`),r<=3&&await this._callRefreshToken(n.refresh_token)})}catch(e){console.error(`Auto refresh tick failed with error. This is likely a transient error.`,e)}}finally{this._debug(`#_autoRefreshTokenTick()`,`end`)}}async _handleVisibilityChange(){if(this._debug(`#_handleVisibilityChange()`),!B()||!(window!=null&&window.addEventListener))return this.autoRefreshToken&&this.startAutoRefresh(),!1;try{this.visibilityChangedCallback=async()=>{try{await this._onVisibilityChanged(!1)}catch(e){this._debug(`#visibilityChangedCallback`,`error`,e)}},window==null||window.addEventListener(`visibilitychange`,this.visibilityChangedCallback),await this._onVisibilityChanged(!0)}catch(e){console.error(`_handleVisibilityChange`,e)}}async _onVisibilityChanged(e){let t=`#_onVisibilityChanged(${e})`;if(this._debug(t,`visibilityState`,document.visibilityState),document.visibilityState===`visible`){if(this.autoRefreshToken&&this._startAutoRefresh(),!e)if(await this.initializePromise,this.lock!=null)await this._acquireLock(this.lockAcquireTimeout,async()=>{if(document.visibilityState!==`visible`){this._debug(t,`acquired the lock to recover the session, but the browser visibilityState is no longer visible, aborting`);return}await this._recoverAndRefresh()});else{if(document.visibilityState!==`visible`){this._debug(t,`visibilityState is no longer visible, skipping recovery`);return}await this._recoverAndRefresh()}}else document.visibilityState===`hidden`&&this.autoRefreshToken&&this._stopAutoRefresh()}async _getUrlForProvider(e,t,n){let r=n?.redirectTo,i=null,a=null,o=null;this.flowType===`pkce`&&([i,a,o]=await this._getCodeChallengeAndMethod(),r=this._maybeAppendFlowIdToRedirect(r,o));let s=[`provider=${encodeURIComponent(t)}`];if(r&&s.push(`redirect_to=${encodeURIComponent(r)}`),n?.scopes&&s.push(`scopes=${encodeURIComponent(n.scopes)}`),i!=null&&a!=null){let e=new URLSearchParams({code_challenge:`${encodeURIComponent(i)}`,code_challenge_method:`${encodeURIComponent(a)}`});s.push(e.toString())}if(n?.queryParams){let e=new URLSearchParams(n.queryParams);s.push(e.toString())}return n?.skipBrowserRedirect&&s.push(`skip_http_redirect=${n.skipBrowserRedirect}`),{url:`${e}?${s.join(`&`)}`,flowId:o}}_maybeAppendFlowIdToRedirect(e,t){return!e||!t||!this.experimental.appendPkceFlowIdToRedirects?e??void 0:qr(e,t)}async _getCodeChallengeAndMethod(e=!1){return Jr(this.storage,this.storageKey,e,e=>this._debug(`#_getCodeChallengeAndMethod()`,`evicted oldest pending PKCE verifier slot`,e))}async _unenroll(e){try{return await this._useSession(async t=>{let{data:n,error:r}=t;return r?this._returnResult({data:null,error:r}):await J(this.fetch,`DELETE`,`${this.url}/factors/${e.factorId}`,{headers:this.headers,jwt:n?.session?.access_token})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _enroll(e){try{return await this._useSession(async t=>{let{data:n,error:r}=t;if(r)return this._returnResult({data:null,error:r});let i=Object.assign({friendly_name:e.friendlyName,factor_type:e.factorType},e.factorType===`phone`?{phone:e.phone}:e.factorType===`totp`?{issuer:e.issuer}:{}),{data:a,error:o}=await J(this.fetch,`POST`,`${this.url}/factors`,{body:i,headers:this.headers,jwt:n?.session?.access_token});return o?this._returnResult({data:null,error:o}):(e.factorType===`totp`&&a.type===`totp`&&a?.totp?.qr_code&&(a.totp.qr_code=`data:image/svg+xml;utf-8,${a.totp.qr_code}`),this._returnResult({data:a,error:null}))})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _verify(e){let t=async()=>{try{return await this._useSession(async t=>{let{data:n,error:r}=t;if(r)return this._returnResult({data:null,error:r});let i=Object.assign({challenge_id:e.challengeId},`webauthn`in e?{webauthn:Object.assign(Object.assign({},e.webauthn),{credential_response:e.webauthn.type===`create`?Ni(e.webauthn.credential_response):Pi(e.webauthn.credential_response)})}:{code:e.code}),{data:a,error:o}=await J(this.fetch,`POST`,`${this.url}/factors/${e.factorId}/verify`,{body:i,headers:this.headers,jwt:n?.session?.access_token});return o?this._returnResult({data:null,error:o}):(await this._saveSession(Object.assign({expires_at:Math.round(Date.now()/1e3)+a.expires_in},a)),await this._notifyAllSubscribers(`MFA_CHALLENGE_VERIFIED`,a),this._returnResult({data:a,error:o}))})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}};return this.lock==null?t():this._acquireLock(this.lockAcquireTimeout,t)}async _challenge(e){let t=async()=>{try{return await this._useSession(async t=>{let{data:n,error:r}=t;if(r)return this._returnResult({data:null,error:r});let i=await J(this.fetch,`POST`,`${this.url}/factors/${e.factorId}/challenge`,{body:e,headers:this.headers,jwt:n?.session?.access_token});if(i.error)return i;let{data:a}=i;if(a.type!==`webauthn`)return{data:a,error:null};switch(a.webauthn.type){case`create`:return{data:Object.assign(Object.assign({},a),{webauthn:Object.assign(Object.assign({},a.webauthn),{credential_options:Object.assign(Object.assign({},a.webauthn.credential_options),{publicKey:ji(a.webauthn.credential_options.publicKey)})})}),error:null};case`request`:return{data:Object.assign(Object.assign({},a),{webauthn:Object.assign(Object.assign({},a.webauthn),{credential_options:Object.assign(Object.assign({},a.webauthn.credential_options),{publicKey:Mi(a.webauthn.credential_options.publicKey)})})}),error:null}}})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}};return this.lock==null?t():this._acquireLock(this.lockAcquireTimeout,t)}async _challengeAndVerify(e){let{data:t,error:n}=await this._challenge({factorId:e.factorId});return n?this._returnResult({data:null,error:n}):await this._verify({factorId:e.factorId,challengeId:t.id,code:e.code})}async _listFactors(){let{data:{user:e},error:t}=await this.getUser();if(t)return{data:null,error:t};let n={all:[],phone:[],totp:[],webauthn:[],recovery_code:[]};for(let t of e?.factors??[])n.all.push(t),t.status===`verified`&&t.factor_type in n&&Array.isArray(n[t.factor_type])&&n[t.factor_type].push(t);return{data:n,error:null}}async _getAuthenticatorAssuranceLevel(e){if(e)try{let{payload:t}=jr(e),n=null;t.aal&&(n=t.aal);let r=n,{data:{user:i},error:a}=await this.getUser(e);if(a)return this._returnResult({data:null,error:a});((i?.factors)?.filter(e=>e.status===`verified`)??[]).length>0&&(r=`aal2`);let o=t.amr||[];return{data:{currentLevel:n,nextLevel:r,currentAuthenticationMethods:o},error:null}}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}let{data:{session:t},error:n}=await this.getSession();if(n)return this._returnResult({data:null,error:n});if(!t)return{data:{currentLevel:null,nextLevel:null,currentAuthenticationMethods:[]},error:null};let{payload:r}=jr(t.access_token),i=null;r.aal&&(i=r.aal);let a=i;(t.user.factors?.filter(e=>e.status===`verified`)??[]).length>0&&(a=`aal2`);let o=r.amr||[];return{data:{currentLevel:i,nextLevel:a,currentAuthenticationMethods:o},error:null}}async _getRecoveryCodesStatus(){ei(this.experimental);try{return await this._useSession(async e=>{let{data:t,error:n}=e;if(n)return this._returnResult({data:null,error:n});let{data:r,error:i}=await J(this.fetch,`GET`,`${this.url}/factors/recovery-codes`,{headers:this.headers,jwt:t?.session?.access_token});return i?this._returnResult({data:null,error:i}):this._returnResult({data:r,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _generateRecoveryCodes(e){ei(this.experimental);try{return await this._useSession(async t=>{let{data:n,error:r}=t;if(r)return this._returnResult({data:null,error:r});let{data:i,error:a}=await J(this.fetch,`POST`,`${this.url}/factors/recovery-codes`,{body:e?.friendlyName?{friendly_name:e.friendlyName}:void 0,headers:this.headers,jwt:n?.session?.access_token});return a?this._returnResult({data:null,error:a}):this._returnResult({data:i,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _verifyRecoveryCode(e){ei(this.experimental);let t=async()=>{try{return await this._useSession(async t=>{let{data:n,error:r}=t;if(r)return this._returnResult({data:null,error:r});let{data:i,error:a}=await J(this.fetch,`POST`,`${this.url}/factors/recovery-codes/verify`,{body:{code:e.code},headers:this.headers,jwt:n?.session?.access_token});if(a)return this._returnResult({data:null,error:a});let o=Object.assign({expires_at:wr(i.expires_in)},i);return await this._saveSession(o),await this._notifyAllSubscribers(`MFA_CHALLENGE_VERIFIED`,o),this._returnResult({data:i,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}};return this.lock==null?t():this._acquireLock(this.lockAcquireTimeout,t)}async _regenerateRecoveryCodes(){ei(this.experimental);try{return await this._useSession(async e=>{let{data:t,error:n}=e;if(n)return this._returnResult({data:null,error:n});let{data:r,error:i}=await J(this.fetch,`POST`,`${this.url}/factors/recovery-codes/regenerate`,{headers:this.headers,jwt:t?.session?.access_token});return i?this._returnResult({data:null,error:i}):this._returnResult({data:r,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _unenrollRecoveryCodes(){ei(this.experimental);try{return await this._useSession(async e=>{let{data:t,error:n}=e;if(n)return this._returnResult({data:null,error:n});let{data:r,error:i}=await J(this.fetch,`DELETE`,`${this.url}/factors/recovery-codes`,{headers:this.headers,jwt:t?.session?.access_token});return i?this._returnResult({data:null,error:i}):this._returnResult({data:r,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _getAuthorizationDetails(e){try{return await this._useSession(async t=>{let{data:{session:n},error:r}=t;return r?this._returnResult({data:null,error:r}):n?await J(this.fetch,`GET`,`${this.url}/oauth/authorizations/${e}`,{headers:this.headers,jwt:n.access_token,xform:e=>({data:e,error:null})}):this._returnResult({data:null,error:new L})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _approveAuthorization(e,t){try{return await this._useSession(async n=>{let{data:{session:r},error:i}=n;if(i)return this._returnResult({data:null,error:i});if(!r)return this._returnResult({data:null,error:new L});let a=await J(this.fetch,`POST`,`${this.url}/oauth/authorizations/${e}/consent`,{headers:this.headers,jwt:r.access_token,body:{action:`approve`},xform:e=>({data:e,error:null})});return a.data&&a.data.redirect_url&&B()&&!t?.skipBrowserRedirect&&window.location.assign(a.data.redirect_url),a})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _denyAuthorization(e,t){try{return await this._useSession(async n=>{let{data:{session:r},error:i}=n;if(i)return this._returnResult({data:null,error:i});if(!r)return this._returnResult({data:null,error:new L});let a=await J(this.fetch,`POST`,`${this.url}/oauth/authorizations/${e}/consent`,{headers:this.headers,jwt:r.access_token,body:{action:`deny`},xform:e=>({data:e,error:null})});return a.data&&a.data.redirect_url&&B()&&!t?.skipBrowserRedirect&&window.location.assign(a.data.redirect_url),a})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _listOAuthGrants(){try{return await this._useSession(async e=>{let{data:{session:t},error:n}=e;return n?this._returnResult({data:null,error:n}):t?await J(this.fetch,`GET`,`${this.url}/user/oauth/grants`,{headers:this.headers,jwt:t.access_token,xform:e=>({data:e,error:null})}):this._returnResult({data:null,error:new L})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _revokeOAuthGrant(e){try{return await this._useSession(async t=>{let{data:{session:n},error:r}=t;return r?this._returnResult({data:null,error:r}):n?(await J(this.fetch,`DELETE`,`${this.url}/user/oauth/grants`,{headers:this.headers,jwt:n.access_token,query:{client_id:e.clientId},noResolveJson:!0}),{data:{},error:null}):this._returnResult({data:null,error:new L})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async fetchJwk(e,t={keys:[]}){let n=t.keys.find(t=>t.kid===e);if(n)return n;let r=Date.now();if(n=this.jwks.keys.find(t=>t.kid===e),n&&this.jwks_cached_at+6e5>r)return n;let{data:i,error:a}=await J(this.fetch,`GET`,`${this.url}/.well-known/jwks.json`,{headers:this.headers});if(a)throw a;return!i.keys||i.keys.length===0||(this.jwks=i,this.jwks_cached_at=r,n=i.keys.find(t=>t.kid===e),!n)?null:n}async getClaims(e,t={}){try{let n=e;if(!n){let{data:e,error:t}=await this.getSession();if(t||!e.session)return this._returnResult({data:null,error:t});n=e.session.access_token}let{header:r,payload:i,signature:a,raw:{header:o,payload:s}}=jr(n);if(!t?.allowExpired)try{Zr(i.exp)}catch(e){throw new fr(e instanceof Error?e.message:`JWT validation failed`)}let c=!r.alg||r.alg.startsWith(`HS`)||!r.kid||!(`crypto`in globalThis&&`subtle`in globalThis.crypto)?null:await this.fetchJwk(r.kid,t?.keys?{keys:t.keys}:t?.jwks);if(!c){let{error:e}=await this.getUser(n);if(e)throw e;return{data:{claims:i,header:r,signature:a},error:null}}let l=Qr(r.alg),u=await crypto.subtle.importKey(`jwk`,c,l,!0,[`verify`]);if(!await crypto.subtle.verify(l,u,a,Cr(`${o}.${s}`)))throw new fr(`Invalid JWT signature`);return{data:{claims:i,header:r,signature:a},error:null}}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async signInWithPasskey(e){try{if(!Ii())return this._returnResult({data:null,error:new F(`Browser does not support WebAuthn`,null)});let{data:t,error:n}=await this._startPasskeyAuthentication({options:{captchaToken:e?.options?.captchaToken}});if(n||!t)return this._returnResult({data:null,error:n});let{data:r,error:i}=await Ri({publicKey:Mi(t.options),signal:e?.options?.signal??Ai.createNewAbortSignal(),mediation:e?.options?.mediation});if(i||!r)return this._returnResult({data:null,error:i??new F(`WebAuthn ceremony failed`,null)});let a=Pi(r);return this._verifyPasskeyAuthentication({challengeId:t.challenge_id,credential:a})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async registerPasskey(e){try{if(!Ii())return this._returnResult({data:null,error:new F(`Browser does not support WebAuthn`,null)});let{data:t,error:n}=await this._startPasskeyRegistration();if(n||!t)return this._returnResult({data:null,error:n});let{data:r,error:i}=await Li({publicKey:ji(t.options),signal:e?.options?.signal??Ai.createNewAbortSignal()});if(i||!r)return this._returnResult({data:null,error:i??new F(`WebAuthn ceremony failed`,null)});let a=Ni(r);return this._verifyPasskeyRegistration({challengeId:t.challenge_id,credential:a})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _startPasskeyRegistration(){try{return await this._useSession(async e=>{let{data:{session:t},error:n}=e;if(n)return this._returnResult({data:null,error:n});if(!t)return this._returnResult({data:null,error:new L});let{data:r,error:i}=await J(this.fetch,`POST`,`${this.url}/passkeys/registration/options`,{headers:this.headers,jwt:t.access_token,body:{}});return i?this._returnResult({data:null,error:i}):this._returnResult({data:r,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _verifyPasskeyRegistration(e){try{return await this._useSession(async t=>{let{data:{session:n},error:r}=t;if(r)return this._returnResult({data:null,error:r});if(!n)return this._returnResult({data:null,error:new L});let{data:i,error:a}=await J(this.fetch,`POST`,`${this.url}/passkeys/registration/verify`,{headers:this.headers,jwt:n.access_token,body:{challenge_id:e.challengeId,credential:e.credential}});return a?this._returnResult({data:null,error:a}):this._returnResult({data:i,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _startPasskeyAuthentication(e){try{let{data:t,error:n}=await J(this.fetch,`POST`,`${this.url}/passkeys/authentication/options`,{headers:this.headers,body:{gotrue_meta_security:{captcha_token:e?.options?.captchaToken}}});return n?this._returnResult({data:null,error:n}):this._returnResult({data:t,error:null})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _verifyPasskeyAuthentication(e){try{let{data:t,error:n}=await J(this.fetch,`POST`,`${this.url}/passkeys/authentication/verify`,{headers:this.headers,body:{challenge_id:e.challengeId,credential:e.credential},xform:Y});return n?this._returnResult({data:null,error:n}):(t.session&&(await this._saveSession(t.session),await this._notifyAllSubscribers(`SIGNED_IN`,t.session)),this._returnResult({data:t,error:null}))}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _listPasskeys(){try{return await this._useSession(async e=>{let{data:{session:t},error:n}=e;if(n)return this._returnResult({data:null,error:n});if(!t)return this._returnResult({data:null,error:new L});let{data:r,error:i}=await J(this.fetch,`GET`,`${this.url}/passkeys`,{headers:this.headers,jwt:t.access_token,xform:e=>({data:e,error:null})});return i?this._returnResult({data:null,error:i}):this._returnResult({data:r,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _updatePasskey(e){try{return await this._useSession(async t=>{let{data:{session:n},error:r}=t;if(r)return this._returnResult({data:null,error:r});if(!n)return this._returnResult({data:null,error:new L});let{data:i,error:a}=await J(this.fetch,`PATCH`,`${this.url}/passkeys/${e.passkeyId}`,{headers:this.headers,jwt:n.access_token,body:{friendly_name:e.friendlyName}});return a?this._returnResult({data:null,error:a}):this._returnResult({data:i,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}async _deletePasskey(e){try{return await this._useSession(async t=>{let{data:{session:n},error:r}=t;if(r)return this._returnResult({data:null,error:r});if(!n)return this._returnResult({data:null,error:new L});let{error:i}=await J(this.fetch,`DELETE`,`${this.url}/passkeys/${e.passkeyId}`,{headers:this.headers,jwt:n.access_token,noResolveJson:!0});return i?this._returnResult({data:null,error:i}):this._returnResult({data:null,error:null})})}catch(e){if(P(e))return this._returnResult({data:null,error:e});throw e}}};qi.nextInstanceID={};var Ji=qi,Yi=mi,Xi=Ji,Zi=class extends Xi{constructor(e){super(e)}},Qi=class{constructor(e,t,n){this.supabaseUrl=e,this.supabaseKey=t;let r=Un(e);if(!t)throw Error(`supabaseKey is required.`);Nn(t),Vn(n),this.realtimeUrl=new URL(`realtime/v1`,r),this.realtimeUrl.protocol=this.realtimeUrl.protocol.replace(`http`,`ws`),this.authUrl=new URL(`auth/v1`,r),this.storageUrl=new URL(`storage/v1`,r),this.functionsUrl=new URL(`functions/v1`,r);let i=`sb-${r.hostname.split(`.`)[0]}-auth-token`,a={db:yn,realtime:xn,auth:{...bn,storageKey:i},global:vn,tracePropagation:Sn},o=Hn(n??{},a);this.settings=o,this.storageKey=o.auth.storageKey??``,this.headers=o.global.headers??{},o.accessToken?(this.accessToken=o.accessToken,this.auth=new Proxy({},{get:(e,t)=>{throw Error(`@supabase/supabase-js: Supabase Client is configured with the accessToken option, accessing supabase.auth.${String(t)} is not possible`)}})):this.auth=this._initSupabaseAuthClient(o.auth??{},this.headers,o.global.fetch),this.fetch=Pn(t,e,this._getSessionToken.bind(this),o.global.fetch,o.tracePropagation),this.functionsFetch=Pn(t,e,this._getSessionToken.bind(this),o.global.fetch,o.tracePropagation,{omitApiKeyAsBearer:!0}),this.realtime=this._initRealtimeClient({headers:this.headers,accessToken:this._getAccessToken.bind(this),fetch:this.fetch,...o.realtime}),this.accessToken&&Promise.resolve(this.accessToken()).then(e=>this.realtime.setAuth(e)).catch(e=>console.warn(`Failed to set initial Realtime auth token:`,e)),this.rest=new fe(new URL(`rest/v1`,r).href,{headers:this.headers,schema:o.db.schema,fetch:this.fetch,timeout:o.db.timeout,urlLengthLimit:o.db.urlLengthLimit,retry:o.db.retry}),this.storage=new mn(this.storageUrl.href,this.headers,this.fetch,n?.storage),o.accessToken||this._listenForAuthEvents()}get functions(){return new l(this.functionsUrl.href,{headers:this.headers,customFetch:this.functionsFetch})}from(e){return this.rest.from(e)}schema(e){return this.rest.schema(e)}getOpenApiSpec(){return this.rest.getOpenApiSpec()}rpc(e,t={},n={head:!1,get:!1,count:void 0}){return this.rest.rpc(e,t,n)}channel(e,t={config:{}}){return this.realtime.channel(e,t)}getChannels(){return this.realtime.getChannels()}removeChannel(e){return this.realtime.removeChannel(e)}removeAllChannels(){return this.realtime.removeAllChannels()}async _getSessionToken(){if(this.accessToken)return await this.accessToken();let{data:e}=await this.auth.getSession();return e.session?.access_token??null}async _getAccessToken(){return await this._getSessionToken()??this.supabaseKey}_initSupabaseAuthClient({autoRefreshToken:e,persistSession:t,detectSessionInUrl:n,storage:r,userStorage:i,storageKey:a,flowType:o,lock:s,debug:c,throwOnError:l,experimental:u,lockAcquireTimeout:d,skipAutoInitialize:f},p,m){let h={Authorization:`Bearer ${this.supabaseKey}`,apikey:`${this.supabaseKey}`};return new Zi({url:this.authUrl.href,headers:{...h,...p},storageKey:a,autoRefreshToken:e,persistSession:t,detectSessionInUrl:n,storage:r,userStorage:i,flowType:o,lock:s,debug:c,throwOnError:l,experimental:u,fetch:m,lockAcquireTimeout:d,skipAutoInitialize:f,hasCustomAuthorizationHeader:Object.keys(this.headers).some(e=>e.toLowerCase()===`authorization`)})}_initRealtimeClient(e){return new _t(this.realtimeUrl.href,{...e,params:{apikey:this.supabaseKey,...e?.params}})}_listenForAuthEvents(){return this.auth.onAuthStateChange((e,t)=>{this._handleTokenChanged(e,`CLIENT`,t?.access_token)})}_handleTokenChanged(e,t,n){(e===`TOKEN_REFRESHED`||e===`SIGNED_IN`||e===`INITIAL_SESSION`)&&this.changedAccessToken!==n?(this.changedAccessToken=n,this.realtime.setAuth(n)):e===`SIGNED_OUT`&&(this.realtime.setAuth(),t==`STORAGE`&&this.auth.signOut(),this.changedAccessToken=void 0)}};let $i=(e,t,n)=>new Qi(e,t,n);function ea(){if(typeof window<`u`||globalThis.Deno!==void 0)return!1;let e=globalThis.process;if(!e)return!1;let t=e.version;if(t==null)return!1;let n=t.match(/^v(\d+)\./);return n?parseInt(n[1],10)<=20:!1}return ea()&&console.warn(`⚠️  Node.js 20 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 22 or later. For more information, visit: https://github.com/orgs/supabase/discussions/45715`),e.AuthAdminApi=Yi,e.AuthApiError=Zn,e.AuthClient=Xi,e.AuthError=Xn,e.AuthImplicitGrantRedirectError=tr,e.AuthInvalidCredentialsError=er,e.AuthInvalidJwtError=fr,e.AuthInvalidTokenResponseError=R,e.AuthPKCECodeVerifierMissingError=ir,e.AuthPKCEGrantCodeExchangeError=rr,e.AuthRefreshDiscardedError=cr,e.AuthRetryableFetchError=or,e.AuthSessionMissingError=L,e.AuthUnknownError=F,e.AuthWeakPasswordError=ur,e.CustomAuthError=I,Object.defineProperty(e,`FunctionRegion`,{enumerable:!0,get:function(){return c}}),e.FunctionsError=i,e.FunctionsFetchError=a,e.FunctionsHttpError=s,e.FunctionsRelayError=o,e.GoTrueAdminApi=mi,e.GoTrueClient=Ji,e.NavigatorLockAcquireTimeoutError=_i,e.PostgrestError=u,e.REALTIME_CHANNEL_STATES=ut,Object.defineProperty(e,`REALTIME_LISTEN_TYPES`,{enumerable:!0,get:function(){return T}}),Object.defineProperty(e,`REALTIME_POSTGRES_CHANGES_LISTEN_EVENT`,{enumerable:!0,get:function(){return lt}}),Object.defineProperty(e,`REALTIME_PRESENCE_LISTEN_EVENTS`,{enumerable:!0,get:function(){return Xe}}),Object.defineProperty(e,`REALTIME_SUBSCRIBE_STATES`,{enumerable:!0,get:function(){return E}}),e.RealtimeChannel=dt,e.RealtimeClient=_t,e.RealtimePostgresFilterBuilder=st,e.RealtimePresence=Ze,e.SIGN_OUT_SCOPES=pi,e.StorageApiError=Pt,e.SupabaseClient=Qi,e.WebSocketFactory=pe,e.createClient=$i,e.isAuthApiError=Qn,e.isAuthError=P,e.isAuthImplicitGrantRedirectError=nr,e.isAuthPKCECodeVerifierMissingError=ar,e.isAuthRefreshDiscardedError=lr,e.isAuthRetryableFetchError=sr,e.isAuthSessionMissingError=$n,e.isAuthWeakPasswordError=dr,e.lockInternals=Z,e.navigatorLock=yi,e.postgresChangesFilter=ct,e.processLock=xi,e})({});</script>
-<script>/* Заполняется при сборке. Пока пусто — приложение попросит URL и ключ на первом экране.
-   Сюда кладём ТОЛЬКО публичный ключ (anon / publishable). Секретный (service_role) — никогда. */
+<script>/* Публичные данные подключения (anon/publishable ключ публичный по замыслу — доступ защищён правилами RLS в базе).
+   Секретный ключ (service_role / secret) сюда класть НЕЛЬЗЯ. */
 window.APP_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: ""
+  SUPABASE_URL: "https://rjiuialimbrnbriqafjl.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_Hf5J8zcRXPKBVugh68TyAw_ZXQ6leQX"
 };
 </script>
 <script>(function () {
 "use strict";
-
-/* ================= утилиты ================= */
-const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1" };
+/* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
+const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const pad = n => String(n).padStart(2, "0");
@@ -73,23 +72,39 @@ const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
   : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); });
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const $ = id => document.getElementById(id);
-const MON = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
-const DOW = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+const WDS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+const MONG = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const parseISO = s => { const p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); };
 const addDays = (iso, n) => { const d = parseISO(iso); d.setDate(d.getDate() + n); return isoLocal(d); };
 let today = todayISO();
-function fmtDue(s) {
-  if (s === today) return "Сегодня";
-  if (s === addDays(today, 1)) return "Завтра";
-  if (s === addDays(today, -1)) return "Вчера";
-  const d = parseISO(s);
-  return d.getDate() + " " + MON[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
-}
-const fmtShort = iso => { const d = new Date(iso); return d.getDate() + " " + MON[d.getMonth()] + " " + d.getFullYear(); };
+const dateLong = d => WDS[d.getDay()] + ", " + d.getDate() + " " + MONG[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
+const nextMonday = () => addDays(today, ((8 - parseISO(today).getDay()) % 7) || 7);
+const fmtShort = iso => { const d = new Date(iso); return WDS[d.getDay()] + ", " + d.getDate() + " " + MONG[d.getMonth()]; };
 const fmtEst = m => m >= 60 ? (Math.round(m / 6) / 10) + " ч" : m + " м";
 const localDate = iso => iso ? isoLocal(new Date(iso)) : "";
+const toLocalInput = iso => { const d = new Date(iso); return isoLocal(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+const atTime = (isoDate, h) => { const d = parseISO(isoDate); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+function dueInfo(t) {
+  if (!t.due) return null;
+  const od = !t.done && t.due < today, d = parseISO(t.due);
+  const full = dateLong(d);
+  let txt = t.due === today ? "Сегодня" : t.due === addDays(today, 1) ? "Завтра" : t.due === addDays(today, -1) ? "Вчера" : full;
+  if (od) txt = "Просрочено, " + full;
+  return { txt, cls: od ? "od" : (t.due === today ? "today" : "") };
+}
+function fmtRemind(iso) {
+  const d = new Date(iso), ds = isoLocal(d);
+  return "Напомнить в " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ", " + (ds === today ? "сегодня" : ds === addDays(today, 1) ? "завтра" : dateLong(d));
+}
+function repeatText(r) {
+  if (!r) return "";
+  if (r === "wd") return "По рабочим дням";
+  const p = r.split(":"), u = p[0], n = +p[1] || 1;
+  if (n === 1) return { d: "Ежедневно", w: "Еженедельно", m: "Ежемесячно", y: "Ежегодно" }[u] || r;
+  return "Каждые " + n + " " + ({ d: "дн.", w: "нед.", m: "мес.", y: "г." }[u] || "");
+}
 
-/* ================= конфиг / состояние ================= */
+/* ----- конфиг / состояние ----- */
 const CFG0 = window.APP_CONFIG || {};
 const normUrl = u => { u = String(u || "").trim(); try { return new URL(u).origin; } catch (e) { return u.replace(/\/+$/, ""); } }; // оставляем только https://xxx.supabase.co
 function getCfg() {
@@ -101,43 +116,48 @@ let cfg = getCfg(), sb = null, screen = null;
 const S = { user: null, lists: {}, tasks: {} };
 let P = jget(LSK.pending, { lists: {}, tasks: {} });
 if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {};
-let TH = Object.assign({ theme: "night", accent: "#6366f1", bg: "", font: "sys", dens: "normal", glass: true }, jget(LSK.theme, {}));
-let view = jget(LSK.view, "myday"), selId = null;
-const ui = { left: false, settings: false, showDone: false, limit: 200, doneLimit: 30, msg: "", msgOk: true, busy: false };
+let TH = Object.assign({ v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", glass: false }, jget(LSK.theme, {}));
+if (TH.v !== 2) TH = { v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", glass: false };
+const PR = Object.assign({ sort: {}, group: {}, grid: {}, collapsed: {}, showDone: {}, rail: false }, jget(LSK.prefs, {}));
+const savePrefs = () => jset(LSK.prefs, PR);
+let view = jget(LSK.view, "myday"), prevView = "myday", selId = null;
+const ui = { left: false, settings: false, limit: 300, doneLimit: 30, msg: "", msgOk: true, busy: false, q: "", pop: null, sugg: false, alerts: [], gcol: {} };
 let sync = { state: "ok", msg: "" };
 let rt = null, flushing = false, flushSeq = 0, loading = false, flushTimer = null, retryTimer = null, persistTimer = null, lastLoad = 0;
 let down = false, want = false;
-
 const pendCount = () => Object.keys(P.lists).length + Object.keys(P.tasks).length;
 const savePending = () => jset(LSK.pending, P);
 function writeCache() { if (S.user) jset(LSK.cache, { user: { id: S.user.id, email: S.user.email }, lists: S.lists, tasks: S.tasks }); }
 function persistSoon() { clearTimeout(persistTimer); persistTimer = setTimeout(writeCache, 400); }
 
-/* ================= темы ================= */
+/* ----- темы ----- */
 const THEMES = {
+  classic:  { n: "Классика", dark: 0, bg: "#faf9f8", l: "#faf9f8", m: "#faf9f8", r: "#faf9f8" },
+  paper:    { n: "Бумага",   dark: 0, bg: "#f6f1e7", l: "#efe8d8", m: "#f6f1e7", r: "#efe8d8" },
+  sky:      { n: "Небо",     dark: 0, bg: "linear-gradient(135deg,#dbeafe,#e0e7ff)", l: "rgba(255,255,255,.8)", m: "rgba(255,255,255,.45)", r: "rgba(255,255,255,.9)" },
   night:    { n: "Ночь",     dark: 1, bg: "linear-gradient(135deg,#0f172a,#1e1b4b)", l: "rgba(15,23,42,.92)", m: "rgba(15,23,42,.55)", r: "rgba(15,23,42,.96)" },
   graphite: { n: "Графит",   dark: 1, bg: "#18181b", l: "#1f1f23", m: "#18181b", r: "#202024" },
   ocean:    { n: "Океан",    dark: 1, bg: "linear-gradient(135deg,#0c4a6e,#134e4a)", l: "rgba(8,36,56,.85)", m: "rgba(8,36,56,.45)", r: "rgba(8,36,56,.95)" },
   forest:   { n: "Лес",      dark: 1, bg: "linear-gradient(135deg,#14532d,#0f172a)", l: "rgba(6,30,18,.85)", m: "rgba(6,30,18,.45)", r: "rgba(6,30,18,.95)" },
-  sunset:   { n: "Закат",    dark: 1, bg: "linear-gradient(135deg,#7c2d12,#4c1d95)", l: "rgba(30,10,40,.8)", m: "rgba(30,10,40,.4)", r: "rgba(30,10,40,.94)" },
-  day:      { n: "День",     dark: 0, bg: "#f1f5f9", l: "#ffffff", m: "#f8fafc", r: "#ffffff" },
-  paper:    { n: "Бумага",   dark: 0, bg: "#faf6ee", l: "#f3ecdd", m: "#faf6ee", r: "#f3ecdd" },
-  sky:      { n: "Небо",     dark: 0, bg: "linear-gradient(135deg,#dbeafe,#e0e7ff)", l: "rgba(255,255,255,.8)", m: "rgba(255,255,255,.5)", r: "rgba(255,255,255,.92)" }
+  sunset:   { n: "Закат",    dark: 1, bg: "linear-gradient(135deg,#7c2d12,#4c1d95)", l: "rgba(30,10,40,.8)", m: "rgba(30,10,40,.4)", r: "rgba(30,10,40,.94)" }
 };
-const FONTS = { sys: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', serif: "Georgia,'Times New Roman',serif", mono: "ui-monospace,Consolas,monospace", round: "'Trebuchet MS','Nunito',system-ui,sans-serif" };
-const DENS = { compact: ["8px", "13.5px"], normal: ["12px", "14.5px"], cozy: ["16px", "15.5px"] };
-const ACCENTS = ["#6366f1", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#8b5cf6"];
+const FONTS = { sys: '"Segoe UI",system-ui,-apple-system,Roboto,sans-serif', serif: "Georgia,'Times New Roman',serif", mono: "ui-monospace,Consolas,monospace", round: "'Trebuchet MS','Nunito',system-ui,sans-serif" };
+const DENS = { compact: ["6px", "13px"], normal: ["10px", "14px"], cozy: ["14px", "15px"] };
+const ACCENTS = ["#2564cf", "#0063b1", "#038387", "#498205", "#c19c00", "#ca5010", "#d13438", "#e3008c", "#8764b8", "#6366f1", "#69797e"];
 const saveTheme = () => jset(LSK.theme, TH);
-
+function hexRgb(h) { h = String(h || "").replace("#", ""); if (h.length === 3) h = h.replace(/./g, "$&$&"); const n = parseInt(h, 16); return isNaN(n) ? [37, 100, 207] : [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+const rgba = (h, a) => { const c = hexRgb(h); return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; };
+const shade = (h, f) => { const c = hexRgb(h).map(x => Math.max(0, Math.min(255, Math.round(f < 0 ? x * (1 + f) : x + (255 - x) * f)))); return "rgb(" + c.join(",") + ")"; };
+function curAccent() { if (view.indexOf("list:") === 0) { const l = S.lists[view.slice(5)]; if (l && l.color) return l.color; } return TH.accent; }
 function applyTheme() {
   const app = $("app"); if (!app) return;
-  const T = THEMES[TH.theme] || THEMES.night, d = T.dark, hasBg = !!TH.bg;
-  const dn = DENS[TH.dens] || DENS.normal;
+  const T = THEMES[TH.theme] || THEMES.classic, d = T.dark, hasBg = !!TH.bg, dn = DENS[TH.dens] || DENS.normal, acc = curAccent();
   const v = {
-    "--bg": T.bg, "--tx": d ? "#e8edf7" : "#1e293b", "--sub": d ? "#93a0b8" : "#64748b",
-    "--ln": d ? "rgba(255,255,255,.09)" : "rgba(0,0,0,.09)", "--card": d ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.85)",
-    "--hov": d ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.06)", "--inp": d ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.92)",
-    "--acc": TH.accent, "--solid": d ? "#1b2236" : "#ffffff",
+    "--bg": T.bg, "--tx": d ? "#e8edf7" : "#323130", "--sub": d ? "#a3aec4" : "#605e5c",
+    "--ln": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.1)", "--card": d ? "rgba(255,255,255,.07)" : "#ffffff",
+    "--hov": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.05)", "--inp": d ? "rgba(255,255,255,.08)" : "#ffffff",
+    "--acc": acc, "--hd": d ? shade(acc, -0.35) : shade(acc, -0.08), "--sel": rgba(acc, d ? .28 : .13), "--solid": d ? "#1b2236" : "#ffffff",
+    "--od": d ? "#ff8a80" : "#a4262c", "--shadow": d ? "none" : "0 1px 2px rgba(0,0,0,.12)",
     "--lp": hasBg ? (d ? "rgba(8,12,24,.62)" : "rgba(255,255,255,.66)") : T.l,
     "--mp": hasBg ? (d ? "rgba(8,12,24,.38)" : "rgba(255,255,255,.4)") : T.m,
     "--rp": hasBg ? (d ? "rgba(8,12,24,.7)" : "rgba(255,255,255,.75)") : T.r,
@@ -147,45 +167,50 @@ function applyTheme() {
   if (hasBg) { app.style.backgroundImage = 'url("' + TH.bg.replace(/["\\\n]/g, "") + '")'; app.style.backgroundSize = "cover"; app.style.backgroundPosition = "center"; }
   else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; }
   app.classList.toggle("glass", !!TH.glass);
-  document.body.style.background = d ? "#0f172a" : "#f1f5f9";
-  const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = d ? "#0f172a" : "#f1f5f9";
+  document.body.style.background = d ? "#0f172a" : "#faf9f8";
+  const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = shade(acc, d ? -0.35 : -0.08);
 }
 
-const CSS = `
-#app{position:relative;background:var(--bg);color:var(--tx);font-family:var(--ff);font-size:var(--fs)}
-#left{width:268px;flex-shrink:0;background:var(--lp);border-right:1px solid var(--ln)}
-#main{flex:1;min-width:0;background:var(--mp)}
-#right{width:350px;flex-shrink:0;background:var(--rp);border-left:1px solid var(--ln)}
-.glass #left,.glass #main,.glass #right{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
-.chip{padding:9px 12px;margin:1px 8px;color:var(--tx)}
-.chip:hover{background:var(--hov)} .chip.on{background:var(--hov);font-weight:600}
-.chip .n{margin-left:auto;color:var(--sub);font-size:12px}
-.inp{width:100%;background:var(--inp);color:var(--tx);border:1px solid var(--ln);border-radius:10px;padding:10px 12px;font-size:inherit}
-.inp:focus{border-color:var(--acc)}
-select.inp option{color:#111}
-.btn{background:var(--acc);color:#fff;border-radius:10px;padding:10px 14px;font-weight:600;font-size:inherit}
-.btn.ghost{background:var(--card);color:var(--tx);border:1px solid var(--ln)}
-.btn:disabled{opacity:.5}
-.taskrow{background:var(--card);padding:var(--pad) 14px;border:1px solid transparent}
-.taskrow:hover{background:var(--hov)} .taskrow.sel{border-color:var(--acc)}
-.rad{width:22px;height:22px;border:2px solid var(--sub);margin-top:1px;font-size:13px}
-.rad.on{background:var(--acc);border-color:var(--acc)}
-.sub{color:var(--sub);font-size:12.5px}
-.estchip{background:var(--card);border:1px solid var(--ln)} .estchip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-.tog{padding:7px 11px;border-radius:9px;background:var(--card);border:1px solid var(--ln);font-size:13px}
-.tog.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-.ovl{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:14px}
-.sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:16px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
-.lbl{font-size:12px;color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
-`;
+/* ----- иконки (линейные, 24x24) ----- */
+const IC = {
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  repeat: '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  note: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
+  star: '<polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  tag: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.2"/>',
+  clip: '<path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  help: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
+  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+  trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  chevd: '<path d="M6 9l6 6 6-6"/>', chevr: '<path d="M9 6l6 6-6 6"/>',
+  sort: '<path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 4v16"/>',
+  group: '<rect x="3" y="3" width="18" height="6" rx="1"/><rect x="3" y="13" width="18" height="8" rx="1"/>',
+  grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  dots: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  check: '<path d="M20 6L9 17l-5-5"/>', x: '<path d="M18 6L6 18M6 6l12 12"/>',
+  fplus: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M12 11v6M9 14h6"/>',
+  panel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
+  bulb: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V18h6v-1.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/>',
+  down: '<path d="M12 5v14M19 12l-7 7-7-7"/>', up: '<path d="M12 19V5M5 12l7-7 7 7"/>'
+};
+const ic = (n, s, extra) => '<svg class="ic ' + (extra || "") + '" width="' + (s || 16) + '" height="' + (s || 16) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + "</svg>";
+const icf = (n, s) => ic(n, s, "fill");
 
-/* ================= умный ввод (разбор русских дат) ================= */
+/* ===== p2: умный ввод и правила повтора ===== */
 const W = src => new RegExp("\\s(?:" + src + ")(?=[\\s.,!?;:])", "i");
 const WD = { "по": 1, "пн": 1, "вт": 2, "ср": 3, "че": 4, "чт": 4, "пя": 5, "пт": 5, "су": 6, "сб": 6, "во": 0, "вс": 0 };
 function localParse(raw, lists) {
   let s = " " + String(raw).replace(/\s+/g, " ").trim() + " ";
   const td = todayISO();
-  const o = { title: "", due: null, category: null, starred: false, est: null, list_id: null };
+  const o = { title: "", due: null, category: null, starred: false, est: null, list_id: null, repeat: null, remind: null };
   const eat = (re, fn) => { const m = re.exec(s); if (!m) return; if (fn(m) === false) return; s = s.slice(0, m.index) + " " + s.slice(m.index + m[0].length); };
   eat(W("послезавтра"), () => { o.due = o.due || addDays(td, 2); });
   eat(W("завтра"), () => { o.due = o.due || addDays(td, 1); });
@@ -203,12 +228,18 @@ function localParse(raw, lists) {
   });
   eat(W("(\\d{1,2})\\.(\\d{1,2})(?:\\.(\\d{2,4}))?"), m => {
     const dd = +m[1], mm = +m[2], now = parseISO(td);
-    let y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : now.getFullYear();
+    const y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : now.getFullYear();
     let d = new Date(y, mm - 1, dd);
     if (mm < 1 || mm > 12 || d.getMonth() !== mm - 1) return false;
     if (!m[3] && d < now) d = new Date(y + 1, mm - 1, dd);
     o.due = o.due || isoLocal(d);
   });
+  eat(W("(?:каждый день|ежедневно)"), () => { o.repeat = "d:1"; });
+  eat(W("(?:каждую неделю|еженедельно)"), () => { o.repeat = "w:1"; });
+  eat(W("(?:каждый месяц|ежемесячно)"), () => { o.repeat = "m:1"; });
+  eat(W("(?:каждый год|ежегодно)"), () => { o.repeat = "y:1"; });
+  eat(W("(?:по будням|по рабочим дням)"), () => { o.repeat = "wd"; });
+  eat(W("(?:в|к)\\s+(\\d{1,2}):(\\d{2})"), m => { const h = +m[1], mi = +m[2]; if (h > 23 || mi > 59) return false; o.remind = { h, mi }; });
   eat(W("~?(\\d+(?:[.,]\\d+)?)\\s*(?:ч|час[а-яё]*)"), m => { o.est = Math.round(parseFloat(m[1].replace(",", ".")) * 60); });
   eat(W("~?(\\d+)\\s*(?:мин[а-яё]*|м)"), m => { o.est = +m[1]; });
   eat(W("[!★]+"), () => { o.starred = true; });
@@ -220,36 +251,64 @@ function localParse(raw, lists) {
     const l = (lists || []).find(x => x.name.toLowerCase() === tag) || (lists || []).find(x => x.name.toLowerCase().startsWith(tag));
     if (l && !o.list_id) o.list_id = l.id; else if (!o.category) o.category = tag;
   }
+  if (o.repeat && !o.due) o.due = td;
+  if (o.remind) {                                   // «в 18:00» → напоминание в этот срок (или сегодня/завтра)
+    let day = o.due || td; const d = parseISO(day); d.setHours(o.remind.h, o.remind.mi, 0, 0);
+    if (!o.due && d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
+    o.remind = d.toISOString();
+  }
   let t = s.replace(/\s+/g, " ").trim().replace(/^[,;:\s-]+|[,;:\s-]+$/g, "");
   if (!t) t = String(raw).trim();
   o.title = t.charAt(0).toUpperCase() + t.slice(1);
   return o;
 }
 
-/* ================= синхронизация ================= */
-const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "note", "steps", "est_minutes", "status", "created_at"];
-const LC = ["id", "name", "icon", "position", "created_at"];
+/* следующая дата по правилу повтора (всегда строго позже сегодняшнего дня) */
+function nextDue(t) {
+  const r = t.repeat_rule; if (!r) return null;
+  const p = r.split(":"), u = p[0], n = +p[1] || 1, base = parseISO(t.due || today);
+  const dim = (y, m) => new Date(y, m + 1, 0).getDate();
+  let k = 0, d = new Date(base);
+  do {
+    k++;
+    if (u === "d") d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n * k);
+    else if (u === "w") d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + 7 * n * k);
+    else if (u === "m") { const y = base.getFullYear(), m = base.getMonth() + n * k; d = new Date(y, m, Math.min(base.getDate(), dim(y, m))); }   // якорь — исходное число (31 → 28/30/31)
+    else if (u === "y") { const y = base.getFullYear() + n * k, m = base.getMonth(); d = new Date(y, m, Math.min(base.getDate(), dim(y, m))); }
+    else if (u === "wd") { do d.setDate(d.getDate() + 1); while (d.getDay() === 0 || d.getDay() === 6); }
+    else d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k);
+  } while (isoLocal(d) <= today && k < 5000);
+  return isoLocal(d);
+}
+
+/* ===== p3: синхронизация, операции с данными, файлы, напоминания ===== */
+const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files"];
+const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 function toRow(tbl, o) {
   const r = {}; (tbl === "tasks" ? TC : LC).forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
-  if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.steps = r.steps || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
+  if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.steps = r.steps || []; r.files = r.files || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
   else { r.icon = r.icon || "🗂️"; r.position = r.position || 0; r.name = r.name || "Список"; }
   return r;
 }
-function norm(tbl, r) { const o = {}; (tbl === "tasks" ? TC : LC).forEach(k => { o[k] = r[k]; }); if (tbl === "tasks") { o.steps = Array.isArray(o.steps) ? o.steps : []; o.note = o.note || ""; } o._u = r.updated_at || null; return o; }
-
+function norm(tbl, r) {
+  const o = {}; (tbl === "tasks" ? TC : LC).forEach(k => { o[k] = r[k] === undefined ? null : r[k]; });
+  if (tbl === "tasks") { o.steps = Array.isArray(o.steps) ? o.steps : []; o.files = Array.isArray(o.files) ? o.files : []; o.note = o.note || ""; }
+  o._u = r.updated_at || null; return o;
+}
 function errText(e) {
   const m = (e && (e.message || e.error_description)) || String(e);
   if (/fetch|network|Load failed|abort/i.test(m)) return "нет связи";
   if (/JWT|expired|token/i.test(m)) return "сессия истекла — войдите заново";
-  return String(m).slice(0, 80);
+  if (/column|schema cache/i.test(m)) return "в базе нет новых полей — выполните migration_v2.sql";
+  return String(m).slice(0, 90);
 }
 function setSync(state, msg) { sync = { state, msg: msg || "" }; updateSyncUI(); }
 function updateSyncUI() {
   const el = $("sync"); if (!el) return;
   const n = pendCount();
   if (sync.state === "sync") el.textContent = "⟳ синхронизация…";
-  else if (sync.state === "err") el.textContent = "⚠ " + (sync.msg || "ошибка") + (n ? " · в очереди: " + n : "") + " (повторить)";
-  else el.textContent = n ? "⟳ не отправлено: " + n : "✓ всё сохранено";
+  else if (sync.state === "err") { el.textContent = "⚠ " + (sync.msg || "ошибка") + (n ? " · " + n : ""); el.title = "Нажмите, чтобы повторить"; }
+  else { el.textContent = n ? "⟳ не отправлено: " + n : "✓ сохранено"; el.title = "Синхронизировано"; }
 }
 function scheduleFlush() { clearTimeout(flushTimer); flushTimer = setTimeout(flush, 600); }
 function mark(tbl, id, op) { P.uid = S.user.id; P[tbl][id] = op; savePending(); persistSoon(); scheduleFlush(); updateSyncUI(); }
@@ -284,7 +343,6 @@ async function flush() {
   } finally { flushing = false; flushSeq++; }
   if (pendCount() && sync.state === "ok") scheduleFlush();
 }
-
 async function fetchAll(tbl) {
   const out = [];
   for (let from = 0; ; from += 1000) {
@@ -302,7 +360,7 @@ function applyServer(tbl, rows) {
 }
 function seedLists() {
   [["Свои дела", "📋"], ["Развитие", "🚀"], ["Зал", "🏋️"], ["Дом", "🏠"]].forEach((x, i) => {
-    const l = { id: uid(), name: x[0], icon: x[1], position: i, created_at: nowISO() };
+    const l = { id: uid(), name: x[0], icon: x[1], position: i, created_at: nowISO(), group_name: null, color: null };
     S.lists[l.id] = l; P.lists[l.id] = "u";
   });
   P.uid = S.user.id; savePending(); persistSoon(); scheduleFlush();
@@ -320,7 +378,7 @@ async function loadAll() {
     if (!ls.length && !ts.length && !Object.keys(S.lists).length && !pendCount()) seedLists();
     lastLoad = Date.now(); persistSoon();
     setSync(pendCount() ? "err" : "ok", pendCount() ? "есть неотправленное" : "");
-    renderSoon();
+    renderSoon(); checkReminders();
   } catch (e) { setSync("err", errText(e)); }
   finally { loading = false; }
 }
@@ -347,161 +405,513 @@ function subRt() {
 }
 function unsubRt() { if (rt && sb) { try { sb.removeChannel(rt); } catch (e) {} } rt = null; }
 
-/* ================= операции с данными ================= */
+/* ----- задачи ----- */
 const listsArr = () => Object.values(S.lists).sort((a, b) => (a.position - b.position) || String(a.created_at).localeCompare(String(b.created_at)));
 function addTask(f) {
-  const t = Object.assign({ id: uid(), list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO() }, f);
+  const t = Object.assign({ id: uid(), list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [] }, f);
   S.tasks[t.id] = t; mark("tasks", t.id, "u"); return t;
 }
 function upd(id, patch) { const t = S.tasks[id]; if (!t) return; Object.assign(t, patch); mark("tasks", id, "u"); }
+const inMyDay = t => t.my_day_date === today;
+function setMyDay(id, on) { upd(id, { my_day: !!on, my_day_date: on ? today : null }); }
+function toggleDone(id) {
+  const t = S.tasks[id]; if (!t) return;
+  const d = !t.done;
+  if (d && t.repeat_rule) {                                    // повторяющаяся: закрыли — появился следующий экземпляр
+    const nd = nextDue(t); let rem = null;
+    if (t.remind_at) { const r = new Date(t.remind_at), x = parseISO(nd); x.setHours(r.getHours(), r.getMinutes(), 0, 0); rem = x.toISOString(); }
+    addTask({ list_id: t.list_id, title: t.title, due: nd, category: t.category, starred: t.starred, note: t.note, est_minutes: t.est_minutes, repeat_rule: t.repeat_rule, remind_at: rem, steps: (t.steps || []).map(s => ({ t: s.t, d: false })) });
+    toast("Следующий раз: " + dateLong(parseISO(nd)));
+  }
+  upd(id, { done: d, done_at: d ? nowISO() : null });
+}
 function matches(t) {
+  if (view === "search") { const q = ui.q.toLowerCase(); return (t.title + " " + t.note + " " + (t.category || "") + " " + (t.steps || []).map(s => s.t).join(" ")).toLowerCase().indexOf(q) >= 0; }
   if (view === "someday") return t.status === "someday";
   if (t.status === "someday") return false;
-  if (view === "myday") { if (t.done) return localDate(t.done_at) === today; return !!t.my_day || t.due === today; }
+  if (view === "myday") return inMyDay(t);
   if (view === "starred") return !!t.starred;
+  if (view === "planned") return !!t.due;
   if (view === "all") return true;
   if (view.indexOf("list:") === 0) return t.list_id === view.slice(5);
   return false;
 }
+function suggestions() {
+  const lim = addDays(today, 1);
+  return Object.values(S.tasks).filter(t => !t.done && t.status !== "someday" && !inMyDay(t) && t.due && t.due <= lim)
+    .sort((a, b) => a.due.localeCompare(b.due)).slice(0, 15);
+}
 function addFromInput(inp) {
   const raw = inp.value.trim(); if (!raw) return;
   const ls = listsArr(), p = localParse(raw, ls);
-  const f = { title: p.title, due: p.due, category: p.category, starred: p.starred, est_minutes: p.est, list_id: p.list_id };
-  if (view === "myday") f.my_day = true;
+  const f = { title: p.title, due: p.due, category: p.category, starred: p.starred, est_minutes: p.est, list_id: p.list_id, repeat_rule: p.repeat, remind_at: p.remind };
+  if (view === "myday") { f.my_day = true; f.my_day_date = today; }
   if (view === "starred") f.starred = true;
   if (view === "someday") f.status = "someday";
+  if (view === "planned" && !f.due) f.due = today;
   if (view.indexOf("list:") === 0 && !f.list_id) f.list_id = view.slice(5);
   if (!f.list_id && ls.length) f.list_id = ls[0].id;
-  addTask(f); inp.value = ""; render();
+  addTask(f); inp.value = ""; if (f.remind_at) askNotify(); render();
 }
 
-/* ================= рендер ================= */
-function renderSoon() { if (down) { want = true; return; } render(); }
-function viewInfo() {
-  if (view === "myday") { const d = new Date(), w = DOW[d.getDay()]; return { ic: "☀️", name: "Мой день", sub: w.charAt(0).toUpperCase() + w.slice(1) + ", " + d.getDate() + " " + MON[d.getMonth()] }; }
-  if (view === "starred") return { ic: "⭐", name: "Важно" };
-  if (view === "someday") return { ic: "🌙", name: "Когда-нибудь", sub: "Склад идей без срока" };
-  if (view === "all") return { ic: "📥", name: "Все задачи" };
-  const l = S.lists[view.slice(5)]; return { ic: l.icon, name: l.name, list: l };
+/* ----- сортировка и группировка ----- */
+const SORTS = {
+  created: { n: "Дата создания", dir: -1, cmp: (a, b) => String(a.created_at).localeCompare(String(b.created_at)) },
+  due: { n: "Срок выполнения", dir: 1, cmp: (a, b) => (a.due || "9999").localeCompare(b.due || "9999") },
+  imp: { n: "Важность", dir: 1, cmp: (a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) },
+  myday: { n: "Добавлено в «Мой день»", dir: 1, cmp: (a, b) => (inMyDay(b) ? 1 : 0) - (inMyDay(a) ? 1 : 0) },
+  alpha: { n: "По алфавиту", dir: 1, cmp: (a, b) => a.title.localeCompare(b.title, "ru") }
+};
+const GROUPS = { none: "Не группировать", due: "Срок выполнения", imp: "Важность", cat: "Категория", list: "Список" };
+function getSort(v) { const s = PR.sort[v]; if (s && SORTS[s.by]) return s; return v === "planned" ? { by: "due", dir: 1, auto: true } : { by: "created", dir: -1, auto: true }; }
+function getGroup(v) { return PR.group[v] || (v === "planned" ? "due" : "none"); }
+function sortItems(arr) {
+  const s = getSort(view), c = SORTS[s.by].cmp;
+  return arr.sort((a, b) => (c(a, b) * s.dir) || String(b.created_at).localeCompare(String(a.created_at)));
 }
-function rowHTML(t, showList) {
-  const l = t.list_id && S.lists[t.list_id], meta = [];
-  if (showList && l) meta.push(esc(l.icon) + " " + esc(l.name));
-  if (t.due) { const od = !t.done && t.due < today; meta.push('<span style="color:' + (od ? "#ef4444" : (t.due === today ? "var(--acc)" : "inherit")) + '">📅 ' + fmtDue(t.due) + "</span>"); }
-  if (t.category) meta.push("#" + esc(t.category));
-  if (t.est_minutes) meta.push("⏱ " + fmtEst(t.est_minutes));
-  if (t.steps && t.steps.length) meta.push("☑ " + t.steps.filter(s => s.d).length + "/" + t.steps.length);
-  if (t.note) meta.push("📝");
-  return '<div class="taskrow ' + (selId === t.id ? "sel" : "") + '" data-a="sel" data-id="' + t.id + '">' +
-    '<div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + t.id + '">' + (t.done ? "✓" : "") + "</div>" +
-    '<div style="flex:1;min-width:0"><div style="word-break:break-word;' + (t.done ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(t.title) + "</div>" +
-    (meta.length ? '<div class="sub" style="margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">' + meta.join("<span>·</span>") + "</div>" : "") + "</div>" +
-    '<button data-a="star" data-id="' + t.id + '" style="font-size:19px;color:' + (t.starred ? "#f59e0b" : "var(--sub)") + '">' + (t.starred ? "★" : "☆") + "</button></div>";
+function groupItems(items) {
+  const g = getGroup(view);
+  if (g === "none") return [{ key: "", label: null, items }];
+  const map = new Map(), order = [];
+  const put = (key, label, t) => { if (!map.has(key)) { map.set(key, { key, label, items: [] }); order.push(key); } map.get(key).items.push(t); };
+  const wk = addDays(today, 7);
+  items.forEach(t => {
+    if (g === "due") {
+      if (!t.due) put("9none", "Без срока", t);
+      else if (t.due < today) put("0over", "Просрочено", t);
+      else if (t.due === today) put("1today", "Сегодня", t);
+      else if (t.due === addDays(today, 1)) put("2tom", "Завтра", t);
+      else if (t.due <= wk) put("3week", "На этой неделе", t);
+      else put("4later", "Позже", t);
+    } else if (g === "imp") put(t.starred ? "0" : "1", t.starred ? "Важные" : "Остальные", t);
+    else if (g === "cat") { const c = (t.category || "").split(",")[0].trim(); put(c ? "c:" + c.toLowerCase() : "~", c ? "#" + c : "Без категории", t); }
+    else if (g === "list") { const l = t.list_id && S.lists[t.list_id]; put(l ? "l:" + String(l.position).padStart(5, "0") + l.id : "~", l ? l.name : "Без списка", t); }
+  });
+  return order.sort().map(k => map.get(k));
+}
+
+/* ----- списки и группы ----- */
+function normPositions() { listsArr().forEach((l, i) => { if (l.position !== i) { l.position = i; mark("lists", l.id, "u"); } }); }
+function moveList(id, dir) {
+  normPositions(); const arr = listsArr(), i = arr.findIndex(l => l.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  const a = arr[i], b = arr[j]; const p = a.position; a.position = b.position; b.position = p;
+  mark("lists", a.id, "u"); mark("lists", b.id, "u");
+}
+function setListGroup(id, name) { const l = S.lists[id]; if (!l) return; l.group_name = name || null; mark("lists", id, "u"); }
+function renameGroup(old, nw) { listsArr().forEach(l => { if (l.group_name === old) { l.group_name = nw || null; mark("lists", l.id, "u"); } }); }
+function duplicateList(id) {
+  const l = S.lists[id]; if (!l) return;
+  const n = { id: uid(), name: "Копия: " + l.name, icon: l.icon, position: listsArr().length, created_at: nowISO(), group_name: l.group_name || null, color: l.color || null };
+  S.lists[n.id] = n; mark("lists", n.id, "u");
+  Object.values(S.tasks).filter(t => t.list_id === id && !t.done).forEach(t => addTask({ list_id: n.id, title: t.title, due: t.due, category: t.category, starred: t.starred, note: t.note, est_minutes: t.est_minutes, repeat_rule: t.repeat_rule, steps: (t.steps || []).map(s => ({ t: s.t, d: false })) }));
+  view = n.id ? "list:" + n.id : view; jset(LSK.view, view);
+}
+function deleteList(id) {
+  const l = S.lists[id]; if (!l) return;
+  Object.values(S.tasks).forEach(t => { if (t.list_id === id) { t.list_id = null; mark("tasks", t.id, "u"); } });
+  delete S.lists[id]; mark("lists", id, "d");
+}
+function deleteDoneIn(id) {
+  Object.values(S.tasks).filter(t => t.list_id === id && t.done).forEach(t => { delete S.tasks[t.id]; mark("tasks", t.id, "d"); });
+}
+function deleteTask(id) {
+  const t = S.tasks[id]; if (!t) return;
+  if (t.files && t.files.length && sb) { try { sb.storage.from("attachments").remove(t.files.map(f => f.path)); } catch (e) {} }
+  delete S.tasks[id]; mark("tasks", id, "d");
+  if (selId === id) selId = null;
+}
+
+/* ----- файлы (Supabase Storage, приватный бакет attachments) ----- */
+async function uploadFile(file) {
+  const t = S.tasks[selId]; if (!t || !file) return;
+  if (file.size > 10 * 1024 * 1024) return toast("Файл больше 10 МБ");
+  const ext = (file.name.match(/\.[A-Za-z0-9]{1,8}$/) || [""])[0], path = S.user.id + "/" + t.id + "/" + uid() + ext;
+  toast("Загружаю «" + file.name + "»…");
+  try {
+    const r = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
+    if (r.error) return toast("Не загрузилось: " + (/bucket/i.test(r.error.message) ? "нет хранилища — выполните migration_v2.sql" : r.error.message));
+    upd(t.id, { files: (t.files || []).concat([{ name: file.name, path, size: file.size }]) }); render(); toast("Файл добавлен");
+  } catch (e) { toast("Не загрузилось: " + errText(e)); }
+}
+async function openFile(i) {
+  const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
+  try {
+    const r = await sb.storage.from("attachments").createSignedUrl(f.path, 120, { download: f.name });
+    if (r.error || !r.data) return toast("Не удалось открыть файл");
+    const a = document.createElement("a"); a.href = r.data.signedUrl; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { toast("Не удалось открыть: " + errText(e)); }
+}
+async function removeFile(i) {
+  const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
+  try { await sb.storage.from("attachments").remove([f.path]); } catch (e) {}
+  upd(t.id, { files: t.files.filter((x, k) => k !== i) }); render();
+}
+const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
+
+/* ----- уведомления и напоминания ----- */
+function toast(text, opt) {
+  opt = opt || {};
+  let box = $("toasts"); if (!box) { box = document.createElement("div"); box.id = "toasts"; document.body.appendChild(box); }
+  const el = document.createElement("div"); el.className = "toast";
+  const sp = document.createElement("span"); sp.textContent = text; el.appendChild(sp);
+  (opt.buttons || []).forEach(b => { const bt = document.createElement("button"); bt.textContent = b[0]; bt.onclick = () => { el.remove(); b[1](); }; el.appendChild(bt); });
+  const x = document.createElement("button"); x.textContent = "✕"; x.className = "x"; x.onclick = () => el.remove(); el.appendChild(x);
+  box.appendChild(el); setTimeout(() => el.remove(), opt.ms || 4500);
+}
+function askNotify() { try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); } catch (e) {} }
+function fireReminder(t) {
+  ui.alerts.unshift({ id: t.id, title: t.title, at: t.remind_at });
+  toast("🔔 " + t.title, { ms: 20000, buttons: [["Открыть", () => { selId = t.id; render(); }], ["Выполнено", () => { toggleDone(t.id); render(); }]] });
+  try { if ("Notification" in window && Notification.permission === "granted") new Notification("Напоминание", { body: t.title }); } catch (e) {}
+  const b = $("bellbadge"); if (b) { b.textContent = ui.alerts.length; b.style.display = "flex"; }
+}
+function checkReminders() {
+  if (!S.user) return;
+  const now = Date.now(), N = jget(LSK.notified, {}); let ch = false;
+  for (const id in S.tasks) {
+    const t = S.tasks[id]; if (!t.remind_at || t.done) continue;
+    const at = Date.parse(t.remind_at); if (isNaN(at) || at > now || N[id] === t.remind_at) continue;
+    N[id] = t.remind_at; ch = true;
+    if (now - at < 24 * 3600e3) fireReminder(t);          // пропущенные старше суток — молча
+  }
+  if (ch) { const ks = Object.keys(N); if (ks.length > 3000) ks.forEach(k => { if (!S.tasks[k]) delete N[k]; }); jset(LSK.notified, N); }
+}
+
+/* ===== p4: стили и HTML-шаблоны ===== */
+const CSS = `
+#app{position:relative;flex-direction:column;background:var(--bg);color:var(--tx);font-family:var(--ff);font-size:var(--fs)}
+#top{height:48px;flex-shrink:0;background:var(--hd);color:#fff;display:flex;align-items:center;gap:6px;padding:0 10px}
+.brand{font-weight:600;font-size:15px;white-space:nowrap;padding:0 8px}
+.searchbox{flex:1;max-width:560px;margin:0 auto;position:relative;display:flex;align-items:center;min-width:0}
+.searchbox input{width:100%;height:32px;border-radius:4px;border:0;padding:0 32px;background:rgba(255,255,255,.95);color:#323130;font-size:14px}
+.searchbox input::placeholder{color:#605e5c}
+.searchbox .ic{position:absolute;left:9px;color:#605e5c;pointer-events:none}
+.searchbox .qx{position:absolute;right:4px;color:#605e5c;width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+.ibtn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:inherit;position:relative;flex-shrink:0}
+.ibtn:hover{background:rgba(128,128,128,.2)}
+#top .ibtn:hover{background:rgba(255,255,255,.2)}
+#sync{font-size:12px;opacity:.9;cursor:pointer;white-space:nowrap;padding:0 8px}
+.avatar{width:30px;height:30px;border-radius:50%;background:#fff;color:var(--hd);font-weight:700;font-size:12px}
+.badge{position:absolute;top:1px;right:1px;min-width:16px;height:16px;border-radius:8px;background:#d13438;color:#fff;font-size:10px;display:none;align-items:center;justify-content:center;padding:0 3px}
+#body{flex:1;display:flex;min-height:0;position:relative}
+#left{width:290px;flex-shrink:0;background:var(--lp);border-right:1px solid var(--ln)}
+#left.railed{width:54px}
+#main{flex:1;min-width:0;background:var(--mp)}
+#right{width:340px;flex-shrink:0;background:var(--rp);border-left:1px solid var(--ln)}
+.glass #left,.glass #main,.glass #right{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.lhead{height:44px;display:flex;align-items:center;padding:0 8px;flex-shrink:0}
+.chip{display:flex;align-items:center;gap:12px;height:40px;padding:0 14px;cursor:pointer;border-left:3px solid transparent;font-size:14px;color:var(--tx)}
+.chip:hover{background:var(--hov)} .chip.on{background:var(--sel);border-left-color:var(--acc)}
+.chip .em{width:20px;flex-shrink:0;display:inline-flex;justify-content:center;font-size:16px}
+.chip .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .n{color:var(--sub);font-size:12px}
+.ghead{display:flex;align-items:center;gap:4px;height:38px;padding:0 10px 0 14px;font-size:13px;font-weight:600;cursor:pointer}
+.ghead .tx{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ghead .ibtn{width:26px;height:26px;opacity:0}.ghead:hover .ibtn{opacity:1}
+.lfoot{display:flex;align-items:center;border-top:1px solid var(--ln);padding-right:6px;flex-shrink:0}
+.lfoot .chip{flex:1;color:var(--acc);border-left:0}
+.railed .tx,.railed .n,.railed .ghead,.railed .lfoot .ibtn{display:none}
+.railed .chip{justify-content:center;padding:0}
+.mhead{display:flex;align-items:center;gap:6px;padding:14px 28px 4px;flex-wrap:wrap}
+.mhead h1{font-size:20px;font-weight:600;color:var(--acc);display:flex;align-items:center;gap:10px;margin-right:4px}
+.mhead .sp{flex:1}
+.msub{padding:0 28px;font-size:12.5px;color:var(--sub)}
+.tool{display:inline-flex;align-items:center;gap:6px;color:var(--acc);padding:6px 10px;border-radius:4px;font-size:13px;border-bottom:2px solid transparent}
+.tool:hover{background:var(--hov)} .tool.on{border-bottom-color:var(--acc)}
+.sortbar{padding:6px 28px 0;display:flex;justify-content:flex-end}
+.sortchip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--tx)}
+.addbar{margin:10px 28px 12px;background:var(--card);box-shadow:var(--shadow);border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 14px;height:52px;color:var(--acc);flex-shrink:0}
+.addbar input{flex:1;background:transparent;border:0;color:var(--tx);font-size:14px;height:100%;min-width:0}
+.addbar input::placeholder{color:var(--acc);font-weight:600}
+.hint{display:none;margin:-6px 28px 10px;color:var(--sub);font-size:12px}
+.addbar:focus-within + .hint{display:block}
+#list{flex:1;overflow:auto;padding:0 28px 28px}
+.cards.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-bottom:8px}
+.cards.grid .taskrow{margin:0}
+.cards.grid .mi + .mi::before{display:none}
+.cards.grid .meta{gap:2px 12px}
+.taskrow{display:flex;gap:12px;align-items:flex-start;padding:var(--pad) 14px;background:var(--card);box-shadow:var(--shadow);border-radius:6px;margin-bottom:3px;cursor:pointer;min-height:48px;border:0}
+.taskrow:hover{background:var(--hov)} .taskrow.sel{background:var(--sel)}
+.rad{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--acc);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
+.rad:hover{background:var(--sel)} .rad.on{background:var(--acc)}
+.tbody{flex:1;min-width:0}
+.ttl{word-break:break-word;font-size:14px;line-height:1.35}
+.done .ttl{text-decoration:line-through;color:var(--sub)}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:1px 8px;color:var(--sub);font-size:12px;margin-top:3px}
+.mi{display:inline-flex;align-items:center;gap:4px}
+.mi.od{color:var(--od)} .mi.today{color:var(--acc)}
+.mi + .mi::before{content:"•";margin-right:8px;color:var(--sub)}
+.star{color:var(--sub);padding:2px;flex-shrink:0;display:flex}
+.star.on{color:var(--acc)}
+.ic.fill{fill:currentColor}
+.gh{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;margin:14px 0 6px;cursor:pointer}
+.gh .cnt{color:var(--sub);font-weight:400}
+.sugg{background:var(--card);box-shadow:var(--shadow);border-radius:6px;margin:0 28px 12px;padding:6px 0;flex-shrink:0;max-height:40vh;overflow:auto}
+.sugg .st{padding:6px 14px;font-weight:600;font-size:13px;display:flex;align-items:center}
+.sugg .sr{display:flex;align-items:center;gap:10px;padding:7px 14px;font-size:13.5px}
+.sugg .sr:hover{background:var(--hov)}
+.dscroll{flex:1;overflow:auto;padding:12px}
+.dcard{background:var(--card);box-shadow:var(--shadow);border-radius:6px;margin-bottom:8px;overflow:hidden}
+.dtitle{display:flex;gap:12px;align-items:flex-start;padding:14px}
+.ttlinp{flex:1;background:transparent;border:0;color:var(--tx);font:inherit;font-weight:600;font-size:16px;resize:none;overflow:hidden;line-height:1.3;padding:0;min-width:0}
+.drow{display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 14px;border-bottom:1px solid var(--ln);cursor:pointer;font-size:14px}
+.drow:last-child{border-bottom:0}
+.drow:hover{background:var(--hov)}
+.drow.act{color:var(--acc)} .drow.od{color:var(--od)}
+.drow .dtx{flex:1;min-width:0;word-break:break-word}
+.drow .xbtn{color:var(--sub);display:flex;padding:4px}
+.drow input,.drow select{flex:1;background:transparent;border:0;color:inherit;font:inherit;min-width:0;height:36px}
+.drow select option{color:#111}
+.drow.stp{cursor:default}
+.notearea{width:100%;min-height:120px;background:transparent;border:0;color:var(--tx);padding:12px 14px;font:inherit;resize:vertical;display:block}
+.dfoot{display:flex;align-items:center;height:46px;padding:0 8px;border-top:1px solid var(--ln);color:var(--sub);font-size:12px;flex-shrink:0}
+.dfoot .sp{flex:1;text-align:center}
+.pop{position:fixed;z-index:60;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.28);min-width:230px;max-width:min(330px,94vw);max-height:72vh;overflow:auto;padding:6px 0}
+.pi{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;font-size:14px}
+.pi:hover{background:var(--hov)} .pi .r{margin-left:auto;color:var(--sub);font-size:12px;padding-left:12px}
+.pi.danger{color:#d13438} .pi.cur{font-weight:600;color:var(--acc)}
+.psep{height:1px;background:var(--ln);margin:4px 0}
+.ptitle{padding:8px 14px 4px;font-weight:600;font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
+.pform{padding:6px 14px 10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pform input,.pform select{background:var(--inp);color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:7px 8px;font:inherit;font-size:13px}
+.pform input[type=number]{width:64px}
+.sw{width:26px;height:26px;border-radius:50%;border:3px solid transparent}
+.ptext{padding:8px 14px;font-size:13px;line-height:1.55;color:var(--tx)}
+.inp{width:100%;background:var(--inp);color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:10px 12px;font-size:inherit}
+.inp:focus{border-color:var(--acc)}
+select.inp option{color:#111}
+.btn{background:var(--acc);color:#fff;border-radius:8px;padding:9px 14px;font-weight:600;font-size:inherit}
+.btn.ghost{background:var(--card);color:var(--tx);border:1px solid var(--ln)}
+.btn:disabled{opacity:.5}
+.estchip{padding:5px 10px;border-radius:8px;font-size:12.5px;background:var(--card);border:1px solid var(--ln);cursor:pointer}
+.estchip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:70;display:flex;align-items:center;justify-content:center;padding:14px}
+.sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
+.lbl{font-size:12px;color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+#toasts{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:min(380px,92vw)}
+.toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:13.5px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
+.dropok{outline:2px dashed var(--acc);outline-offset:-3px}
+@media(max-width:760px){
+  .brand,#sync{display:none} .mhead{padding:10px 14px 2px} .msub{padding:0 14px} .addbar{margin:8px 14px 10px} #list{padding:0 14px 24px} .sortbar{padding:6px 14px 0} .hint{margin-left:14px} .sugg{margin:0 14px 10px}
+  #left.railed{width:82%}
+  #right{width:100%;max-width:none}
+}
+@media print{
+  #top,#left,#right,.addbar,.hint,.tool,.mhead .ibtn,.star,#toasts,.pop{display:none!important}
+  html,body,#app,#body,#main,#list{height:auto!important;overflow:visible!important;display:block!important;background:#fff!important;color:#000!important}
+  .taskrow{box-shadow:none!important;border-bottom:1px solid #ccc;border-radius:0}
+}
+`;
+
+const listIcon = l => l && l.icon ? '<span class="em">' + esc(l.icon) + "</span>" : '<span class="em">' + ic("list", 18) + "</span>";
+function viewInfo() {
+  if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
+  if (view === "starred") return { svg: "star", name: "Важно" };
+  if (view === "planned") return { svg: "cal", name: "Запланировано" };
+  if (view === "all") return { svg: "inbox", name: "Все задачи" };
+  if (view === "someday") return { svg: "moon", name: "Когда-нибудь", sub: "Склад идей без срока" };
+  if (view === "search") return { svg: "search", name: "Результаты поиска", sub: "«" + ui.q + "»" };
+  const l = S.lists[view.slice(5)]; return { emoji: l.icon, svg: "list", name: l.name, list: l };
+}
+function topHTML() {
+  const em = S.user ? (S.user.email || "?").slice(0, 2).toUpperCase() : "";
+  return '<div id="top"><button class="ibtn mobtop" data-a="menu">' + ic("menu", 20) + '</button><div class="brand">Мои дела</div>' +
+    '<div class="searchbox">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '">' + (ui.q ? '<button class="qx" data-a="qclear">' + ic("x", 14) + "</button>" : "") + "</div>" +
+    '<span id="sync" data-a="sync"></span>' +
+    '<button class="ibtn" data-a="settings" title="Настройки">' + ic("gear", 19) + "</button>" +
+    '<button class="ibtn" data-a="pop" data-p="help" title="Справка">' + ic("help", 19) + "</button>" +
+    '<button class="ibtn" data-a="pop" data-p="bell" title="Напоминания">' + ic("bell", 19) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + "</span></button>" +
+    '<button class="ibtn avatar" data-a="pop" data-p="acct" title="Аккаунт">' + esc(em) + "</button></div>";
 }
 function leftHTML(c) {
-  const it = (v, ic, name, n) => '<div class="chip ' + (view === v ? "on" : "") + '" data-a="view" data-v="' + esc(v) + '"><span>' + esc(ic) + "</span><span>" + esc(name) + '</span><span class="n">' + (n || "") + "</span></div>";
+  const sm = (v, svg, name, n, color) => '<div class="chip ' + (view === v ? "on" : "") + '" data-a="view" data-v="' + v + '" title="' + name + '"><span class="em" style="color:' + color + '">' + ic(svg, 18) + '</span><span class="tx">' + name + '</span><span class="n">' + (n || "") + "</span></div>";
+  const lc = l => '<div class="chip ' + (view === "list:" + l.id ? "on" : "") + '" data-a="view" data-v="list:' + l.id + '" data-lid="' + l.id + '" title="' + esc(l.name) + '">' + listIcon(l) + '<span class="tx">' + esc(l.name) + '</span><span class="n">' + (c["list:" + l.id] || "") + "</span></div>";
+  const ls = listsArr(), seen = new Set(); let tree = "";
+  for (const l of ls) {
+    const g = l.group_name;
+    if (!g) { tree += lc(l); continue; }
+    if (seen.has(g)) continue; seen.add(g);
+    const mem = ls.filter(x => x.group_name === g), col = PR.collapsed[g];
+    tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"><span class="tx">' + esc(g) + '</span><button class="ibtn" data-a="pop" data-p="gmenu" data-g="' + esc(g) + '">' + ic("dots", 16) + "</button>" + ic(col ? "chevr" : "chevd", 14) + "</div>";
+    if (!col) tree += mem.map(lc).join("");
+  }
   return (ui.left ? '<div class="mobtop" data-a="menu" style="position:absolute;inset:0;z-index:15;background:rgba(0,0,0,.45)"></div>' : "") +
-    '<div id="left" class="pane ' + (ui.left ? "" : "hide") + '">' +
-    '<div style="padding:16px 16px 8px;font-weight:800;font-size:1.3em">Мои дела</div>' +
-    '<div class="scroll" id="lscroll" style="flex:1;overflow:auto;padding-bottom:8px">' +
-    it("myday", "☀️", "Мой день", c.myday) + it("starred", "⭐", "Важно", c.starred) + it("someday", "🌙", "Когда-нибудь", c.someday) + it("all", "📥", "Все задачи", c.all) +
-    '<div style="height:1px;background:var(--ln);margin:8px 14px"></div>' +
-    listsArr().map(l => it("list:" + l.id, l.icon || "🗂️", l.name, c["list:" + l.id])).join("") +
-    '<div class="chip" data-a="newlist" style="color:var(--sub)"><span>＋</span><span>Новый список</span></div></div>' +
-    '<div style="padding:10px 14px;border-top:1px solid var(--ln);display:flex;align-items:center;gap:8px">' +
-    '<div id="sync" class="sub" data-a="sync" style="cursor:pointer;flex:1"></div>' +
-    '<button data-a="settings" class="btn ghost" style="padding:6px 10px">⚙️</button></div></div>';
+    '<div id="left" class="pane ' + (PR.rail ? "railed" : "") + " " + (ui.left ? "" : "hide") + '"><div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>" +
+    '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
+    sm("myday", "sun", "Мой день", c.myday, "var(--acc)") + sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    sm("all", "inbox", "Все задачи", c.all, "#69797e") + sm("someday", "moon", "Когда-нибудь", c.someday, "#8764b8") +
+    '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
+    '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
 }
-function mainHTML(items, done) {
-  const vi = viewInfo(), showList = view.indexOf("list:") !== 0;
-  const shown = items.slice(0, ui.limit);
-  let h = '<div id="main" class="pane" style="flex:1"><div style="padding:14px 18px 6px;display:flex;align-items:center;gap:10px">' +
-    '<button class="mobtop btn ghost" data-a="menu" style="padding:6px 11px">☰</button>' +
-    '<div style="flex:1;min-width:0"><div style="font-size:1.55em;font-weight:800">' + esc(vi.ic) + " " + esc(vi.name) + "</div>" +
-    '<div class="sub">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + " актив." + "</div></div>" +
-    (vi.list ? '<button data-a="editlist" class="btn ghost" style="padding:6px 10px">✎</button><button data-a="dellist" class="btn ghost" style="padding:6px 10px">🗑</button>' : "") + "</div>" +
-    '<div style="padding:6px 18px 10px"><input id="newtask" class="inp" autocomplete="off" placeholder="＋ Добавить задачу… (купить хлеб завтра !)">' +
-    '<div class="sub deskonly" style="margin-top:5px">завтра · в пятницу · через 3 дня · 25.12 · ~30м · 1.5ч · #список · ! (важно)</div></div>' +
-    '<div class="scroll" id="list" style="flex:1;overflow:auto;padding:0 18px 24px">';
-  if (!items.length && !done.length) h += '<div class="sub" style="text-align:center;padding:50px 10px;font-size:15px">Тут пока пусто 🎉<br>Впишите первую задачу выше</div>';
-  h += shown.map(t => rowHTML(t, showList)).join("");
-  if (items.length > shown.length) h += '<button class="btn ghost" data-a="more" style="width:100%;margin:6px 0">Показать ещё (' + (items.length - shown.length) + ")</button>";
+function metaHTML(t, showList) {
+  const m = [], l = t.list_id && S.lists[t.list_id], di = dueInfo(t);
+  if (showList && l) m.push('<span class="mi">' + (l.icon ? esc(l.icon) : ic("list", 12)) + " " + esc(l.name) + "</span>");
+  if (inMyDay(t) && view !== "myday") m.push('<span class="mi">' + ic("sun", 13) + " Мой день</span>");
+  if (t.steps && t.steps.length) m.push('<span class="mi">' + t.steps.filter(s => s.d).length + " из " + t.steps.length + "</span>");
+  if (di) m.push('<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>");
+  if (t.repeat_rule) m.push('<span class="mi" title="' + esc(repeatText(t.repeat_rule)) + '">' + ic("repeat", 13) + "</span>");
+  if (t.remind_at && !t.done) m.push('<span class="mi" title="' + esc(fmtRemind(t.remind_at)) + '">' + ic("bell", 13) + "</span>");
+  if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>");
+  if (t.note) m.push('<span class="mi">' + ic("note", 13) + "</span>");
+  if (t.est_minutes) m.push('<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>");
+  if (t.category) m.push('<span class="mi">' + ic("tag", 13) + " " + esc(t.category) + "</span>");
+  return m.length ? '<div class="meta">' + m.join("") + "</div>" : "";
+}
+function rowHTML(t, showList) {
+  return '<div class="taskrow ' + (selId === t.id ? "sel " : "") + (t.done ? "done" : "") + '" data-a="sel" data-id="' + t.id + '" draggable="true">' +
+    '<div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + t.id + '">' + (t.done ? ic("check", 13) : "") + "</div>" +
+    '<div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + metaHTML(t, showList) + "</div>" +
+    '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
+}
+function mainHTML(items, done, vi) {
+  const grid = !!PR.grid[view], showList = view.indexOf("list:") !== 0, sorted = sortItems(items.slice());
+  const groups = groupItems(sorted.slice(0, ui.limit)), sc = PR.sort[view];
+  let h = '<div id="main" class="pane" style="flex:1"><div class="mhead">' +
+    '<h1>' + (vi.emoji ? '<span style="font-size:22px">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 22)) + "<span>" + esc(vi.name) + "</span></h1>" +
+    (vi.list ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
+    (view === "myday" ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
+    (view !== "search" ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + ' Сетка</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + " Список</button>" +
+      '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" : "") + "</div>" +
+    '<div class="msub">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + " активн.</div>" +
+    (sc && view !== "search" ? '<div class="sortbar"><span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + " Сортировка: " + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span></div>" : "");
+  if (view !== "search") h += '<div class="addbar">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" placeholder="Добавить задачу"></div><div class="hint">Подсказка: завтра · в пятницу · через 3 дня · 25.12 · в 18:00 · каждый день · ~30м · #список · ! (важно)</div>';
+  if (view === "myday" && ui.sugg) {
+    const sg = suggestions();
+    h += '<div class="sugg"><div class="st">Предложения<span style="flex:1"></span><button data-a="sugg" class="ibtn" style="width:26px;height:26px">' + ic("x", 14) + "</button></div>" +
+      (sg.length ? sg.map(t => { const di = dueInfo(t); return '<div class="sr"><span style="flex:1;min-width:0;word-break:break-word">' + esc(t.title) + '</span><span class="mi ' + (di ? di.cls : "") + '" style="font-size:12px">' + (di ? di.txt : "") + '</span><button class="ibtn" data-a="sgadd" data-id="' + t.id + '" title="Добавить в «Мой день»" style="color:var(--acc);width:28px;height:28px">' + ic("plus", 16) + "</button></div>"; }).join("") : '<div class="sr" style="color:var(--sub)">Нет задач, горящих сегодня или завтра</div>') + "</div>";
+  }
+  h += '<div class="scroll" id="list">';
+  if (!items.length && !done.length) h += '<div style="text-align:center;padding:50px 10px;color:var(--sub);font-size:15px">' + (view === "search" ? "Ничего не найдено" : "Здесь пока пусто — впишите первую задачу выше") + "</div>";
+  groups.forEach(g => {
+    const k = view + "|" + g.key, col = ui.gcol[k];
+    if (g.label) h += '<div class="gh" data-a="ggtoggle" data-k="' + esc(k) + '">' + ic(col ? "chevr" : "chevd", 14) + "<span>" + esc(g.label) + '</span><span class="cnt">' + g.items.length + "</span></div>";
+    if (!col) h += '<div class="cards ' + (grid ? "grid" : "") + '">' + g.items.map(t => rowHTML(t, showList)).join("") + "</div>";
+  });
+  if (items.length > ui.limit) h += '<button class="btn ghost" data-a="more" style="width:100%;margin:6px 0">Показать ещё (' + (items.length - ui.limit) + ")</button>";
   if (done.length) {
-    h += '<div class="sub" data-a="showdone" style="cursor:pointer;padding:12px 4px">' + (ui.showDone ? "▾" : "▸") + " Выполненные (" + done.length + ")</div>";
-    if (ui.showDone) {
-      h += done.slice(0, ui.doneLimit).map(t => rowHTML(t, showList)).join("");
+    const open = PR.showDone[view];
+    h += '<div class="gh" data-a="showdone">' + ic(open ? "chevd" : "chevr", 14) + '<span>Завершено</span><span class="cnt">' + done.length + "</span></div>";
+    if (open) {
+      h += '<div class="cards ' + (grid ? "grid" : "") + '">' + done.slice(0, ui.doneLimit).map(t => rowHTML(t, showList)).join("") + "</div>";
       if (done.length > ui.doneLimit) h += '<button class="btn ghost" data-a="moredone" style="width:100%;margin:6px 0">Показать ещё</button>';
     }
   }
   return h + "</div></div>";
 }
 function detailHTML(t) {
-  const steps = t.steps || [];
-  return '<div id="right" class="pane fade"><div style="padding:12px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--ln)">' +
-    '<button data-a="close" class="btn ghost" style="padding:6px 10px">✕</button><div class="sub" style="flex:1">создана ' + fmtShort(t.created_at) + "</div>" +
-    '<button data-a="delTask" class="btn ghost" style="padding:6px 10px;color:#ef4444">🗑</button></div>' +
-    '<div class="scroll" id="dscroll" style="flex:1;overflow:auto;padding:14px">' +
-    '<input id="d-title" class="inp" style="font-weight:700;font-size:1.1em" value="' + esc(t.title) + '">' +
-    '<div style="margin-top:10px">' + steps.map((s, i) => '<div style="display:flex;gap:8px;align-items:center;padding:4px 0"><div class="rad rad-s ' + (s.d ? "on" : "") + '" style="width:18px;height:18px;font-size:11px" data-a="stepTog" data-i="' + i + '">' + (s.d ? "✓" : "") + '</div><div style="flex:1;word-break:break-word;' + (s.d ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(s.t) + '</div><button data-a="stepDel" data-i="' + i + '" class="sub">✕</button></div>').join("") +
-    '<input id="d-step" class="inp" style="margin-top:4px" placeholder="＋ Добавить шаг"></div>' +
-    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px">' +
-    '<button class="tog ' + (t.my_day ? "on" : "") + '" data-a="tmyday">☀️ Мой день</button>' +
-    '<button class="tog ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '">⭐ Важно</button>' +
-    '<button class="tog ' + (t.status === "someday" ? "on" : "") + '" data-a="tsomeday">🌙 Когда-нибудь</button></div>' +
-    '<div class="lbl">Срок</div><div style="display:flex;gap:6px"><input id="d-due" type="date" class="inp" value="' + esc(t.due || "") + '"><button class="btn ghost" data-a="clrdue">✕</button></div>' +
-    '<div class="lbl">Список</div><select id="d-list" class="inp"><option value="">— без списка —</option>' + listsArr().map(l => '<option value="' + l.id + '"' + (t.list_id === l.id ? " selected" : "") + ">" + esc(l.icon) + " " + esc(l.name) + "</option>").join("") + "</select>" +
-    '<div class="lbl">Категория</div><input id="d-cat" class="inp" value="' + esc(t.category || "") + '" placeholder="например: зал">' +
-    '<div class="lbl">Сколько займёт</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + [5, 15, 30, 60, 120].map(m => '<button class="estchip ' + (t.est_minutes === m ? "on" : "") + '" data-a="est" data-v="' + m + '">' + fmtEst(m) + "</button>").join("") + "</div>" +
-    '<div class="lbl">Заметка</div><textarea id="d-note" class="inp" rows="6" style="resize:vertical">' + esc(t.note || "") + "</textarea></div></div>";
+  const steps = t.steps || [], di = dueInfo(t), id = t.id, mine = inMyDay(t);
+  const row = (svg, txt, attrs, cls, clr) => '<div class="drow ' + (cls || "") + '" ' + attrs + ">" + ic(svg, 18) + '<span class="dtx">' + txt + "</span>" + (clr ? '<button class="xbtn" data-a="' + clr + '" title="Убрать">' + ic("x", 15) + "</button>" : "") + "</div>";
+  return '<div id="right" class="pane fade"><div class="dscroll" id="dscroll">' +
+    '<div class="dcard"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div>" +
+    steps.map((s, i) => '<div class="drow stp"><div class="rad ' + (s.d ? "on" : "") + '" style="width:18px;height:18px" data-a="stepTog" data-i="' + i + '">' + (s.d ? ic("check", 11) : "") + '</div><span class="dtx" style="' + (s.d ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(s.t) + '</span><button class="xbtn" data-a="stepDel" data-i="' + i + '">' + ic("x", 14) + "</button></div>").join("") +
+    '<div class="drow stp act">' + ic("plus", 18) + '<input id="d-step" placeholder="Добавить шаг" style="color:var(--acc)"></div></div>' +
+    '<div class="dcard">' + row("sun", mine ? "Добавлено в представление «Мой день»" : "Добавить в представление «Мой день»", 'data-a="tmyday"', mine ? "act" : "", mine ? "tmyday" : "") + "</div>" +
+    '<div class="dcard">' +
+    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
+    row("cal", di ? esc(di.txt) : "Добавить срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
+    row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") + "</div>" +
+    '<div class="dcard"><div class="drow stp">' + ic("tag", 18) + '<input id="d-cat" placeholder="Выберите категорию" value="' + esc(t.category || "") + '"></div></div>' +
+    '<div class="dcard">' + row("clip", "Добавить файл", 'data-a="pickfile"', "") +
+    (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:12px">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" +
+    '<div class="dcard"><div class="drow stp">' + ic("list", 18) + '<select id="d-list"><option value="">Без списка</option>' + listsArr().map(l => '<option value="' + l.id + '"' + (t.list_id === l.id ? " selected" : "") + ">" + esc((l.icon || "") + " " + l.name) + "</option>").join("") + "</select></div>" +
+    row("moon", t.status === "someday" ? "Лежит в «Когда-нибудь»" : "Отложить в «Когда-нибудь»", 'data-a="tsomeday"', t.status === "someday" ? "act" : "") +
+    '<div class="drow stp" style="flex-wrap:wrap;cursor:default"><span style="color:var(--sub);font-size:13px;width:100%">Сколько займёт</span>' + [5, 15, 30, 60, 120].map(m => '<button class="estchip ' + (t.est_minutes === m ? "on" : "") + '" data-a="est" data-v="' + m + '">' + fmtEst(m) + "</button>").join("") + "</div></div>" +
+    '<div class="dcard"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(t.note || "") + "</textarea></div></div>" +
+    '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><span class="sp">Создано ' + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
+}
+function popHTML() {
+  const p = ui.pop; if (!p) return "";
+  const t = p.id && S.tasks[p.id], it = (k, label, extra, cls, r) => '<div class="pi ' + (cls || "") + '" data-a="pa" data-k="' + k + '" ' + (extra || "") + ">" + label + (r ? '<span class="r">' + r + "</span>" : "") + "</div>";
+  const idA = 'data-id="' + esc(p.id || "") + '"';
+  let h = "";
+  const dueQuick = (k) => {
+    const d1 = parseISO(today), d2 = parseISO(addDays(today, 1)), d3 = parseISO(nextMonday());
+    return it(k, "Сегодня", idA + ' data-v="today"', "", WDS[d1.getDay()]) + it(k, "Завтра", idA + ' data-v="tom"', "", WDS[d2.getDay()]) + it(k, "Следующая неделя", idA + ' data-v="week"', "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3));
+  };
+  switch (p.type) {
+    case "due": h = dueQuick("due") + '<div class="psep"></div><div class="ptitle">Выберите дату</div><div class="pform"><input type="date" id="p-date" data-id="' + esc(p.id) + '" value="' + esc((t && t.due) || "") + '"></div>' + (t && t.due ? '<div class="psep"></div>' + it("due", "Удалить срок", idA + ' data-v="clear"', "danger") : ""); break;
+    case "remind": {
+      const nh = new Date().getHours();
+      h = (nh < 20 ? it("rem", "Позже сегодня", idA + ' data-v="later"', "", pad(Math.min(nh + 3, 23)) + ":00") : "") + it("rem", "Завтра", idA + ' data-v="tom"', "", "09:00") + it("rem", "Следующая неделя", idA + ' data-v="week"', "", "пн, 09:00") +
+        '<div class="psep"></div><div class="ptitle">Дата и время</div><div class="pform"><input type="datetime-local" id="p-dt" data-id="' + esc(p.id) + '" value="' + (t && t.remind_at ? toLocalInput(t.remind_at) : "") + '"></div>' + (t && t.remind_at ? '<div class="psep"></div>' + it("rem", "Удалить напоминание", idA + ' data-v="clear"', "danger") : "");
+      break;
+    }
+    case "repeat": {
+      const cur = t && t.repeat_rule;
+      h = [["d:1", "Ежедневно"], ["wd", "По рабочим дням"], ["w:1", "Еженедельно"], ["m:1", "Ежемесячно"], ["y:1", "Ежегодно"]].map(x => it("rep", x[1], idA + ' data-v="' + x[0] + '"', cur === x[0] ? "cur" : "")).join("") +
+        '<div class="psep"></div><div class="ptitle">Настроить</div><div class="pform">Каждые <input type="number" id="p-n" min="1" max="999" value="2"><select id="p-u"><option value="d">дн.</option><option value="w">нед.</option><option value="m">мес.</option><option value="y">лет</option></select><button class="btn" style="padding:6px 12px" data-a="pa" data-k="repcustom" ' + idA + ">ОК</button></div>" + (cur ? '<div class="psep"></div>' + it("rep", "Не повторять", idA + ' data-v="clear"', "danger") : "");
+      break;
+    }
+    case "sort": { const s = getSort(view); h = '<div class="ptitle">Сортировать по</div>' + Object.keys(SORTS).map(k => it("sort", SORTS[k].n, 'data-v="' + k + '"', s.by === k ? "cur" : "", s.by === k ? (s.dir === 1 ? "↑" : "↓") : "")).join("") + (PR.sort[view] ? '<div class="psep"></div>' + it("sortclr", "Сбросить сортировку") : ""); break; }
+    case "group": { const g = getGroup(view); h = '<div class="ptitle">Группировать</div>' + Object.keys(GROUPS).filter(k => k !== "list" || view.indexOf("list:") !== 0).map(k => it("group", GROUPS[k], 'data-v="' + k + '"', g === k ? "cur" : "", g === k ? "✓" : "")).join(""); break; }
+    case "listmenu": h = it("l_rename", "Переименовать список", idA) + it("l_icon", "Сменить значок", idA) + it("l_colorpop", "Изменить цвет", idA) + it("l_grouppop", "Переместить в группу…", idA) + '<div class="psep"></div>' + it("l_up", "Выше", idA) + it("l_down", "Ниже", idA) + '<div class="psep"></div>' + it("l_dup", "Дублировать список", idA) + it("l_print", "Напечатать список", idA) + it("l_deldone", "Удалить завершённые", idA) + '<div class="psep"></div>' + it("l_del", "Удалить список", idA, "danger"); break;
+    case "color": h = '<div class="ptitle">Цвет списка</div><div class="pform">' + ACCENTS.map(c => '<button class="sw" style="background:' + c + '" data-a="pa" data-k="l_color" ' + idA + ' data-v="' + c + '"></button>').join("") + "</div>" + it("l_color", "По умолчанию", idA + ' data-v=""'); break;
+    case "move": {
+      const gs = [...new Set(listsArr().map(l => l.group_name).filter(Boolean))], cur = S.lists[p.id] && S.lists[p.id].group_name;
+      h = '<div class="ptitle">Группа</div>' + gs.map(g => it("l_group", esc(g), idA + ' data-g="' + esc(g) + '"', cur === g ? "cur" : "")).join("") + it("l_group", "Без группы", idA + ' data-g=""', !cur ? "cur" : "") + '<div class="psep"></div>' + it("l_groupnew", "Новая группа…", idA);
+      break;
+    }
+    case "gmenu": h = it("g_rename", "Переименовать группу", 'data-g="' + esc(p.g) + '"') + it("g_ungroup", "Расформировать группу", 'data-g="' + esc(p.g) + '"', "danger"); break;
+    case "ctx": h = it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
+    case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
+    case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
+    case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b></div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
+    case "help": h = '<div class="ptitle">Умный ввод</div><div class="ptext"><b>завтра, послезавтра, сегодня</b><br><b>в пятницу</b>, <b>через 3 дня</b>, <b>25.12</b><br><b>в 18:00</b> — напоминание<br><b>каждый день</b>, <b>по будням</b>, <b>ежемесячно</b><br><b>~30м</b>, <b>1.5ч</b> — сколько займёт<br><b>#зал</b> — в список (или категория)<br><b>!</b> — важное</div><div class="psep"></div><div class="ptitle">Клавиши</div><div class="ptext">Enter — добавить · Esc — закрыть панель<br>ПКМ по задаче — быстрое меню<br>Перетащите задачу на список в левой панели</div>'; break;
+  }
+  const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
+  return '<div class="pop" id="pop" style="left:' + x + "px;top:" + y + 'px">' + h + "</div>";
 }
 function settingsHTML() {
   const sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
-  return '<div class="ovl" data-a="ovl"><div class="sheet fade"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:800;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>' +
+  return '<div class="ovl" data-a="ovl"><div class="sheet fade"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>' +
     '<div class="lbl">Тема</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
-    Object.keys(THEMES).map(k => { const T = THEMES[k]; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:2px solid " + (TH.theme === k ? "var(--acc)" : "transparent") + ";color:" + (T.dark ? "#fff" : "#111") + ';border-radius:12px;padding:14px 4px;font-size:12.5px">' + T.n + "</button>"; }).join("") + "</div>" +
-    '<div class="lbl">Акцент</div><div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (TH.accent === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" +
+    Object.keys(THEMES).map(k => { const T = THEMES[k]; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:2px solid " + (TH.theme === k ? "var(--acc)" : "var(--ln)") + ";color:" + (T.dark ? "#fff" : "#111") + ';border-radius:10px;padding:14px 4px;font-size:12.5px">' + T.n + "</button>"; }).join("") + "</div>" +
+    '<div class="lbl">Акцентный цвет (у списков может быть свой)</div><div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (TH.accent === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" +
     '<div class="lbl">Фон-картинка (ссылка на изображение)</div><input id="s-bg" class="inp" placeholder="https://…jpg" value="' + esc(TH.bg) + '">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
     '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>" +
-    '<div class="lbl">Аккаунт и данные</div><div class="sub" style="margin-bottom:8px">' + esc(S.user ? S.user.email : "") + " · задач: " + Object.keys(S.tasks).length + "</div>" +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="export">💾 Копия JSON</button><button class="btn ghost" data-a="logout" style="color:#ef4444">Выйти</button></div>' +
-    '<div id="msg" class="sub" style="margin-top:10px;min-height:18px;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
+    '<div class="lbl">Аккаунт и данные</div><div class="sub" style="margin-bottom:8px;color:var(--sub)">' + esc(S.user ? S.user.email : "") + " · задач: " + Object.keys(S.tasks).length + "</div>" +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="export">💾 Копия JSON</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>' +
+    '<div id="msg" style="margin-top:10px;min-height:18px;font-size:13px;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
 }
+const msgHTML = () => '<div id="msg" style="margin-top:12px;min-height:20px;font-size:13.5px;color:' + (ui.msgOk ? "#16a34a" : "#dc2626") + '">' + esc(ui.msg) + "</div>";
 function authHTML() {
-  return '<div style="margin:auto;width:min(420px,92vw);padding:24px" class="fade"><div style="font-size:1.9em;font-weight:800">Мои дела</div>' +
-    '<div class="sub" style="margin:4px 0 16px;font-size:14px">Войдите — задачи будут одинаковыми на телефоне и компьютере</div>' +
+  return '<div style="margin:auto;width:min(420px,92vw);padding:24px" class="fade"><div style="font-size:1.9em;font-weight:700">Мои дела</div>' +
+    '<div style="margin:4px 0 16px;font-size:14px;color:var(--sub)">Войдите — задачи будут одинаковыми на телефоне и компьютере</div>' +
     '<input id="a-email" class="inp" type="email" autocomplete="username" placeholder="Почта" style="margin-bottom:8px">' +
     '<input id="a-pass" class="inp" type="password" autocomplete="current-password" placeholder="Пароль (минимум 6 символов)" style="margin-bottom:12px">' +
     '<div style="display:flex;gap:8px"><button class="btn" data-a="login" style="flex:1">Войти</button><button class="btn ghost" data-a="signup" style="flex:1">Создать аккаунт</button></div>' +
     msgHTML() + '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="ping">📡 Проверить связь</button>' + (cfg.baked ? "" : '<button class="btn ghost" data-a="resetcfg">Сменить подключение</button>') + "</div></div>";
 }
 function setupHTML() {
-  return '<div style="margin:auto;width:min(520px,92vw);padding:24px" class="fade"><div style="font-size:1.9em;font-weight:800">Подключение к облаку</div>' +
-    '<div class="sub" style="margin:6px 0 14px;font-size:13.5px;line-height:1.5">Supabase → ваш проект → Project Settings → API. Скопируйте <b>Project URL</b> и <b>публичный</b> ключ (anon / publishable). Секретный ключ (service_role / secret) сюда вставлять НЕЛЬЗЯ.</div>' +
+  return '<div style="margin:auto;width:min(520px,92vw);padding:24px" class="fade"><div style="font-size:1.9em;font-weight:700">Подключение к облаку</div>' +
+    '<div style="margin:6px 0 14px;font-size:13.5px;line-height:1.5;color:var(--sub)">Supabase → ваш проект → Project Settings → API Keys. Скопируйте <b>Project URL</b> (адрес вида https://xxxx.supabase.co) и <b>публичный</b> ключ (anon / publishable). Секретный ключ (service_role / secret) сюда вставлять НЕЛЬЗЯ.</div>' +
     '<input id="c-url" class="inp" placeholder="https://xxxxxxxx.supabase.co" style="margin-bottom:8px" value="' + esc(cfg.url) + '">' +
     '<input id="c-key" class="inp" placeholder="anon / publishable ключ" style="margin-bottom:12px" value="' + esc(cfg.key) + '">' +
     '<div style="display:flex;gap:8px"><button class="btn" data-a="savecfg" style="flex:1">Сохранить</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button></div>' + msgHTML() + "</div>";
 }
-const msgHTML = () => '<div id="msg" class="sub" style="margin-top:12px;min-height:20px;font-size:13.5px;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div>";
-function showMsg(text, ok) { ui.msg = text; ui.msgOk = ok; const el = $("msg"); if (el) { el.textContent = text; el.style.color = ok ? "#22c55e" : "#f87171"; } }
+function showMsg(text, ok) { ui.msg = text; ui.msgOk = ok; const el = $("msg"); if (el) { el.textContent = text; el.style.color = ok ? "#16a34a" : "#dc2626"; } }
 
 function appHTML() {
   if (view.indexOf("list:") === 0 && !S.lists[view.slice(5)]) view = "myday";
+  if (view === "search" && !ui.q) view = prevView || "myday";
   if (selId && !S.tasks[selId]) selId = null;
-  const c = { myday: 0, starred: 0, someday: 0, all: 0 }, items = [], done = [];
+  const c = { myday: 0, starred: 0, someday: 0, all: 0, planned: 0 }, items = [], done = [];
   for (const id in S.tasks) {
     const t = S.tasks[id];
     if (!t.done) {
       if (t.status === "someday") c.someday++;
-      else { c.all++; if (t.my_day || t.due === today) c.myday++; if (t.starred) c.starred++; if (t.list_id) c["list:" + t.list_id] = (c["list:" + t.list_id] || 0) + 1; }
+      else { c.all++; if (inMyDay(t)) c.myday++; if (t.starred) c.starred++; if (t.due) c.planned++; if (t.list_id) c["list:" + t.list_id] = (c["list:" + t.list_id] || 0) + 1; }
     }
     if (matches(t)) (t.done ? done : items).push(t);
   }
-  items.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return leftHTML(c) + mainHTML(items, done) + (selId ? detailHTML(S.tasks[selId]) : "") + (ui.settings ? settingsHTML() : "");
+  return topHTML() + '<div id="body">' + leftHTML(c) + mainHTML(items, done, viewInfo()) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + popHTML();
 }
+function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
   want = false;
   const app = $("app"); if (!app) return;
@@ -510,14 +920,17 @@ function render() {
   const sc = {}; ["lscroll", "list", "dscroll"].forEach(id => { const e = $(id); if (e) sc[id] = e.scrollTop; });
   today = todayISO();
   app.innerHTML = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : appHTML());
+  applyTheme();
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
+  const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
   updateSyncUI();
 }
 
-/* ================= авторизация / подключение ================= */
+/* ===== p5: вход, действия, обработчики событий ===== */
 const AUTH_ERR = [[/Invalid login/i, "Неверная почта или пароль"], [/not confirmed/i, "Почта не подтверждена: отключите «Confirm email» в Supabase (Auth → Providers → Email) или подтвердите письмо"],
   [/already registered/i, "Такой аккаунт уже есть — жмите «Войти»"], [/at least 6/i, "Пароль — минимум 6 символов"], [/rate limit|too many/i, "Слишком много попыток, подождите минуту"],
+  [/signups? not allowed|signup.*disabled/i, "Регистрация закрыта. Войдите в существующий аккаунт."],
   [/fetch|network|Load failed/i, "Нет связи с сервером (сеть или блокировка). Нажмите «Проверить связь»"], [/valid email|invalid.*email/i, "Похоже, почта введена с ошибкой"]];
 function authErr(e) { const m = (e && e.message) || String(e); for (const r of AUTH_ERR) if (r[0].test(m)) return r[1]; return "Ошибка: " + m; }
 async function doAuth(kind) {
@@ -543,7 +956,7 @@ async function ping() {
     const r = await fetch(url + "/auth/v1/health", { headers: { apikey: key }, signal: ac.signal }); clearTimeout(to);
     if (r.ok) showMsg("✅ Связь есть (" + (Date.now() - t0) + " мс). Сервер отвечает.", true);
     else showMsg("⚠️ Сервер ответил кодом " + r.status + (r.status === 401 || r.status === 403 ? " — проверьте публичный ключ" : "") + ".", false);
-  } catch (e) { clearTimeout(to); showMsg("❌ Нет связи (" + (e.name === "AbortError" ? "таймаут 8 с" : "сеть или блокировка") + "). На рабочем компьютере возможно блокирует фильтр — сообщите мне, найдём обход.", false); }
+  } catch (e) { clearTimeout(to); showMsg("❌ Нет связи (" + (e.name === "AbortError" ? "таймаут 8 с" : "сеть или блокировка") + "). Если это рабочий компьютер — возможно, блокирует фильтр.", false); }
 }
 function saveCfg() {
   const url = normUrl($("c-url").value), key = $("c-key").value.trim();
@@ -557,7 +970,7 @@ function setUser(u) {
   const cur = S.user ? S.user.id : null, nid = u ? u.id : null;
   if (cur === nid) { if (u && S.user) S.user.email = u.email || S.user.email; return; }
   unsubRt();
-  if (!u) { S.user = null; S.lists = {}; S.tasks = {}; selId = null; ui.settings = false; render(); return; }
+  if (!u) { S.user = null; S.lists = {}; S.tasks = {}; selId = null; ui.settings = false; ui.pop = null; render(); return; }
   S.user = { id: u.id, email: u.email };
   if (P.uid && P.uid !== u.id) { P = { lists: {}, tasks: {} }; savePending(); }
   const c = jget(LSK.cache, null);
@@ -583,76 +996,160 @@ async function boot() {
   render();
   setUser(u);
 }
-
-/* ================= действия ================= */
 function exportJson() {
   const blob = new Blob([JSON.stringify({ exported: nowISO(), lists: Object.values(S.lists), tasks: Object.values(S.tasks) }, null, 1)], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "moi-dela-" + todayISO() + ".json";
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
+
+/* ----- действия по клику ----- */
+const closePop = () => { ui.pop = null; };
+const goView = v => { view = v; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; };
+const setDue = (id, v) => {
+  const map = { today: today, tom: addDays(today, 1), week: nextMonday(), clear: null };
+  upd(id, { due: v in map ? map[v] : v });
+};
 const acts = {
-  view(a) { view = a.dataset.v; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 200; render(); },
+  view(a) { goView(a.dataset.v); render(); },
   sel(a) { selId = a.dataset.id; ui.left = false; render(); },
   close() { selId = null; render(); },
-  tog(a) { const t = S.tasks[a.dataset.id]; if (!t) return; const d = !t.done; upd(t.id, { done: d, done_at: d ? nowISO() : null }); render(); },
+  tog(a) { toggleDone(a.dataset.id); render(); },
   star(a) { const t = S.tasks[a.dataset.id]; if (!t) return; upd(t.id, { starred: !t.starred }); render(); },
-  more() { ui.limit += 200; render(); }, moredone() { ui.doneLimit += 50; render(); },
-  showdone() { ui.showDone = !ui.showDone; render(); },
+  more() { ui.limit += 300; render(); }, moredone() { ui.doneLimit += 50; render(); },
+  showdone() { PR.showDone[view] = !PR.showDone[view]; savePrefs(); render(); },
   menu() { ui.left = !ui.left; render(); },
+  rail() { if (innerWidth <= 760) { ui.left = false; } else PR.rail = !PR.rail; savePrefs(); render(); },
+  gtoggle(a) { const g = a.dataset.g; PR.collapsed[g] = !PR.collapsed[g]; savePrefs(); render(); },
+  ggtoggle(a) { const k = a.dataset.k; ui.gcol[k] = !ui.gcol[k]; render(); },
+  grid(a) { PR.grid[view] = a.dataset.v === "1"; savePrefs(); render(); },
+  sugg() { ui.sugg = !ui.sugg; render(); },
+  sgadd(a) { setMyDay(a.dataset.id, true); render(); },
+  sortclr() { delete PR.sort[view]; savePrefs(); closePop(); render(); },
+  qclear() { ui.q = ""; if (view === "search") view = prevView || "myday"; render(); const q = $("q"); if (q) q.focus(); },
   newlist() {
     const name = prompt("Название списка"); if (!name || !name.trim()) return;
-    const icon = prompt("Иконка (эмодзи), можно пропустить", "🗂️") || "🗂️";
-    const l = { id: uid(), name: name.trim(), icon: icon.trim(), position: listsArr().length, created_at: nowISO() };
-    S.lists[l.id] = l; mark("lists", l.id, "u"); view = "list:" + l.id; jset(LSK.view, view); ui.left = false; render();
+    const icon = prompt("Значок (эмодзи), можно пропустить", "🗂️"); if (icon === null) return;
+    const l = { id: uid(), name: name.trim(), icon: (icon || "").trim() || "🗂️", position: listsArr().length, created_at: nowISO(), group_name: null, color: null };
+    S.lists[l.id] = l; mark("lists", l.id, "u"); goView("list:" + l.id); render();
   },
-  editlist() {
-    const l = S.lists[view.slice(5)]; if (!l) return;
-    const name = prompt("Название списка", l.name); if (name && name.trim()) l.name = name.trim();
-    const icon = prompt("Иконка (эмодзи)", l.icon); if (icon && icon.trim()) l.icon = icon.trim();
-    mark("lists", l.id, "u"); render();
-  },
-  dellist() {
-    const l = S.lists[view.slice(5)]; if (!l) return;
-    if (!confirm("Удалить список «" + l.name + "»? Задачи останутся (в «Все задачи»).")) return;
-    Object.values(S.tasks).forEach(t => { if (t.list_id === l.id) { t.list_id = null; mark("tasks", t.id, "u"); } });
-    delete S.lists[l.id]; mark("lists", l.id, "d"); view = "myday"; jset(LSK.view, view); render();
+  newgroup() {
+    if (view.indexOf("list:") !== 0) return toast("Откройте список и выберите «⋯ → Переместить в группу…», либо нажмите сюда внутри нужного списка");
+    const name = prompt("Название новой группы"); if (!name || !name.trim()) return;
+    setListGroup(view.slice(5), name.trim()); render();
   },
   sync() { loadAll(); },
-  settings() { ui.settings = true; ui.msg = ""; render(); },
+  settings() { ui.settings = true; ui.msg = ""; closePop(); render(); },
   closeSettings() { ui.settings = false; render(); },
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
-  theme(a) { TH.theme = a.dataset.v; saveTheme(); applyTheme(); render(); },
-  accent(a) { TH.accent = a.dataset.v; saveTheme(); applyTheme(); render(); },
-  export() { exportJson(); }, ping() { ping(); }, logout() { logout(); },
+  theme(a) { TH.theme = a.dataset.v; saveTheme(); render(); },
+  accent(a) { TH.accent = a.dataset.v; saveTheme(); render(); },
+  export() { closePop(); exportJson(); render(); }, ping() { ping(); }, logout() { closePop(); logout(); },
+  notify() { askNotify(); showMsg("Если браузер спросил разрешение — нажмите «Разрешить»", true); },
   login() { doAuth("login"); }, signup() { doAuth("signup"); }, savecfg() { saveCfg(); },
   resetcfg() { try { localStorage.removeItem(LSK.cfg); } catch (e) {} cfg = getCfg(); screen = "setup"; ui.msg = ""; render(); },
-  delTask() { if (!selId) return; const id = selId; selId = null; delete S.tasks[id]; mark("tasks", id, "d"); render(); },
-  tmyday() { const t = S.tasks[selId]; if (t) { upd(t.id, { my_day: !t.my_day }); render(); } },
-  tsomeday() { const t = S.tasks[selId]; if (t) { const s = t.status === "someday"; upd(t.id, { status: s ? "active" : "someday", my_day: s ? t.my_day : false }); render(); } },
+  delTask() { if (!selId) return; deleteTask(selId); render(); },
+  tmyday() { const t = S.tasks[selId]; if (t) { setMyDay(t.id, !inMyDay(t)); render(); } },
+  tsomeday() { const t = S.tasks[selId]; if (t) { const s = t.status === "someday"; upd(t.id, { status: s ? "active" : "someday", my_day: false, my_day_date: s ? t.my_day_date : null }); render(); } },
   clrdue() { upd(selId, { due: null }); render(); },
+  clrremind() { upd(selId, { remind_at: null }); render(); },
+  clrrepeat() { upd(selId, { repeat_rule: null }); render(); },
   est(a) { const t = S.tasks[selId], v = +a.dataset.v; if (t) { upd(t.id, { est_minutes: t.est_minutes === v ? null : v }); render(); } },
-  stepTog(a) { const t = S.tasks[selId]; if (!t) return; const st = t.steps.map((s, i) => i === +a.dataset.i ? { t: s.t, d: !s.d } : s); upd(t.id, { steps: st }); render(); },
-  stepDel(a) { const t = S.tasks[selId]; if (!t) return; upd(t.id, { steps: t.steps.filter((s, i) => i !== +a.dataset.i) }); render(); }
+  stepTog(a) { const t = S.tasks[selId]; if (!t) return; upd(t.id, { steps: t.steps.map((s, i) => i === +a.dataset.i ? { t: s.t, d: !s.d } : s) }); render(); },
+  stepDel(a) { const t = S.tasks[selId]; if (!t) return; upd(t.id, { steps: t.steps.filter((s, i) => i !== +a.dataset.i) }); render(); },
+  pickfile() { const i = document.createElement("input"); i.type = "file"; i.onchange = () => uploadFile(i.files[0]); i.click(); },
+  openfile(a) { openFile(+a.dataset.i); }, delfile(a, e) { e.stopPropagation(); if (confirm("Удалить файл?")) removeFile(+a.dataset.i); },
+  pop(a, e) {
+    const d = a.dataset, w = e._was;
+    if (w && w.type === d.p && (w.id || w.g || "") === (d.id || d.g || "")) { closePop(); render(); return; }
+    const r = a.getBoundingClientRect();
+    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; render();
+  },
+  pa(a) {
+    const d = a.dataset, k = d.k, id = d.id, v = d.v, p = ui.pop || {}, t = id && S.tasks[id], l = id && S.lists[id];
+    const sub = type => { ui.pop = { type, id, g: null, x: p.x || 100, y: p.y || 100 }; render(); };
+    switch (k) {
+      case "due": setDue(id, v); break;
+      case "rem": {
+        let iso = null;
+        if (v === "later") { const x = new Date(); x.setHours(Math.min(x.getHours() + 3, 23), 0, 0, 0); iso = x.toISOString(); }
+        else if (v === "tom") iso = atTime(addDays(today, 1), 9); else if (v === "week") iso = atTime(nextMonday(), 9);
+        upd(id, { remind_at: iso }); if (iso) askNotify(); break;
+      }
+      case "rep": upd(id, { repeat_rule: v === "clear" ? null : v, due: t && t.due || today }); if (v === "clear") upd(id, { repeat_rule: null }); break;
+      case "repcustom": { const n = Math.max(1, Math.min(999, +($("p-n") || {}).value || 1)), u = ($("p-u") || {}).value || "d"; upd(id, { repeat_rule: u + ":" + n, due: t && t.due || today }); break; }
+      case "sort": { const cur = PR.sort[view]; PR.sort[view] = cur && cur.by === v ? { by: v, dir: -cur.dir } : { by: v, dir: SORTS[v].dir }; savePrefs(); break; }
+      case "sortclr": delete PR.sort[view]; savePrefs(); break;
+      case "group": PR.group[view] = v; savePrefs(); break;
+      case "l_rename": { const n = prompt("Название списка", l.name); if (n && n.trim()) { l.name = n.trim(); mark("lists", id, "u"); } break; }
+      case "l_icon": { const n = prompt("Значок (эмодзи)", l.icon || ""); if (n !== null) { l.icon = n.trim() || "🗂️"; mark("lists", id, "u"); } break; }
+      case "l_colorpop": return sub("color");
+      case "l_grouppop": return sub("move");
+      case "l_color": l.color = v || null; mark("lists", id, "u"); break;
+      case "l_group": setListGroup(id, d.g); break;
+      case "l_groupnew": { const n = prompt("Название новой группы"); if (n && n.trim()) setListGroup(id, n.trim()); break; }
+      case "l_up": moveList(id, -1); break;
+      case "l_down": moveList(id, 1); break;
+      case "l_dup": duplicateList(id); break;
+      case "l_print": closePop(); render(); setTimeout(() => window.print(), 150); return;
+      case "l_deldone": if (confirm("Удалить все завершённые задачи списка «" + l.name + "»?")) deleteDoneIn(id); break;
+      case "l_del": if (confirm("Удалить список «" + l.name + "»? Задачи останутся (в «Все задачи»).")) { deleteList(id); if (view === "list:" + id) goView("myday"); } break;
+      case "g_rename": { const n = prompt("Название группы", d.g); if (n && n.trim()) renameGroup(d.g, n.trim()); break; }
+      case "g_ungroup": renameGroup(d.g, null); break;
+      case "ctx_myday": if (t) setMyDay(id, !inMyDay(t)); break;
+      case "star": if (t) upd(id, { starred: !t.starred }); break;
+      case "ctx_tolist": return sub("tolist");
+      case "tolist": upd(id, { list_id: v }); break;
+      case "ttog": toggleDone(id); break;
+      case "ctx_del": deleteTask(id); break;
+      case "alert": if (S.tasks[id]) selId = id; break;
+      case "alertsclr": ui.alerts = []; break;
+      case "settings": ui.settings = true; ui.msg = ""; break;
+      case "export": exportJson(); break;
+      case "logout": closePop(); render(); logout(); return;
+    }
+    closePop(); render();
+  }
 };
 const changes = {
   "d-title"(v) { if (v.trim()) upd(selId, { title: v.trim() }); renderSoon(); },
-  "d-due"(v) { upd(selId, { due: v || null }); renderSoon(); },
   "d-cat"(v) { upd(selId, { category: v.trim().replace(/^#/, "") || null }); renderSoon(); },
   "d-list"(v) { upd(selId, { list_id: v || null }); renderSoon(); },
   "d-note"(v) { upd(selId, { note: v }); renderSoon(); },
-  "s-bg"(v) { TH.bg = v.trim(); saveTheme(); applyTheme(); },
-  "s-font"(v) { TH.font = v; saveTheme(); applyTheme(); },
-  "s-dens"(v) { TH.dens = v; saveTheme(); applyTheme(); }
+  "p-date"(v, el) { setDue(el.dataset.id, v || null); closePop(); render(); },
+  "p-dt"(v, el) { if (!v) return; upd(el.dataset.id, { remind_at: new Date(v).toISOString() }); askNotify(); closePop(); render(); },
+  "s-bg"(v) { TH.bg = v.trim(); saveTheme(); render(); },
+  "s-font"(v) { TH.font = v; saveTheme(); render(); },
+  "s-dens"(v) { TH.dens = v; saveTheme(); render(); }
 };
 
 function init() {
   const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
   const app = $("app");
-  app.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = acts[a.dataset.a]; if (f) f(a, e); });
+  app.addEventListener("click", e => {
+    const a = e.target.closest("[data-a]"), was = ui.pop;
+    if (ui.pop && !e.target.closest("#pop")) { ui.pop = null; if (!a) render(); }
+    if (!a) return;
+    e._was = was; const f = acts[a.dataset.a]; if (f) f(a, e);
+  });
+  app.addEventListener("contextmenu", e => {
+    const r = e.target.closest(".taskrow"), c = e.target.closest(".chip[data-lid]");
+    if (!r && !c) return;
+    e.preventDefault();
+    ui.pop = r ? { type: "ctx", id: r.dataset.id, x: e.clientX, y: e.clientY } : { type: "listmenu", id: c.dataset.lid, x: e.clientX, y: e.clientY };
+    render();
+  });
   app.addEventListener("change", e => {
     const id = e.target.id;
-    if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); applyTheme(); return; }
-    if (changes[id] && S.user) changes[id](e.target.value);
+    if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); render(); return; }
+    if (changes[id] && S.user) changes[id](e.target.value, e.target);
+  });
+  let qt;
+  app.addEventListener("input", e => {
+    if (e.target.id !== "q") return;
+    const v = e.target.value; ui.q = v;
+    if (v && view !== "search") { prevView = view; view = "search"; selId = null; }
+    else if (!v && view === "search") view = prevView || "myday";
+    clearTimeout(qt); qt = setTimeout(renderSoon, 130);
   });
   app.addEventListener("keydown", e => {
     const id = e.target.id;
@@ -660,8 +1157,21 @@ function init() {
       if (id === "newtask") { e.preventDefault(); addFromInput(e.target); }
       else if (id === "d-step") { e.preventDefault(); const v = e.target.value.trim(), t = S.tasks[selId]; if (v && t) { upd(t.id, { steps: (t.steps || []).concat([{ t: v, d: false }]) }); e.target.value = ""; render(); } }
       else if (id === "a-pass" || id === "a-email") { e.preventDefault(); doAuth("login"); }
+      else if (id === "d-title") { e.preventDefault(); e.target.blur(); }
     }
-    if (e.key === "Escape") { if (ui.settings) { ui.settings = false; render(); } else if (selId) { selId = null; render(); } }
+    if (e.key === "Escape") {
+      if (ui.pop) { closePop(); render(); } else if (ui.settings) { ui.settings = false; render(); }
+      else if (ui.q) { acts.qclear(); } else if (selId) { selId = null; render(); }
+    }
+  });
+  /* перетаскивание задачи на список */
+  app.addEventListener("dragstart", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r) { e.dataTransfer.setData("text/plain", r.dataset.id); e.dataTransfer.effectAllowed = "move"; } });
+  app.addEventListener("dragover", e => { const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (c) { e.preventDefault(); c.classList.add("dropok"); } });
+  app.addEventListener("dragleave", e => { const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (c) c.classList.remove("dropok"); });
+  app.addEventListener("drop", e => {
+    const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (!c) return;
+    e.preventDefault(); const id = e.dataTransfer.getData("text/plain");
+    if (S.tasks[id]) { upd(id, { list_id: c.dataset.lid }); toast("Перенесено в «" + S.lists[c.dataset.lid].name + "»"); render(); }
   });
   document.addEventListener("pointerdown", () => { down = true; }, true);
   document.addEventListener("pointerup", () => { down = false; if (want) setTimeout(() => { if (want && !down) render(); }, 40); }, true);
@@ -671,11 +1181,13 @@ function init() {
   window.addEventListener("pagehide", () => { writeCache(); });
   let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderSoon, 200); });
   setInterval(() => { if (!document.hidden && S.user && Date.now() - lastLoad > 300000) loadAll(); }, 60000);
+  setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); }, 20000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
   applyTheme(); boot();
 }
-if (CFG0.TEST) window.__t = { localParse, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays };
+if (CFG0.TEST) window.__t = { localParse, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches };
 init();
+
 })();
 </script>
 </body>
