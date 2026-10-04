@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 19:20">
+<meta name="build" content="04.10 21:14">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 19:20";
+const BUILD = "04.10 21:14";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1198,6 +1198,12 @@ function dtpHTML(p, t) {
   const D = ui.dtp, rem = p.type === "remind", id = esc(p.id || "");
   const q = (v, label) => '<button type="button" class="dq' + (D.date === dtpDay(v) ? " on" : "") + '" data-a="dday" data-v="' + v + '">' + label + "</button>";
   const d3 = parseISO(nextMonday());
+  if (!rem && !D.cal) {
+    const d1 = parseISO(today), d2 = parseISO(addDays(today, 1)), it = (v, svg, label, r) => '<button type="button" class="dli" data-a="dday" data-v="' + v + '">' + ic(svg, 18) + '<span class="dl">' + label + '</span><span class="dr">' + r + "</span></button>";
+    return '<div class="dtp-t" style="text-align:center">Срок</div>' + it("today", "cal", "Сегодня", WDS[d1.getDay()]) + it("tom", "cal", "Завтра", WDS[d2.getDay()]) + it("week", "cal", "Следующая неделя", WDS[d3.getDay()]) +
+      '<div class="psep"></div><button type="button" class="dli" data-a="dcal">' + ic("cal", 18) + '<span class="dl">Выбрать дату</span></button>' +
+      (t && t.due ? '<button type="button" class="dli" data-a="dclear" style="color:#d13438">' + ic("x", 18) + '<span class="dl">Убрать срок</span></button>' : "");
+  }
   let h = '<div class="dtp-t">' + (rem ? "Напомнить" : "Срок выполнения") + "</div>" +
     '<div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + "</div>" +
     calHTML(D.date, D.y, D.m);
@@ -1222,6 +1228,7 @@ function dtpIso() {
 const dtpDone = () => { ui.dtp = null; closePop(); render(); if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); } };
 const dtpId = () => ui.pop && ui.pop.id;
 const dtpActs = {
+  dcal() { if (ui.dtp) { ui.dtp.cal = true; render(); } },
   calnav(a) { const D = ui.dtp; if (!D) return; let m = D.m + (+a.dataset.d), y = D.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } D.m = m; D.y = y; keepTime(); render(); },
   calday(a) {
     const D = ui.dtp; if (!D) return; const iso = a.dataset.v;
@@ -1268,6 +1275,9 @@ const dtpCSS = `
 .dtp-t{font-weight:700;font-size:1.1em;margin-bottom:10px}
 .dqrow,.tchips{display:flex;gap:6px;flex-wrap:wrap}
 .tchips{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px}
+.dli{display:flex;align-items:center;gap:14px;width:100%;padding:11px 16px;text-align:left;font:inherit;font-size:calc(15px*var(--z,1));color:var(--tx)}
+.dli:hover{background:var(--hov)} .dli .dl{flex:1} .dli .dr{color:var(--sub);font-size:calc(12.5px*var(--z,1))} .dli svg{color:var(--sub);flex-shrink:0}
+@media(max-width:760px){.dli{padding:14px 18px;font-size:calc(16px*var(--z,1))}}
 .dq{padding:9px 10px;border-radius:10px;background:var(--inp);border:1px solid var(--ln);font-size:calc(13.5px*var(--z,1));flex:1;text-align:center;white-space:nowrap}
 .dq.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .cal-h{display:flex;align-items:center;margin:12px 0 4px}.cal-t{flex:1;text-align:center;font-weight:600}
@@ -1491,6 +1501,11 @@ function desktopInit(app) {
     if (c && (k === "a" || k === "ф")) { const v = visIds(); if (v.length) { e.preventDefault(); v.forEach(id => { ui.multi[id] = 1; }); selId = null; render(); } }
     else if (c && (k === "z" || k === "я")) { e.preventDefault(); mUndo(); }
     else if (e.key === "Escape" && mIds().length && !ui.pop) { e.stopPropagation(); mClear(); render(); }
+    else if (!c && !e.altKey && !ui.pop && /^[1-7]$/.test(e.key) && (mIds().length || (selId && S.tasks[selId]))) {
+      e.preventDefault(); const n = +e.key, ids = mIds().length ? mIds() : [selId], nd = n === 7 ? nextMonday() : addDays(today, n - 1);
+      mSnap(ids); ids.forEach(id => setDueKeepRemind(S.tasks[id], nd));
+      toast("Срок: " + dateLong(parseISO(nd)) + (ids.length > 1 ? " · задач: " + ids.length : "") + " (Ctrl+Z — отмена)"); render();
+    }
     else if (e.key === "Delete" && mIds().length && !ui.pop) { e.preventDefault(); mApply("del", { dataset: {} }); }
   }, true);
 }
