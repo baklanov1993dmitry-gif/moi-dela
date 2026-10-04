@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 15:00">
+<meta name="build" content="04.10 15:12">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 15:00";
+const BUILD = "04.10 15:12";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1312,7 +1312,7 @@ const CSS = `
 .done .ttl{text-decoration:line-through;color:var(--sub)}
 .meta{display:flex;flex-wrap:wrap;align-items:center;gap:1px 8px;color:var(--sub);font-size:calc(12px*var(--z,1));margin-top:3px}
 .mi{display:inline-flex;align-items:center;gap:4px}
-.mi.od{color:var(--od)} .mi.today{color:var(--acc)}
+.mi.od{color:#e0212a!important;font-weight:600} .mi.today{color:var(--acc)}
 .mi + .mi::before{content:"•";margin-right:8px;color:var(--sub)}
 .star{color:var(--sub);padding:2px;flex-shrink:0;display:flex}
 .star.on{color:var(--acc)}
@@ -1330,7 +1330,7 @@ const CSS = `
 .drow{display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 14px;border-bottom:1px solid var(--ln);cursor:pointer;font-size:calc(14px*var(--z,1))}
 .drow:last-child{border-bottom:0}
 .drow:hover{background:var(--hov)}
-.drow.act{color:var(--acc)} .drow.od{color:var(--od)}
+.drow.act{color:var(--acc)} .drow.od{color:#e0212a!important}
 .drow .dtx{flex:1;min-width:0;word-break:break-word}
 .drow .xbtn{color:var(--sub);display:flex;padding:4px}
 .drow input,.drow select{flex:1;background:transparent;border:0;color:inherit;font:inherit;min-width:0;height:36px}
@@ -1479,7 +1479,7 @@ function metaHTML(t, showList) {
   if (t.steps && t.steps.length) m.push('<span class="mi">' + t.steps.filter(s => s.d).length + " из " + t.steps.length + "</span>");
   if (di) m.push('<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>");
   if (t.repeat_rule) m.push('<span class="mi" title="' + esc(repeatText(t.repeat_rule)) + '">' + ic("repeat", 13) + "</span>");
-  if (t.remind_at && !t.done) m.push('<span class="mi" title="' + esc(fmtRemind(t.remind_at)) + '">' + ic("bell", 13) + "</span>");
+  if (t.remind_at && !t.done) m.push('<span class="mi' + (new Date(t.remind_at) < new Date() ? " od" : "") + '" title="' + esc(fmtRemind(t.remind_at)) + '">' + ic("bell", 13) + "</span>");
   if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>");
   if (t.note) m.push('<span class="mi">' + ic("note", 13) + "</span>");
   if (t.est_minutes) m.push('<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>");
