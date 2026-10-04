@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 15:28">
+<meta name="build" content="04.10 15:52">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 15:28";
+const BUILD = "04.10 15:52";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1466,6 +1466,113 @@ const mCSS = `
 
 const uxCSS = uxCSS0 + mCSS;
 
+// ---- p9: резервные копии: Excel/JSON, автокопии в базу (с настройкой частоты), восстановление ----
+const BKF = [[0, "Выключены"], [6, "Каждые 6 часов"], [24, "Раз в день"], [72, "Раз в 3 дня"], [168, "Раз в неделю"], [336, "Раз в 2 недели"]];
+const BKKEEP = 20;
+const bkCfg = () => Object.assign({ freq: 24, file: false, lastFile: 0 }, PR.bk || {});
+const bkSet = o => { PR.bk = Object.assign(bkCfg(), o); savePrefs(); };
+function bkSnap() { return { v: 1, app: "moi-dela", exported: nowISO(), lists: Object.values(S.lists), tasks: Object.values(S.tasks), time_log: Object.values(S.time_log || {}) }; }
+function bkDownload(name, blob) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function xlsxBook(sheets) {                                   // sheets: [{name, heads, widths, rows:[[...]]}]
+  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"', X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const col = i => { let s = ""; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  const cell = (r, c, v, st) => '<c r="' + col(c) + r + '" t="inlineStr" s="' + st + '"><is><t xml:space="preserve">' + xe(v) + "</t></is></c>";
+  const shXml = sh => {
+    let d = '<row r="1" ht="28" customHeight="1">' + sh.heads.map((h, i) => cell(1, i, h, 1)).join("") + "</row>";
+    sh.rows.forEach((row, ri) => { d += '<row r="' + (ri + 2) + '">' + row.map((v, i) => cell(ri + 2, i, v, 2)).join("") + "</row>"; });
+    const last = col(sh.heads.length - 1) + (sh.rows.length + 1);
+    return X + "<worksheet " + NS + '><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>' +
+      sh.widths.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join("") + "</cols><sheetData>" + d + '</sheetData><autoFilter ref="A1:' + last + '"/></worksheet>';
+  };
+  const styles = X + "<styleSheet " + NS + '><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9E1F2"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const RT = "http://schemas.openxmlformats.org/officeDocument/2006/relationships", PK = "http://schemas.openxmlformats.org/package/2006/relationships";
+  const n = sheets.length;
+  const wb = X + "<workbook " + NS + ' xmlns:r="' + RT + '"><sheets>' + sheets.map((s, i) => '<sheet name="' + xe(s.name) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join("") + "</sheets></workbook>";
+  const ct = X + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    sheets.map((s, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("") + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+  const rels = X + '<Relationships xmlns="' + PK + '">' + sheets.map((s, i) => '<Relationship Id="rId' + (i + 1) + '" Type="' + RT + '/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join("") + '<Relationship Id="rId' + (n + 1) + '" Type="' + RT + '/styles" Target="styles.xml"/></Relationships>';
+  const files = [
+    { name: "[Content_Types].xml", data: utf8(ct) },
+    { name: "_rels/.rels", data: utf8(X + '<Relationships xmlns="' + PK + '"><Relationship Id="rId1" Type="' + RT + '/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
+    { name: "xl/workbook.xml", data: utf8(wb) }, { name: "xl/_rels/workbook.xml.rels", data: utf8(rels) }, { name: "xl/styles.xml", data: utf8(styles) }
+  ].concat(sheets.map((s, i) => ({ name: "xl/worksheets/sheet" + (i + 1) + ".xml", data: utf8(shXml(s)) })));
+  return zipStore(files);
+}
+function bkSheets(d) {
+  const L = {}; (d.lists || []).forEach(l => { L[l.id] = l.name; });
+  const dt = v => { if (!v) return ""; const x = new Date(v); return isNaN(x) ? String(v) : isoLocal(x) + " " + pad(x.getHours()) + ":" + pad(x.getMinutes()); };
+  const tasks = (d.tasks || []).slice().sort((a, b) => String(L[a.list_id] || "").localeCompare(String(L[b.list_id] || "")) || (a.done ? 1 : 0) - (b.done ? 1 : 0) || String(a.due || "9").localeCompare(String(b.due || "9")));
+  return [
+    { name: "Задачи", heads: ["Список", "Задача", "Срок", "Категория", "Важно", "Мой день", "Выполнена", "Когда выполнена", "Напоминание", "Повтор", "Оценка, мин", "Когда-нибудь", "Создана", "Заметка", "Шаги"], widths: [18, 46, 12, 14, 8, 9, 11, 17, 17, 14, 11, 12, 17, 50, 50],
+      rows: tasks.map(t => [L[t.list_id] || "", t.title, t.due || "", t.category || "", t.starred ? "да" : "", t.my_day ? "да" : "", t.done ? "да" : "", dt(t.done_at), dt(t.remind_at), t.repeat_rule ? repeatText(t.repeat_rule) : "", t.est_minutes || "", t.status === "someday" ? "да" : "", dt(t.created_at), t.note || "", (t.steps || []).map(s => (s.d ? "✓ " : "· ") + s.t).join("\n")]) },
+    { name: "Списки", heads: ["Список", "Иконка", "Группа"], widths: [28, 8, 22], rows: (d.lists || []).map(l => [l.name, l.icon || "", l.group_name || ""]) },
+    { name: "Журнал (факт)", heads: ["Начало", "Конец", "Дело", "Пояснение"], widths: [17, 17, 40, 50], rows: (d.time_log || []).slice().sort((a, b) => String(a.start_at).localeCompare(String(b.start_at))).map(g => [dt(g.start_at), dt(g.end_at), g.title || "", g.note || ""]) }
+  ];
+}
+const bkName = (ext, d) => "moi-dela-backup-" + (d ? isoLocal(new Date(d)) : todayISO()) + "." + ext;
+function bkFileXlsx(d) { d = d || bkSnap(); bkDownload(bkName("xlsx", d.exported), new Blob([xlsxBook(bkSheets(d))], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })); }
+function bkFileJson(d) { d = d || bkSnap(); bkDownload(bkName("json", d.exported), new Blob([JSON.stringify(d)], { type: "application/json" })); }
+
+async function bkSave(kind) {
+  const d = bkSnap(); if (!sb || !S.user || !d.tasks.length) return false;
+  const r = await sb.from("backups").insert({ user_id: S.user.id, kind: kind || "auto", n_tasks: d.tasks.length, data: d });
+  if (r.error) { ui.bkErr = r.error.message; return false; }
+  try { const old = await sb.from("backups").select("id").eq("user_id", S.user.id).order("created_at", { ascending: false }).range(BKKEEP, BKKEEP + 200); if (old.data && old.data.length) await sb.from("backups").delete().in("id", old.data.map(x => x.id)); } catch (e) {}
+  ui.bkList = undefined; return true;
+}
+async function bkList() {
+  if (!sb || !S.user) return;
+  let r; try { r = await sb.from("backups").select("id,created_at,kind,n_tasks").eq("user_id", S.user.id).order("created_at", { ascending: false }).limit(BKKEEP); } catch (e) { ui.bkList = []; return; }
+  ui.bkList = r.error ? [] : r.data; ui.bkErr = r.error ? r.error.message : ""; if (ui.settings) render();
+}
+async function bkGet(id) { const r = await sb.from("backups").select("data").eq("id", id).single(); return r.error ? null : r.data.data; }
+async function bkTick(force) {
+  if (!sb || !S.user || !lastLoad || ui.bkBusy) return;
+  const c = bkCfg(); if (!c.freq && !force) return;
+  if (!force && Date.now() - (ui.bkChecked || 0) < 600000) return; ui.bkChecked = Date.now(); ui.bkBusy = true;
+  try {
+    const r = await sb.from("backups").select("created_at").eq("user_id", S.user.id).order("created_at", { ascending: false }).limit(1);
+    if (r.error) { ui.bkErr = r.error.message; return; }
+    const last = r.data && r.data[0] ? Date.parse(r.data[0].created_at) : 0;
+    if (force || Date.now() - last >= c.freq * 36e5 - 60000) { if (await bkSave(force ? "manual" : "auto") && !force) toast("💾 Резервная копия сохранена"); }
+    if (c.file && !force && Date.now() - (c.lastFile || 0) >= c.freq * 36e5 - 60000) { bkFileXlsx(); bkSet({ lastFile: Date.now() }); }
+  } catch (e) { ui.bkErr = String(e.message || e); } finally { ui.bkBusy = false; }
+}
+async function bkRestore(id) {
+  const d = await bkGet(id); if (!d) { toast("Не удалось прочитать копию"); return; }
+  const n = (d.tasks || []).length;
+  if (!confirm("Восстановить из копии от " + dateLong(new Date(d.exported)) + " (" + n + " задач)?\n\nЗадачи и списки из копии вернутся (перезапишут одноимённые). Всё, что создано позже, останется. Перед этим я сохраню текущее состояние отдельной копией.")) return;
+  await bkSave("before-restore");
+  (d.lists || []).forEach(l => { S.lists[l.id] = l; mark("lists", l.id, "u"); });
+  (d.tasks || []).forEach(t => { S.tasks[t.id] = t; mark("tasks", t.id, "u"); });
+  (d.time_log || []).forEach(g => { if (S.time_log) { S.time_log[g.id] = g; mark("time_log", g.id, "u"); } });
+  toast("✅ Восстановлено: " + n + " задач"); render();
+}
+const bkKind = k => ({ auto: "авто", manual: "вручную", "before-restore": "перед восстановлением" }[k] || k);
+function bkHTML() {
+  if (ui.bkList === undefined && sb && S.user) { ui.bkList = null; bkList(); }
+  const c = bkCfg(), sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (String(cur) === String(o[0]) ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+  const L = ui.bkList || [];
+  return '<div class="lbl">Резервные копии</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + sel("s-bkf", c.freq, BKF) + sel("s-bkfile", c.file ? 1 : 0, [[0, "Файл на устройство: нет"], [1, "Файл на устройство: да (в «Загрузки»)"]]) + "</div>" +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="bkx">📊 Скачать Excel</button><button class="btn ghost" data-a="bkj">🧾 Скачать JSON</button><button class="btn ghost" data-a="bkn">📸 Копия сейчас</button></div>' +
+    '<div style="margin-top:8px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">Копии хранятся в вашей базе (последние ' + BKKEEP + '). Excel удобно читать, JSON нужен для полного восстановления.</div>' +
+    (ui.bkErr ? '<div style="color:#f87171;font-size:calc(12px*var(--z,1));margin-top:6px">Ошибка копий: ' + esc(ui.bkErr) + "</div>" : "") +
+    (L.length ? '<div style="margin-top:8px;border:1px solid var(--ln);border-radius:8px">' + L.slice(0, ui.bkAll ? BKKEEP : 5).map(b => { const d = new Date(b.created_at); return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ln);font-size:calc(13px*var(--z,1))"><span style="flex:1">' + isoLocal(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ' · ' + b.n_tasks + " задач · " + bkKind(b.kind) + '</span><button class="btn ghost" data-a="bkdl" data-id="' + b.id + '">Excel</button><button class="btn ghost" data-a="bkrs" data-id="' + b.id + '">Восстановить</button></div>'; }).join("") + (L.length > 5 && !ui.bkAll ? '<div class="pi" data-a="bkall" style="justify-content:center;color:var(--acc)">Показать все (' + L.length + ")</div>" : "") + "</div>" : "");
+}
+const bkActs = {
+  bkx() { bkFileXlsx(); toast("📊 Excel скачан"); }, bkj() { bkFileJson(); toast("🧾 JSON скачан"); },
+  async bkn() { showMsg("Сохраняю копию…", true); await bkTick(true); showMsg(ui.bkErr ? "Не вышло: " + ui.bkErr : "Копия сохранена ✓", !ui.bkErr); bkList(); },
+  async bkdl(a) { const d = await bkGet(a.dataset.id); if (d) bkFileXlsx(d); },
+  bkrs(a) { bkRestore(a.dataset.id); }, bkall() { ui.bkAll = true; render(); }
+};
+
 /* ===== p4: стили и HTML-шаблоны ===== */
 const CSS = `
 #app{position:relative;flex-direction:column;background:var(--bg);color:var(--tx);font-family:var(--ff);font-size:var(--fs)}
@@ -1828,7 +1935,7 @@ function settingsHTML() {
     '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>" +
     '<div class="lbl">Аккаунт и данные</div><div class="sub" style="margin-bottom:8px;color:var(--sub)">' + esc(S.user ? S.user.email : "") + " · задач: " + Object.keys(S.tasks).length + " · сборка " + BUILD + "</div>" +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button><button class="btn ghost" data-a="export">💾 Копия JSON</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>' +
-    '<div id="msg" style="margin-top:10px;min-height:18px;font-size:calc(13px*var(--z,1));white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
+    bkHTML() + '<div id="msg" style="margin-top:10px;min-height:18px;font-size:calc(13px*var(--z,1));white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
 }
 const msgHTML = () => '<div id="msg" style="margin-top:12px;min-height:20px;font-size:calc(13.5px*var(--z,1));color:' + (ui.msgOk ? "#16a34a" : "#dc2626") + '">' + esc(ui.msg) + "</div>";
 function authHTML() {
@@ -2112,10 +2219,12 @@ const changes = {
   "s-bg"(v) { TH.bg = v.trim(); saveTheme(); render(); },
   "s-font"(v) { TH.font = v; saveTheme(); render(); },
   "s-dens"(v) { TH.dens = v; saveTheme(); render(); },
+  "s-bkf"(v) { bkSet({ freq: +v }); toast(+v ? "Автокопии: " + (BKF.filter(x => x[0] === +v)[0] || [0, ""])[1].toLowerCase() : "Автокопии выключены"); },
+  "s-bkfile"(v) { bkSet({ file: v === "1" }); },
   "s-size"(v) { TH.size = v; saveTheme(); render(); }
 };
 
-Object.assign(acts, dayActs, dtpActs, uxActs); Object.assign(changes, dayChanges);
+Object.assign(acts, dayActs, dtpActs, uxActs, bkActs); Object.assign(changes, dayChanges);
 function init() {
   const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS; document.head.appendChild(st);
   const app = $("app");
@@ -2188,6 +2297,7 @@ function init() {
   let rz, lastW = innerWidth;   // перерисовка только при смене ШИРИНЫ: высота меняется от клавиатуры и вызывала «тряску» на экране входа
   window.addEventListener("resize", () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(renderSoon, 200); });
   setInterval(() => { if (!document.hidden && S.user && Date.now() - lastLoad > 300000) loadAll(); }, 60000);
+  setInterval(() => { if (!document.hidden) bkTick(); }, 120000); setTimeout(() => bkTick(), 25000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); }, 20000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
   window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); desktopInit(app);
