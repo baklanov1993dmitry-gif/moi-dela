@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 12:51">
+<meta name="build" content="04.10 13:19">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 12:51";
+const BUILD = "04.10 13:19";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -634,6 +634,21 @@ async function savePushSub(sub) {
   const j = sub.toJSON();
   return sb.from("push_subs").upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_id: S.user.id }, { onConflict: "endpoint" });
 }
+async function pushDiag() {
+  const L = [], np = "Notification" in window ? Notification.permission : "нет API";
+  L.push("Разрешение для сайта: " + np + (np === "denied" ? " ← ЗАБЛОКИРОВАНО (см. подсказку ниже)" : np === "default" ? " (ещё не спрашивали)" : ""));
+  L.push("Где открыто: " + location.host + (matchMedia("(display-mode: standalone)").matches ? ", установленное приложение" : ", вкладка Chrome"));
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    L.push("Service worker: " + (reg ? (reg.active ? "работает" : "ещё ставится") : "нет"));
+    const sub = reg && await reg.pushManager.getSubscription();
+    L.push("Подписка на пуши в браузере: " + (sub ? "есть" : "нет"));
+    if (sub && sb && S.user) { const r = await sb.from("push_subs").select("endpoint").eq("endpoint", sub.endpoint); L.push("Запись в базе: " + (r.error ? "ошибка — " + r.error.message : r.data && r.data.length ? "есть" : "НЕТ (нажмите «Включить пуши в фоне»)")); }
+    if (reg && np === "granted") { await reg.showNotification("Тест уведомления", { body: "Видите это в шторке? Значит, Android показывает уведомления Chrome.", icon: "icon-192.png", tag: "diag" }); L.push("Тестовое уведомление отправлено — посмотрите в шторке"); }
+  } catch (e) { L.push("Сбой: " + (e && e.message || e)); }
+  if (np === "denied") L.push("\nКак разблокировать: Chrome → ⋮ → Настройки → Настройки сайтов → Уведомления → найдите " + location.host + " → «Разрешить». Или значок ⓘ/замок слева от адреса → Разрешения → Уведомления → Разрешить.");
+  return L.join("\n");
+}
 async function enablePush() {
   const vk = (window.APP_CONFIG || {}).VAPID_PUBLIC;
   if (!vk) return "Ключ пушей не задан в config.js";
@@ -691,7 +706,7 @@ const curDay = () => ui.day || todayISO();
 const minOf = iso => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
 const dayOf = iso => isoLocal(new Date(iso));
 const isoAt = (day, m) => { const d = parseISO(day); d.setHours(0, m, 0, 0); return d.toISOString(); };
-const parseHM = v => { const m = /^(\d{1,2}):(\d{2})/.exec(v || ""); return m ? Math.min(1439, +m[1] * 60 + +m[2]) : null; };
+const parseHM = v => parseTimeText(v);
 const fmtDurM = m => m >= 60 ? Math.floor(m / 60) + " ч" + (m % 60 ? " " + (m % 60) + " м" : "") : m + " м";
 const DAYPX = () => isMobile() ? 56 : 46;
 let gFrom = 7, gTo = 20, noClickUntil = 0, drag = null;
@@ -795,7 +810,7 @@ function dsheetHTML() {
     const t = S.tasks[s.id]; if (!t) return "";
     const planned = !!t.plan_start && !s.isNew, pd = planned ? dayOf(t.plan_start) : day, st = s.min != null ? s.min : (planned ? minOf(t.plan_start) : defaultStart(day)), dur = t.est_minutes || 30;
     const durs = [15, 30, 45, 60, 90, 120, 180, 240, 300, 480]; if (durs.indexOf(dur) < 0) { durs.push(dur); durs.sort((a, b) => a - b); }
-    h = '<div class="dsh-t">' + esc(t.title) + '</div><form id="planform"><div class="dgrid3">' + lbl("Дата", '<input type="date" id="ds-date" value="' + pd + '">') + lbl("Начало", '<input type="time" id="ds-start" step="300" value="' + hm(st) + '">') +
+    h = '<div class="dsh-t">' + esc(t.title) + '</div><form id="planform"><div class="dgrid2d">' + lbl("Дата", '<input type="date" id="ds-date" value="' + pd + '">') + lbl("Начало", tfield("ds-start", hm(st))) +
       lbl("Длит.", '<select id="ds-dur">' + durs.map(m => '<option value="' + m + '"' + (m === dur ? " selected" : "") + ">" + fmtDurM(m) + "</option>").join("") + "</select>") + "</div>" +
       '<div class="drow2"><button type="submit" class="btn">Сохранить</button>' + (planned ? '<button type="button" class="btn ghost" data-a="plan2log">' + (t.done ? "В факт" : "✓ Сделал(а) → в факт") + '</button>' : "") + "</div>" +
       '<div class="drow2">' + (planned ? '<button type="button" class="btn ghost" data-a="dunplan">Снять с плана</button>' : "") + '<button type="button" class="btn ghost" data-a="dopen">Открыть задачу</button>' + close + "</div></form>";
@@ -807,7 +822,7 @@ function dsheetHTML() {
     Object.values(S.tasks).forEach(t => { if (!t.done && t.title && !seen.has(t.title) && titles.length < 90) { seen.add(t.title); titles.push(t.title); } });
     h = '<div class="dsh-t">' + (l ? "Запись в факте" : "Записать, что делал") + '</div><form id="logform"><input id="ds-title" class="inp" list="ds-dl" autocomplete="off" placeholder="Дело / операция" value="' + esc(l ? l.title : "") + '"><datalist id="ds-dl">' + titles.map(x => '<option value="' + esc(x) + '">').join("") + "</datalist>" +
       '<textarea id="ds-note" class="inp" rows="3" placeholder="Пояснение: что именно сделано" style="margin-top:8px">' + esc(l ? l.note : "") + "</textarea>" +
-      '<div class="dgrid3">' + lbl("Дата", '<input type="date" id="ds-date" value="' + ld + '">') + lbl("С", '<input type="time" id="ds-start" step="300" value="' + hm(st) + '">') + lbl("До", '<input type="time" id="ds-end" step="300" value="' + hm(en) + '">') + "</div>" +
+      '<div class="dgrid2d">' + lbl("Дата", '<input type="date" id="ds-date" value="' + ld + '">') + lbl("С", tfield("ds-start", hm(st))) + lbl("До", tfield("ds-end", hm(en))) + "</div>" +
       '<div class="drow2"><button type="submit" class="btn">Сохранить</button>' + (l ? '<button type="button" class="btn ghost" data-a="dlogdel" style="color:#d13438">Удалить</button>' : "") + close + "</div></form>";
   } else if (s.t === "rep") {
     const n = Object.values(S.time_log).filter(x => x.start_at && dayOf(x.start_at) >= s.from && dayOf(x.start_at) <= s.to).length;
@@ -1088,6 +1103,7 @@ const dayCSS = `
 .dghost{position:fixed;z-index:200;pointer-events:none;padding:6px 10px;border-radius:7px;background:var(--acc);color:#fff;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dsh{width:min(480px,100%)} .dsh-t{font-weight:700;font-size:1.1em;margin-bottom:10px}
 .dl{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--sub);margin-bottom:8px} .dl input,.dl select{width:100%;min-width:0;box-sizing:border-box;height:36px;border:1px solid var(--ln);border-radius:6px;background:var(--bg);color:var(--tx);padding:0 8px;font-size:14px}
+.dgrid2d{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px} .dgrid2d>*{min-width:0} .dgrid2d>label:first-child{grid-column:1/-1}
 .dgrid3{display:grid;grid-template-columns:1.4fr 1.1fr .9fr;gap:8px;margin-top:8px} .dgrid3>*{min-width:0}
 .drow2{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px} .drow2 .btn{flex:1;min-width:110px}
 .dlist{max-height:46vh;overflow:auto;margin-top:8px}
@@ -1097,6 +1113,140 @@ const dayCSS = `
   .dayhead{padding:2px 4px;flex-wrap:nowrap;gap:2px} .dayhead .tl{display:none} .dayhead .tool{padding:6px 7px;min-width:0} .dlab{font-size:16px;white-space:nowrap;padding:4px 4px} .dsum{padding:0 14px 4px}
   .dayscroll{padding:0 6px 90px 8px} .lhd .ax{width:38px} .hlab{width:34px;font-size:10px} .lanes{left:38px}
 }
+`;
+
+/* ===== p7: свой выбор даты и времени (календарь-сетка, быстрые кнопки, ввод «18:30», шаги ±15 мин) ===== */
+const MONN = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+const TCHIPS = ["08:00", "09:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"];
+const clampMin = m => ((m % 1440) + 1440) % 1440;
+// «930», «9.30», «9:30», «9» -> минуты от полуночи (или null)
+function parseTimeText(s) {
+  s = String(s || "").trim().replace(/[.,\s-]+/g, ":");
+  let h, m, x;
+  if ((x = /^(\d{1,2}):(\d{1,2})/.exec(s))) { h = +x[1]; m = +x[2]; }
+  else if ((x = /^(\d{3,4})$/.exec(s))) { m = +x[1].slice(-2); h = +x[1].slice(0, -2); }
+  else if ((x = /^(\d{1,2})$/.exec(s))) { h = +x[1]; m = 0; }
+  else return null;
+  return h > 23 || m > 59 ? null : h * 60 + m;
+}
+const roundUp = (min, step) => Math.ceil(min / step) * step;
+
+// заготовка при открытии окна: для «Срок» — текущий срок; для «Напомнить» — текущее напоминание или ближайшее разумное время
+function dtpInit(p, t) {
+  const ref = { ref: p, mode: p.type };
+  const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+  let date = null, time = null;
+  if (p.type === "due") date = t && t.due || null;
+  else if (t && t.remind_at) { const d = new Date(t.remind_at); date = isoLocal(d); time = hm(d.getHours() * 60 + d.getMinutes()); }
+  else { let m = roundUp(nowMin + 60, 30); date = today; if (m >= 1440 - 30) { date = addDays(today, 1); m = 9 * 60; } time = hm(m); }
+  const base = parseISO(date || today);
+  ref.date = date; ref.time = time; ref.y = base.getFullYear(); ref.m = base.getMonth();
+  return ref;
+}
+function calHTML(sel, y, m) {
+  const off = (new Date(y, m, 1).getDay() + 6) % 7, dim = new Date(y, m + 1, 0).getDate();
+  let g = ""; for (let i = 0; i < off; i++) g += "<span></span>";
+  for (let d = 1; d <= dim; d++) {
+    const iso = y + "-" + pad(m + 1) + "-" + pad(d);
+    g += '<button type="button" class="cal-d' + (iso === today ? " today" : "") + (iso === sel ? " sel" : "") + (iso < today ? " past" : "") + '" data-a="calday" data-v="' + iso + '">' + d + "</button>";
+  }
+  return '<div class="cal-h"><button type="button" class="cal-n" data-a="calnav" data-d="-1" aria-label="Назад">‹</button><div class="cal-t">' + MONN[m] + " " + y + '</div><button type="button" class="cal-n" data-a="calnav" data-d="1" aria-label="Вперёд">›</button></div>' +
+    '<div class="cal-w"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div><div class="cal-g">' + g + "</div>";
+}
+function dtpHTML(p, t) {
+  if (!ui.dtp || ui.dtp.ref !== p) ui.dtp = dtpInit(p, t);
+  const D = ui.dtp, rem = p.type === "remind", id = esc(p.id || "");
+  const q = (v, label) => '<button type="button" class="dq' + (D.date === dtpDay(v) ? " on" : "") + '" data-a="dday" data-v="' + v + '">' + label + "</button>";
+  const d3 = parseISO(nextMonday());
+  let h = '<div class="dtp-t">' + (rem ? "Напомнить" : "Срок выполнения") + "</div>" +
+    '<div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + "</div>" +
+    calHTML(D.date, D.y, D.m);
+  if (rem) {
+    h += '<form id="dtpform" class="dtp-time"><div class="dtp-tl">Время</div><div class="tfld big"><button type="button" class="tb" data-a="dstep" data-d="-60">−1ч</button><button type="button" class="tb" data-a="dstep" data-d="-15">−15</button>' +
+      '<input id="dtp-t" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="чч:мм" value="' + esc(D.time || "") + '"><button type="button" class="tb" data-a="dstep" data-d="15">+15</button><button type="button" class="tb" data-a="dstep" data-d="60">+1ч</button></div>' +
+      '<div class="tchips">' + TCHIPS.map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
+      '<div class="dtp-tl">Или через</div><div class="dqrow"><button type="button" class="dq" data-a="drel" data-v="15">15 мин</button><button type="button" class="dq" data-a="drel" data-v="60">1 час</button><button type="button" class="dq" data-a="drel" data-v="180">3 часа</button></div>' +
+      '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
+  } else {
+    h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
+  }
+  return h;
+}
+function dtpSum() { const D = ui.dtp, b = parseISO(D.date), mm = parseTimeText(D.time); return WDS[b.getDay()] + ", " + b.getDate() + " " + MONG[b.getMonth()] + (mm != null ? " в " + hm(mm) : ""); }
+const dtpDay = v => v === "today" ? today : v === "tom" ? addDays(today, 1) : v === "week" ? nextMonday() : v;
+function dtpIso() {
+  const D = ui.dtp; if (!D || !D.date) return null;
+  const mm = parseTimeText(D.time); if (mm == null) return null;
+  const d = parseISO(D.date); d.setHours(Math.floor(mm / 60), mm % 60, 0, 0); return d.toISOString();
+}
+const dtpDone = () => { ui.dtp = null; closePop(); render(); if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); } };
+const dtpId = () => ui.pop && ui.pop.id;
+const dtpActs = {
+  calnav(a) { const D = ui.dtp; if (!D) return; let m = D.m + (+a.dataset.d), y = D.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } D.m = m; D.y = y; keepTime(); render(); },
+  calday(a) {
+    const D = ui.dtp; if (!D) return; const iso = a.dataset.v;
+    if (D.mode === "due") { setDue(dtpId(), iso); return dtpDone(); }
+    D.date = iso; keepTime(); render();
+  },
+  dday(a) {
+    const D = ui.dtp; if (!D) return; const iso = dtpDay(a.dataset.v);
+    if (D.mode === "due") { setDue(dtpId(), iso); return dtpDone(); }
+    D.date = iso; const b = parseISO(iso); D.y = b.getFullYear(); D.m = b.getMonth(); keepTime(); render();
+  },
+  dtime(a) { if (ui.dtp) { ui.dtp.time = a.dataset.v; render(); } },
+  dstep(a) {
+    const D = ui.dtp; if (!D) return; const cur = parseTimeText(($("dtp-t") || {}).value); const base = cur != null ? cur : (parseTimeText(D.time) != null ? parseTimeText(D.time) : 9 * 60);
+    D.time = hm(clampMin(base + (+a.dataset.d))); render();
+  },
+  drel(a) {
+    const x = new Date(Date.now() + (+a.dataset.v) * 60000); x.setSeconds(0, 0);
+    patchTask(dtpId(), { remind_at: x.toISOString() }); askNotify(); dtpDone();
+  },
+  dok() {
+    const D = ui.dtp; if (!D) return; keepTime();
+    if (!D.date) return toast("Выберите день в календаре");
+    if (parseTimeText(D.time) == null) return toast("Время нужно в виде 18:30 или 1830");
+    const iso = dtpIso();
+    if (Date.parse(iso) < Date.now() - 60000) return toast("Это время уже прошло — выберите позже");
+    patchTask(dtpId(), { remind_at: iso }); askNotify(); dtpDone();
+  },
+  dclear() { const D = ui.dtp; if (!D) return; if (D.mode === "due") setDue(dtpId(), null); else patchTask(dtpId(), { remind_at: null }); dtpDone(); },
+  dtpclose() { ui.dtp = null; closePop(); render(); },
+  // шаги ±15 минут у полей времени в «Дне»
+  tstep(a) {
+    const el = $(a.dataset.t); if (!el) return; const cur = parseTimeText(el.value);
+    el.value = hm(clampMin((cur != null ? cur : 9 * 60) + (+a.dataset.d)));
+  }
+};
+function keepTime() { const e = $("dtp-t"); if (e && ui.dtp) { const v = e.value.trim(); if (v) ui.dtp.time = v; } }   // не терять набранное время при перерисовке
+const tfield = (id, v) => '<div class="tfld"><button type="button" class="tb" data-a="tstep" data-t="' + id + '" data-d="-15">−</button><input id="' + id + '" type="text" inputmode="numeric" autocomplete="off" maxlength="5" value="' + esc(v) + '"><button type="button" class="tb" data-a="tstep" data-t="' + id + '" data-d="15">+</button></div>';
+
+const dtpCSS = `
+.pop.dtp{left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%);width:min(350px,94vw);max-width:none;max-height:92vh;padding:14px;border-radius:16px}
+.dtpb{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.4);z-index:59}
+@media(max-width:760px){.pop.dtp{left:0!important;right:0!important;top:auto!important;bottom:0!important;transform:none;width:100%;border-radius:18px 18px 0 0;max-height:90vh;padding:14px 14px max(14px,env(safe-area-inset-bottom))}}
+.dtp-t{font-weight:700;font-size:1.1em;margin-bottom:10px}
+.dqrow,.tchips{display:flex;gap:6px;flex-wrap:wrap}
+.tchips{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px}
+.dq{padding:9px 10px;border-radius:10px;background:var(--inp);border:1px solid var(--ln);font-size:13.5px;flex:1;text-align:center;white-space:nowrap}
+.dq.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.cal-h{display:flex;align-items:center;margin:12px 0 4px}.cal-t{flex:1;text-align:center;font-weight:600}
+.cal-n{width:40px;height:36px;border-radius:10px;font-size:22px;line-height:1;color:var(--tx)}.cal-n:active{background:var(--inp)}
+.cal-w,.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal-w span{font-size:12px;color:var(--sub);padding:4px 0}
+.cal-d{height:38px;border-radius:50%;font-size:14.5px;color:var(--tx)}
+.cal-d.past{opacity:.45}.cal-d.today{border:1.5px solid var(--acc);font-weight:700}
+.cal-d.sel{background:var(--acc);color:#fff;opacity:1;border-color:var(--acc)}
+.cal-d:active{background:var(--inp)}
+.dtp-time{margin-top:10px;border-top:1px solid var(--ln);padding-top:10px}
+.dtp-tl{font-size:12.5px;color:var(--sub);margin:8px 0 4px}
+.tfld{display:flex;align-items:stretch;gap:4px}
+.tfld input{flex:1;min-width:0;text-align:center;background:var(--inp);color:var(--tx);border:1px solid var(--ln);border-radius:10px;font:inherit;font-size:15px;padding:8px 2px}
+.tfld.big input{font-size:22px;font-weight:700;letter-spacing:.5px}
+.tb{min-width:38px;padding:0 6px;border-radius:10px;background:var(--inp);border:1px solid var(--ln);font-size:13px;color:var(--tx)}
+.tb:active{background:var(--acc);color:#fff}
+.dtp-sum{margin:12px 0 8px;font-weight:600;text-align:center;color:var(--acc)}
+.dtp-btns{display:flex;gap:8px}
 `;
 
 /* ===== p4: стили и HTML-шаблоны ===== */
@@ -1417,13 +1567,7 @@ function popHTML() {
         (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + it("sync", "Синхронизировать") + it("settings", "Настройки");
       break;
     }
-    case "due": h = dueQuick("due") + '<div class="psep"></div><div class="ptitle">Выберите дату</div><div class="pform"><input type="date" id="p-date" data-id="' + esc(p.id) + '" value="' + esc((t && t.due) || "") + '"></div>' + (t && t.due ? '<div class="psep"></div>' + it("due", "Удалить срок", idA + ' data-v="clear"', "danger") : ""); break;
-    case "remind": {
-      const nh = new Date().getHours();
-      h = (nh < 20 ? it("rem", "Позже сегодня", idA + ' data-v="later"', "", pad(Math.min(nh + 3, 23)) + ":00") : "") + it("rem", "Завтра", idA + ' data-v="tom"', "", "09:00") + it("rem", "Следующая неделя", idA + ' data-v="week"', "", "пн, 09:00") +
-        '<div class="psep"></div><div class="ptitle">Дата и время</div><div class="pform"><input type="datetime-local" id="p-dt" data-id="' + esc(p.id) + '" value="' + (t && t.remind_at ? toLocalInput(t.remind_at) : "") + '"></div>' + (t && t.remind_at ? '<div class="psep"></div>' + it("rem", "Удалить напоминание", idA + ' data-v="clear"', "danger") : "");
-      break;
-    }
+    case "due": case "remind": h = dtpHTML(p, t); break;
     case "repeat": {
       const cur = t && t.repeat_rule;
       h = [["d:1", "Ежедневно"], ["wd", "По рабочим дням"], ["w:1", "Еженедельно"], ["m:1", "Ежемесячно"], ["y:1", "Ежегодно"]].map(x => it("rep", x[1], idA + ' data-v="' + x[0] + '"', cur === x[0] ? "cur" : "")).join("") +
@@ -1447,7 +1591,8 @@ function popHTML() {
     case "help": h = '<div class="ptitle">Умный ввод</div><div class="ptext"><b>завтра, послезавтра, сегодня</b><br><b>в пятницу</b>, <b>через 3 дня</b>, <b>25.12</b><br><b>в 18:00</b> — напоминание<br><b>каждый день</b>, <b>по будням</b>, <b>ежемесячно</b><br><b>~30м</b>, <b>1.5ч</b> — сколько займёт<br><b>#зал</b> — в список (или категория)<br><b>!</b> — важное</div><div class="psep"></div><div class="ptitle">Клавиши</div><div class="ptext">Enter — добавить · Esc — закрыть панель<br>ПКМ по задаче — быстрое меню<br>Перетащите задачу на список в левой панели</div>'; break;
   }
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
-  return '<div class="pop" id="pop" style="left:' + x + "px;top:" + y + 'px">' + h + "</div>";
+  const dt = p.type === "due" || p.type === "remind";
+  return (dt ? '<div class="dtpb"></div>' : "") + '<div class="pop' + (dt ? " dtp" : "") + '" id="pop" style="left:' + x + "px;top:" + y + 'px">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true;
@@ -1462,8 +1607,8 @@ function settingsHTML() {
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
     '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>" +
     '<div class="lbl">Аккаунт и данные</div><div class="sub" style="margin-bottom:8px;color:var(--sub)">' + esc(S.user ? S.user.email : "") + " · задач: " + Object.keys(S.tasks).length + " · сборка " + BUILD + "</div>" +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="export">💾 Копия JSON</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>' +
-    '<div id="msg" style="margin-top:10px;min-height:18px;font-size:13px;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button><button class="btn ghost" data-a="export">💾 Копия JSON</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>' +
+    '<div id="msg" style="margin-top:10px;min-height:18px;font-size:13px;white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
 }
 const msgHTML = () => '<div id="msg" style="margin-top:12px;min-height:20px;font-size:13.5px;color:' + (ui.msgOk ? "#16a34a" : "#dc2626") + '">' + esc(ui.msg) + "</div>";
 function authHTML() {
@@ -1612,7 +1757,7 @@ function onBack() {
 }
 
 /* ----- действия по клику ----- */
-const closePop = () => { ui.pop = null; };
+const closePop = () => { ui.pop = null; ui.dtp = null; };
 const goView = v => { view = v; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
 const patchTask = (id, o) => { if (id === "__qa" && ui.qa) Object.assign(ui.qa, o); else upd(id, o); };
 const setDue = (id, v) => {
@@ -1661,6 +1806,7 @@ const acts = {
   export() { closePop(); exportJson(); render(); }, ping() { ping(); }, logout() { closePop(); logout(); },
   icsfile() { if (selId && exportIcs(selId)) toast("📅 Файл скачан — откройте его в Календаре. Если событие уже было, оно обновится", { ms: 6000 }); },
   ics() { const u = selId && gcalUrl(S.tasks[selId]); if (u) window.open(u, "_blank", "noopener"); },
+  async pushdiag() { showMsg("Проверяю…", true); showMsg(await pushDiag(), true); },
   async pushtog() { showMsg("Подождите…", true); const was = pushOn(), r = was ? await disablePush() : await enablePush(); showMsg(r || (was ? "Пуши выключены" : "Пуши включены ✓ напоминания придут, даже когда приложение закрыто"), !r); render(); },
   notify() { askNotify(); showMsg("Если браузер спросил разрешение — нажмите «Разрешить»", true); },
   login() { doAuth("login"); }, signup() { doAuth("signup"); }, savecfg() { saveCfg(); },
@@ -1747,9 +1893,9 @@ const changes = {
   "s-dens"(v) { TH.dens = v; saveTheme(); render(); }
 };
 
-Object.assign(acts, dayActs); Object.assign(changes, dayChanges);
+Object.assign(acts, dayActs, dtpActs); Object.assign(changes, dayChanges);
 function init() {
-  const st = document.createElement("style"); st.textContent = CSS + dayCSS; document.head.appendChild(st);
+  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS; document.head.appendChild(st);
   const app = $("app");
   app.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"), was = ui.pop;
@@ -1763,6 +1909,7 @@ function init() {
     else if (id === "qaform") submitQA();
     else if (id === "stepform") { const inp = $("d-step"), v = inp.value.trim(), t = S.tasks[selId]; if (v && t) { upd(t.id, { steps: (t.steps || []).concat([{ t: v, d: false }]) }); inp.value = ""; render(); const n = $("d-step"); if (n) n.focus(); } }
     else if (id === "authform") doAuth("login");
+    else if (id === "dtpform") dtpActs.dok();
     else daySubmit(id);
   });
   app.addEventListener("contextmenu", e => {
@@ -1840,7 +1987,7 @@ async function checkBuild() {
     location.reload();
   } catch (e) {}
 }
-if (CFG0.TEST) window.__t = { localParse, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog };
+if (CFG0.TEST) window.__t = { localParse, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog };
 init();
 
 })();
