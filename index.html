@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 15:24">
+<meta name="build" content="04.10 15:28">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 15:24";
+const BUILD = "04.10 15:28";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1323,7 +1323,7 @@ function swipeInit(app) {
   app.addEventListener("touchcancel", reset);
   app.addEventListener("click", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r && r.__sw && Date.now() - r.__sw < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
 }
-const uxCSS = `
+const uxCSS0 = `
 .mi.cat{color:hsl(var(--ch) 65% var(--catl,36%));background:hsl(var(--ch) 70% 50% / .14);padding:1px 7px;border-radius:10px;font-weight:600}
 .mi.cat::before{display:none!important}
 .mi.cat + .mi::before,.mi + .mi.cat::before{content:""!important;margin:0!important}
@@ -1338,6 +1338,133 @@ const uxCSS = `
 .taskrow.swr::before{content:"✓ Готово";left:14px;color:#107c10}
 .taskrow.swl::before{content:"Завтра →";right:14px;color:#c25e00}
 `;
+
+// ---- массовый выбор на компьютере: Ctrl/Shift+клик, Ctrl+A, ПКМ → сдвиг на N дней, отмена Ctrl+Z ----
+ui.multi = ui.multi || {}; ui.mAnchor = null; ui.undo = null;
+const mIds = () => Object.keys(ui.multi).filter(id => S.tasks[id]);
+const visIds = () => Array.prototype.map.call(document.querySelectorAll("#main .taskrow"), r => r.dataset.id);
+const mClear = () => { ui.multi = {}; ui.mAnchor = null; };
+function mSnap(ids) { ui.undo = ids.map(id => JSON.parse(JSON.stringify(S.tasks[id]))); }
+function mUndo() {
+  if (!ui.undo || !ui.undo.length) { toast("Нечего отменять"); return; }
+  const n = ui.undo.length; ui.undo.forEach(o => { S.tasks[o.id] = o; mark("tasks", o.id, "u"); }); ui.undo = null;
+  toast("Отменено (" + n + ")"); render();
+}
+function addWork(iso, n) {
+  const d = parseISO(iso), st = n < 0 ? -1 : 1; let k = Math.abs(n);
+  while (k > 0) { d.setDate(d.getDate() + st); const w = d.getDay(); if (w !== 0 && w !== 6) k--; }
+  return isoLocal(d);
+}
+function newDueFor(t, n, unit) {
+  const base = t.due || today;
+  return unit === "wd" ? addWork(base, n) : addDays(base, unit === "w" ? n * 7 : n);
+}
+function setDueKeepRemind(t, nd) {
+  const patch = { due: nd };
+  if (nd && t.remind_at) { const r = new Date(t.remind_at), x = parseISO(nd); x.setHours(r.getHours(), r.getMinutes(), 0, 0); patch.remind_at = x.toISOString(); }
+  upd(t.id, patch);
+}
+function mApply(k, a) {
+  const ids = mIds(); if (!ids.length) return;
+  const T = ids.map(id => S.tasks[id]), N = ids.length, names = { today: "сегодня", tom: "завтра" };
+  const noun = N + " " + (N % 10 === 1 && N % 100 !== 11 ? "задача" : (N % 10 >= 2 && N % 10 <= 4 && (N % 100 < 10 || N % 100 >= 20)) ? "задачи" : "задач");
+  mSnap(ids);
+  if (k === "today" || k === "tom" || k === "week") {
+    const nd = k === "today" ? today : k === "tom" ? addDays(today, 1) : nextMonday();
+    T.forEach(t => setDueKeepRemind(t, nd)); toast("Срок: " + dateLong(parseISO(nd)) + " · " + noun + " (Ctrl+Z — отмена)");
+  } else if (k === "shift" || k === "shiftq") {
+    let n, u;
+    if (k === "shiftq") { n = +a.dataset.n; u = a.dataset.u || "d"; } else { n = parseInt(($("m-n") || {}).value, 10); u = ($("m-u") || {}).value || "d"; }
+    if (!n) { toast("Укажите число дней, например 3 или -2"); ui.undo = null; return; }
+    T.forEach(t => setDueKeepRemind(t, newDueFor(t, n, u)));
+    toast("Сдвинуто на " + (n > 0 ? "+" : "") + n + " " + (u === "w" ? "нед." : u === "wd" ? "раб. дн." : "дн.") + " · " + noun + " (Ctrl+Z — отмена)");
+  } else if (k === "date") {
+    const v = ($("m-date") || {}).value; if (!v) { ui.undo = null; return; }
+    T.forEach(t => setDueKeepRemind(t, v)); toast("Срок: " + dateLong(parseISO(v)) + " · " + noun);
+  } else if (k === "clear") { T.forEach(t => upd(t.id, { due: null })); toast("Срок убран · " + noun);
+  } else if (k === "done") { T.forEach(t => { if (!t.done) toggleDone(t.id); }); toast("Выполнено: " + noun + " (Ctrl+Z — отмена)"); mClear();
+  } else if (k === "myday") { const all = T.every(t => inMyDay(t)); T.forEach(t => setMyDay(t.id, !all)); toast(all ? "Убрано из «Мой день»" : "Добавлено в «Мой день»");
+  } else if (k === "star") { const all = T.every(t => t.starred); T.forEach(t => upd(t.id, { starred: !all })); toast(all ? "Отметка снята" : "Отмечено важным");
+  } else if (k === "tolist") { const lid = a.dataset.v; T.forEach(t => upd(t.id, { list_id: lid })); toast("Перенесено в «" + S.lists[lid].name + "» · " + noun); mClear();
+  } else if (k === "del") {
+    if (!confirm("Удалить " + noun + "?")) { ui.undo = null; return; }
+    ids.forEach(deleteTask); toast("Удалено: " + noun + " (Ctrl+Z — вернуть)"); mClear();
+  }
+  closePop(); render();
+}
+Object.assign(uxActs, {
+  mact(a) { mApply(a.dataset.k, a); },
+  mpop(a) { const r = a.getBoundingClientRect(); ui.pop = { type: a.dataset.t, id: "", x: r.left, y: Math.max(10, r.top - 340) }; render(); },
+  mclear() { mClear(); render(); },
+  mpick(a) { ui.pop = { type: "mtolist", id: "", x: ui.pop ? ui.pop.x : 200, y: ui.pop ? ui.pop.y : 200 }; render(); }
+});
+function multiBarHTML() {
+  const n = mIds().length; if (!n || isMobile()) return "";
+  return '<div class="mbar"><b>Выбрано: ' + n + '</b><button data-a="mact" data-k="today">Сегодня</button><button data-a="mact" data-k="tom">Завтра</button>' +
+    '<button data-a="mpop" data-t="mshift">Сдвинуть…</button><button data-a="mact" data-k="done">Выполнено</button><button data-a="mpop" data-t="mctx">Ещё…</button><button class="mx" data-a="mclear" title="Снять выделение (Esc)">✕</button></div>';
+}
+function multiPopHTML(type, mi) {
+  const d1 = parseISO(today), d2 = parseISO(addDays(today, 1)), d3 = parseISO(nextMonday()), n = mIds().length;
+  const item = (k, label, extra, cls, r) => mi(k, label, extra, cls, r);
+  if (type === "mctx") return '<div class="ptitle">Выбрано задач: ' + n + "</div>" +
+    item("today", "Сегодня", "", "", WDS[d1.getDay()]) + item("tom", "Завтра", "", "", WDS[d2.getDay()]) + item("week", "Следующая неделя", "", "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) +
+    '<div class="pi" data-a="mpop" data-t="mshift">Сдвинуть на N дней / выбрать дату…</div>' + item("clear", "Убрать срок") + '<div class="psep"></div>' +
+    item("myday", "В «Мой день» / убрать") + item("star", "Важно: поставить / снять") + '<div class="pi" data-a="mpick">Переместить в список…</div>' +
+    item("done", "Отметить выполненными") + '<div class="psep"></div>' + item("del", "Удалить", "", "danger");
+  if (type === "mtolist") return '<div class="ptitle">Переместить в список (' + n + ")</div>" + listsArr().map(l => item("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), 'data-v="' + l.id + '"')).join("");
+  const q = (n2, u, lab) => '<button type="button" class="dq" data-a="mact" data-k="shiftq" data-n="' + n2 + '" data-u="' + u + '">' + lab + "</button>";
+  return '<div class="ptitle">Сдвинуть срок · ' + n + ' шт.</div><div class="mrow"><input id="m-n" type="number" step="1" value="1" inputmode="numeric"><select id="m-u"><option value="d">дней</option><option value="wd">раб. дней</option><option value="w">недель</option></select><button type="button" class="dq on" data-a="mact" data-k="shift">Сдвинуть</button></div>' +
+    '<div class="mrow" style="flex-wrap:wrap">' + q(-1, "d", "−1 д") + q(1, "d", "+1 д") + q(2, "d", "+2 д") + q(3, "d", "+3 д") + q(1, "w", "+1 нед") + q(2, "w", "+2 нед") + q(30, "d", "+30 д") + "</div>" +
+    '<div class="ptitle">Или точная дата</div><div class="mrow"><input id="m-date" type="date" value="' + today + '"><button type="button" class="dq on" data-a="mact" data-k="date">OK</button></div><div class="ptext" style="color:var(--sub);font-size:12px">Число может быть отрицательным: −2 вернёт срок на два дня назад. Время напоминаний сохраняется.</div>';
+}
+function desktopInit(app) {
+  app.addEventListener("mousedown", e => { if (e.shiftKey && !isMobile() && e.target.closest && e.target.closest(".taskrow")) e.preventDefault(); }, true);
+  app.addEventListener("click", e => {
+    if (isMobile()) return;
+    const r = e.target.closest && e.target.closest(".taskrow"); if (!r || e.target.closest(".rad,.star,button")) return;
+    const id = r.dataset.id;
+    if (e.ctrlKey || e.metaKey) {
+      e.stopPropagation(); e.preventDefault();
+      if (!mIds().length && selId && selId !== id) { ui.multi[selId] = 1; }
+      if (ui.multi[id]) delete ui.multi[id]; else ui.multi[id] = 1; ui.mAnchor = id; selId = null; render(); return;
+    }
+    if (e.shiftKey) {
+      e.stopPropagation(); e.preventDefault();
+      const v = visIds(), a = ui.mAnchor && v.indexOf(ui.mAnchor) >= 0 ? ui.mAnchor : (selId && v.indexOf(selId) >= 0 ? selId : id);
+      let i = v.indexOf(a), j = v.indexOf(id); if (i > j) { const x = i; i = j; j = x; }
+      for (let k = i; k <= j; k++) ui.multi[v[k]] = 1; ui.mAnchor = a; selId = null; render(); return;
+    }
+    if (mIds().length) { mClear(); }
+  }, true);
+  app.addEventListener("contextmenu", e => {
+    if (isMobile()) return;
+    const r = e.target.closest && e.target.closest(".taskrow"); if (!r) return;
+    if (ui.multi[r.dataset.id] && mIds().length > 1) { e.preventDefault(); e.stopPropagation(); ui.pop = { type: "mctx", id: "", x: e.clientX, y: e.clientY }; render(); }
+    else if (mIds().length) { mClear(); }
+  }, true);
+  document.addEventListener("keydown", e => {
+    if (isMobile()) return;
+    const tg = e.target, tag = tg && tg.tagName, typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (tg && tg.isContentEditable);
+    if (e.key === "Enter" && tg && tg.id === "m-n") { e.preventDefault(); mApply("shift", { dataset: {} }); return; }
+    if (typing || ui.settings || ui.qa) return;
+    const k = e.key.toLowerCase(), c = e.ctrlKey || e.metaKey;
+    if (c && (k === "a" || k === "ф")) { const v = visIds(); if (v.length) { e.preventDefault(); v.forEach(id => { ui.multi[id] = 1; }); selId = null; render(); } }
+    else if (c && (k === "z" || k === "я")) { e.preventDefault(); mUndo(); }
+    else if (e.key === "Escape" && mIds().length && !ui.pop) { e.stopPropagation(); mClear(); render(); }
+    else if (e.key === "Delete" && mIds().length && !ui.pop) { e.preventDefault(); mApply("del", { dataset: {} }); }
+  }, true);
+}
+const mCSS = `
+.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
+.mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
+.mbar button{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 12px;cursor:pointer;font-size:inherit}
+.mbar button:hover{background:var(--hov)} .mbar .mx{color:var(--sub);padding:6px 10px}
+.mrow{display:flex;gap:6px;align-items:center;padding:6px 14px}
+.mrow input,.mrow select{height:32px;border:1px solid var(--ln);border-radius:6px;background:var(--card);color:var(--tx);padding:0 8px;font-size:calc(14px*var(--z,1))} .mrow input[type=number]{width:70px}
+@media (max-width:760px){.mbar{display:none}}
+`;
+
+const uxCSS = uxCSS0 + mCSS;
 
 /* ===== p4: стили и HTML-шаблоны ===== */
 const CSS = `
@@ -1577,7 +1704,7 @@ function metaHTML(t, showList) {
   return m.length ? '<div class="meta">' + m.join("") + "</div>" : "";
 }
 function rowHTML(t, showList) {
-  return '<div class="taskrow ' + (selId === t.id ? "sel " : "") + (t.done ? "done" : "") + '" data-a="sel" data-id="' + t.id + '" draggable="true">' +
+  return '<div class="taskrow ' + (selId === t.id ? "sel " : "") + (ui.multi && ui.multi[t.id] ? "msel " : "") + (t.done ? "done" : "") + '" data-a="sel" data-id="' + t.id + '" draggable="true">' +
     '<div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + t.id + '">' + (t.done ? ic("check", 13) : "") + "</div>" +
     '<div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + metaHTML(t, showList) + "</div>" +
     '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
@@ -1615,7 +1742,7 @@ function mainHTML(items, done, vi) {
       if (done.length > ui.doneLimit) h += '<button class="btn ghost" data-a="moredone" style="width:100%;margin:6px 0">Показать ещё</button>';
     }
   }
-  return h + "</div>" + (isMobile() && view !== "search" && !ui.left && !selId ? '<button class="fab" data-a="qaopen" title="Добавить задачу">' + ic("plus", 28) + "</button>" : "") + "</div>";
+  return h + multiBarHTML() + "</div>" + (isMobile() && view !== "search" && !ui.left && !selId ? '<button class="fab" data-a="qaopen" title="Добавить задачу">' + ic("plus", 28) + "</button>" : "") + "</div>";
 }
 const fmtPlan = iso => { const d = new Date(iso); return d.getDate() + " " + MONS[d.getMonth()] + ", " + hm(d.getHours() * 60 + d.getMinutes()); };
 let lastDetail = null, lastSettings = false;
@@ -1650,7 +1777,8 @@ function popHTML() {
     const d1 = parseISO(today), d2 = parseISO(addDays(today, 1)), d3 = parseISO(nextMonday());
     return it(k, "Сегодня", idA + ' data-v="today"', "", WDS[d1.getDay()]) + it(k, "Завтра", idA + ' data-v="tom"', "", WDS[d2.getDay()]) + it(k, "Следующая неделя", idA + ' data-v="week"', "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3));
   };
-  switch (p.type) {
+  if (p.type === "mctx" || p.type === "mshift" || p.type === "mtolist") { h = multiPopHTML(p.type, (k, label, extra, cls, r) => '<div class="pi ' + (cls || "") + '" data-a="mact" data-k="' + k + '" ' + (extra || "") + ">" + label + (r ? '<span class="r">' + r + "</span>" : "") + "</div>"); }
+  else switch (p.type) {
     case "mmenu": {
       const L = p.id && S.lists[p.id];
       h = (L ? it("l_rename", "Переименовать список", idA) + it("l_icon", "Сменить значок", idA) + it("l_colorpop", "Изменить цвет", idA) + it("l_grouppop", "Переместить в группу…", idA) + it("l_up", "Выше", idA) + it("l_down", "Ниже", idA) + it("l_dup", "Дублировать список", idA) + it("l_deldone", "Удалить завершённые", idA) + it("l_del", "Удалить список", idA, "danger") + '<div class="psep"></div>' : "") +
@@ -2039,13 +2167,13 @@ function init() {
     }
   });
   /* перетаскивание задачи на список */
-  app.addEventListener("dragstart", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r) { e.dataTransfer.setData("text/plain", r.dataset.id); e.dataTransfer.effectAllowed = "move"; } });
+  app.addEventListener("dragstart", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r) { e.dataTransfer.setData("text/plain", ui.multi && ui.multi[r.dataset.id] && mIds().length > 1 ? mIds().join(",") : r.dataset.id); e.dataTransfer.effectAllowed = "move"; } });
   app.addEventListener("dragover", e => { const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (c) { e.preventDefault(); c.classList.add("dropok"); } });
   app.addEventListener("dragleave", e => { const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (c) c.classList.remove("dropok"); });
   app.addEventListener("drop", e => {
     const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (!c) return;
-    e.preventDefault(); const id = e.dataTransfer.getData("text/plain");
-    if (S.tasks[id]) { upd(id, { list_id: c.dataset.lid }); toast("Перенесено в «" + S.lists[c.dataset.lid].name + "»"); render(); }
+    e.preventDefault(); const ids = e.dataTransfer.getData("text/plain").split(",").filter(x => S.tasks[x]);
+    if (ids.length) { mSnap(ids); ids.forEach(id => upd(id, { list_id: c.dataset.lid })); toast("Перенесено в «" + S.lists[c.dataset.lid].name + "»" + (ids.length > 1 ? " · " + ids.length + " шт." : "")); if (ids.length > 1) mClear(); render(); }
   });
   if (window.visualViewport) {                          // шторка быстрого ввода поднимается над клавиатурой
     const kb = () => { const v = visualViewport; document.documentElement.style.setProperty("--kb", Math.max(0, innerHeight - v.height - v.offsetTop) + "px"); };
@@ -2062,7 +2190,7 @@ function init() {
   setInterval(() => { if (!document.hidden && S.user && Date.now() - lastLoad > 300000) loadAll(); }, 60000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); }, 20000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
-  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app);
+  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); desktopInit(app);
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
   if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } });
   applyTheme(); boot();
