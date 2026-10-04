@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 16:20">
+<meta name="build" content="04.10 16:40">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 16:20";
+const BUILD = "04.10 16:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -85,7 +85,7 @@ const MONS = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.",
 const dateLong = d => WDS[d.getDay()] + ", " + d.getDate() + " " + MONG[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
 const nextMonday = () => addDays(today, ((8 - parseISO(today).getDay()) % 7) || 7);
 const fmtShort = iso => { const d = new Date(iso); return WDS[d.getDay()] + ", " + d.getDate() + " " + MONG[d.getMonth()]; };
-const fmtEst = m => m >= 60 ? (Math.round(m / 6) / 10) + " ч" : m + " м";
+const fmtEst = m => m >= 480 && m % 480 === 0 ? (m / 480) + " дн" : m >= 60 ? (Math.round(m / 6) / 10) + " ч" : m + " м";
 const localDate = iso => iso ? isoLocal(new Date(iso)) : "";
 const toLocalInput = iso => { const d = new Date(iso); return isoLocal(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
 const atTime = (isoDate, h) => { const d = parseISO(isoDate); d.setHours(h, 0, 0, 0); return d.toISOString(); };
@@ -298,7 +298,7 @@ function nextDue(t) {
 }
 
 /* ===== p3: синхронизация, операции с данными, файлы, напоминания ===== */
-const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files", "plan_start"];
+const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files", "plan_start", "parent_id"];
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
 const COLS = { tasks: TC, lists: LC, time_log: GC };
@@ -429,10 +429,14 @@ function unsubRt() { if (rt && sb) { try { sb.removeChannel(rt); } catch (e) {} 
 /* ----- задачи ----- */
 const listsArr = () => Object.values(S.lists).sort((a, b) => (a.position - b.position) || String(a.created_at).localeCompare(String(b.created_at)));
 function addTask(f) {
-  const t = Object.assign({ id: uid(), list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [], plan_start: null }, f);
+  const t = Object.assign({ id: uid(), parent_id: null, list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [], plan_start: null }, f);
   S.tasks[t.id] = t; mark("tasks", t.id, "u"); return t;
 }
-function upd(id, patch) { const t = S.tasks[id]; if (!t) return; Object.assign(t, patch); mark("tasks", id, "u"); }
+const kidsOf = id => Object.values(S.tasks).filter(x => x.parent_id === id);
+function upd(id, patch) {
+  const t = S.tasks[id]; if (!t) return; Object.assign(t, patch); mark("tasks", id, "u");
+  if ("list_id" in patch) kidsOf(id).forEach(k => upd(k.id, { list_id: patch.list_id }));   // подзадачи едут в тот же список
+}
 const inMyDay = t => t.my_day_date === today;
 function setMyDay(id, on) { upd(id, { my_day: !!on, my_day_date: on ? today : null }); }
 function toggleDone(id) {
@@ -445,6 +449,7 @@ function toggleDone(id) {
     toast("Следующий раз: " + dateLong(parseISO(nd)));
   }
   upd(id, { done: d, done_at: d ? nowISO() : null });
+  if (d) { const op = kidsOf(id).filter(k => !k.done); op.forEach(k => upd(k.id, { done: true, done_at: nowISO() })); if (op.length) toast("Закрыто и подзадач: " + op.length); }
 }
 function matches(t) {
   if (view === "search") { const q = ui.q.toLowerCase(); return (t.title + " " + t.note + " " + (t.category || "") + " " + (t.steps || []).map(s => s.t).join(" ")).toLowerCase().indexOf(q) >= 0; }
@@ -489,12 +494,14 @@ function submitQA() {
 const SORTS = {
   created: { n: "Дата создания", dir: -1, cmp: (a, b) => String(a.created_at).localeCompare(String(b.created_at)) },
   due: { n: "Срок выполнения", dir: 1, cmp: (a, b) => (a.due || "9999").localeCompare(b.due || "9999") },
+  dueimp: { n: "Срок, затем важность", dir: 1, cmp: (a, b) => { const bk = t => !t.due ? 9 : t.due < today ? 0 : t.due === today ? 1 : t.due === addDays(today, 1) ? 2 : t.due <= addDays(today, 7) ? 3 : 4; return (bk(a) - bk(b)) || ((b.starred ? 1 : 0) - (a.starred ? 1 : 0)) || (a.due || "9999").localeCompare(b.due || "9999"); } },
+  impdue: { n: "Важность, затем срок", dir: 1, cmp: (a, b) => ((b.starred ? 1 : 0) - (a.starred ? 1 : 0)) || (a.due || "9999").localeCompare(b.due || "9999") },
   imp: { n: "Важность", dir: 1, cmp: (a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) },
   myday: { n: "Добавлено в «Мой день»", dir: 1, cmp: (a, b) => (inMyDay(b) ? 1 : 0) - (inMyDay(a) ? 1 : 0) },
   alpha: { n: "По алфавиту", dir: 1, cmp: (a, b) => a.title.localeCompare(b.title, "ru") }
 };
 const GROUPS = { none: "Не группировать", due: "Срок выполнения", imp: "Важность", cat: "Категория", list: "Список" };
-function getSort(v) { const s = PR.sort[v]; if (s && SORTS[s.by]) return s; return v === "planned" ? { by: "due", dir: 1, auto: true } : { by: "created", dir: -1, auto: true }; }
+function getSort(v) { const s = PR.sort[v]; if (s && SORTS[s.by]) return s; return v === "planned" ? { by: "dueimp", dir: 1, auto: true } : { by: "created", dir: -1, auto: true }; }
 function getGroup(v) { return PR.group[v] || (v === "planned" ? "due" : "none"); }
 function sortItems(arr) {
   const s = getSort(view), c = SORTS[s.by].cmp;
@@ -549,6 +556,7 @@ function deleteDoneIn(id) {
 function deleteTask(id) {
   const t = S.tasks[id]; if (!t) return;
   if (t.files && t.files.length && sb) { try { sb.storage.from("attachments").remove(t.files.map(f => f.path)); } catch (e) {} }
+  kidsOf(id).forEach(k => deleteTask(k.id));
   delete S.tasks[id]; mark("tasks", id, "d");
   if (selId === id) selId = null;
 }
@@ -1452,6 +1460,7 @@ function desktopInit(app) {
     if (isMobile()) return;
     const tg = e.target, tag = tg && tg.tagName, typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (tg && tg.isContentEditable);
     if (e.key === "Enter" && tg && tg.id === "m-n") { e.preventDefault(); mApply("shift", { dataset: {} }); return; }
+    if (e.key === "Escape" && ui.pop && !typing) { closePop(); render(); return; }
     if (typing || ui.settings || ui.qa) return;
     const k = e.key.toLowerCase(), c = e.ctrlKey || e.metaKey;
     if (c && (k === "a" || k === "ф")) { const v = visIds(); if (v.length) { e.preventDefault(); v.forEach(id => { ui.multi[id] = 1; }); selId = null; render(); } }
@@ -1516,11 +1525,12 @@ function xlsxBook(sheets) {                                   // sheets: [{name,
 }
 function bkSheets(d) {
   const L = {}; (d.lists || []).forEach(l => { L[l.id] = l.name; });
+  const TT = {}; (d.tasks || []).forEach(t => { TT[t.id] = t.title; });
   const dt = v => { if (!v) return ""; const x = new Date(v); return isNaN(x) ? String(v) : isoLocal(x) + " " + pad(x.getHours()) + ":" + pad(x.getMinutes()); };
   const tasks = (d.tasks || []).slice().sort((a, b) => String(L[a.list_id] || "").localeCompare(String(L[b.list_id] || "")) || (a.done ? 1 : 0) - (b.done ? 1 : 0) || String(a.due || "9").localeCompare(String(b.due || "9")));
   return [
-    { name: "Задачи", heads: ["Список", "Задача", "Срок", "Категория", "Важно", "Мой день", "Выполнена", "Когда выполнена", "Напоминание", "Повтор", "Оценка, мин", "Когда-нибудь", "Создана", "Заметка", "Шаги"], widths: [18, 46, 12, 14, 8, 9, 11, 17, 17, 14, 11, 12, 17, 50, 50],
-      rows: tasks.map(t => [L[t.list_id] || "", t.title, t.due || "", t.category || "", t.starred ? "да" : "", t.my_day ? "да" : "", t.done ? "да" : "", dt(t.done_at), dt(t.remind_at), t.repeat_rule ? repeatText(t.repeat_rule) : "", t.est_minutes || "", t.status === "someday" ? "да" : "", dt(t.created_at), t.note || "", (t.steps || []).map(s => (s.d ? "✓ " : "· ") + s.t).join("\n")]) },
+    { name: "Задачи", heads: ["Список", "Задача", "Срок", "Категория", "Важно", "Мой день", "Выполнена", "Когда выполнена", "Напоминание", "Повтор", "Оценка, мин", "Когда-нибудь", "Создана", "Заметка", "Шаги", "Подзадача от"], widths: [18, 46, 12, 14, 8, 9, 11, 17, 17, 14, 11, 12, 17, 50, 50, 30],
+      rows: tasks.map(t => [L[t.list_id] || "", t.title, t.due || "", t.category || "", t.starred ? "да" : "", t.my_day ? "да" : "", t.done ? "да" : "", dt(t.done_at), dt(t.remind_at), t.repeat_rule ? repeatText(t.repeat_rule) : "", t.est_minutes || "", t.status === "someday" ? "да" : "", dt(t.created_at), t.note || "", (t.steps || []).map(s => (s.d ? "✓ " : "· ") + s.t).join("\n"), TT[t.parent_id] || ""]) },
     { name: "Списки", heads: ["Список", "Иконка", "Группа"], widths: [28, 8, 22], rows: (d.lists || []).map(l => [l.name, l.icon || "", l.group_name || ""]) },
     { name: "Журнал (факт)", heads: ["Начало", "Конец", "Дело", "Пояснение"], widths: [17, 17, 40, 50], rows: (d.time_log || []).slice().sort((a, b) => String(a.start_at).localeCompare(String(b.start_at))).map(g => [dt(g.start_at), dt(g.end_at), g.title || "", g.note || ""]) }
   ];
@@ -1586,6 +1596,118 @@ const bkActs = {
   async bkdl(a) { const d = await bkGet(a.dataset.id); if (d) bkFileXlsx(d); },
   bkrs(a) { bkRestore(a.dataset.id); }, bkall() { ui.bkAll = true; render(); }
 };
+
+// ---- p10: подзадачи, фильтры, комбинированная сортировка, своя оценка времени ----
+PR.flt = PR.flt || {}; PR.subClosed = PR.subClosed || {}; PR.subOpen = PR.subOpen || {}; if (!PR.subs) PR.subs = "all";
+let subIdx = {};
+function buildSubIdx() {
+  subIdx = {};
+  for (const id in S.tasks) { const t = S.tasks[id]; if (t.parent_id && S.tasks[t.parent_id]) (subIdx[t.parent_id] = subIdx[t.parent_id] || []).push(t); }
+  for (const k in subIdx) subIdx[k].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || String(a.created_at).localeCompare(String(b.created_at)));
+}
+const subOpen = t => { const k = subIdx[t.id]; return ui.subAdd === t.id || (k && k.length && (PR.subs === "top" ? !!PR.subOpen[t.id] : !PR.subClosed[t.id])); };
+function subMeta(t, orphan) {
+  let s = "";
+  const k = subIdx[t.id];
+  if (k && k.length) s += '<span class="mi subc" data-a="subtog" data-id="' + t.id + '" title="Показать / скрыть подзадачи">' + (subOpen(t) ? "▾ " : "▸ ") + k.filter(x => x.done).length + "/" + k.length + "</span>";
+  if (orphan && t.parent_id && S.tasks[t.parent_id]) s += '<span class="mi par" title="Подзадача">↳ ' + esc(S.tasks[t.parent_id].title) + "</span>";
+  return s;
+}
+function rowHTML(t, showList, depth) {
+  depth = depth || 0;
+  let h = rowBase(t, showList, depth);
+  if (subOpen(t) && depth < 4) {
+    const kids = subIdx[t.id] || [];
+    h += '<div class="kids">' + kids.map(k => rowHTML(k, false, depth + 1)).join("") +
+      '<form class="subadd" data-pid="' + t.id + '">' + ic("plus", 14) + '<input id="sub-' + t.id + '" autocomplete="off" enterkeyhint="send" placeholder="Добавить подзадачу"><button type="submit" hidden></button></form></div>';
+  }
+  return '<div class="tnode">' + h + "</div>";
+}
+function subSubmit(form) {
+  const inp = form.querySelector("input"), v = inp ? inp.value.trim() : "", pid = form.dataset.pid, par = S.tasks[pid];
+  if (!v || !par) return;
+  const p = localParse(v, listsArr());
+  addTask({ title: p.title || v, due: p.due || null, est_minutes: p.est || null, starred: !!p.starred, list_id: par.list_id, parent_id: pid, status: par.status === "someday" ? "someday" : "active" });
+  ui.subAdd = pid; PR.subClosed[pid] = false; PR.subOpen[pid] = true; savePrefs(); render();
+  setTimeout(() => { const i = $("sub-" + pid) || document.querySelector('.subadd[data-pid="' + pid + '"] input'); if (i) i.focus(); }, 30);
+}
+function subCrumb(t) {
+  if (!t.parent_id || !S.tasks[t.parent_id]) return "";
+  return '<div class="dcard"><div class="drow act" data-a="sel" data-id="' + t.parent_id + '">' + ic("arrowl", 18) + '<span class="dtx">Подзадача от: «' + esc(S.tasks[t.parent_id].title) + "»</span></div></div>";
+}
+function subBlock(t) {
+  const k = subIdx[t.id] || [];
+  return '<div class="dcard"><div class="drow stp" style="cursor:default;color:var(--sub);font-size:calc(13px*var(--z,1))">Подзадачи' + (k.length ? " · " + k.filter(x => x.done).length + " из " + k.length : "") + "</div>" +
+    k.map(x => '<div class="drow stp"><div class="rad ' + (x.done ? "on" : "") + '" style="width:18px;height:18px" data-a="tog" data-id="' + x.id + '">' + (x.done ? ic("check", 11) : "") + '</div><span class="dtx" data-a="sel" data-id="' + x.id + '" style="' + (x.done ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(x.title) + "</span></div>").join("") +
+    '<form class="drow stp act subadd" data-pid="' + t.id + '" style="padding:0">' + ic("plus", 18) + '<input id="sub-' + t.id + '" enterkeyhint="send" placeholder="Добавить подзадачу" style="color:var(--acc)"><button type="submit" hidden></button></form></div>';
+}
+// ----- фильтры -----
+const FLT_DATES = [["", "Любой срок"], ["over", "Просрочено"], ["today", "Сегодня"], ["todover", "Сегодня и просроченные"], ["tom", "Завтра"], ["week", "Ближайшие 7 дней"], ["nodue", "Без срока"]];
+function passFlt(t) {
+  const f = PR.flt[view]; if (!f) return true;
+  if (f.star && !t.starred) return false;
+  if (f.rem && !t.remind_at) return false;
+  if (f.cat && (t.category || "").toLowerCase().split(",").map(x => x.trim()).indexOf(f.cat) < 0) return false;
+  switch (f.date) {
+    case "over": if (!(t.due && t.due < today)) return false; break;
+    case "today": if (t.due !== today) return false; break;
+    case "todover": if (!(t.due && t.due <= today)) return false; break;
+    case "tom": if (t.due !== addDays(today, 1)) return false; break;
+    case "week": if (!(t.due && t.due >= today && t.due <= addDays(today, 7))) return false; break;
+    case "nodue": if (t.due) return false; break;
+  }
+  return true;
+}
+const fltCount = () => { const f = PR.flt[view] || {}; return (f.date ? 1 : 0) + (f.star ? 1 : 0) + (f.rem ? 1 : 0) + (f.cat ? 1 : 0); };
+function fltBtns() {
+  const n = fltCount();
+  return '<button class="tool ' + (n ? "on" : "") + '" data-a="pop" data-p="filter">▽ Фильтр' + (n ? " · " + n : "") + '</button><button class="tool" data-a="submode" title="Показывать подзадачи внутри списка или только задачи верхнего уровня">' + (PR.subs === "top" ? "☰ Только главные" : "☷ С подзадачами") + "</button>";
+}
+function fltBarHTML() {
+  const f = PR.flt[view]; if (!f || !fltCount()) return "";
+  const ch = (k, txt) => '<span class="sortchip">' + txt + ' <button data-a="fltclr" data-k="' + k + '" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>";
+  return '<div class="sortbar">' + (f.date ? ch("date", "Срок: " + (FLT_DATES.filter(x => x[0] === f.date)[0] || [0, ""])[1].toLowerCase()) : "") + (f.star ? ch("star", "Только важные") : "") + (f.rem ? ch("rem", "С напоминанием") : "") + (f.cat ? ch("cat", "Категория: " + esc(f.cat)) : "") + '<span class="sortchip" data-a="fltclr" data-k="all" style="cursor:pointer">Сбросить все</span></div>';
+}
+function filterPopHTML() {
+  const f = PR.flt[view] || {}, it = (k, v, label, on) => '<div class="pi" data-a="flt" data-k="' + k + '" data-v="' + esc(v) + '"><span style="width:20px">' + (on ? "☑" : "☐") + "</span>" + label + "</div>";
+  const cats = {}; Object.values(S.tasks).forEach(t => { if (!t.done && t.category) t.category.split(",").forEach(c => { c = c.trim().toLowerCase(); if (c) cats[c] = (cats[c] || 0) + 1; }); });
+  const cl = Object.keys(cats).sort((a, b) => cats[b] - cats[a]).slice(0, 12);
+  return '<div class="ptitle">Фильтры — все условия вместе</div>' + FLT_DATES.map(d => it("date", d[0], d[1], (f.date || "") === d[0])).join("") + '<div class="psep"></div>' +
+    it("star", "1", "Только важные", !!f.star) + it("rem", "1", "Только с напоминанием", !!f.rem) +
+    (cl.length ? '<div class="psep"></div><div class="ptitle">Категория</div>' + cl.map(c => it("cat", c, "#" + esc(c), f.cat === c)).join("") : "") +
+    '<div class="psep"></div><div class="pi" data-a="fltclr" data-k="all" style="color:var(--acc)">Сбросить фильтры</div>';
+}
+// ----- своя оценка времени -----
+function parseEst(s) {
+  s = String(s == null ? "" : s).trim().toLowerCase().replace(",", "."); if (!s) return null;
+  const m = s.match(/^~?(\d+(?:\.\d+)?)\s*([a-zа-я]*)$/); if (!m) return NaN;
+  const n = parseFloat(m[1]), u = m[2];
+  if (/^(д|дн|d)/.test(u)) return Math.round(n * 480);
+  if (/^(нед|w)/.test(u)) return Math.round(n * 2400);
+  if (/^(ч|h)/.test(u)) return Math.round(n * 60);
+  return Math.round(n);
+}
+const estFull = m => !m ? "" : (m % 480 === 0 ? m / 480 + "д" : m % 60 === 0 ? m / 60 + "ч" : m + "м");
+const subActs = {
+  subtog(a) { const id = a.dataset.id; if (PR.subs === "top") PR.subOpen[id] = !PR.subOpen[id]; else PR.subClosed[id] = !PR.subClosed[id]; ui.subAdd = null; savePrefs(); render(); },
+  submode() { PR.subs = PR.subs === "top" ? "all" : "top"; savePrefs(); toast(PR.subs === "top" ? "Только задачи верхнего уровня (счётчик ▸ раскрывает)" : "Показываю подзадачи внутри списка"); render(); },
+  flt(a) {
+    const k = a.dataset.k, v = a.dataset.v, f = PR.flt[view] = PR.flt[view] || {};
+    if (k === "date") { if (v) f.date = v; else delete f.date; } else if (k === "cat") { if (f.cat === v) delete f.cat; else f.cat = v; } else { if (f[k]) delete f[k]; else f[k] = 1; }
+    if (!fltCount()) delete PR.flt[view]; savePrefs(); render();
+  },
+  fltclr(a) { const k = a.dataset.k; if (k === "all") delete PR.flt[view]; else if (PR.flt[view]) { delete PR.flt[view][k]; if (!fltCount()) delete PR.flt[view]; } savePrefs(); closePop(); render(); }
+};
+const subCSS = `
+.tnode{display:block}
+.kids{margin:0 0 6px 16px;padding-left:8px;border-left:2px solid var(--ln)}
+.taskrow.sub{box-shadow:none;background:transparent;min-height:36px;padding-top:6px;padding-bottom:6px;margin-bottom:1px}
+.taskrow.sub:hover{background:var(--hov)} .taskrow.sub.sel{background:var(--sel)}
+.taskrow.sub .ttl{font-size:calc(13px*var(--z,1))} .taskrow.sub .rad{width:16px;height:16px}
+.mi.subc{color:var(--acc);cursor:pointer;font-weight:600} .mi.par{color:var(--sub);font-style:italic}
+.subadd{display:flex;align-items:center;gap:8px;padding:5px 12px;color:var(--acc)}
+.subadd input{flex:1;min-width:0;border:0;background:transparent;color:var(--tx);font-size:calc(13px*var(--z,1));outline:0;font-family:inherit}
+`;
 
 /* ===== p4: стили и HTML-шаблоны ===== */
 const CSS = `
@@ -1809,8 +1931,9 @@ function leftHTML(c) {
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
 }
-function metaHTML(t, showList) {
+function metaHTML(t, showList, orphan) {
   const m = [], l = t.list_id && S.lists[t.list_id], di = dueInfo(t);
+  { const sm0 = subMeta(t, orphan); if (sm0) m.push(sm0); }
   if (showList && l) m.push('<span class="mi">' + (l.icon ? esc(l.icon) : ic("list", 12)) + " " + esc(l.name) + "</span>");
   if (PR.myday && inMyDay(t) && view !== "myday") m.push('<span class="mi">' + ic("sun", 13) + " Мой день</span>");
   if (t.steps && t.steps.length) m.push('<span class="mi">' + t.steps.filter(s => s.d).length + " из " + t.steps.length + "</span>");
@@ -1824,10 +1947,10 @@ function metaHTML(t, showList) {
   if (t.category) m.push(catPill(t.category));
   return m.length ? '<div class="meta">' + m.join("") + "</div>" : "";
 }
-function rowHTML(t, showList) {
-  return '<div class="taskrow ' + (selId === t.id ? "sel " : "") + (ui.multi && ui.multi[t.id] ? "msel " : "") + (t.done ? "done" : "") + '" data-a="sel" data-id="' + t.id + '" draggable="true">' +
+function rowBase(t, showList, depth) {
+  return '<div class="taskrow ' + (depth ? "sub " : "") + (selId === t.id ? "sel " : "") + (ui.multi && ui.multi[t.id] ? "msel " : "") + (t.done ? "done" : "") + '" data-a="sel" data-id="' + t.id + '" draggable="true">' +
     '<div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + t.id + '">' + (t.done ? ic("check", 13) : "") + "</div>" +
-    '<div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + metaHTML(t, showList) + "</div>" +
+    '<div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + metaHTML(t, showList, depth === 0 && !!t.parent_id) + "</div>" +
     '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
 }
 function mainHTML(items, done, vi) {
@@ -1838,9 +1961,10 @@ function mainHTML(items, done, vi) {
     (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
     (view !== "search" && !isMobile() ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + ' Сетка</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + " Список</button>" +
-      '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" : "") + "</div>" +
+      '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" + fltBtns() : "") + "</div>" +
     '<div class="msub">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + " активн.</div>" +
     (sc && view !== "search" ? '<div class="sortbar"><span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + " Сортировка: " + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span></div>" : "");
+  h += fltBarHTML();
   if (view !== "search" && !isMobile()) h += '<form id="addform" class="addbar">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" enterkeyhint="send" placeholder="Добавить задачу"><button type="submit" hidden></button></form><div class="hint">Подсказка: завтра · в пятницу · через 3 дня · 25.12 · в 18:00 · каждый день · ~30м · #список · ! (важно)</div>';
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
@@ -1871,10 +1995,10 @@ function detailHTML(t) {
   const fresh = lastDetail !== t.id; lastDetail = t.id;
   const steps = t.steps || [], di = dueInfo(t), id = t.id, mine = inMyDay(t);
   const row = (svg, txt, attrs, cls, clr) => '<div class="drow ' + (cls || "") + '" ' + attrs + ">" + ic(svg, 18) + '<span class="dtx">' + txt + "</span>" + (clr ? '<button class="xbtn" data-a="' + clr + '" title="Убрать">' + ic("x", 15) + "</button>" : "") + "</div>";
-  return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + "</button></div>" : "") + '<div class="dscroll" id="dscroll">' +
+  return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + "</button></div>" : "") + '<div class="dscroll" id="dscroll">' + subCrumb(t) +
     '<div class="dcard"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div>" +
     steps.map((s, i) => '<div class="drow stp"><div class="rad ' + (s.d ? "on" : "") + '" style="width:18px;height:18px" data-a="stepTog" data-i="' + i + '">' + (s.d ? ic("check", 11) : "") + '</div><span class="dtx" style="' + (s.d ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(s.t) + '</span><button class="xbtn" data-a="stepDel" data-i="' + i + '">' + ic("x", 14) + "</button></div>").join("") +
-    '<form id="stepform" class="drow stp act">' + ic("plus", 18) + '<input id="d-step" enterkeyhint="send" placeholder="Добавить шаг" style="color:var(--acc)"><button type="submit" hidden></button></form></div>' +
+    '<form id="stepform" class="drow stp act">' + ic("plus", 18) + '<input id="d-step" enterkeyhint="send" placeholder="Добавить шаг" style="color:var(--acc)"><button type="submit" hidden></button></form></div>' + subBlock(t) +
     '<div class="dcard">' + row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") + (PR.myday ? row("sun", mine ? "Добавлено в представление «Мой день»" : "Добавить в представление «Мой день»", 'data-a="tmyday"', mine ? "act" : "", mine ? "tmyday" : "") : "") + "</div>" +
     '<div class="dcard">' +
     row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
@@ -1885,7 +2009,7 @@ function detailHTML(t) {
     (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" +
     '<div class="dcard"><div class="drow stp">' + ic("list", 18) + '<select id="d-list"><option value="">Без списка</option>' + listsArr().map(l => '<option value="' + l.id + '"' + (t.list_id === l.id ? " selected" : "") + ">" + esc((l.icon || "") + " " + l.name) + "</option>").join("") + "</select></div>" +
     row("moon", t.status === "someday" ? "Лежит в «Когда-нибудь»" : "Отложить в «Когда-нибудь»", 'data-a="tsomeday"', t.status === "someday" ? "act" : "") +
-    '<div class="drow stp" style="flex-wrap:wrap;cursor:default"><span style="color:var(--sub);font-size:calc(13px*var(--z,1));width:100%">Сколько займёт</span>' + [5, 15, 30, 60, 120].map(m => '<button class="estchip ' + (t.est_minutes === m ? "on" : "") + '" data-a="est" data-v="' + m + '">' + fmtEst(m) + "</button>").join("") + "</div></div>" +
+    '<div class="drow stp" style="flex-wrap:wrap;cursor:default"><span style="color:var(--sub);font-size:calc(13px*var(--z,1));width:100%">Сколько займёт</span>' + [15, 30, 60, 120, 240, 480].map(m => '<button class="estchip ' + (t.est_minutes === m ? "on" : "") + '" data-a="est" data-v="' + m + '">' + fmtEst(m) + "</button>").join("") + '<input id="d-est" class="inp" style="flex:1;min-width:130px;height:32px" placeholder="Своё: 3ч · 90м · 2д" value="' + (t.est_minutes && [15, 30, 60, 120, 240, 480].indexOf(t.est_minutes) < 0 ? estFull(t.est_minutes) : "") + '"></div></div>' +
     '<div class="dcard"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(t.note || "") + "</textarea></div></div>" +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><span class="sp">Создано ' + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
@@ -1898,12 +2022,13 @@ function popHTML() {
     const d1 = parseISO(today), d2 = parseISO(addDays(today, 1)), d3 = parseISO(nextMonday());
     return it(k, "Сегодня", idA + ' data-v="today"', "", WDS[d1.getDay()]) + it(k, "Завтра", idA + ' data-v="tom"', "", WDS[d2.getDay()]) + it(k, "Следующая неделя", idA + ' data-v="week"', "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3));
   };
-  if (p.type === "mctx" || p.type === "mshift" || p.type === "mtolist") { h = multiPopHTML(p.type, (k, label, extra, cls, r) => '<div class="pi ' + (cls || "") + '" data-a="mact" data-k="' + k + '" ' + (extra || "") + ">" + label + (r ? '<span class="r">' + r + "</span>" : "") + "</div>"); }
+  if (p.type === "filter") { h = filterPopHTML(); }
+  else if (p.type === "mctx" || p.type === "mshift" || p.type === "mtolist") { h = multiPopHTML(p.type, (k, label, extra, cls, r) => '<div class="pi ' + (cls || "") + '" data-a="mact" data-k="' + k + '" ' + (extra || "") + ">" + label + (r ? '<span class="r">' + r + "</span>" : "") + "</div>"); }
   else switch (p.type) {
     case "mmenu": {
       const L = p.id && S.lists[p.id];
       h = (L ? it("l_rename", "Переименовать список", idA) + it("l_icon", "Сменить значок", idA) + it("l_colorpop", "Изменить цвет", idA) + it("l_grouppop", "Переместить в группу…", idA) + it("l_up", "Выше", idA) + it("l_down", "Ниже", idA) + it("l_dup", "Дублировать список", idA) + it("l_deldone", "Удалить завершённые", idA) + it("l_del", "Удалить список", idA, "danger") + '<div class="psep"></div>' : "") +
-        (view !== "search" ? it("sub_sort", "Сортировка…", idA) + it("sub_group", "Группировать…", idA) + it("gridtog", PR.grid[view] ? "Показать списком" : "Показать сеткой", idA) : "") +
+        (view !== "search" ? it("sub_sort", "Сортировка…", idA) + it("sub_group", "Группировать…", idA) + it("sub_filter", "Фильтр" + (fltCount() ? " · " + fltCount() : "") + "…", idA) + it("subs_mode", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)", idA) + it("gridtog", PR.grid[view] ? "Показать списком" : "Показать сеткой", idA) : "") +
         (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + it("sync", "Синхронизировать") + it("settings", "Настройки");
       break;
     }
@@ -1924,7 +2049,7 @@ function popHTML() {
       break;
     }
     case "gmenu": h = it("g_rename", "Переименовать группу", 'data-g="' + esc(p.g) + '"') + it("g_ungroup", "Расформировать группу", 'data-g="' + esc(p.g) + '"', "danger"); break;
-    case "ctx": h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
+    case "ctx": h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
     case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
     case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
     case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b></div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
@@ -1994,8 +2119,12 @@ function appHTML() {
       if (t.status === "someday") c.someday++;
       else { c.all++; if (inMyDay(t)) c.myday++; if (t.starred) c.starred++; if (t.due) c.planned++; if (t.list_id) c["list:" + t.list_id] = (c["list:" + t.list_id] || 0) + 1; }
     }
-    if (matches(t)) (t.done ? done : items).push(t);
+    if (matches(t) && passFlt(t)) (t.done ? done : items).push(t);
   }
+  buildSubIdx();
+  { const inSet = new Set(); items.forEach(t => inSet.add(t.id)); done.forEach(t => inSet.add(t.id)); const hid = t => t.parent_id && S.tasks[t.parent_id] && inSet.has(t.parent_id);
+    for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
+    for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
   return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + qaHTML() + popHTML() + dsheetHTML();
 }
@@ -2227,6 +2356,9 @@ const acts = {
       case "alertsclr": ui.alerts = []; break;
       case "settings": ui.settings = true; ui.msg = ""; break;
       case "sub_sort": return sub("sort");
+      case "sub_filter": return sub("filter");
+      case "subs_mode": PR.subs = PR.subs === "top" ? "all" : "top"; savePrefs(); break;
+      case "ctx_sub": PR.subClosed[id] = false; PR.subOpen[id] = true; ui.subAdd = id; setTimeout(() => { const i = $("sub-" + id); if (i) i.focus(); }, 60); break;
       case "sub_group": return sub("group");
       case "gridtog": PR.grid[view] = !PR.grid[view]; savePrefs(); break;
       case "suggtog": ui.sugg = !ui.sugg; break;
@@ -2250,12 +2382,13 @@ const changes = {
   "s-dens"(v) { TH.dens = v; saveTheme(); render(); },
   "s-bkf"(v) { bkSet({ freq: +v }); toast(+v ? "Автокопии: " + (BKF.filter(x => x[0] === +v)[0] || [0, ""])[1].toLowerCase() : "Автокопии выключены"); },
   "s-bkfile"(v) { bkSet({ file: v === "1" }); },
+  "d-est"(v) { const x = parseEst(v); if (x !== null && isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч, 2д"); return; } if (selId) { upd(selId, { est_minutes: x || null }); renderSoon(); } },
   "s-size"(v) { TH.size = v; saveTheme(); render(); }
 };
 
-Object.assign(acts, dayActs, dtpActs, uxActs, bkActs); Object.assign(changes, dayChanges);
+Object.assign(acts, dayActs, dtpActs, uxActs, bkActs, subActs); Object.assign(changes, dayChanges);
 function init() {
-  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS; document.head.appendChild(st);
+  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS + subCSS; document.head.appendChild(st);
   const app = $("app");
   app.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"), was = ui.pop;
@@ -2267,6 +2400,7 @@ function init() {
     e.preventDefault(); const id = e.target.id;
     if (id === "addform") addFromInput($("newtask"));
     else if (id === "qaform") submitQA();
+    else if (e.target.classList && e.target.classList.contains("subadd")) subSubmit(e.target);
     else if (id === "stepform") { const inp = $("d-step"), v = inp.value.trim(), t = S.tasks[selId]; if (v && t) { upd(t.id, { steps: (t.steps || []).concat([{ t: v, d: false }]) }); inp.value = ""; render(); const n = $("d-step"); if (n) n.focus(); } }
     else if (id === "authform") doAuth("login");
     else if (id === "dtpform") dtpActs.dok();
