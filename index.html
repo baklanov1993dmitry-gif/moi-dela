@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 18:06">
+<meta name="build" content="04.10 18:29">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 18:06";
+const BUILD = "04.10 18:29";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -206,6 +206,7 @@ const IC = {
   sort: '<path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 4v16"/>',
   group: '<rect x="3" y="3" width="18" height="6" rx="1"/><rect x="3" y="13" width="18" height="8" rx="1"/>',
   grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+  hourglass: '<path d="M6 2h12M6 22h12M7 2v4a5 5 0 0 0 2 4l3 2-3 2a5 5 0 0 0-2 4v4M17 2v4a5 5 0 0 1-2 4l-3 2 3 2a5 5 0 0 1 2 4v4"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   dots: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
   check: '<path d="M20 6L9 17l-5-5"/>', x: '<path d="M18 6L6 18M6 6l12 12"/>',
@@ -1753,6 +1754,20 @@ const subCSS = `
 @media(max-width:760px){.kids{padding-left:34px}}
 `;
 
+// ----- позиция всплывающего меню: всегда целиком в окне + барабаны времени -----
+function fitPop() {
+  const pop = $("pop"); if (!pop) return;
+  document.querySelectorAll("#pop .drum").forEach(d => { d.scrollTop = (+d.dataset.sel || 0) * 36; });
+  if (isMobile()) return;
+  const m = 12, vh = window.innerHeight, vw = window.innerWidth;
+  pop.style.maxHeight = (vh - 2 * m) + "px";
+  const r = pop.getBoundingClientRect();
+  let top = parseFloat(pop.style.top) || r.top, left = parseFloat(pop.style.left) || r.left;
+  if (top + r.height > vh - m) top = Math.max(m, vh - m - r.height);
+  if (left + r.width > vw - m) left = Math.max(m, vw - m - r.width);
+  pop.style.top = top + "px"; pop.style.left = left + "px";
+}
+
 /* ===== p4: стили и HTML-шаблоны ===== */
 const CSS = `
 #app{position:relative;flex-direction:column;background:var(--bg);color:var(--tx);font-family:var(--ff);font-size:var(--fs)}
@@ -1826,11 +1841,12 @@ const CSS = `
 .sugg .st{padding:6px 14px;font-weight:600;font-size:calc(13px*var(--z,1));display:flex;align-items:center}
 .sugg .sr{display:flex;align-items:center;gap:10px;padding:7px 14px;font-size:calc(13.5px*var(--z,1))}
 .sugg .sr:hover{background:var(--hov)}
-.dscroll{flex:1;overflow:auto;padding:12px}
-.dcard{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:8px;overflow:hidden}
-.dtitle{display:flex;gap:12px;align-items:flex-start;padding:14px}
+.dscroll{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column}
+.dcard{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:6px;overflow:hidden;flex-shrink:0}
+.dcard.grow{flex:1 0 220px;display:flex;margin-bottom:0}
+.dtitle{display:flex;gap:12px;align-items:flex-start;padding:10px 14px}
 .ttlinp{flex:1;background:transparent;border:0;color:var(--tx);font:inherit;font-weight:600;font-size:calc(16px*var(--z,1));resize:none;overflow:hidden;line-height:1.3;padding:0;min-width:0}
-.drow{display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 14px;border-bottom:1px solid var(--ln);cursor:pointer;font-size:calc(14px*var(--z,1))}
+.drow{display:flex;align-items:center;gap:12px;min-height:40px;padding:3px 14px;border-bottom:1px solid var(--ln);cursor:pointer;font-size:calc(14px*var(--z,1))}
 .drow:last-child{border-bottom:0}
 .drow:hover{background:var(--hov)}
 .drow.act{color:var(--acc)} .drow.od{color:#e0212a!important}
@@ -1839,7 +1855,13 @@ const CSS = `
 .drow input,.drow select{flex:1;background:transparent;border:0;color:inherit;font:inherit;min-width:0;height:36px}
 .drow select option{color:#111}
 .drow.stp{cursor:default}
-.notearea{width:100%;min-height:120px;background:transparent;border:0;color:var(--tx);padding:12px 14px;font:inherit;resize:vertical;display:block}
+.notearea{width:100%;flex:1;min-height:200px;background:transparent;border:0;color:var(--tx);padding:12px 14px;font:inherit;resize:none;display:block}
+.dgrid{gap:8px}.dgrid input{flex:1 1 40%}.dgrid select{flex:1 1 50%;max-width:55%}
+.estval{color:var(--sub);font-weight:600;padding:3px 10px;border-radius:12px;background:var(--hov)}.estval.on{color:#fff;background:var(--acc)}
+.drumw{display:flex;gap:6px;padding:6px 10px 2px;position:relative}.drumw::after{content:"";position:absolute;left:10px;right:10px;top:calc(6px + 72px);height:36px;border-top:1px solid var(--acc);border-bottom:1px solid var(--acc);pointer-events:none;background:var(--sel);opacity:.55}
+.drumc{flex:1;text-align:center}.drumc .lb{font-size:calc(11px*var(--z,1));color:var(--sub);padding-top:2px}
+.drum{height:180px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;padding:72px 0}.drum::-webkit-scrollbar{display:none}
+.drum div{height:36px;line-height:36px;scroll-snap-align:center;font-size:calc(17px*var(--z,1));font-weight:600;position:relative;z-index:1}
 .dfoot{display:flex;align-items:center;height:46px;padding:0 8px;border-top:1px solid var(--ln);color:var(--sub);font-size:calc(12px*var(--z,1));flex-shrink:0}
 .dfoot .sp{flex:1;text-align:center}
 .pop{position:fixed;z-index:60;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.28);min-width:230px;max-width:min(330px,94vw);max-height:72vh;overflow:auto;padding:6px 0}
@@ -2040,22 +2062,20 @@ function detailHTML(t) {
   const fresh = lastDetail !== t.id; lastDetail = t.id;
   const di = dueInfo(t), id = t.id, mine = inMyDay(t);
   const row = (svg, txt, attrs, cls, clr) => '<div class="drow ' + (cls || "") + '" ' + attrs + ">" + ic(svg, 18) + '<span class="dtx">' + txt + "</span>" + (clr ? '<button class="xbtn" data-a="' + clr + '" title="Убрать">' + ic("x", 15) + "</button>" : "") + "</div>";
+  const lst = '<select id="d-list" title="Список"><option value="">Без списка</option>' + listsArr().map(l => '<option value="' + l.id + '"' + (t.list_id === l.id ? " selected" : "") + ">" + esc((l.icon && l.icon !== "🗂️" ? l.icon + " " : "") + l.name) + "</option>").join("") + "</select>";
   return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + "</button></div>" : "") + '<div class="dscroll" id="dscroll">' + subCrumb(t) +
-    '<div class="dcard"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div>" +
-    '</div>' + subBlock(t) +
-    '<div class="dcard">' + row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") + (PR.myday ? row("sun", mine ? "Добавлено в представление «Мой день»" : "Добавить в представление «Мой день»", 'data-a="tmyday"', mine ? "act" : "", mine ? "tmyday" : "") : "") + "</div>" +
+    '<div class="dcard"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div></div>" + subBlock(t) +
     '<div class="dcard">' +
     row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
-    row("cal", di ? esc(di.txt) : "Добавить срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
-    row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") + "</div>" +
-    '<div class="dcard"><div class="drow stp">' + ic("tag", 18) + '<input id="d-cat" placeholder="Выберите категорию" value="' + esc(t.category || "") + '"></div></div>' +
-    '<div class="dcard">' + row("clip", "Добавить файл", 'data-a="pickfile"', "") +
-    (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" +
-    '<div class="dcard"><div class="drow stp">' + ic("list", 18) + '<select id="d-list"><option value="">Без списка</option>' + listsArr().map(l => '<option value="' + l.id + '"' + (t.list_id === l.id ? " selected" : "") + ">" + esc((l.icon || "") + " " + l.name) + "</option>").join("") + "</select></div>" +
-    row("moon", t.status === "someday" ? "Лежит в «Когда-нибудь»" : "Отложить в «Когда-нибудь»", 'data-a="tsomeday"', t.status === "someday" ? "act" : "") +
-    '<div class="drow stp" style="flex-wrap:wrap;cursor:default"><span style="color:var(--sub);font-size:calc(13px*var(--z,1));width:100%">Сколько займёт</span>' + [15, 30, 60, 120, 240, 480].map(m => '<button class="estchip ' + (t.est_minutes === m ? "on" : "") + '" data-a="est" data-v="' + m + '">' + fmtEst(m) + "</button>").join("") + '<input id="d-est" class="inp" style="flex:1;min-width:130px;height:32px" placeholder="Своё: 3ч · 90м · 2д" value="' + (t.est_minutes && [15, 30, 60, 120, 240, 480].indexOf(t.est_minutes) < 0 ? estFull(t.est_minutes) : "") + '"></div></div>' +
-    '<div class="dcard"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(t.note || "") + "</textarea></div></div>" +
-    '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><span class="sp">Создано ' + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
+    row("cal", di ? esc(di.txt) : "Срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
+    row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") +
+    row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") +
+    (PR.myday ? row("sun", mine ? "В «Мой день»" : "Добавить в «Мой день»", 'data-a="tmyday"', mine ? "act" : "", mine ? "tmyday" : "") : "") + "</div>" +
+    '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
+    '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
+    ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" : "") +
+    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(t.note || "") + "</textarea></div></div>" +
+    '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function popHTML() {
   const p = ui.pop; if (!p) return "";
@@ -2092,8 +2112,16 @@ function popHTML() {
       h = '<div class="ptitle">Группа</div>' + gs.map(g => it("l_group", esc(g), idA + ' data-g="' + esc(g) + '"', cur === g ? "cur" : "")).join("") + it("l_group", "Без группы", idA + ' data-g=""', !cur ? "cur" : "") + '<div class="psep"></div>' + it("l_groupnew", "Новая группа…", idA);
       break;
     }
+    case "estpick": {
+      const m = t && t.est_minutes || 0, dd = Math.floor(m / 480), hh = Math.floor((m % 480) / 60), mi = Math.round((m % 60) / 5) % 12;
+      const col = (cls, n, step, sel, lb) => '<div class="drumc"><div class="drum" data-sel="' + sel + '" data-step="' + step + '">' + Array.from({ length: n }, (_, i) => "<div>" + i * step + "</div>").join("") + '</div><div class="lb">' + lb + "</div></div>";
+      h = '<div class="ptitle">Сколько займёт</div><div class="drumw" id="drums">' + col("d", 31, 1, dd, "дней (по 8 ч)") + col("h", 24, 1, hh, "часов") + col("m", 12, 5, mi, "минут") + "</div>" +
+        '<div class="pform" style="padding:6px 12px"><input id="p-est" placeholder="или впишите: 3ч · 90м · 2д" style="flex:1"></div>' +
+        '<div class="pform" style="padding:4px 12px 8px;gap:8px"><button class="btn" style="flex:1" data-a="pa" data-k="estok" ' + idA + ">Готово</button><button class=\"btn ghost\" data-a=\"pa\" data-k=\"estclr\" " + idA + ">Сбросить</button></div>";
+      break;
+    }
     case "gmenu": h = it("g_rename", "Переименовать группу", 'data-g="' + esc(p.g) + '"') + it("g_ungroup", "Расформировать группу", 'data-g="' + esc(p.g) + '"', "danger"); break;
-    case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
+    case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + it("ctx_someday", t && t.status === "someday" ? "Вернуть из «Когда-нибудь»" : "Отложить в «Когда-нибудь»", idA) + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
     case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
     case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
     case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b></div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
@@ -2188,7 +2216,7 @@ function render() {
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
-  updateSyncUI(); dayAfterRender(); syncHistory();
+  updateSyncUI(); dayAfterRender(); syncHistory(); fitPop();
 }
 
 /* ===== p5: вход, действия, обработчики событий ===== */
@@ -2394,6 +2422,14 @@ const acts = {
       case "tolist": upd(id, { list_id: v }); break;
       case "ttog": toggleDone(id); break;
       case "ctx_del": deleteTask(id); break;
+      case "ctx_someday": if (t) { const sd = t.status === "someday"; upd(id, { status: sd ? "active" : "someday", my_day: false, my_day_date: sd ? t.my_day_date : null }); toast(sd ? "Вернул из «Когда-нибудь»" : "Отложено в «Когда-нибудь»"); } break;
+      case "estclr": upd(id, { est_minutes: null }); break;
+      case "estok": {
+        const man = $("p-est") && $("p-est").value.trim();
+        if (man) { const x = parseEst(man); if (isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч, 2д"); return; } upd(id, { est_minutes: x || null }); break; }
+        const ds = [...document.querySelectorAll("#drums .drum")].map(e => Math.round(e.scrollTop / 36) * (+e.dataset.step));
+        upd(id, { est_minutes: ds[0] * 480 + ds[1] * 60 + ds[2] || null }); break;
+      }
       case "alert": if (S.tasks[id]) selId = id; break;
       case "alertsclr": ui.alerts = []; break;
       case "settings": ui.settings = true; ui.msg = ""; break;
