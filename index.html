@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 17:03">
+<meta name="build" content="04.10 17:40">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 17:03";
+const BUILD = "04.10 17:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -135,7 +135,7 @@ let rt = null, flushing = false, flushSeq = 0, loading = false, flushTimer = nul
 let down = false, want = false;
 const pendCount = () => Object.keys(P.lists).length + Object.keys(P.tasks).length + Object.keys(P.time_log).length;
 const savePending = () => jset(LSK.pending, P);
-function writeCache() { if (S.user) jset(LSK.cache, { user: { id: S.user.id, email: S.user.email }, lists: S.lists, tasks: S.tasks, time_log: S.time_log }); }
+function writeCache() { if (S.user) jset(LSK.cache, { user: { id: S.user.id, email: S.user.email }, lists: S.lists, tasks: Object.fromEntries(Object.entries(S.tasks).filter(([id, t]) => !t.done || t.parent_id || (t.done_at && Date.now() - new Date(t.done_at) < 2 * 864e5))), time_log: S.time_log }); }
 function persistSoon() { clearTimeout(persistTimer); persistTimer = setTimeout(writeCache, 400); }
 
 /* ----- темы ----- */
@@ -362,10 +362,11 @@ async function flush() {
   } finally { flushing = false; flushSeq++; }
   if (pendCount() && sync.state === "ok") scheduleFlush();
 }
-async function fetchAll(tbl) {
+const DL = new Set();   // выполненные задачи, подгруженные из архива по запросу
+async function fetchAll(tbl, mod) {
   const out = [];
   for (let from = 0; ; from += 1000) {
-    const r = await sb.from(tbl).select("*").order("created_at", { ascending: false }).order("id").range(from, from + 999);
+    const r = await (mod ? mod(sb.from(tbl).select("*")) : sb.from(tbl).select("*")).order("created_at", { ascending: false }).order("id").range(from, from + 999);
     if (r.error) throw r.error;
     const data = r.data || []; for (const x of data) out.push(x);
     if (data.length < 1000) break;
@@ -375,7 +376,7 @@ async function fetchAll(tbl) {
 function applyServer(tbl, rows) {
   const seen = new Set();
   rows.forEach(r => { seen.add(r.id); if (P[tbl][r.id]) return; S[tbl][r.id] = norm(tbl, r); });
-  Object.keys(S[tbl]).forEach(id => { if (!seen.has(id) && !P[tbl][id]) delete S[tbl][id]; });
+  Object.keys(S[tbl]).forEach(id => { if (!seen.has(id) && !P[tbl][id] && !(tbl === "tasks" && DL.has(id))) delete S[tbl][id]; });
 }
 function seedLists() {
   [["Свои дела", "📋"], ["Развитие", "🚀"], ["Зал", "🏋️"], ["Дом", "🏠"]].forEach((x, i) => {
@@ -391,7 +392,7 @@ async function loadAll() {
     await flush();
     while (flushing) await new Promise(r => setTimeout(r, 100));
     const seq = flushSeq;
-    const ls = await fetchAll("lists"), ts = await fetchAll("tasks");
+    const ls = await fetchAll("lists"), ts = await fetchAll("tasks", q => q.or("done.eq.false,parent_id.not.is.null,done_at.gte." + new Date(Date.now() - 2 * 864e5).toISOString()));   // выполненные старше 2 дней — только по запросу
     let lg = null; try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }   // нет таблицы (SQL не выполнен) — остальное работает
     if (seq !== flushSeq) { loading = false; setTimeout(loadAll, 1500); return; }
     applyServer("lists", ls); applyServer("tasks", ts); if (lg) applyServer("time_log", lg);
@@ -713,6 +714,27 @@ function addLog(o) {
 }
 function updLog(id, patch) { const l = S.time_log[id]; if (!l) return; Object.assign(l, patch); mark("time_log", id, "u"); }
 function delLog(id) { if (!S.time_log[id]) return; delete S.time_log[id]; mark("time_log", id, "d"); }
+
+// ----- архив выполненных: грузим по запросу -----
+const dnKey = () => view === "search" ? "search|" + ui.q : view;
+async function loadDone() {
+  if (!sb || !S.user) return;
+  const k = dnKey(); ui.dOff = ui.dOff || {}; ui.dEnd = ui.dEnd || {}; if (ui.dBusy) return; ui.dBusy = true; render();
+  try {
+    let q = sb.from("tasks").select("*").eq("done", true);
+    if (view.indexOf("list:") === 0) q = q.eq("list_id", view.slice(5));
+    else if (view === "starred") q = q.eq("starred", true);
+    else if (view === "planned") q = q.not("due", "is", null);
+    else if (view === "someday") q = q.eq("status", "someday");
+    else if (view === "search") q = q.ilike("title", "%" + ui.q.replace(/[%,]/g, " ") + "%");
+    const off = ui.dOff[k] || 0, r = await q.order("done_at", { ascending: false, nullsFirst: false }).order("id").range(off, off + 199);
+    if (r.error) throw r.error;
+    const d = r.data || []; d.forEach(x => { if (!S.tasks[x.id] && !P.tasks[x.id]) { S.tasks[x.id] = norm("tasks", x); } DL.add(x.id); });
+    ui.dOff[k] = off + d.length; if (d.length < 200) ui.dEnd[k] = true;
+    ui.doneLimit = Math.max(ui.doneLimit, ui.dOff[k]);
+  } catch (e) { toast("Не удалось загрузить архив: " + errText(e)); }
+  ui.dBusy = false; render();
+}
 
 /* ===== p6: вид «День» — почасовая сетка (план | факт), журнал факта, подбор плана, отчёт в Excel ===== */
 const pad2 = n => String(n).padStart(2, "0");
@@ -2000,12 +2022,13 @@ function mainHTML(items, done, vi) {
     if (!col) h += '<div class="cards ' + (grid ? "grid" : "") + '">' + g.items.map(t => rowHTML(t, showList)).join("") + "</div>";
   });
   if (items.length > ui.limit) h += '<button class="btn ghost" data-a="more" style="width:100%;margin:6px 0">Показать ещё (' + (items.length - ui.limit) + ")</button>";
-  if (done.length) {
-    const open = PR.showDone[view];
-    h += '<div class="gh" data-a="showdone">' + ic(open ? "chevd" : "chevr", 14) + '<span>Завершено</span><span class="cnt">' + done.length + "</span></div>";
+  if (done.length || ui.dEnd || true) {
+    const open = PR.showDone[view], k = dnKey(), more = !(ui.dEnd && ui.dEnd[k]) && view !== "myday";
+    h += '<div class="gh" data-a="showdone">' + ic(open ? "chevd" : "chevr", 14) + '<span>Завершено</span><span class="cnt">' + (done.length || "") + "</span></div>";
     if (open) {
       h += '<div class="cards ' + (grid ? "grid" : "") + '">' + done.slice(0, ui.doneLimit).map(t => rowHTML(t, showList)).join("") + "</div>";
       if (done.length > ui.doneLimit) h += '<button class="btn ghost" data-a="moredone" style="width:100%;margin:6px 0">Показать ещё</button>';
+      else if (more) h += '<button class="btn ghost" data-a="loaddone" style="width:100%;margin:6px 0">' + (ui.dBusy ? "Загружаю…" : (ui.dOff && ui.dOff[k] ? "Загрузить ещё из архива" : "Загрузить выполненные из архива")) + "</button>";
     }
   }
   return h + multiBarHTML() + "</div>" + (isMobile() && view !== "search" && !ui.left && !selId ? '<button class="fab" data-a="qaopen" title="Добавить задачу">' + ic("plus", 28) + "</button>" : "") + "</div>";
@@ -2277,7 +2300,7 @@ const acts = {
   tog(a) { toggleDone(a.dataset.id); render(); },
   star(a) { const t = S.tasks[a.dataset.id]; if (!t) return; upd(t.id, { starred: !t.starred }); render(); },
   more() { ui.limit += 300; render(); }, moredone() { ui.doneLimit += 50; render(); },
-  showdone() { PR.showDone[view] = !PR.showDone[view]; savePrefs(); render(); },
+  showdone() { PR.showDone[view] = !PR.showDone[view]; savePrefs(); render(); if (PR.showDone[view] && !(ui.dOff && ui.dOff[dnKey()]) && view !== "myday") loadDone(); }, loaddone() { loadDone(); },
   menu() { ui.left = !ui.left; render(); },
   rail() { if (innerWidth <= 760) { ui.left = false; } else PR.rail = !PR.rail; savePrefs(); render(); },
   gtoggle(a) { const g = a.dataset.g; PR.collapsed[g] = !PR.collapsed[g]; savePrefs(); render(); },
