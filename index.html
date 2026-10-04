@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0f172a">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -55,7 +55,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
    Секретный ключ (service_role / secret) сюда класть НЕЛЬЗЯ. */
 window.APP_CONFIG = {
   SUPABASE_URL: "https://rjiuialimbrnbriqafjl.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_Hf5J8zcRXPKBVugh68TyAw_ZXQ6leQX"
+  SUPABASE_ANON_KEY: "sb_publishable_Hf5J8zcRXPKBVugh68TyAw_ZXQ6leQX",
+  VAPID_PUBLIC: "BGtIMldeDlbm6FW6-b73N5hAZdjI3bDscBZQMNgauRtIar29wYpRi6St8bknZGttuwMRVNtIGLEEp8uD66vKa-c"
 };
 </script>
 <script>(function () {
@@ -77,6 +78,8 @@ const MONG = ["января", "февраля", "марта", "апреля", "�
 const parseISO = s => { const p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); };
 const addDays = (iso, n) => { const d = parseISO(iso); d.setDate(d.getDate() + n); return isoLocal(d); };
 let today = todayISO();
+const isMobile = () => window.innerWidth <= 760;
+const MONS = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."];
 const dateLong = d => WDS[d.getDay()] + ", " + d.getDate() + " " + MONG[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
 const nextMonday = () => addDays(today, ((8 - parseISO(today).getDay()) % 7) || 7);
 const fmtShort = iso => { const d = new Date(iso); return WDS[d.getDay()] + ", " + d.getDate() + " " + MONG[d.getMonth()]; };
@@ -86,10 +89,10 @@ const toLocalInput = iso => { const d = new Date(iso); return isoLocal(d) + "T" 
 const atTime = (isoDate, h) => { const d = parseISO(isoDate); d.setHours(h, 0, 0, 0); return d.toISOString(); };
 function dueInfo(t) {
   if (!t.due) return null;
-  const od = !t.done && t.due < today, d = parseISO(t.due);
-  const full = dateLong(d);
+  const od = !t.done && t.due < today, d = parseISO(t.due), mob = isMobile();
+  const full = mob ? WDS[d.getDay()] + ", " + d.getDate() + " " + MONS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "") : dateLong(d);
   let txt = t.due === today ? "Сегодня" : t.due === addDays(today, 1) ? "Завтра" : t.due === addDays(today, -1) ? "Вчера" : full;
-  if (od) txt = "Просрочено, " + full;
+  if (od && !mob) txt = "Просрочено, " + full;
   return { txt, cls: od ? "od" : (t.due === today ? "today" : "") };
 }
 function fmtRemind(iso) {
@@ -113,21 +116,22 @@ function getCfg() {
   return { url: normUrl(c.url), key: c.key || "", baked: false };
 }
 let cfg = getCfg(), sb = null, screen = null;
-const S = { user: null, lists: {}, tasks: {} };
-let P = jget(LSK.pending, { lists: {}, tasks: {} });
-if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {};
+const S = { user: null, lists: {}, tasks: {}, time_log: {} };
+let pendingOpen = null;
+let P = jget(LSK.pending, { lists: {}, tasks: {}, time_log: {} });
+if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {}; if (!P.time_log) P.time_log = {};
 let TH = Object.assign({ v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", glass: false }, jget(LSK.theme, {}));
 if (TH.v !== 2) TH = { v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", glass: false };
-const PR = Object.assign({ sort: {}, group: {}, grid: {}, collapsed: {}, showDone: {}, rail: false }, jget(LSK.prefs, {}));
+const PR = Object.assign({ sort: {}, group: {}, grid: {}, collapsed: {}, showDone: {}, rail: false, dayStart: 8, dayEnd: 17, reserve: 25 }, jget(LSK.prefs, {}));
 const savePrefs = () => jset(LSK.prefs, PR);
 let view = jget(LSK.view, "myday"), prevView = "myday", selId = null;
-const ui = { left: false, settings: false, limit: 300, doneLimit: 30, msg: "", msgOk: true, busy: false, q: "", pop: null, sugg: false, alerts: [], gcol: {} };
+const ui = { qa: null, msearch: false, left: false, settings: false, limit: 300, doneLimit: 30, msg: "", msgOk: true, busy: false, q: "", pop: null, sugg: false, alerts: [], gcol: {}, day: null, dsheet: null };
 let sync = { state: "ok", msg: "" };
 let rt = null, flushing = false, flushSeq = 0, loading = false, flushTimer = null, retryTimer = null, persistTimer = null, lastLoad = 0;
 let down = false, want = false;
-const pendCount = () => Object.keys(P.lists).length + Object.keys(P.tasks).length;
+const pendCount = () => Object.keys(P.lists).length + Object.keys(P.tasks).length + Object.keys(P.time_log).length;
 const savePending = () => jset(LSK.pending, P);
-function writeCache() { if (S.user) jset(LSK.cache, { user: { id: S.user.id, email: S.user.email }, lists: S.lists, tasks: S.tasks }); }
+function writeCache() { if (S.user) jset(LSK.cache, { user: { id: S.user.id, email: S.user.email }, lists: S.lists, tasks: S.tasks, time_log: S.time_log }); }
 function persistSoon() { clearTimeout(persistTimer); persistTimer = setTimeout(writeCache, 400); }
 
 /* ----- темы ----- */
@@ -154,7 +158,7 @@ function applyTheme() {
   const T = THEMES[TH.theme] || THEMES.classic, d = T.dark, hasBg = !!TH.bg, dn = DENS[TH.dens] || DENS.normal, acc = curAccent();
   const v = {
     "--bg": T.bg, "--tx": d ? "#e8edf7" : "#323130", "--sub": d ? "#a3aec4" : "#605e5c",
-    "--ln": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.1)", "--card": d ? "rgba(255,255,255,.07)" : "#ffffff",
+    "--ln": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.1)", "--card": hasBg ? (d ? "rgba(30,30,30,.86)" : "rgba(255,255,255,.9)") : (d ? "rgba(255,255,255,.07)" : "#ffffff"),
     "--hov": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.05)", "--inp": d ? "rgba(255,255,255,.08)" : "#ffffff",
     "--acc": acc, "--hd": d ? shade(acc, -0.35) : shade(acc, -0.08), "--sel": rgba(acc, d ? .28 : .13), "--solid": d ? "#1b2236" : "#ffffff",
     "--od": d ? "#ff8a80" : "#a4262c", "--shadow": d ? "none" : "0 1px 2px rgba(0,0,0,.12)",
@@ -166,13 +170,15 @@ function applyTheme() {
   Object.keys(v).forEach(k => app.style.setProperty(k, v[k]));
   if (hasBg) { app.style.backgroundImage = 'url("' + TH.bg.replace(/["\\\n]/g, "") + '")'; app.style.backgroundSize = "cover"; app.style.backgroundPosition = "center"; }
   else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; }
-  app.classList.toggle("glass", !!TH.glass);
+  app.classList.toggle("glass", !!TH.glass); app.classList.toggle("hasbg", hasBg);
   document.body.style.background = d ? "#0f172a" : "#faf9f8";
   const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = shade(acc, d ? -0.35 : -0.08);
 }
 
 /* ----- иконки (линейные, 24x24) ----- */
 const IC = {
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  dl: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
   cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   repeat: '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   note: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/>',
@@ -199,6 +205,7 @@ const IC = {
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/>',
   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
   bulb: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V18h6v-1.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/>',
+  arrowl: '<path d="M19 12H5M12 19l-7-7 7-7"/>', dotsv: '<circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/>',
   down: '<path d="M12 5v14M19 12l-7 7-7-7"/>', up: '<path d="M12 19V5M5 12l7-7 7 7"/>'
 };
 const ic = (n, s, extra) => '<svg class="ic ' + (extra || "") + '" width="' + (s || 16) + '" height="' + (s || 16) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + "</svg>";
@@ -282,16 +289,19 @@ function nextDue(t) {
 }
 
 /* ===== p3: синхронизация, операции с данными, файлы, напоминания ===== */
-const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files"];
+const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files", "plan_start"];
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
+const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
+const COLS = { tasks: TC, lists: LC, time_log: GC };
 function toRow(tbl, o) {
-  const r = {}; (tbl === "tasks" ? TC : LC).forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
+  const r = {}; COLS[tbl].forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
   if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.steps = r.steps || []; r.files = r.files || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
-  else { r.icon = r.icon || "🗂️"; r.position = r.position || 0; r.name = r.name || "Список"; }
+  else if (tbl === "time_log") { r.title = r.title || ""; r.note = r.note || ""; }
+  else { r.icon = r.icon == null ? "🗂️" : r.icon; r.position = r.position || 0; r.name = r.name || "Список"; }
   return r;
 }
 function norm(tbl, r) {
-  const o = {}; (tbl === "tasks" ? TC : LC).forEach(k => { o[k] = r[k] === undefined ? null : r[k]; });
+  const o = {}; COLS[tbl].forEach(k => { o[k] = r[k] === undefined ? null : r[k]; });
   if (tbl === "tasks") { o.steps = Array.isArray(o.steps) ? o.steps : []; o.files = Array.isArray(o.files) ? o.files : []; o.note = o.note || ""; }
   o._u = r.updated_at || null; return o;
 }
@@ -299,7 +309,7 @@ function errText(e) {
   const m = (e && (e.message || e.error_description)) || String(e);
   if (/fetch|network|Load failed|abort/i.test(m)) return "нет связи";
   if (/JWT|expired|token/i.test(m)) return "сессия истекла — войдите заново";
-  if (/column|schema cache/i.test(m)) return "в базе нет новых полей — выполните migration_v2.sql";
+  if (/column|schema cache/i.test(m)) return "в базе нет новых полей — выполните migration_v4.sql";
   return String(m).slice(0, 90);
 }
 function setSync(state, msg) { sync = { state, msg: msg || "" }; updateSyncUI(); }
@@ -336,7 +346,7 @@ async function flush() {
   if (!sb || !S.user || flushing || !pendCount()) return;
   flushing = true; flushSeq++; setSync("sync");
   try {
-    await pushGroup("lists", "u"); await pushGroup("tasks", "u"); await pushGroup("tasks", "d"); await pushGroup("lists", "d");
+    await pushGroup("lists", "u"); await pushGroup("tasks", "u"); await pushGroup("time_log", "u"); await pushGroup("time_log", "d"); await pushGroup("tasks", "d"); await pushGroup("lists", "d");
     setSync("ok");
   } catch (e) {
     setSync("err", errText(e)); clearTimeout(retryTimer); retryTimer = setTimeout(flush, 15000);
@@ -373,12 +383,13 @@ async function loadAll() {
     while (flushing) await new Promise(r => setTimeout(r, 100));
     const seq = flushSeq;
     const ls = await fetchAll("lists"), ts = await fetchAll("tasks");
+    let lg = null; try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }   // нет таблицы (SQL не выполнен) — остальное работает
     if (seq !== flushSeq) { loading = false; setTimeout(loadAll, 1500); return; }
-    applyServer("lists", ls); applyServer("tasks", ts);
+    applyServer("lists", ls); applyServer("tasks", ts); if (lg) applyServer("time_log", lg);
     if (!ls.length && !ts.length && !Object.keys(S.lists).length && !pendCount()) seedLists();
     lastLoad = Date.now(); persistSoon();
     setSync(pendCount() ? "err" : "ok", pendCount() ? "есть неотправленное" : "");
-    renderSoon(); checkReminders();
+    renderSoon(); checkReminders(); if (pushOn()) syncPush();
   } catch (e) { setSync("err", errText(e)); }
   finally { loading = false; }
 }
@@ -400,6 +411,7 @@ function subRt() {
     rt = sb.channel("mytasks-" + S.user.id)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, p => onRt("tasks", p))
       .on("postgres_changes", { event: "*", schema: "public", table: "lists" }, p => onRt("lists", p))
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_log" }, p => onRt("time_log", p))
       .subscribe();
   } catch (e) { rt = null; }
 }
@@ -408,7 +420,7 @@ function unsubRt() { if (rt && sb) { try { sb.removeChannel(rt); } catch (e) {} 
 /* ----- задачи ----- */
 const listsArr = () => Object.values(S.lists).sort((a, b) => (a.position - b.position) || String(a.created_at).localeCompare(String(b.created_at)));
 function addTask(f) {
-  const t = Object.assign({ id: uid(), list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [] }, f);
+  const t = Object.assign({ id: uid(), list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [], plan_start: null }, f);
   S.tasks[t.id] = t; mark("tasks", t.id, "u"); return t;
 }
 function upd(id, patch) { const t = S.tasks[id]; if (!t) return; Object.assign(t, patch); mark("tasks", id, "u"); }
@@ -441,17 +453,27 @@ function suggestions() {
   return Object.values(S.tasks).filter(t => !t.done && t.status !== "someday" && !inMyDay(t) && t.due && t.due <= lim)
     .sort((a, b) => a.due.localeCompare(b.due)).slice(0, 15);
 }
-function addFromInput(inp) {
-  const raw = inp.value.trim(); if (!raw) return;
-  const ls = listsArr(), p = localParse(raw, ls);
-  const f = { title: p.title, due: p.due, category: p.category, starred: p.starred, est_minutes: p.est, list_id: p.list_id, repeat_rule: p.repeat, remind_at: p.remind };
-  if (view === "myday") { f.my_day = true; f.my_day_date = today; }
+function createFromText(raw, draft) {
+  const ls = listsArr(), p = localParse(raw, ls), d = draft || {};
+  const f = { title: p.title, due: d.due || p.due, category: p.category, starred: !!(d.starred || p.starred), est_minutes: p.est, list_id: p.list_id, repeat_rule: d.repeat_rule || p.repeat, remind_at: d.remind_at || p.remind };
+  if (view === "myday" || d.my) { f.my_day = true; f.my_day_date = today; }
   if (view === "starred") f.starred = true;
   if (view === "someday") f.status = "someday";
   if (view === "planned" && !f.due) f.due = today;
+  if (f.repeat_rule && !f.due) f.due = today;
   if (view.indexOf("list:") === 0 && !f.list_id) f.list_id = view.slice(5);
   if (!f.list_id && ls.length) f.list_id = ls[0].id;
-  addTask(f); inp.value = ""; if (f.remind_at) askNotify(); render();
+  const t = addTask(f); if (f.remind_at) askNotify(); return t;
+}
+function addFromInput(inp) {
+  const raw = inp.value.trim(); if (!raw) return;
+  createFromText(raw, null); inp.value = ""; render();
+}
+function submitQA() {
+  const inp = $("qa-input"), raw = inp ? inp.value.trim() : ""; if (!raw) return;
+  createFromText(raw, ui.qa);
+  ui.qa = { due: null, remind_at: null, repeat_rule: null, my: false, starred: false };
+  toast("Добавлено"); render(); const i = $("qa-input"); if (i) i.focus();
 }
 
 /* ----- сортировка и группировка ----- */
@@ -563,7 +585,7 @@ function askNotify() { try { if ("Notification" in window && Notification.permis
 function fireReminder(t) {
   ui.alerts.unshift({ id: t.id, title: t.title, at: t.remind_at });
   toast("🔔 " + t.title, { ms: 20000, buttons: [["Открыть", () => { selId = t.id; render(); }], ["Выполнено", () => { toggleDone(t.id); render(); }]] });
-  try { if ("Notification" in window && Notification.permission === "granted") new Notification("Напоминание", { body: t.title }); } catch (e) {}
+  try { if (!pushOn() && "Notification" in window && Notification.permission === "granted") new Notification("Напоминание", { body: t.title }); } catch (e) {}
   const b = $("bellbadge"); if (b) { b.textContent = ui.alerts.length; b.style.display = "flex"; }
 }
 function checkReminders() {
@@ -577,6 +599,500 @@ function checkReminders() {
   }
   if (ch) { const ks = Object.keys(N); if (ks.length > 3000) ks.forEach(k => { if (!S.tasks[k]) delete N[k]; }); jset(LSK.notified, N); }
 }
+
+/* ----- календарь телефона (.ics) ----- */
+const icsEsc = s => String(s || "").replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\;");
+const icsUtc = d => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+const icsFold = l => { const o = []; while (l.length > 60) { o.push(l.slice(0, 60)); l = " " + l.slice(60); } o.push(l); return o.join("\r\n"); };
+function buildIcs(t) {
+  if (!t || (!t.remind_at && !t.due)) return null;
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Moi dela//RU", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT", "UID:" + t.id + "@moi-dela", "DTSTAMP:" + icsUtc(new Date()), "SUMMARY:" + icsEsc(t.title)];
+  if (t.note) L.push("DESCRIPTION:" + icsEsc(t.note));
+  if (t.remind_at) {
+    const s = new Date(t.remind_at), e = new Date(s.getTime() + 15 * 60e3);
+    L.push("DTSTART:" + icsUtc(s), "DTEND:" + icsUtc(e), "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(t.title), "TRIGGER:PT0M", "END:VALARM");
+  } else {
+    L.push("DTSTART;VALUE=DATE:" + t.due.replace(/-/g, ""), "DTEND;VALUE=DATE:" + addDays(t.due, 1).replace(/-/g, ""), "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(t.title), "TRIGGER;RELATED=START:PT9H", "END:VALARM");
+  }
+  L.push("END:VEVENT", "END:VCALENDAR");
+  return L.map(icsFold).join("\r\n") + "\r\n";
+}
+function exportIcs(id) {
+  const txt = buildIcs(S.tasks[id]); if (!txt) return false;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([txt], { type: "text/calendar" })); a.download = "zadacha.ics";
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  return true;
+}
+
+/* ----- фоновые пуши (Web Push) ----- */
+const PUSH_KEY = "mytasks_push_v1";
+const pushOn = () => !!jget(PUSH_KEY, false);
+const b64u = s => { const b = (s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"), r = atob(b); return Uint8Array.from(r, c => c.charCodeAt(0)); };
+async function savePushSub(sub) {
+  const j = sub.toJSON();
+  return sb.from("push_subs").upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_id: S.user.id }, { onConflict: "endpoint" });
+}
+async function enablePush() {
+  const vk = (window.APP_CONFIG || {}).VAPID_PUBLIC;
+  if (!vk) return "Ключ пушей не задан в config.js";
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return "Браузер не умеет пуши (нужен Chrome по https)";
+  if (!S.user || !sb) return "Сначала войдите в аккаунт";
+  try {
+    const perm = await Notification.requestPermission(); if (perm !== "granted") return "Разрешение на уведомления не дано";
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(vk) });
+    const r = await savePushSub(sub);
+    if (r.error) return /push_subs|relation|schema cache/i.test(r.error.message || "") ? "В базе нет таблицы push_subs — выполните migration_v3.sql" : "Ошибка: " + (r.error.message || r.error);
+    jset(PUSH_KEY, true); return "";
+  } catch (e) { return "Не вышло: " + (e && e.message || e); }
+}
+async function disablePush() {
+  try {
+    const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+    if (sub) { const ep = sub.endpoint; await sub.unsubscribe(); if (sb && S.user) await sb.from("push_subs").delete().eq("endpoint", ep); }
+  } catch (e) {}
+  jset(PUSH_KEY, false); return "";
+}
+async function syncPush() {                 // подписка могла смениться — тихо обновляем запись в базе
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || Notification.permission !== "granted" || !sb || !S.user) return;
+    const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+    if (sub) await savePushSub(sub);
+  } catch (e) {}
+}
+
+function gcalUrl(t) {                       // ссылка «создать событие» в Google Календаре (откроется и на компе, и в приложении)
+  if (!t || (!t.remind_at && !t.due)) return null;
+  let dates;
+  if (t.remind_at) { const s = new Date(t.remind_at); dates = icsUtc(s) + "/" + icsUtc(new Date(s.getTime() + 15 * 60e3)); }
+  else dates = t.due.replace(/-/g, "") + "/" + addDays(t.due, 1).replace(/-/g, "");
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(t.title) + "&dates=" + dates + (t.note ? "&details=" + encodeURIComponent(t.note) : "");
+}
+
+/* ----- журнал факта (что реально делал) ----- */
+function addLog(o) {
+  const l = Object.assign({ id: uid(), task_id: null, title: "", note: "", start_at: null, end_at: null, created_at: nowISO() }, o);
+  S.time_log[l.id] = l; mark("time_log", l.id, "u"); return l;
+}
+function updLog(id, patch) { const l = S.time_log[id]; if (!l) return; Object.assign(l, patch); mark("time_log", id, "u"); }
+function delLog(id) { if (!S.time_log[id]) return; delete S.time_log[id]; mark("time_log", id, "d"); }
+
+/* ===== p6: вид «День» — почасовая сетка (план | факт), журнал факта, подбор плана, отчёт в Excel ===== */
+const pad2 = n => String(n).padStart(2, "0");
+const hm = m => pad2(Math.floor(m / 60) % 24) + ":" + pad2(m % 60);
+const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
+const curDay = () => ui.day || todayISO();
+const minOf = iso => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
+const dayOf = iso => isoLocal(new Date(iso));
+const isoAt = (day, m) => { const d = parseISO(day); d.setHours(0, m, 0, 0); return d.toISOString(); };
+const parseHM = v => { const m = /^(\d{1,2}):(\d{2})/.exec(v || ""); return m ? Math.min(1439, +m[1] * 60 + +m[2]) : null; };
+const fmtDurM = m => m >= 60 ? Math.floor(m / 60) + " ч" + (m % 60 ? " " + (m % 60) + " м" : "") : m + " м";
+const DAYPX = () => isMobile() ? 56 : 46;
+let gFrom = 7, gTo = 20, noClickUntil = 0, drag = null;
+
+function defaultStart(day) {
+  const ws = PR.dayStart * 60;
+  if (day !== todayISO()) return ws;
+  const n = new Date(); return clampN(Math.ceil((n.getHours() * 60 + n.getMinutes()) / 15) * 15, ws, 1425);
+}
+const capacityMin = () => Math.max(0, Math.floor((PR.dayEnd - PR.dayStart) * 60 * (1 - PR.reserve / 100) / 5) * 5);
+
+/* ----- блоки дня ----- */
+function layoutCols(arr) {                       // пересекающиеся блоки делят ширину дорожки
+  arr.sort((a, b) => a.s - b.s || a.e - b.e);
+  let cluster = [], ends = [];
+  const close = () => { const n = ends.length; cluster.forEach(x => { x.n = n; }); cluster = []; ends = []; };
+  for (const x of arr) {
+    if (cluster.length && ends.every(e => e <= x.s)) close();
+    let c = ends.findIndex(e => e <= x.s); if (c < 0) { c = ends.length; ends.push(0); }
+    ends[c] = x.e; x.c = c; cluster.push(x);
+  }
+  close(); return arr;
+}
+function dayBlocks(day) {
+  const plan = [], fact = [];
+  for (const id in S.tasks) {
+    const t = S.tasks[id]; if (!t.plan_start || dayOf(t.plan_start) !== day) continue;
+    const s = minOf(t.plan_start), d = t.est_minutes || 30; plan.push({ k: "plan", id, t, s, e: Math.min(s + d, 1440), d, est: !!t.est_minutes });
+  }
+  for (const id in S.time_log) {
+    const l = S.time_log[id]; if (!l.start_at || dayOf(l.start_at) !== day) continue;
+    const s = minOf(l.start_at), e = Math.min(Math.max(s + Math.round((Date.parse(l.end_at) - Date.parse(l.start_at)) / 60000), s + 5), 1440);
+    fact.push({ k: "log", id, l, s, e, d: e - s });
+  }
+  return { plan: layoutCols(plan), fact: layoutCols(fact) };
+}
+const candSub = t => [t.est_minutes ? "~" + fmtDurM(t.est_minutes) : "~30 м?", dueInfo(t) ? esc(dueInfo(t).txt) : ""].filter(Boolean).join(" · ");
+function dayCands(day, q) {
+  const out = [], ql = (q || "").trim().toLowerCase();
+  for (const id in S.tasks) {
+    const t = S.tasks[id]; if (t.done) continue;
+    if (t.plan_start && dayOf(t.plan_start) === day) continue;
+    let sc;
+    if (ql) { if (t.title.toLowerCase().indexOf(ql) < 0) continue; sc = 0; }
+    else if (t.status === "someday") continue;
+    else if (t.due && t.due < day) sc = 100 + Math.min(30, Math.round((parseISO(day) - parseISO(t.due)) / 864e5));
+    else if (t.due === day) sc = 80;
+    else if (t.my_day_date === day) sc = 60;
+    else continue;
+    if (t.starred) sc += 25;
+    out.push({ t, sc });
+  }
+  out.sort((a, b) => b.sc - a.sc || (a.t.est_minutes || 30) - (b.t.est_minutes || 30) || String(b.t.created_at).localeCompare(String(a.t.created_at)));
+  return out;
+}
+
+/* ----- HTML ----- */
+function blkHTML(b, px) {
+  const top = (b.s - gFrom * 60) * px / 60, h = Math.max((b.e - b.s) * px / 60, 16), plan = b.k === "plan";
+  const title = plan ? b.t.title : b.l.title, w = 100 / b.n;
+  const cls = "blk " + b.k + (plan && b.t.done ? " done" : "") + (h < 34 ? " sm" : "") + (plan && !b.est ? " noest" : "");
+  return '<div class="' + cls + '" data-a="blk" data-k="' + b.k + '" data-id="' + b.id + '" data-s="' + b.s + '" data-d="' + (b.e - b.s) + '" style="top:' + top + "px;height:" + h + "px;left:calc(" + b.c * w + "% + 1px);width:calc(" + w + '% - 3px)">' +
+    '<div class="bt">' + (plan && b.t.done ? "✓ " : "") + esc(title || "(без названия)") + '</div><div class="bm">' + hm(b.s) + "–" + hm(b.e) + " · " + fmtDurM(b.e - b.s) + (plan && !b.est ? " ?" : "") + "</div>" +
+    (!plan && b.l.note ? '<div class="bn">' + esc(b.l.note) + "</div>" : "") + '<div class="rz"></div></div>';
+}
+function dayMainHTML(vi) {
+  const day = curDay(), px = DAYPX(), bl = dayBlocks(day), today0 = todayISO(), isToday = day === today0;
+  let lo = PR.dayStart, hi = PR.dayEnd;
+  bl.plan.concat(bl.fact).forEach(b => { lo = Math.min(lo, Math.floor(b.s / 60)); hi = Math.max(hi, Math.ceil(b.e / 60)); });
+  gFrom = Math.max(0, lo - 1); gTo = Math.min(24, hi + 1);
+  const H = (gTo - gFrom) * px, d = parseISO(day);
+  const rel = isToday ? "Сегодня, " : day === addDays(today0, 1) ? "Завтра, " : day === addDays(today0, -1) ? "Вчера, " : "";
+  const label = rel + WDS[d.getDay()] + ", " + d.getDate() + " " + MONS[d.getMonth()];
+  const planM = bl.plan.reduce((s, b) => s + b.d, 0), factM = bl.fact.reduce((s, b) => s + b.d, 0), cap = capacityMin();
+  const cands = dayCands(day);
+  let axis = "";
+  for (let h = gFrom; h < gTo; h++) axis += '<div class="hlab" style="top:' + (h - gFrom) * px + 'px">' + pad2(h) + ":00</div>";
+  let now = ""; if (isToday) { const nm = new Date().getHours() * 60 + new Date().getMinutes(); if (nm >= gFrom * 60 && nm <= gTo * 60) now = '<div class="nowl" style="top:' + (nm - gFrom * 60) * px / 60 + 'px"></div>'; }
+  const candHTML = !isMobile() ? '<div class="cand"><div class="chd">Не распределено · ' + cands.length + '</div><div class="csub">Перетащите на сетку или нажмите</div>' +
+    (cands.length ? cands.slice(0, 60).map(c => '<div class="cit" data-k="cand" data-id="' + c.t.id + '" data-a="candtap" title="' + esc(c.t.title) + '"><span class="tx">' + esc(c.t.title) + '</span><span class="sub">' + candSub(c.t) + "</span></div>").join("") : '<div class="csub" style="padding:10px 4px">Всё распределено 🎉</div>') + "</div>" : "";
+  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) +
+    '<div class="dayhead"><button class="ibtn" data-a="dprev" title="Предыдущий день">' + ic("arrowl", 20) + '</button><label class="dlab">' + esc(label) + '<input type="date" id="d-date" value="' + day + '"></label><button class="ibtn" data-a="dnext" title="Следующий день"><span style="display:flex;transform:scaleX(-1)">' + ic("arrowl", 20) + "</span></button>" +
+    (isToday ? "" : '<button class="tool" data-a="dtoday">Сегодня</button>') + '<span class="sp"></span>' +
+    (isMobile() ? '<button class="tool" data-a="candopen">' + ic("inbox", 16) + " " + cands.length + "</button>" : "") +
+    '<button class="tool" data-a="dauto" title="Подобрать задачи на день по важности и длительности">' + ic("bulb", 16) + '<span class="tl"> План на день</span></button>' +
+    '<button class="tool" data-a="drep" title="Выгрузить отчёт в Excel">' + ic("dl", 16) + '<span class="tl"> Отчёт</span></button></div>' +
+    '<div class="dsum"><span>План: <b class="' + (planM > cap ? "over" : "") + '">' + fmtDurM(planM) + "</b> из " + fmtDurM(cap) + "</span><span>Факт: <b>" + fmtDurM(factM) + "</b></span></div>" +
+    '<div class="daywrap"><div class="dayscroll" id="dayscroll"><div class="lhd"><span class="ax"></span><b>План</b><b>Факт</b></div>' +
+    '<div class="dgrid" style="height:' + H + "px;--px:" + px + 'px">' + axis + '<div class="lanes"><div class="lane plan" data-a="lane" data-k="plan">' + bl.plan.map(b => blkHTML(b, px)).join("") + '</div><div class="lane log" data-a="lane" data-k="log">' + bl.fact.map(b => blkHTML(b, px)).join("") + "</div></div>" + now + "</div></div>" + candHTML + "</div></div>";
+}
+function dsheetHTML() {
+  const s = ui.dsheet; if (!s) return "";
+  const day = s.day || curDay(), close = '<button type="button" class="btn ghost" data-a="dclose">Закрыть</button>';
+  const lbl = (t, inner) => '<label class="dl"><span>' + t + "</span>" + inner + "</label>";
+  let h = "";
+  if (s.t === "pick") {
+    const cs = dayCands(day, s.q).slice(0, 40);
+    h = '<div class="dsh-t">Запланировать на ' + hm(s.min) + '</div><form id="pickform"><input id="ds-q" class="inp" autocomplete="off" enterkeyhint="send" placeholder="Найти задачу или написать новую" value="' + esc(s.q || "") + '"><button type="submit" hidden></button></form><div class="dlist">' +
+      (cs.length ? cs.map(c => '<div class="pitem" data-a="pickt" data-id="' + c.t.id + '"><span class="tx">' + esc(c.t.title) + '</span><span class="sub">' + candSub(c.t) + "</span></div>").join("") : '<div class="sub" style="padding:10px">' + (s.q ? "Не найдено — нажмите Enter, чтобы создать задачу" : "Нет задач на этот день — напишите новую") + "</div>") + '</div><div class="drow2">' + close + "</div>";
+  } else if (s.t === "plan") {
+    const t = S.tasks[s.id]; if (!t) return "";
+    const planned = !!t.plan_start && !s.isNew, pd = planned ? dayOf(t.plan_start) : day, st = s.min != null ? s.min : (planned ? minOf(t.plan_start) : defaultStart(day)), dur = t.est_minutes || 30;
+    const durs = [15, 30, 45, 60, 90, 120, 180, 240, 300, 480]; if (durs.indexOf(dur) < 0) { durs.push(dur); durs.sort((a, b) => a - b); }
+    h = '<div class="dsh-t">' + esc(t.title) + '</div><form id="planform"><div class="dgrid3">' + lbl("Дата", '<input type="date" id="ds-date" value="' + pd + '">') + lbl("Начало", '<input type="time" id="ds-start" step="300" value="' + hm(st) + '">') +
+      lbl("Длит.", '<select id="ds-dur">' + durs.map(m => '<option value="' + m + '"' + (m === dur ? " selected" : "") + ">" + fmtDurM(m) + "</option>").join("") + "</select>") + "</div>" +
+      '<div class="drow2"><button type="submit" class="btn">Сохранить</button>' + (planned ? '<button type="button" class="btn ghost" data-a="plan2log">' + (t.done ? "В факт" : "✓ Сделал(а) → в факт") + '</button>' : "") + "</div>" +
+      '<div class="drow2">' + (planned ? '<button type="button" class="btn ghost" data-a="dunplan">Снять с плана</button>' : "") + '<button type="button" class="btn ghost" data-a="dopen">Открыть задачу</button>' + close + "</div></form>";
+  } else if (s.t === "log") {
+    const l = s.id ? S.time_log[s.id] : null; if (s.id && !l) return "";
+    const st = l ? minOf(l.start_at) : s.min, en = l ? Math.min(1439, st + Math.round((Date.parse(l.end_at) - Date.parse(l.start_at)) / 60000)) : Math.min(1439, s.min + 30), ld = l ? dayOf(l.start_at) : day;
+    const titles = []; const seen = new Set();
+    Object.values(S.time_log).sort((a, b) => String(b.start_at).localeCompare(String(a.start_at))).forEach(x => { if (x.title && !seen.has(x.title) && titles.length < 40) { seen.add(x.title); titles.push(x.title); } });
+    Object.values(S.tasks).forEach(t => { if (!t.done && t.title && !seen.has(t.title) && titles.length < 90) { seen.add(t.title); titles.push(t.title); } });
+    h = '<div class="dsh-t">' + (l ? "Запись в факте" : "Записать, что делал") + '</div><form id="logform"><input id="ds-title" class="inp" list="ds-dl" autocomplete="off" placeholder="Дело / операция" value="' + esc(l ? l.title : "") + '"><datalist id="ds-dl">' + titles.map(x => '<option value="' + esc(x) + '">').join("") + "</datalist>" +
+      '<textarea id="ds-note" class="inp" rows="3" placeholder="Пояснение: что именно сделано" style="margin-top:8px">' + esc(l ? l.note : "") + "</textarea>" +
+      '<div class="dgrid3">' + lbl("Дата", '<input type="date" id="ds-date" value="' + ld + '">') + lbl("С", '<input type="time" id="ds-start" step="300" value="' + hm(st) + '">') + lbl("До", '<input type="time" id="ds-end" step="300" value="' + hm(en) + '">') + "</div>" +
+      '<div class="drow2"><button type="submit" class="btn">Сохранить</button>' + (l ? '<button type="button" class="btn ghost" data-a="dlogdel" style="color:#d13438">Удалить</button>' : "") + close + "</div></form>";
+  } else if (s.t === "rep") {
+    const n = Object.values(S.time_log).filter(x => x.start_at && dayOf(x.start_at) >= s.from && dayOf(x.start_at) <= s.to).length;
+    h = '<div class="dsh-t">Отчёт в Excel</div><form id="repform"><div class="dgrid3" style="grid-template-columns:1fr 1fr">' + lbl("С", '<input type="date" id="rp-from" value="' + s.from + '">') + lbl("По", '<input type="date" id="rp-to" value="' + s.to + '">') + "</div>" +
+      '<div class="drow2" style="margin-top:8px"><button type="button" class="btn ghost" data-a="rprange" data-v="week">Эта неделя</button><button type="button" class="btn ghost" data-a="rprange" data-v="month">Этот месяц</button><button type="button" class="btn ghost" data-a="rprange" data-v="prev">Прошлый месяц</button></div>' +
+      '<div class="sub" style="margin:10px 0;color:var(--sub)">Записей факта за период: <b>' + n + "</b>. Столбцы: дата, начало, конец, дело, пояснение, длительность.</div>" +
+      '<div class="drow2"><button type="submit" class="btn">' + ic("dl", 16) + ' Скачать .xlsx</button>' + close + "</div></form>";
+  } else if (s.t === "auto") {
+    const pl = s.placed.map(id => S.tasks[id]).filter(Boolean), sk = s.skipped.map(id => S.tasks[id]).filter(Boolean);
+    h = '<div class="dsh-t">План на день</div><div class="sub" style="margin-bottom:8px;color:var(--sub)">' + (pl.length ? "Расставлено задач: <b>" + pl.length + "</b> на " + fmtDurM(s.used) + " из доступных " + fmtDurM(s.cap) + " (с резервом " + PR.reserve + "%)." : "Новых задач расставить не удалось.") + (s.noEst ? " Без оценки времени: " + s.noEst + " (считал по 30 мин — укажите «Сколько займёт»)." : "") + "</div>" +
+      (sk.length ? '<div class="lbl" style="margin:6px 0">Не влезло (' + sk.length + ")</div><div class=\"dlist\">" + sk.map(t => '<div class="pitem" data-a="autotom" data-id="' + t.id + '"><span class="tx">' + esc(t.title) + '</span><span class="sub">→ на завтра</span></div>').join("") + "</div>" : "") +
+      '<div class="drow2">' + (pl.length ? '<button type="button" class="btn ghost" data-a="autoundo">Отменить расстановку</button>' : "") + '<button type="button" class="btn" data-a="dclose">Готово</button></div>';
+  }
+  return '<div class="ovl dov" data-a="dovl"><div class="sheet dsh">' + h + "</div></div>";
+}
+
+/* ----- действия ----- */
+function planInto(day, id, min) { upd(id, { plan_start: isoAt(day, clampN(min, 0, 1425)) }); }
+const dayActs = {
+  dprev() { ui.day = addDays(curDay(), -1); ui.dsheet = null; render(); },
+  dnext() { ui.day = addDays(curDay(), 1); ui.dsheet = null; render(); },
+  dtoday() { ui.day = null; render(); },
+  dclose() { ui.dsheet = null; render(); },
+  dovl(a, e) { if (e.target === a) { ui.dsheet = null; render(); } },
+  lane(a, e) {
+    if (Date.now() < noClickUntil) return;
+    const r = a.getBoundingClientRect(), m = clampN(gFrom * 60 + Math.floor((e.clientY - r.top) / DAYPX() * 4) * 15, 0, 1425);
+    ui.dsheet = a.dataset.k === "plan" ? { t: "pick", min: m, q: "", day: curDay() } : { t: "log", id: null, min: m, day: curDay() }; render();
+  },
+  blk(a) {
+    if (Date.now() < noClickUntil) return;
+    ui.dsheet = { t: a.dataset.k === "plan" ? "plan" : "log", id: a.dataset.id, day: curDay() }; render();
+  },
+  candtap(a) { if (Date.now() < noClickUntil) return; ui.dsheet = { t: "plan", id: a.dataset.id, isNew: true, day: curDay(), min: defaultStart(curDay()) }; render(); },
+  candopen() { ui.dsheet = { t: "pick", min: defaultStart(curDay()), q: "", day: curDay() }; render(); },
+  pickt(a) { const s = ui.dsheet; if (s && S.tasks[a.dataset.id]) planInto(s.day || curDay(), a.dataset.id, s.min); ui.dsheet = null; render(); },
+  dunplan() { const s = ui.dsheet; if (s) upd(s.id, { plan_start: null }); ui.dsheet = null; render(); },
+  dopen() { const s = ui.dsheet; if (s && S.tasks[s.id]) { selId = s.id; ui.left = false; } ui.dsheet = null; render(); },
+  dlogdel() { const s = ui.dsheet; if (s && s.id) delLog(s.id); ui.dsheet = null; render(); },
+  plan2log() {
+    const s = ui.dsheet, t = s && S.tasks[s.id]; if (!t || !t.plan_start) return;
+    const dur = t.est_minutes || 30, l = addLog({ task_id: t.id, title: t.title, note: "", start_at: t.plan_start, end_at: new Date(Date.parse(t.plan_start) + dur * 60000).toISOString() });
+    if (!t.done) toggleDone(t.id);
+    ui.dsheet = { t: "log", id: l.id, day: dayOf(t.plan_start) }; render();
+  },
+  dauto() { autoPlan(); },
+  drep() { const n = new Date(), f = isoLocal(new Date(n.getFullYear(), n.getMonth(), 1)); ui.dsheet = { t: "rep", from: f, to: todayISO() }; render(); },
+  rprange(a) {
+    const s = ui.dsheet, n = new Date(), v = a.dataset.v; if (!s) return;
+    if (v === "week") { const w = (n.getDay() + 6) % 7; s.from = addDays(todayISO(), -w); s.to = todayISO(); }
+    else if (v === "month") { s.from = isoLocal(new Date(n.getFullYear(), n.getMonth(), 1)); s.to = todayISO(); }
+    else { s.from = isoLocal(new Date(n.getFullYear(), n.getMonth() - 1, 1)); s.to = isoLocal(new Date(n.getFullYear(), n.getMonth(), 0)); }
+    render();
+  },
+  autoundo() { const s = ui.dsheet; if (s && s.placed) s.placed.forEach(id => upd(id, { plan_start: null })); ui.dsheet = null; render(); },
+  autotom(a) { const s = ui.dsheet; upd(a.dataset.id, { due: addDays(todayISO(), 1), my_day: false, my_day_date: null }); if (s && s.skipped) s.skipped = s.skipped.filter(x => x !== a.dataset.id); render(); },
+  tplan() {
+    const t = S.tasks[selId]; if (!t) return;
+    const day = t.plan_start ? dayOf(t.plan_start) : (t.due && t.due >= todayISO() ? t.due : todayISO());
+    view = "day"; jset(LSK.view, view); ui.day = day === todayISO() ? null : day; ui.dsheet = { t: "plan", id: t.id, isNew: !t.plan_start, day, min: t.plan_start ? minOf(t.plan_start) : defaultStart(day) }; selId = null; render();
+  },
+  clrplan() { upd(selId, { plan_start: null }); render(); }
+};
+const dayChanges = {
+  "d-date"(v) { if (v) { ui.day = v === todayISO() ? null : v; render(); } },
+  "rp-from"(v) { if (ui.dsheet && v) { ui.dsheet.from = v; render(); } },
+  "rp-to"(v) { if (ui.dsheet && v) { ui.dsheet.to = v; render(); } },
+  "s-ds"(v) { PR.dayStart = +v; if (PR.dayEnd <= PR.dayStart) PR.dayEnd = PR.dayStart + 1; savePrefs(); render(); },
+  "s-de"(v) { PR.dayEnd = Math.max(+v, PR.dayStart + 1); savePrefs(); render(); },
+  "s-rs"(v) { PR.reserve = +v; savePrefs(); render(); }
+};
+function dayInput(id, v) { if (id === "ds-q" && ui.dsheet && ui.dsheet.t === "pick") { ui.dsheet.q = v; render(); } }
+
+function daySubmit(id) {
+  const s = ui.dsheet, V = k => { const e = $(k); return e ? e.value : ""; };
+  if (id === "pickform" && s) {
+    const q = V("ds-q").trim(); if (!q) return true;
+    const t = createFromText(q, null); planInto(s.day || curDay(), t.id, s.min); ui.dsheet = null; render(); return true;
+  }
+  if (id === "planform" && s) {
+    const t = S.tasks[s.id]; if (!t) return true;
+    const d = V("ds-date") || curDay(), st = parseHM(V("ds-start")), dur = +V("ds-dur") || 30;
+    if (st == null) return true;
+    upd(t.id, { plan_start: isoAt(d, st), est_minutes: dur }); ui.dsheet = null; render(); return true;
+  }
+  if (id === "logform" && s) {
+    const d = V("ds-date") || curDay(), st = parseHM(V("ds-start")); if (st == null) return true;
+    let en = parseHM(V("ds-end")); if (en == null || en <= st) en = Math.min(st + 15, 1439 + 15);
+    const note = V("ds-note").trim(); let title = V("ds-title").trim() || (note ? note.slice(0, 40) : "Работа");
+    const old = s.id ? S.time_log[s.id] : null, match = Object.values(S.tasks).find(t => t.title === title && !t.done);
+    const o = { title, note, start_at: isoAt(d, st), end_at: new Date(parseISO(d).setHours(0, en, 0, 0)).toISOString(), task_id: old && old.title === title ? old.task_id : (match ? match.id : null) };
+    if (old) updLog(old.id, o); else addLog(o);
+    ui.dsheet = null; render(); return true;
+  }
+  if (id === "repform" && s) { exportReport(s.from, s.to); return true; }
+  return false;
+}
+
+/* ----- умный подбор «План на день» ----- */
+function autoPlan() {
+  const day = curDay(), t0 = todayISO();
+  if (day < t0) { toast("Прошлое не планируем 🙂 Выберите сегодня или будущий день"); return; }
+  const ws = PR.dayStart * 60, we = PR.dayEnd * 60, from = day === t0 ? Math.max(ws, defaultStart(day)) : ws;
+  const bl = dayBlocks(day), busy = bl.plan.concat(bl.fact).map(b => [b.s, b.e]).sort((a, b) => a[0] - b[0]);
+  const gaps = []; let cur = from;
+  for (const [s, e] of busy) { if (e <= cur) continue; if (s > cur) gaps.push([cur, Math.min(s, we)]); cur = Math.max(cur, e); if (cur >= we) break; }
+  if (cur < we) gaps.push([cur, we]);
+  const gl = gaps.filter(g => g[1] > g[0]);
+  const free = gl.reduce((s, g) => s + g[1] - g[0], 0), cap = Math.floor(free * (1 - PR.reserve / 100) / 5) * 5;
+  const placed = [], skipped = []; let used = 0, noEst = 0;
+  for (const c of dayCands(day)) {
+    const dur = c.t.est_minutes || 30;
+    const g = gl.find(x => x[1] - x[0] >= dur);
+    if (used + dur > cap || !g) { skipped.push(c.t.id); continue; }
+    planInto(day, c.t.id, g[0]); g[0] += dur; used += dur; placed.push(c.t.id); if (!c.t.est_minutes) noEst++;
+  }
+  ui.dsheet = { t: "auto", placed, skipped, used, cap, noEst, day }; render();
+}
+
+/* ----- перетаскивание и растягивание блоков ----- */
+function dayPointerDown(e) {
+  const b = e.target.closest(".blk, .cit"); if (!b || (e.button && e.button > 0) || e.target.closest("button, input, select")) return;
+  const touch = e.pointerType !== "mouse", cand = b.classList.contains("cit");
+  drag = { el: b, k: b.dataset.k, id: b.dataset.id, mode: !cand && e.target.closest(".rz") ? "rz" : "mv", x0: e.clientX, y0: e.clientY, s0: +b.dataset.s || 0, d0: +b.dataset.d || 30, touch, active: false, ns: null, nd: null, ghost: null };
+  if (touch) drag.timer = setTimeout(() => { if (drag) { drag.active = true; drag.el.classList.add("lift"); try { navigator.vibrate && navigator.vibrate(12); } catch (x) {} } }, 320);
+  window.addEventListener("pointermove", dayMove); window.addEventListener("pointerup", dayUp); window.addEventListener("pointercancel", dayCancel);
+  window.addEventListener("touchmove", dayTouchBlock, { passive: false });
+}
+function dayTouchBlock(e) { if (drag && drag.active) e.preventDefault(); }
+function dayCleanup() {
+  if (drag) { clearTimeout(drag.timer); drag.el.classList.remove("lift"); if (drag.ghost) drag.ghost.remove(); }
+  window.removeEventListener("pointermove", dayMove); window.removeEventListener("pointerup", dayUp); window.removeEventListener("pointercancel", dayCancel); window.removeEventListener("touchmove", dayTouchBlock);
+}
+function dayMove(e) {
+  const d = drag; if (!d) return;
+  const dx = e.clientX - d.x0, dy = e.clientY - d.y0, px = DAYPX();
+  if (!d.active) {
+    if (d.touch) { if (Math.abs(dx) > 8 || Math.abs(dy) > 8) { dayCleanup(); drag = null; } return; }   // палец поехал раньше долгого нажатия — это прокрутка
+    if (Math.hypot(dx, dy) < 5) return; d.active = true; d.el.classList.add("lift");
+  }
+  e.preventDefault();
+  if (d.k === "cand") {
+    if (!d.ghost) { d.ghost = document.createElement("div"); d.ghost.className = "dghost"; d.ghost.textContent = d.el.querySelector(".tx").textContent; document.body.appendChild(d.ghost); }
+    d.ghost.style.left = e.clientX + 8 + "px"; d.ghost.style.top = e.clientY + 8 + "px"; return;
+  }
+  const dm = Math.round(dy / px * 4) * 15;
+  if (d.mode === "mv") {
+    d.ns = clampN(d.s0 + dm, 0, 1440 - d.d0); d.el.style.top = (d.ns - gFrom * 60) * px / 60 + "px";
+    const m = d.el.querySelector(".bm"); if (m) m.textContent = hm(d.ns) + "–" + hm(d.ns + d.d0) + " · " + fmtDurM(d.d0);
+  } else {
+    d.nd = clampN(d.d0 + dm, 15, 1440 - d.s0); d.el.style.height = Math.max(d.nd * px / 60, 16) + "px";
+    const m = d.el.querySelector(".bm"); if (m) m.textContent = hm(d.s0) + "–" + hm(d.s0 + d.nd) + " · " + fmtDurM(d.nd);
+  }
+}
+function dayCancel() { dayCleanup(); drag = null; render(); }
+function dayUp(e) {
+  const d = drag; dayCleanup(); drag = null; if (!d || !d.active) return;
+  noClickUntil = Date.now() + 350; const day = curDay(), px = DAYPX();
+  if (d.k === "cand") {
+    const lane = document.elementsFromPoint ? Array.from(document.elementsFromPoint(e.clientX, e.clientY)).find(x => x.classList && x.classList.contains("lane") && x.dataset.k === "plan") : null;
+    if (lane) { const r = lane.getBoundingClientRect(); planInto(day, d.id, gFrom * 60 + Math.round((e.clientY - r.top) / px * 4) * 15); }
+  } else if (d.k === "plan") {
+    if (d.mode === "mv" && d.ns != null) upd(d.id, { plan_start: isoAt(day, d.ns) }); else if (d.mode === "rz" && d.nd != null) upd(d.id, { est_minutes: d.nd });
+  } else {
+    const l = S.time_log[d.id];
+    if (l) { const s = d.mode === "mv" && d.ns != null ? d.ns : d.s0, n = d.mode === "rz" && d.nd != null ? d.nd : d.d0; updLog(d.id, { start_at: isoAt(day, s), end_at: new Date(Date.parse(isoAt(day, s)) + n * 60000).toISOString() }); }
+  }
+  render();
+}
+function dayAfterRender() {                      // при входе в «День» прокручиваем к текущему времени / началу рабочего дня
+  const sc = $("dayscroll");
+  if (view !== "day" || !sc) { ui.dayInit = null; return; }
+  const key = curDay() + "|" + (isMobile() ? 1 : 0); if (ui.dayInit === key) return; ui.dayInit = key;
+  const target = curDay() === todayISO() ? Math.max(PR.dayStart * 60, new Date().getHours() * 60 - 60) : PR.dayStart * 60;
+  sc.scrollTop = Math.max(0, (target - gFrom * 60) * DAYPX() / 60 - 10);
+}
+
+/* ----- выгрузка в Excel (.xlsx без библиотек: минимальный ZIP + OOXML) ----- */
+function utf8(s) { const b = unescape(encodeURIComponent(s)), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+let crcT = null;
+function crc32(a) {
+  if (!crcT) { crcT = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crcT[n] = c >>> 0; } }
+  let c = 0xFFFFFFFF; for (let i = 0; i < a.length; i++) c = crcT[(c ^ a[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStore(files) {
+  const parts = [], cen = []; let off = 0; const n = new Date();
+  const dt = ((n.getHours() << 11) | (n.getMinutes() << 5) | (n.getSeconds() >> 1)) & 0xFFFF, dd = (((n.getFullYear() - 1980) << 9) | ((n.getMonth() + 1) << 5) | n.getDate()) & 0xFFFF;
+  for (const f of files) {
+    const nm = utf8(f.name), d = f.data, crc = crc32(d), lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(10, dt, true); lh.setUint16(12, dd, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, d.length, true); lh.setUint32(22, d.length, true); lh.setUint16(26, nm.length, true);
+    parts.push(new Uint8Array(lh.buffer), nm, d);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(12, dt, true); ch.setUint16(14, dd, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, d.length, true); ch.setUint32(24, d.length, true); ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+    cen.push(new Uint8Array(ch.buffer), nm); off += 30 + nm.length + d.length;
+  }
+  const cl = cen.reduce((s, x) => s + x.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cl, true); end.setUint32(16, off, true);
+  const all = parts.concat(cen, [new Uint8Array(end.buffer)]), out = new Uint8Array(all.reduce((s, x) => s + x.length, 0)); let p = 0;
+  for (const x of all) { out.set(x, p); p += x.length; } return out;
+}
+const xe = s => String(s == null ? "" : s).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function buildXlsx(rows) {                       // rows: [{d:"YYYY-MM-DD", s:минуты, e:минуты, title, note}]
+  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"', X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const cs = (ref, txt, st) => '<c r="' + ref + '" t="inlineStr" s="' + st + '"><is><t xml:space="preserve">' + xe(txt) + "</t></is></c>";
+  const cn = (ref, v, st) => '<c r="' + ref + '" s="' + st + '"><v>' + v + "</v></c>";
+  const heads = ["Дата", "Начало", "Конец", "Дело / операция", "Пояснение: что делал", "Длительность, ч"];
+  let sd = '<row r="1" ht="30" customHeight="1">' + heads.map((h, i) => cs("ABCDEF"[i] + "1", h, 1)).join("") + "</row>";
+  rows.forEach((r, i) => {
+    const n = i + 2, p = r.d.split("-").map(Number), serial = Math.round((Date.UTC(p[0], p[1] - 1, p[2]) - Date.UTC(1899, 11, 30)) / 864e5);
+    sd += '<row r="' + n + '">' + cn("A" + n, serial, 2) + cn("B" + n, r.s / 1440, 3) + cn("C" + n, r.e / 1440, 3) + cs("D" + n, r.title, 5) + cs("E" + n, r.note, 5) + cn("F" + n, ((r.e - r.s) / 60).toFixed(2), 4) + "</row>";
+  });
+  const last = rows.length + 1;
+  const sheet = X + "<worksheet " + NS + '><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="3" width="9" customWidth="1"/><col min="4" max="4" width="42" customWidth="1"/><col min="5" max="5" width="60" customWidth="1"/><col min="6" max="6" width="16" customWidth="1"/></cols><sheetData>' + sd + '</sheetData><autoFilter ref="A1:F' + last + '"/></worksheet>';
+  const xf = (fmt, al) => '<xf numFmtId="' + fmt + '" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment ' + al + "/></xf>";
+  const styles = X + "<styleSheet " + NS + '><numFmts count="1"><numFmt numFmtId="164" formatCode="dd\\.mm\\.yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9E1F2"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    xf(164, 'horizontal="center" vertical="top"') + xf(20, 'horizontal="center" vertical="top"') + xf(2, 'horizontal="center" vertical="top"') + xf(0, 'vertical="top" wrapText="1"') +
+    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const wb = X + "<workbook " + NS + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Отчёт" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">\'Отчёт\'!$A$1:$F$' + last + "</definedName></definedNames></workbook>";
+  const RT = "http://schemas.openxmlformats.org/officeDocument/2006/relationships", PK = "http://schemas.openxmlformats.org/package/2006/relationships";
+  const files = [
+    { name: "[Content_Types].xml", data: utf8(X + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
+    { name: "_rels/.rels", data: utf8(X + '<Relationships xmlns="' + PK + '"><Relationship Id="rId1" Type="' + RT + '/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
+    { name: "xl/workbook.xml", data: utf8(wb) },
+    { name: "xl/_rels/workbook.xml.rels", data: utf8(X + '<Relationships xmlns="' + PK + '"><Relationship Id="rId1" Type="' + RT + '/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="' + RT + '/styles" Target="styles.xml"/></Relationships>') },
+    { name: "xl/styles.xml", data: utf8(styles) },
+    { name: "xl/worksheets/sheet1.xml", data: utf8(sheet) }
+  ];
+  return zipStore(files);
+}
+function reportRows(from, to) {
+  return Object.values(S.time_log).filter(l => l.start_at && dayOf(l.start_at) >= from && dayOf(l.start_at) <= to).sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)))
+    .map(l => { const s = minOf(l.start_at); return { d: dayOf(l.start_at), s, e: s + Math.max(1, Math.round((Date.parse(l.end_at) - Date.parse(l.start_at)) / 60000)), title: l.title, note: l.note }; });
+}
+function exportReport(from, to) {
+  const rows = reportRows(from, to); if (!rows.length) { toast("За этот период в факте пусто"); return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buildXlsx(rows)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+  a.download = "otchet_" + from + "_" + to + ".xlsx"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  ui.dsheet = null; render(); toast("📊 Отчёт скачан: " + rows.length + " записей");
+}
+
+const dayCSS = `
+.dayhead{display:flex;align-items:center;gap:6px;padding:4px 14px 2px;flex-shrink:0;flex-wrap:wrap}
+.dlab{position:relative;font-size:18px;font-weight:600;padding:4px 8px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center}
+.dlab:hover{background:rgba(128,128,128,.15)}
+.dlab input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.dsum{display:flex;gap:16px;padding:2px 22px 6px;font-size:13px;color:var(--sub);flex-shrink:0}
+.dsum b{color:var(--tx)} .dsum b.over{color:#d13438}
+.daywrap{flex:1;min-height:0;display:flex;overflow:hidden}
+.dayscroll{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;padding:0 10px 80px 14px;-webkit-overflow-scrolling:touch}
+.lhd{display:flex;gap:6px;position:sticky;top:0;z-index:5;background:var(--bg);padding:4px 0 4px 0;font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
+.lhd .ax{width:46px;flex-shrink:0} .lhd b{flex:1;text-align:center;font-weight:600}
+.dgrid{position:relative;margin-top:8px;touch-action:pan-y;background-image:linear-gradient(var(--ln) 1px,transparent 1px),linear-gradient(rgba(128,128,128,.12) 1px,transparent 1px);background-size:100% var(--px),100% calc(var(--px)/2);background-position:0 0,0 0}
+.hlab{position:absolute;left:0;width:42px;text-align:right;font-size:11px;color:var(--sub);transform:translateY(-7px)}
+.lanes{position:absolute;left:46px;right:0;top:0;bottom:0;display:flex;gap:6px}
+.lane{flex:1;position:relative;border-left:1px solid var(--ln);cursor:cell}
+.blk{position:absolute;box-sizing:border-box;border-radius:6px;padding:3px 6px;font-size:12.5px;line-height:1.25;overflow:hidden;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:pan-y;border-left:4px solid var(--acc);background:color-mix(in srgb,var(--acc) 18%,var(--solid));color:var(--tx);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.blk.log{border-left-color:#107c10;background:color-mix(in srgb,#107c10 20%,var(--solid))}
+.blk.done{opacity:.65} .blk.done .bt{text-decoration:line-through}
+.blk.noest{border-left-style:dashed}
+.blk .bt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk .bm,.blk .bn{font-size:11px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk.sm .bm,.blk.sm .bn{display:none}
+.blk .rz{position:absolute;left:0;right:0;bottom:0;height:9px;cursor:ns-resize}
+.blk .rz::after{content:"";position:absolute;left:50%;bottom:2px;width:22px;height:3px;margin-left:-11px;border-radius:2px;background:rgba(128,128,128,.5)}
+.blk.lift{z-index:20;box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:grabbing;transform:scale(1.02)}
+.nowl{position:absolute;left:40px;right:0;height:0;border-top:2px solid #e5484d;z-index:6;pointer-events:none}
+.nowl::before{content:"";position:absolute;left:-5px;top:-6px;width:10px;height:10px;border-radius:50%;background:#e5484d}
+.cand{width:270px;flex-shrink:0;border-left:1px solid var(--ln);overflow-y:auto;padding:8px 10px}
+.chd{font-weight:600;font-size:14px} .csub{font-size:12px;color:var(--sub);margin:2px 0 8px}
+.cit{display:flex;flex-direction:column;gap:1px;padding:7px 9px;margin-bottom:5px;border:1px solid var(--ln);border-radius:7px;background:var(--solid);cursor:grab;user-select:none;-webkit-user-select:none;font-size:13px}
+.cit:hover{border-color:var(--acc)} .cit .tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .cit .sub,.pitem .sub{font-size:11.5px;color:var(--sub)}
+.cit.lift{opacity:.5}
+.dghost{position:fixed;z-index:200;pointer-events:none;padding:6px 10px;border-radius:7px;background:var(--acc);color:#fff;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsh{width:min(480px,100%)} .dsh-t{font-weight:700;font-size:1.1em;margin-bottom:10px}
+.dl{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--sub);margin-bottom:8px} .dl input,.dl select{width:100%;min-width:0;box-sizing:border-box;height:36px;border:1px solid var(--ln);border-radius:6px;background:var(--bg);color:var(--tx);padding:0 8px;font-size:14px}
+.dgrid3{display:grid;grid-template-columns:1.4fr 1.1fr .9fr;gap:8px;margin-top:8px} .dgrid3>*{min-width:0}
+.drow2{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px} .drow2 .btn{flex:1;min-width:110px}
+.dlist{max-height:46vh;overflow:auto;margin-top:8px}
+.pitem{display:flex;justify-content:space-between;gap:10px;padding:10px 8px;border-bottom:1px solid var(--ln);cursor:pointer;font-size:14px} .pitem:hover{background:rgba(128,128,128,.12)} .pitem .tx{flex:1;min-width:0}
+@media (max-width:760px){
+  .dov{align-items:flex-end;padding:0} .dov .dsh{border-radius:14px 14px 0 0;width:100%;max-height:88vh;padding-bottom:max(18px,env(safe-area-inset-bottom))}
+  .dayhead{padding:2px 4px;flex-wrap:nowrap;gap:2px} .dayhead .tl{display:none} .dayhead .tool{padding:6px 7px;min-width:0} .dlab{font-size:16px;white-space:nowrap;padding:4px 4px} .dsum{padding:0 14px 4px}
+  .dayscroll{padding:0 6px 90px 8px} .lhd .ax{width:38px} .hlab{width:34px;font-size:10px} .lanes{left:38px}
+}
+`;
 
 /* ===== p4: стили и HTML-шаблоны ===== */
 const CSS = `
@@ -693,10 +1209,41 @@ select.inp option{color:#111}
 .toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:13.5px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
 .dropok{outline:2px dashed var(--acc);outline-offset:-3px}
+.gbody{margin-left:22px;border-left:2px solid var(--ln)}
+.gbody .chip{padding-left:12px}
+.mtop{display:flex;align-items:center;gap:2px;padding:8px 8px 0;color:var(--tx);flex-shrink:0}
+.mtop .ibtn{width:42px;height:42px}
+.searchbox.mob{flex:1;max-width:none;margin:0}
+.searchbox.mob input{background:var(--card);color:var(--tx);border:1px solid var(--ln);height:40px;border-radius:20px}
+.searchbox.mob .ic{color:var(--sub)}
+.mdtop{padding:8px 8px 0;flex-shrink:0}
+.lacct{display:flex;align-items:center;gap:4px;padding:14px 10px 4px}
+.lacc{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left}
+.lacc .av{width:44px;height:44px;border-radius:50%;background:#5b3fc4;color:#fff;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lacc .lt{display:flex;flex-direction:column;min-width:0}
+.lacc .lt b{font-size:17px;font-weight:600}
+.lacc .lt i{font-style:normal;font-size:13px;color:var(--sub);overflow:hidden;text-overflow:ellipsis}
+.lsync{padding:0 16px 6px;font-size:12px;color:var(--sub)}
+#app.hasbg .mhead h1,#app.hasbg .mtop,#app.hasbg .msub{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.55)}
+.taskrow{-webkit-tap-highlight-color:transparent}
+.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.4);z-index:30}
+.qa-back{position:fixed;left:0;right:0;top:0;bottom:0;padding-bottom:var(--kb,0px);background:rgba(0,0,0,.45);z-index:55;display:flex;align-items:flex-end}
+.qa{width:100%;background:var(--solid);color:var(--tx);border-radius:14px 14px 0 0;padding:10px 12px max(12px,env(safe-area-inset-bottom))}
+.qrow{display:flex;align-items:center;gap:12px;padding:6px 4px 10px}
+.qrow input{flex:1;background:transparent;border:0;color:var(--tx);font-size:17px;height:42px;min-width:0}
+.qsend{width:42px;height:42px;border-radius:8px;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qchips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 4px}
+.qchip{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:9px 13px;border-radius:20px;background:var(--card);border:1px solid var(--ln);font-size:14px;color:var(--tx);flex-shrink:0}
+.qchip.on{background:var(--sel);border-color:var(--acc);color:var(--acc)}
 @media(max-width:760px){
-  .brand,#sync{display:none} .mhead{padding:10px 14px 2px} .msub{padding:0 14px} .addbar{margin:8px 14px 10px} #list{padding:0 14px 24px} .sortbar{padding:6px 14px 0} .hint{margin-left:14px} .sugg{margin:0 14px 10px}
-  #left.railed{width:82%}
-  #right{width:100%;max-width:none}
+  .mhead{padding:6px 18px 2px} .mhead h1{font-size:28px;font-weight:700}
+  .msub{padding:0 18px} .addbar,.hint{display:none}
+  #list{padding:0 14px 100px} .sortbar{padding:6px 14px 0;justify-content:flex-start} .sugg{margin:0 14px 10px}
+  #left,#right{position:absolute;left:0;top:0;right:0;bottom:0;width:100%!important;max-width:none!important;z-index:20;box-shadow:none}
+  .chip{height:52px;font-size:16px} .ghead{height:46px;font-size:15px}
+  .taskrow{border-radius:4px}
+  .pop{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%;max-width:none;border-radius:14px 14px 0 0;max-height:65vh;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .pi{padding:13px 18px;font-size:16px}
 }
 @media print{
   #top,#left,#right,.addbar,.hint,.tool,.mhead .ibtn,.star,#toasts,.pop{display:none!important}
@@ -708,6 +1255,7 @@ select.inp option{color:#111}
 const listIcon = l => l && l.icon ? '<span class="em">' + esc(l.icon) + "</span>" : '<span class="em">' + ic("list", 18) + "</span>";
 function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
+  if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
   if (view === "starred") return { svg: "star", name: "Важно" };
   if (view === "planned") return { svg: "cal", name: "Запланировано" };
   if (view === "all") return { svg: "inbox", name: "Все задачи" };
@@ -715,7 +1263,28 @@ function viewInfo() {
   if (view === "search") return { svg: "search", name: "Результаты поиска", sub: "«" + ui.q + "»" };
   const l = S.lists[view.slice(5)]; return { emoji: l.icon, svg: "list", name: l.name, list: l };
 }
+function mtopHTML(vi) {
+  if (!isMobile()) return "";
+  if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
+  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button><span style="flex:1"></span><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button><button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button></div>";
+}
+function lheadHTML() {
+  if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
+  const em = S.user ? S.user.email || "?" : "";
+  return '<div class="lacct"><button class="lacc" data-a="pop" data-p="acct"><span class="av">' + esc(em.slice(0, 2).toUpperCase()) + '</span><span class="lt"><b>' + esc(em.split("@")[0]) + "</b><i>" + esc(em) + "</i></span>" + ic("chevd", 14) + '</button><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="settings">' + ic("gear", 20) + '</button></div><div id="sync" class="lsync" data-a="sync"></div>';
+}
+function qaHTML() {
+  if (!ui.qa) return "";
+  const q = ui.qa, di = dueInfo({ due: q.due, done: false });
+  const chip = (svg, label, attrs, on) => '<button type="button" class="qchip ' + (on ? "on" : "") + '" ' + attrs + ">" + ic(svg, 16) + "<span>" + label + "</span></button>";
+  return '<div class="qa-back" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="send" autocomplete="off" placeholder="Добавить задачу"><button class="qsend" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
+    chip("cal", di ? di.txt : "Задать дату выполнения", 'data-a="pop" data-p="due" data-id="__qa"', !!q.due) +
+    chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "Напомнить", 'data-a="pop" data-p="remind" data-id="__qa"', !!q.remind_at) +
+    chip("repeat", q.repeat_rule ? esc(repeatText(q.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="__qa"', !!q.repeat_rule) +
+    chip("sun", "Мой день", 'data-a="qatog" data-f="my"', q.my) + chip("star", "Важно", 'data-a="qatog" data-f="starred"', q.starred) + "</div></form></div>";
+}
 function topHTML() {
+  if (isMobile()) return "";
   const em = S.user ? (S.user.email || "?").slice(0, 2).toUpperCase() : "";
   return '<div id="top"><button class="ibtn mobtop" data-a="menu">' + ic("menu", 20) + '</button><div class="brand">Мои дела</div>' +
     '<div class="searchbox">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '">' + (ui.q ? '<button class="qx" data-a="qclear">' + ic("x", 14) + "</button>" : "") + "</div>" +
@@ -735,12 +1304,11 @@ function leftHTML(c) {
     if (seen.has(g)) continue; seen.add(g);
     const mem = ls.filter(x => x.group_name === g), col = PR.collapsed[g];
     tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"><span class="tx">' + esc(g) + '</span><button class="ibtn" data-a="pop" data-p="gmenu" data-g="' + esc(g) + '">' + ic("dots", 16) + "</button>" + ic(col ? "chevr" : "chevd", 14) + "</div>";
-    if (!col) tree += mem.map(lc).join("");
+    if (!col) tree += '<div class="gbody">' + mem.map(lc).join("") + "</div>";
   }
-  return (ui.left ? '<div class="mobtop" data-a="menu" style="position:absolute;inset:0;z-index:15;background:rgba(0,0,0,.45)"></div>' : "") +
-    '<div id="left" class="pane ' + (PR.rail ? "railed" : "") + " " + (ui.left ? "" : "hide") + '"><div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>" +
+  return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    sm("myday", "sun", "Мой день", c.myday, "var(--acc)") + sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    sm("myday", "sun", "Мой день", c.myday, "var(--acc)") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") + sm("someday", "moon", "Когда-нибудь", c.someday, "#8764b8") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -768,15 +1336,15 @@ function rowHTML(t, showList) {
 function mainHTML(items, done, vi) {
   const grid = !!PR.grid[view], showList = view.indexOf("list:") !== 0, sorted = sortItems(items.slice());
   const groups = groupItems(sorted.slice(0, ui.limit)), sc = PR.sort[view];
-  let h = '<div id="main" class="pane" style="flex:1"><div class="mhead">' +
+  let h = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead">' +
     '<h1>' + (vi.emoji ? '<span style="font-size:22px">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 22)) + "<span>" + esc(vi.name) + "</span></h1>" +
-    (vi.list ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
-    (view === "myday" ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
-    (view !== "search" ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + ' Сетка</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + " Список</button>" +
+    (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
+    (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
+    (view !== "search" && !isMobile() ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + ' Сетка</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + " Список</button>" +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" : "") + "</div>" +
     '<div class="msub">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + " активн.</div>" +
     (sc && view !== "search" ? '<div class="sortbar"><span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + " Сортировка: " + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span></div>" : "");
-  if (view !== "search") h += '<div class="addbar">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" placeholder="Добавить задачу"></div><div class="hint">Подсказка: завтра · в пятницу · через 3 дня · 25.12 · в 18:00 · каждый день · ~30м · #список · ! (важно)</div>';
+  if (view !== "search" && !isMobile()) h += '<form id="addform" class="addbar">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" enterkeyhint="send" placeholder="Добавить задачу"><button type="submit" hidden></button></form><div class="hint">Подсказка: завтра · в пятницу · через 3 дня · 25.12 · в 18:00 · каждый день · ~30м · #список · ! (важно)</div>';
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
     h += '<div class="sugg"><div class="st">Предложения<span style="flex:1"></span><button data-a="sugg" class="ibtn" style="width:26px;height:26px">' + ic("x", 14) + "</button></div>" +
@@ -798,20 +1366,24 @@ function mainHTML(items, done, vi) {
       if (done.length > ui.doneLimit) h += '<button class="btn ghost" data-a="moredone" style="width:100%;margin:6px 0">Показать ещё</button>';
     }
   }
-  return h + "</div></div>";
+  return h + "</div>" + (isMobile() && view !== "search" && !ui.left && !selId ? '<button class="fab" data-a="qaopen" title="Добавить задачу">' + ic("plus", 28) + "</button>" : "") + "</div>";
 }
+const fmtPlan = iso => { const d = new Date(iso); return d.getDate() + " " + MONS[d.getMonth()] + ", " + hm(d.getHours() * 60 + d.getMinutes()); };
+let lastDetail = null, lastSettings = false;
 function detailHTML(t) {
+  const fresh = lastDetail !== t.id; lastDetail = t.id;
   const steps = t.steps || [], di = dueInfo(t), id = t.id, mine = inMyDay(t);
   const row = (svg, txt, attrs, cls, clr) => '<div class="drow ' + (cls || "") + '" ' + attrs + ">" + ic(svg, 18) + '<span class="dtx">' + txt + "</span>" + (clr ? '<button class="xbtn" data-a="' + clr + '" title="Убрать">' + ic("x", 15) + "</button>" : "") + "</div>";
-  return '<div id="right" class="pane fade"><div class="dscroll" id="dscroll">' +
+  return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + "</button></div>" : "") + '<div class="dscroll" id="dscroll">' +
     '<div class="dcard"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div>" +
     steps.map((s, i) => '<div class="drow stp"><div class="rad ' + (s.d ? "on" : "") + '" style="width:18px;height:18px" data-a="stepTog" data-i="' + i + '">' + (s.d ? ic("check", 11) : "") + '</div><span class="dtx" style="' + (s.d ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(s.t) + '</span><button class="xbtn" data-a="stepDel" data-i="' + i + '">' + ic("x", 14) + "</button></div>").join("") +
-    '<div class="drow stp act">' + ic("plus", 18) + '<input id="d-step" placeholder="Добавить шаг" style="color:var(--acc)"></div></div>' +
-    '<div class="dcard">' + row("sun", mine ? "Добавлено в представление «Мой день»" : "Добавить в представление «Мой день»", 'data-a="tmyday"', mine ? "act" : "", mine ? "tmyday" : "") + "</div>" +
+    '<form id="stepform" class="drow stp act">' + ic("plus", 18) + '<input id="d-step" enterkeyhint="send" placeholder="Добавить шаг" style="color:var(--acc)"><button type="submit" hidden></button></form></div>' +
+    '<div class="dcard">' + row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") + row("sun", mine ? "Добавлено в представление «Мой день»" : "Добавить в представление «Мой день»", 'data-a="tmyday"', mine ? "act" : "", mine ? "tmyday" : "") + "</div>" +
     '<div class="dcard">' +
     row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
     row("cal", di ? esc(di.txt) : "Добавить срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
     row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") + "</div>" +
+    ((t.remind_at || t.due) ? '<div class="dcard">' + row("cal", "Добавить в Google Календарь", 'data-a="ics"', "") + "</div>" : "") +
     '<div class="dcard"><div class="drow stp">' + ic("tag", 18) + '<input id="d-cat" placeholder="Выберите категорию" value="' + esc(t.category || "") + '"></div></div>' +
     '<div class="dcard">' + row("clip", "Добавить файл", 'data-a="pickfile"', "") +
     (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:12px">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" +
@@ -823,7 +1395,7 @@ function detailHTML(t) {
 }
 function popHTML() {
   const p = ui.pop; if (!p) return "";
-  const t = p.id && S.tasks[p.id], it = (k, label, extra, cls, r) => '<div class="pi ' + (cls || "") + '" data-a="pa" data-k="' + k + '" ' + (extra || "") + ">" + label + (r ? '<span class="r">' + r + "</span>" : "") + "</div>";
+  const t = p.id === "__qa" ? ui.qa : p.id && S.tasks[p.id], it = (k, label, extra, cls, r) => '<div class="pi ' + (cls || "") + '" data-a="pa" data-k="' + k + '" ' + (extra || "") + ">" + label + (r ? '<span class="r">' + r + "</span>" : "") + "</div>";
   const idA = 'data-id="' + esc(p.id || "") + '"';
   let h = "";
   const dueQuick = (k) => {
@@ -831,6 +1403,13 @@ function popHTML() {
     return it(k, "Сегодня", idA + ' data-v="today"', "", WDS[d1.getDay()]) + it(k, "Завтра", idA + ' data-v="tom"', "", WDS[d2.getDay()]) + it(k, "Следующая неделя", idA + ' data-v="week"', "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3));
   };
   switch (p.type) {
+    case "mmenu": {
+      const L = p.id && S.lists[p.id];
+      h = (L ? it("l_rename", "Переименовать список", idA) + it("l_icon", "Сменить значок", idA) + it("l_colorpop", "Изменить цвет", idA) + it("l_grouppop", "Переместить в группу…", idA) + it("l_up", "Выше", idA) + it("l_down", "Ниже", idA) + it("l_dup", "Дублировать список", idA) + it("l_deldone", "Удалить завершённые", idA) + it("l_del", "Удалить список", idA, "danger") + '<div class="psep"></div>' : "") +
+        (view !== "search" ? it("sub_sort", "Сортировка…", idA) + it("sub_group", "Группировать…", idA) + it("gridtog", PR.grid[view] ? "Показать списком" : "Показать сеткой", idA) : "") +
+        (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + it("sync", "Синхронизировать") + it("settings", "Настройки");
+      break;
+    }
     case "due": h = dueQuick("due") + '<div class="psep"></div><div class="ptitle">Выберите дату</div><div class="pform"><input type="date" id="p-date" data-id="' + esc(p.id) + '" value="' + esc((t && t.due) || "") + '"></div>' + (t && t.due ? '<div class="psep"></div>' + it("due", "Удалить срок", idA + ' data-v="clear"', "danger") : ""); break;
     case "remind": {
       const nh = new Date().getHours();
@@ -864,26 +1443,28 @@ function popHTML() {
   return '<div class="pop" id="pop" style="left:' + x + "px;top:" + y + 'px">' + h + "</div>";
 }
 function settingsHTML() {
+  const freshS = !lastSettings; lastSettings = true;
   const sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
-  return '<div class="ovl" data-a="ovl"><div class="sheet fade"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>' +
+  return '<div class="ovl" data-a="ovl"><div class="sheet' + (freshS ? " fade" : "") + '"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>' +
     '<div class="lbl">Тема</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
     Object.keys(THEMES).map(k => { const T = THEMES[k]; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:2px solid " + (TH.theme === k ? "var(--acc)" : "var(--ln)") + ";color:" + (T.dark ? "#fff" : "#111") + ';border-radius:10px;padding:14px 4px;font-size:12.5px">' + T.n + "</button>"; }).join("") + "</div>" +
     '<div class="lbl">Акцентный цвет (у списков может быть свой)</div><div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (TH.accent === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" +
     '<div class="lbl">Фон-картинка (ссылка на изображение)</div><input id="s-bg" class="inp" placeholder="https://…jpg" value="' + esc(TH.bg) + '">' +
+    '<div class="lbl">Рабочий день (для плана и сетки «День»)</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">' + sel("s-ds", PR.dayStart, [6,7,8,9,10].map(h => [h, "с " + h + ":00"])) + sel("s-de", PR.dayEnd, [14,15,16,17,18,19,20,21,22].map(h => [h, "до " + h + ":00"])) + sel("s-rs", PR.reserve, [0,10,20,25,30,40].map(p => [p, "резерв " + p + "%"])) + '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
     '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>" +
     '<div class="lbl">Аккаунт и данные</div><div class="sub" style="margin-bottom:8px;color:var(--sub)">' + esc(S.user ? S.user.email : "") + " · задач: " + Object.keys(S.tasks).length + "</div>" +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="export">💾 Копия JSON</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="export">💾 Копия JSON</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>' +
     '<div id="msg" style="margin-top:10px;min-height:18px;font-size:13px;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
 }
 const msgHTML = () => '<div id="msg" style="margin-top:12px;min-height:20px;font-size:13.5px;color:' + (ui.msgOk ? "#16a34a" : "#dc2626") + '">' + esc(ui.msg) + "</div>";
 function authHTML() {
   return '<div style="margin:auto;width:min(420px,92vw);padding:24px" class="fade"><div style="font-size:1.9em;font-weight:700">Мои дела</div>' +
     '<div style="margin:4px 0 16px;font-size:14px;color:var(--sub)">Войдите — задачи будут одинаковыми на телефоне и компьютере</div>' +
-    '<input id="a-email" class="inp" type="email" autocomplete="username" placeholder="Почта" style="margin-bottom:8px">' +
+    '<form id="authform"><input id="a-email" class="inp" type="email" autocomplete="username" placeholder="Почта" style="margin-bottom:8px">' +
     '<input id="a-pass" class="inp" type="password" autocomplete="current-password" placeholder="Пароль (минимум 6 символов)" style="margin-bottom:12px">' +
-    '<div style="display:flex;gap:8px"><button class="btn" data-a="login" style="flex:1">Войти</button><button class="btn ghost" data-a="signup" style="flex:1">Создать аккаунт</button></div>' +
+    '<div style="display:flex;gap:8px"><button type="button" class="btn" data-a="login" style="flex:1">Войти</button><button type="button" class="btn ghost" data-a="signup" style="flex:1">Создать аккаунт</button></div><button type="submit" hidden></button></form>' +
     msgHTML() + '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="ping">📡 Проверить связь</button>' + (cfg.baked ? "" : '<button class="btn ghost" data-a="resetcfg">Сменить подключение</button>') + "</div></div>";
 }
 function setupHTML() {
@@ -909,7 +1490,7 @@ function appHTML() {
     if (matches(t)) (t.done ? done : items).push(t);
   }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + mainHTML(items, done, viewInfo()) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + popHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + qaHTML() + popHTML() + dsheetHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
@@ -917,14 +1498,16 @@ function render() {
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
   let fv, fs, fe; if (fid) { fv = ae.value; try { fs = ae.selectionStart; fe = ae.selectionEnd; } catch (e) {} }
-  const sc = {}; ["lscroll", "list", "dscroll"].forEach(id => { const e = $(id); if (e) sc[id] = e.scrollTop; });
+  const sc = {}; ["lscroll", "list", "dscroll", "dayscroll"].forEach(id => { const e = $(id); if (e) sc[id] = e.scrollTop; });
   today = todayISO();
+  if (!selId) lastDetail = null; if (!ui.settings) lastSettings = false;
+  if (pendingOpen && S.tasks[pendingOpen]) { selId = pendingOpen; pendingOpen = null; ui.left = false; }
   app.innerHTML = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : appHTML());
   applyTheme();
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
-  updateSyncUI();
+  updateSyncUI(); dayAfterRender(); syncHistory();
 }
 
 /* ===== p5: вход, действия, обработчики событий ===== */
@@ -970,18 +1553,18 @@ function setUser(u) {
   const cur = S.user ? S.user.id : null, nid = u ? u.id : null;
   if (cur === nid) { if (u && S.user) S.user.email = u.email || S.user.email; return; }
   unsubRt();
-  if (!u) { S.user = null; S.lists = {}; S.tasks = {}; selId = null; ui.settings = false; ui.pop = null; render(); return; }
+  if (!u) { S.user = null; S.lists = {}; S.tasks = {}; S.time_log = {}; selId = null; ui.settings = false; ui.pop = null; render(); return; }
   S.user = { id: u.id, email: u.email };
-  if (P.uid && P.uid !== u.id) { P = { lists: {}, tasks: {} }; savePending(); }
+  if (P.uid && P.uid !== u.id) { P = { lists: {}, tasks: {}, time_log: {} }; savePending(); }
   const c = jget(LSK.cache, null);
-  S.lists = {}; S.tasks = {};
-  if (c && c.user && c.user.id === u.id) { S.lists = c.lists || {}; S.tasks = c.tasks || {}; }
+  S.lists = {}; S.tasks = {}; S.time_log = {};
+  if (c && c.user && c.user.id === u.id) { S.lists = c.lists || {}; S.tasks = c.tasks || {}; S.time_log = c.time_log || {}; }
   ui.msg = ""; render(); subRt(); setTimeout(loadAll, 0);
 }
 async function logout() {
   if (pendCount() && !confirm("Есть неотправленные изменения (" + pendCount() + "). Выйти и потерять их?")) return;
   try { await sb.auth.signOut(); } catch (e) {}
-  P = { lists: {}, tasks: {} }; savePending(); try { localStorage.removeItem(LSK.cache); } catch (e) {}
+  P = { lists: {}, tasks: {}, time_log: {} }; savePending(); try { localStorage.removeItem(LSK.cache); } catch (e) {}
   setUser(null);
 }
 async function boot() {
@@ -1002,12 +1585,31 @@ function exportJson() {
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
+/* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
+let hDepth = 0, hSkip = 0;
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 1 : 0) + (ui.msearch ? 1 : 0);
+function syncHistory() {
+  try {
+    const d = layerDepth();
+    if (d > hDepth) { for (let i = hDepth; i < d; i++) history.pushState({ l: i + 1 }, ""); hDepth = d; }
+    else if (d < hDepth) { const n = hDepth - d; hDepth = d; hSkip++; history.go(-n); }
+  } catch (e) {}
+}
+function onBack() {
+  if (hSkip > 0) { hSkip--; return; }
+  if (hDepth > 0) hDepth--;
+  if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) ui.settings = false;
+  else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (ui.left) ui.left = false;
+  render();
+}
+
 /* ----- действия по клику ----- */
 const closePop = () => { ui.pop = null; };
-const goView = v => { view = v; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; };
+const goView = v => { view = v; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
+const patchTask = (id, o) => { if (id === "__qa" && ui.qa) Object.assign(ui.qa, o); else upd(id, o); };
 const setDue = (id, v) => {
   const map = { today: today, tom: addDays(today, 1), week: nextMonday(), clear: null };
-  upd(id, { due: v in map ? map[v] : v });
+  patchTask(id, { due: v in map ? map[v] : v });
 };
 const acts = {
   view(a) { goView(a.dataset.v); render(); },
@@ -1023,6 +1625,11 @@ const acts = {
   ggtoggle(a) { const k = a.dataset.k; ui.gcol[k] = !ui.gcol[k]; render(); },
   grid(a) { PR.grid[view] = a.dataset.v === "1"; savePrefs(); render(); },
   sugg() { ui.sugg = !ui.sugg; render(); },
+  qaopen() { ui.qa = { due: null, remind_at: null, repeat_rule: null, my: view === "myday", starred: view === "starred" }; closePop(); render(); const i = $("qa-input"); if (i) i.focus(); },
+  qaclose(a, e) { if (e.target !== a) return; ui.qa = null; closePop(); render(); },
+  qatog(a) { const f = a.dataset.f; ui.qa[f] = !ui.qa[f]; render(); const i = $("qa-input"); if (i) i.focus(); },
+  msearch() { ui.left = false; ui.msearch = true; render(); const q = $("q"); if (q) q.focus(); },
+  msclose() { ui.msearch = false; ui.q = ""; if (view === "search") view = prevView || "myday"; render(); },
   sgadd(a) { setMyDay(a.dataset.id, true); render(); },
   sortclr() { delete PR.sort[view]; savePrefs(); closePop(); render(); },
   qclear() { ui.q = ""; if (view === "search") view = prevView || "myday"; render(); const q = $("q"); if (q) q.focus(); },
@@ -1044,6 +1651,8 @@ const acts = {
   theme(a) { TH.theme = a.dataset.v; saveTheme(); render(); },
   accent(a) { TH.accent = a.dataset.v; saveTheme(); render(); },
   export() { closePop(); exportJson(); render(); }, ping() { ping(); }, logout() { closePop(); logout(); },
+  ics() { const u = selId && gcalUrl(S.tasks[selId]); if (u) window.open(u, "_blank", "noopener"); },
+  async pushtog() { showMsg("Подождите…", true); const was = pushOn(), r = was ? await disablePush() : await enablePush(); showMsg(r || (was ? "Пуши выключены" : "Пуши включены ✓ напоминания придут, даже когда приложение закрыто"), !r); render(); },
   notify() { askNotify(); showMsg("Если браузер спросил разрешение — нажмите «Разрешить»", true); },
   login() { doAuth("login"); }, signup() { doAuth("signup"); }, savecfg() { saveCfg(); },
   resetcfg() { try { localStorage.removeItem(LSK.cfg); } catch (e) {} cfg = getCfg(); screen = "setup"; ui.msg = ""; render(); },
@@ -1066,6 +1675,7 @@ const acts = {
   },
   pa(a) {
     const d = a.dataset, k = d.k, id = d.id, v = d.v, p = ui.pop || {}, t = id && S.tasks[id], l = id && S.lists[id];
+    const isQ = id === "__qa", cur = isQ ? ui.qa : t;
     const sub = type => { ui.pop = { type, id, g: null, x: p.x || 100, y: p.y || 100 }; render(); };
     switch (k) {
       case "due": setDue(id, v); break;
@@ -1073,15 +1683,15 @@ const acts = {
         let iso = null;
         if (v === "later") { const x = new Date(); x.setHours(Math.min(x.getHours() + 3, 23), 0, 0, 0); iso = x.toISOString(); }
         else if (v === "tom") iso = atTime(addDays(today, 1), 9); else if (v === "week") iso = atTime(nextMonday(), 9);
-        upd(id, { remind_at: iso }); if (iso) askNotify(); break;
+        patchTask(id, { remind_at: iso }); if (iso) askNotify(); break;
       }
-      case "rep": upd(id, { repeat_rule: v === "clear" ? null : v, due: t && t.due || today }); if (v === "clear") upd(id, { repeat_rule: null }); break;
-      case "repcustom": { const n = Math.max(1, Math.min(999, +($("p-n") || {}).value || 1)), u = ($("p-u") || {}).value || "d"; upd(id, { repeat_rule: u + ":" + n, due: t && t.due || today }); break; }
+      case "rep": patchTask(id, v === "clear" ? { repeat_rule: null } : { repeat_rule: v, due: cur && cur.due || today }); break;
+      case "repcustom": { const n = Math.max(1, Math.min(999, +($("p-n") || {}).value || 1)), u = ($("p-u") || {}).value || "d"; patchTask(id, { repeat_rule: u + ":" + n, due: cur && cur.due || today }); break; }
       case "sort": { const cur = PR.sort[view]; PR.sort[view] = cur && cur.by === v ? { by: v, dir: -cur.dir } : { by: v, dir: SORTS[v].dir }; savePrefs(); break; }
       case "sortclr": delete PR.sort[view]; savePrefs(); break;
       case "group": PR.group[view] = v; savePrefs(); break;
       case "l_rename": { const n = prompt("Название списка", l.name); if (n && n.trim()) { l.name = n.trim(); mark("lists", id, "u"); } break; }
-      case "l_icon": { const n = prompt("Значок (эмодзи)", l.icon || ""); if (n !== null) { l.icon = n.trim() || "🗂️"; mark("lists", id, "u"); } break; }
+      case "l_icon": { const n = prompt("Значок (эмодзи)", l.icon || ""); if (n !== null) { l.icon = n.trim(); mark("lists", id, "u"); } break; }
       case "l_colorpop": return sub("color");
       case "l_grouppop": return sub("move");
       case "l_color": l.color = v || null; mark("lists", id, "u"); break;
@@ -1104,10 +1714,16 @@ const acts = {
       case "alert": if (S.tasks[id]) selId = id; break;
       case "alertsclr": ui.alerts = []; break;
       case "settings": ui.settings = true; ui.msg = ""; break;
+      case "sub_sort": return sub("sort");
+      case "sub_group": return sub("group");
+      case "gridtog": PR.grid[view] = !PR.grid[view]; savePrefs(); break;
+      case "suggtog": ui.sugg = !ui.sugg; break;
+      case "sync": loadAll(); break;
       case "export": exportJson(); break;
       case "logout": closePop(); render(); logout(); return;
     }
     closePop(); render();
+    if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); }
   }
 };
 const changes = {
@@ -1115,21 +1731,30 @@ const changes = {
   "d-cat"(v) { upd(selId, { category: v.trim().replace(/^#/, "") || null }); renderSoon(); },
   "d-list"(v) { upd(selId, { list_id: v || null }); renderSoon(); },
   "d-note"(v) { upd(selId, { note: v }); renderSoon(); },
-  "p-date"(v, el) { setDue(el.dataset.id, v || null); closePop(); render(); },
-  "p-dt"(v, el) { if (!v) return; upd(el.dataset.id, { remind_at: new Date(v).toISOString() }); askNotify(); closePop(); render(); },
+  "p-date"(v, el) { setDue(el.dataset.id, v || null); closePop(); render(); if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); } },
+  "p-dt"(v, el) { if (!v) return; patchTask(el.dataset.id, { remind_at: new Date(v).toISOString() }); askNotify(); closePop(); render(); if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); } },
   "s-bg"(v) { TH.bg = v.trim(); saveTheme(); render(); },
   "s-font"(v) { TH.font = v; saveTheme(); render(); },
   "s-dens"(v) { TH.dens = v; saveTheme(); render(); }
 };
 
+Object.assign(acts, dayActs); Object.assign(changes, dayChanges);
 function init() {
-  const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
+  const st = document.createElement("style"); st.textContent = CSS + dayCSS; document.head.appendChild(st);
   const app = $("app");
   app.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"), was = ui.pop;
     if (ui.pop && !e.target.closest("#pop")) { ui.pop = null; if (!a) render(); }
     if (!a) return;
     e._was = was; const f = acts[a.dataset.a]; if (f) f(a, e);
+  });
+  app.addEventListener("submit", e => {                 // Enter / кнопка «отправить» на экранной клавиатуре
+    e.preventDefault(); const id = e.target.id;
+    if (id === "addform") addFromInput($("newtask"));
+    else if (id === "qaform") submitQA();
+    else if (id === "stepform") { const inp = $("d-step"), v = inp.value.trim(), t = S.tasks[selId]; if (v && t) { upd(t.id, { steps: (t.steps || []).concat([{ t: v, d: false }]) }); inp.value = ""; render(); const n = $("d-step"); if (n) n.focus(); } }
+    else if (id === "authform") doAuth("login");
+    else daySubmit(id);
   });
   app.addEventListener("contextmenu", e => {
     const r = e.target.closest(".taskrow"), c = e.target.closest(".chip[data-lid]");
@@ -1145,6 +1770,7 @@ function init() {
   });
   let qt;
   app.addEventListener("input", e => {
+    if (e.target.id === "ds-q") { dayInput("ds-q", e.target.value); return; }
     if (e.target.id !== "q") return;
     const v = e.target.value; ui.q = v;
     if (v && view !== "search") { prevView = view; view = "search"; selId = null; }
@@ -1154,13 +1780,10 @@ function init() {
   app.addEventListener("keydown", e => {
     const id = e.target.id;
     if (e.key === "Enter" && !e.isComposing) {
-      if (id === "newtask") { e.preventDefault(); addFromInput(e.target); }
-      else if (id === "d-step") { e.preventDefault(); const v = e.target.value.trim(), t = S.tasks[selId]; if (v && t) { upd(t.id, { steps: (t.steps || []).concat([{ t: v, d: false }]) }); e.target.value = ""; render(); } }
-      else if (id === "a-pass" || id === "a-email") { e.preventDefault(); doAuth("login"); }
-      else if (id === "d-title") { e.preventDefault(); e.target.blur(); }
+      if (id === "d-title") { e.preventDefault(); e.target.blur(); }
     }
     if (e.key === "Escape") {
-      if (ui.pop) { closePop(); render(); } else if (ui.settings) { ui.settings = false; render(); }
+      if (ui.pop) { closePop(); render(); } else if (ui.qa) { ui.qa = null; render(); } else if (ui.settings) { ui.settings = false; render(); }
       else if (ui.q) { acts.qclear(); } else if (selId) { selId = null; render(); }
     }
   });
@@ -1173,6 +1796,10 @@ function init() {
     e.preventDefault(); const id = e.dataTransfer.getData("text/plain");
     if (S.tasks[id]) { upd(id, { list_id: c.dataset.lid }); toast("Перенесено в «" + S.lists[c.dataset.lid].name + "»"); render(); }
   });
+  if (window.visualViewport) {                          // шторка быстрого ввода поднимается над клавиатурой
+    const kb = () => { const v = visualViewport; document.documentElement.style.setProperty("--kb", Math.max(0, innerHeight - v.height - v.offsetTop) + "px"); };
+    visualViewport.addEventListener("resize", kb); visualViewport.addEventListener("scroll", kb);
+  }
   document.addEventListener("pointerdown", () => { down = true; }, true);
   document.addEventListener("pointerup", () => { down = false; if (want) setTimeout(() => { if (want && !down) render(); }, 40); }, true);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && S.user && Date.now() - lastLoad > 30000) loadAll(); });
@@ -1183,9 +1810,12 @@ function init() {
   setInterval(() => { if (!document.hidden && S.user && Date.now() - lastLoad > 300000) loadAll(); }, 60000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); }, 20000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
+  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown);
+  try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
+  if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } });
   applyTheme(); boot();
 }
-if (CFG0.TEST) window.__t = { localParse, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches };
+if (CFG0.TEST) window.__t = { localParse, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog };
 init();
 
 })();

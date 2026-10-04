@@ -1,5 +1,5 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html и так грузится «сначала из сети».
-const CACHE = "moidela-shell-v2";
+const CACHE = "moidela-shell-v4";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png"];
 
 self.addEventListener("install", e => {
@@ -27,4 +27,24 @@ self.addEventListener("fetch", e => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
     return res;
   })));
+});
+
+// ---- Web Push: приходит с сервера (Supabase Edge Function), работает при закрытом приложении ----
+self.addEventListener("push", e => {
+  let d = {}; try { d = e.data.json(); } catch (_) { d = { title: "Напоминание", body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
+    if (cs.some(c => c.visibilityState === "visible")) return;       // приложение открыто — оно само покажет всплывашку
+    return self.registration.showNotification(d.title || "Напоминание", {
+      body: d.body || "", tag: d.tag || "moidela", renotify: true, requireInteraction: true,
+      icon: "icon-192.png", badge: "icon-192.png", vibrate: [250, 100, 250, 100, 250], data: { id: d.id || null }
+    });
+  }));
+});
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const id = e.notification.data && e.notification.data.id;
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
+    if (cs.length) { cs[0].postMessage({ type: "open", id }); return cs[0].focus(); }
+    return self.clients.openWindow("./" + (id ? "?t=" + encodeURIComponent(id) : ""));
+  }));
 });
