@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 22:59";
+const BUILD = "04.10 23:34";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -445,7 +445,9 @@ function addTask(f) {
 }
 const kidsOf = id => Object.values(S.tasks).filter(x => x.parent_id === id);
 function upd(id, patch) {
-  const t = S.tasks[id]; if (!t) return; Object.assign(t, patch); mark("tasks", id, "u");
+  const t = S.tasks[id]; if (!t) return;
+  if ("due" in patch && t.due && patch.due && patch.due > t.due && !t.done) { PR.moves = PR.moves || {}; PR.moves[id] = (PR.moves[id] || 0) + 1; savePrefs(); }   // счётчик переносов срока (для «Итогов недели»; хранится на устройстве)
+  Object.assign(t, patch); mark("tasks", id, "u");
   if ("list_id" in patch) kidsOf(id).forEach(k => upd(k.id, { list_id: patch.list_id }));   // подзадачи едут в тот же список
 }
 const inMyDay = t => t.my_day_date === today;
@@ -465,6 +467,7 @@ function toggleDone(id) {
 function matches(t) {
   if (t.parent_id && view !== "search") return false;   // подзадачи живут внутри родителя
   if (view === "search") { const q = ui.q.toLowerCase(); return (t.title + " " + t.note + " " + (t.category || "")).toLowerCase().indexOf(q) >= 0; }
+  if (view.indexOf("list:") !== 0 && inArch(t)) return false;   // архивные списки видны только внутри себя и в поиске
   if (view === "someday") return t.status === "someday";
   if (t.status === "someday") return false;
   if (view === "myday") return inMyDay(t);
@@ -556,6 +559,10 @@ function reorderList(id, tid, after, grp) {
   arr.forEach((l, k) => { if (l.position !== k) { l.position = k; mark("lists", l.id, "u"); } });
 }
 function setListGroup(id, name) { const l = S.lists[id]; if (!l) return; l.group_name = name || null; mark("lists", id, "u"); }
+/* архив списков: отдельная группа (поле group_name уже есть в базе — новых колонок не нужно); задачи архивных списков не попадают в общие виды */
+const ARCH = "📦 Архив";
+const inArch = t => { const l = t.list_id && S.lists[t.list_id]; return !!(l && l.group_name === ARCH); };
+function archiveList(id, on) { const l = S.lists[id]; if (!l) return; setListGroup(id, on ? ARCH : null); toast(on ? "📦 «" + l.name + "» в архиве (ничего не удалено)" : "Список «" + l.name + "» возвращён"); }
 function renameGroup(old, nw) { listsArr().forEach(l => { if (l.group_name === old) { l.group_name = nw || null; mark("lists", l.id, "u"); } }); }
 function duplicateList(id) {
   const l = S.lists[id]; if (!l) return;
@@ -2140,6 +2147,7 @@ const listIcon = l => l && l.icon && l.icon !== "🗂️" && l.icon !== "🗂" ?
 function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
   if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
+  if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
   if (view === "starred") return { svg: "star", name: "Важно" };
   if (view === "planned") return { svg: "cal", name: "Запланировано" };
   if (view === "all") return { svg: "inbox", name: "Все задачи" };
@@ -2178,21 +2186,56 @@ function topHTML() {
     '<button class="ibtn" data-a="pop" data-p="bell" title="Напоминания">' + ic("bell", 19) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + "</span></button>" +
     '<button class="ibtn avatar" data-a="pop" data-p="acct" title="Аккаунт">' + esc(em) + "</button></div>";
 }
+/* ---- итоги недели: закрыто / просрочено / что переносилось 3+ раза ---- */
+function wkLoad(force) {
+  if (!sb || !S.user) return;
+  const W = ui.wk = ui.wk || {};
+  if (W.busy || (!force && W.at && Date.now() - W.at < 120000)) return;
+  W.busy = true;
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();   // выполненные старше 2 дней не лежат в памяти — спрашиваем у базы
+  const fin = () => { W.busy = false; W.at = Date.now(); if (view === "week") render(); };
+  sb.from("tasks").select("id,title,list_id,done_at,parent_id").eq("done", true).gte("done_at", since).order("done_at", { ascending: false }).limit(1000)
+    .then(r => { if (r.error) W.err = errText(r.error); else { W.err = ""; W.rows = (r.data || []).filter(x => !x.parent_id); } fin(); })
+    .catch(e => { W.err = errText(e); fin(); });
+}
+function weekMainHTML(vi) {
+  wkLoad();
+  const W = ui.wk || {}, since = new Date(Date.now() - 7 * 864e5).toISOString(), z = "var(--z,1)";
+  const closed = W.rows || Object.values(S.tasks).filter(t => t.done && !t.parent_id && t.done_at && t.done_at >= since);
+  const open = Object.values(S.tasks).filter(t => !t.done && !t.parent_id && t.status !== "someday" && !inArch(t));
+  const over = open.filter(t => t.due && t.due < today).sort((a, b) => a.due.localeCompare(b.due));
+  const wk = addDays(today, 7), ahead = open.filter(t => t.due && t.due >= today && t.due <= wk).sort((a, b) => a.due.localeCompare(b.due));
+  const mv = PR.moves || {}, moved = open.filter(t => (mv[t.id] || 0) >= 3).sort((a, b) => mv[b.id] - mv[a.id]);
+  const byDay = {}; closed.forEach(x => { const k = isoLocal(new Date(x.done_at)); byDay[k] = (byDay[k] || 0) + 1; });
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6)), mx = Math.max(1, ...days.map(d => byDay[d] || 0));
+  const byList = {}; closed.forEach(x => { const l = x.list_id && S.lists[x.list_id]; const k = l ? (l.icon ? l.icon + " " : "") + l.name : "Без списка"; byList[k] = (byList[k] || 0) + 1; });
+  const tops = Object.entries(byList).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const tile = (n, lb, col) => '<div style="flex:1;min-width:110px;border:1px solid var(--ln);border-radius:8px;padding:calc(12px*' + z + ") calc(14px*" + z + ');background:var(--solid,transparent)"><div style="font-size:calc(26px*' + z + ");font-weight:600;" + (col ? "color:" + col : "") + '">' + n + '</div><div style="font-size:calc(13px*' + z + ');color:var(--sub)">' + lb + "</div></div>";
+  const bars = '<div style="display:flex;gap:6px;align-items:flex-end;height:calc(96px*' + z + ');margin:12px 0 4px">' + days.map(d => { const n = byDay[d] || 0; return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px"><span style="font-size:calc(12px*' + z + ');color:var(--sub)">' + (n || "") + '</span><div style="width:100%;max-width:34px;border-radius:4px 4px 0 0;background:var(--acc);opacity:' + (n ? 1 : .15) + ";height:" + Math.max(3, n / mx * 62) + 'px"></div><span style="font-size:calc(11px*' + z + ');color:var(--sub)">' + WDS[parseISO(d).getDay()] + "</span></div>"; }).join("") + "</div>";
+  const sec = (title, arr, hint) => arr.length ? '<div class="gh" style="cursor:default"><span>' + title + '</span><span class="cnt">' + arr.length + "</span></div>" + (hint ? '<div style="font-size:calc(13px*' + z + ');color:var(--sub);padding:0 4px 6px">' + hint + "</div>" : "") + '<div class="cards">' + arr.slice(0, 8).map(t => rowBase(t, true, 0)).join("") + "</div>" + (arr.length > 8 ? '<div style="color:var(--sub);font-size:calc(13px*' + z + ');padding:4px">…и ещё ' + (arr.length - 8) + " — смотрите в «Запланировано»</div>" : "") : "";
+  const note = W.busy ? "обновляю…" : W.err ? "закрытые считаю только по тому, что есть на устройстве (" + esc(W.err) + ")" : "";
+  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool" data-a="wkrefresh">' + ic("repeat", 16) + " Обновить</button></div>" +
+    '<div class="msub">' + esc(vi.sub) + (note ? " · " + note : "") + "</div>" +
+    '<div class="scroll" id="list"><div style="display:flex;gap:8px;flex-wrap:wrap">' + tile(closed.length, "закрыто за 7 дней", "var(--acc)") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(ahead.length, "в планах на 7 дней") + tile(moved.length, "переносились 3+ раза", moved.length ? "#d83b01" : "") + "</div>" + bars +
+    (tops.length ? '<div style="font-size:calc(13px*' + z + ');color:var(--sub);margin-bottom:8px">Больше всего закрыто: ' + tops.map(x => esc(x[0]) + " — " + x[1]).join(" · ") + "</div>" : "") +
+    sec("Просрочено", over, "Либо делаем сегодня, либо переносим осознанно.") + sec("Переносились 3+ раза", moved, "Такие задачи обычно слишком большие или не ваши: разбейте на подзадачи или честно скажите «не буду».") + sec("На ближайшие 7 дней", ahead) +
+    (!over.length && !moved.length && !ahead.length && !closed.length ? '<div style="text-align:center;padding:40px 10px;color:var(--sub)">Пока нечего показывать</div>' : "") + "</div></div>";
+}
 function leftHTML(c) {
   const sm = (v, svg, name, n, color) => '<div class="chip ' + (view === v ? "on" : "") + '" data-a="view" data-v="' + v + '" title="' + name + '"><span class="em" style="color:' + color + '">' + ic(svg, 18) + '</span><span class="tx">' + name + '</span><span class="n">' + (n || "") + "</span></div>";
   const lc = l => '<div class="chip ' + (view === "list:" + l.id ? "on" : "") + '" data-a="view" data-v="list:' + l.id + '" data-lid="' + l.id + '" title="' + esc(l.name) + '">' + listIcon(l) + '<span class="tx">' + esc(l.name) + '</span><span class="n">' + (c["list:" + l.id] || "") + "</span></div>";
-  const ls = listsArr(), seen = new Set(); let tree = "";
+  const ls = listsArr().sort((a, b) => (a.group_name === ARCH) - (b.group_name === ARCH)), seen = new Set(); let tree = "";   // архив — в самом низу
   for (const l of ls) {
     const g = l.group_name;
     if (!g) { tree += lc(l); continue; }
     if (seen.has(g)) continue; seen.add(g);
-    const mem = ls.filter(x => x.group_name === g), col = PR.collapsed[g];
+    const mem = ls.filter(x => x.group_name === g), col = g === ARCH ? PR.collapsed[g] !== false : PR.collapsed[g];   // архив свёрнут по умолчанию
     tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"><span class="tx">' + esc(g) + '</span><button class="ibtn" data-a="pop" data-p="gmenu" data-g="' + esc(g) + '">' + ic("dots", 16) + "</button>" + ic(col ? "chevr" : "chevd", 14) + "</div>";
     if (!col) tree += '<div class="gbody">' + mem.map(lc).join("") + "</div>";
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") + sm("someday", "moon", "Когда-нибудь", c.someday, "#8764b8") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -2298,7 +2341,7 @@ function popHTML() {
   else switch (p.type) {
     case "mmenu": {
       const L = p.id && S.lists[p.id];
-      h = (L ? im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + im("l_dup", "copy", "Дублировать список") + im("l_deldone", "ccheck", "Удалить завершённые") + im("l_del", "trash", "Удалить список", "danger") + '<div class="psep"></div>' : "") +
+      h = (L ? im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + im("l_dup", "copy", "Дублировать список") + im("l_arch", "inbox", L.group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_deldone", "ccheck", "Удалить завершённые") + im("l_del", "trash", "Удалить список", "danger") + '<div class="psep"></div>' : "") +
         (view !== "search" ? im("sub_sort", "sort", "Сортировка…") + im("sub_group", "group", "Группировать…") + im("sub_filter", "list", "Фильтр" + (fltCount() ? " · " + fltCount() : "") + "…") + im("subs_mode", "list", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)") + im("gridtog", "grid", PR.grid[view] ? "Показать списком" : "Показать сеткой") : "") +
         (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + im("sync", "repeat", "Синхронизировать") + im("settings", "gear", "Настройки");
       break;
@@ -2312,7 +2355,7 @@ function popHTML() {
     }
     case "sort": { const s = getSort(view); h = '<div class="ptitle">Сортировать по</div>' + Object.keys(SORTS).map(k => it("sort", SORTS[k].n, 'data-v="' + k + '"', s.by === k ? "cur" : "", s.by === k ? (s.dir === 1 ? "↑" : "↓") : "")).join("") + (PR.sort[view] ? '<div class="psep"></div>' + it("sortclr", "Сбросить сортировку") : ""); break; }
     case "group": { const g = getGroup(view); h = '<div class="ptitle">Группировать</div>' + Object.keys(GROUPS).filter(k => k !== "list" || view.indexOf("list:") !== 0).map(k => it("group", GROUPS[k], 'data-v="' + k + '"', g === k ? "cur" : "", g === k ? "✓" : "")).join(""); break; }
-    case "listmenu": h = im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + '<div class="psep"></div>' + im("l_dup", "copy", "Дублировать список") + im("l_print", "print", "Напечатать список") + im("l_deldone", "ccheck", "Удалить завершённые") + '<div class="psep"></div>' + im("l_del", "trash", "Удалить список", "danger"); break;
+    case "listmenu": h = im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + '<div class="psep"></div>' + im("l_dup", "copy", "Дублировать список") + im("l_arch", "inbox", S.lists[p.id] && S.lists[p.id].group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_print", "print", "Напечатать список") + im("l_deldone", "ccheck", "Удалить завершённые") + '<div class="psep"></div>' + im("l_del", "trash", "Удалить список", "danger"); break;
     case "color": h = '<div class="ptitle">Цвет списка</div><div class="pform">' + ACCENTS.map(c => '<button class="sw" style="background:' + c + '" data-a="pa" data-k="l_color" ' + idA + ' data-v="' + c + '"></button>').join("") + "</div>" + it("l_color", "По умолчанию", idA + ' data-v=""'); break;
     case "move": {
       const gs = [...new Set(listsArr().map(l => l.group_name).filter(Boolean))], cur = S.lists[p.id] && S.lists[p.id].group_name;
@@ -2397,7 +2440,8 @@ function appHTML() {
   for (const id in S.tasks) {
     const t = S.tasks[id];
     if (!t.done && !t.parent_id) {
-      if (t.status === "someday") c.someday++;
+      if (inArch(t)) { if (t.list_id) c["list:" + t.list_id] = (c["list:" + t.list_id] || 0) + 1; }
+      else if (t.status === "someday") c.someday++;
       else { c.all++; if (inMyDay(t)) c.myday++; if (t.starred) c.starred++; if (t.due) c.planned++; if (t.list_id) c["list:" + t.list_id] = (c["list:" + t.list_id] || 0) + 1; }
     }
     if (matches(t) && passFlt(t)) (t.done ? done : items).push(t);
@@ -2407,7 +2451,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
@@ -2540,7 +2584,8 @@ const acts = {
   showdone() { PR.showDone[view] = !PR.showDone[view]; savePrefs(); render(); if (PR.showDone[view] && !(ui.dOff && ui.dOff[dnKey()]) && view !== "myday") loadDone(); }, loaddone() { loadDone(); },
   menu() { ui.left = !ui.left; render(); },
   rail() { if (innerWidth <= 760) { ui.left = false; } else PR.rail = !PR.rail; savePrefs(); render(); },
-  gtoggle(a) { const g = a.dataset.g; PR.collapsed[g] = !PR.collapsed[g]; savePrefs(); render(); },
+  wkrefresh() { wkLoad(true); render(); },
+  gtoggle(a) { const g = a.dataset.g; PR.collapsed[g] = g === ARCH ? PR.collapsed[g] === false : !PR.collapsed[g]; savePrefs(); render(); },
   ggtoggle(a) { const k = a.dataset.k; ui.gcol[k] = !ui.gcol[k]; render(); },
   grid(a) { PR.grid[view] = a.dataset.v === "1"; savePrefs(); render(); },
   sugg() { ui.sugg = !ui.sugg; render(); },
@@ -2621,10 +2666,11 @@ const acts = {
       case "l_up": moveList(id, -1); break;
       case "l_down": moveList(id, 1); break;
       case "l_dup": duplicateList(id); break;
+      case "l_arch": archiveList(id, l.group_name !== ARCH); break;
       case "l_print": closePop(); render(); setTimeout(() => window.print(), 150); return;
       case "l_deldone": if (confirm("Удалить все завершённые задачи списка «" + l.name + "»?")) deleteDoneIn(id); break;
       case "l_del": if (confirm("Удалить список «" + l.name + "»? Задачи останутся (в «Все задачи»).")) { deleteList(id); if (view === "list:" + id) goView("myday"); } break;
-      case "g_rename": { const n = prompt("Название группы", d.g); if (n && n.trim()) renameGroup(d.g, n.trim()); break; }
+      case "g_rename": { if (d.g === ARCH) { toast("Архив переименовать нельзя"); break; } const n = prompt("Название группы", d.g); if (n && n.trim()) renameGroup(d.g, n.trim()); break; }
       case "g_ungroup": renameGroup(d.g, null); break;
       case "ctx_myday": if (t) setMyDay(id, !inMyDay(t)); break;
       case "star": if (t) upd(id, { starred: !t.starred }); break;
