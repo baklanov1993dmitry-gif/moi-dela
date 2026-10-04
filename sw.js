@@ -36,7 +36,7 @@ self.addEventListener("push", e => {
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
     if (cs.some(c => c.visibilityState === "visible")) return;       // приложение открыто — оно само покажет всплывашку
     return self.registration.showNotification(d.title || "Напоминание", {
-      body: d.body || "", tag: d.tag || "moidela", renotify: true, requireInteraction: true,
+      body: d.body || "", tag: d.tag || "moidela", renotify: true, requireInteraction: true, silent: false,
       icon: "icon-192.png", badge: "icon-192.png", vibrate: [250, 100, 250, 100, 250], data: { id: d.id || null }
     });
   }));
