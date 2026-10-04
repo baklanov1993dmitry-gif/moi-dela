@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 21:14">
+<meta name="build" content="04.10 21:20">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 21:14";
+const BUILD = "04.10 21:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1270,13 +1270,17 @@ const tfield = (id, v) => '<div class="tfld"><button type="button" class="tb" da
 
 const dtpCSS = `
 .pop.dtp{left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%);width:min(350px,94vw);max-width:none;max-height:92vh;padding:14px;border-radius:16px}
+.pop.dtl{width:228px;min-width:0;padding:0 0 6px;border:0;border-radius:4px;box-shadow:0 6.4px 14.4px rgba(0,0,0,.18),0 1.2px 3.6px rgba(0,0,0,.14);max-height:none;overflow:visible}
+.pop.dtl .dtp-t{font-size:calc(13px*var(--z,1));font-weight:600;text-align:center;margin:0 0 6px;padding:14px 0 12px;border-bottom:1px solid var(--ln)}
+.pop.dtl .dli{height:34px;padding:0 14px;gap:12px;font-size:calc(13px*var(--z,1))} .pop.dtl .dli svg{width:16px;height:16px;color:var(--tx)}
+.pop.dtl .dli .dr{font-size:calc(12px*var(--z,1))} .pop.dtl .psep{margin:6px 0}
 .dtpb{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.4);z-index:59}
 @media(max-width:760px){.pop.dtp{left:0!important;right:0!important;top:auto!important;bottom:0!important;transform:none;width:100%;border-radius:18px 18px 0 0;max-height:90vh;padding:14px 14px max(14px,env(safe-area-inset-bottom))}}
 .dtp-t{font-weight:700;font-size:1.1em;margin-bottom:10px}
 .dqrow,.tchips{display:flex;gap:6px;flex-wrap:wrap}
 .tchips{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px}
 .dli{display:flex;align-items:center;gap:14px;width:100%;padding:11px 16px;text-align:left;font:inherit;font-size:calc(15px*var(--z,1));color:var(--tx)}
-.dli:hover{background:var(--hov)} .dli .dl{flex:1} .dli .dr{color:var(--sub);font-size:calc(12.5px*var(--z,1))} .dli svg{color:var(--sub);flex-shrink:0}
+.dli:hover{background:var(--hov)} .dli .dl{flex:1;white-space:nowrap} .dli .dr{color:var(--sub);font-size:calc(12.5px*var(--z,1))} .dli svg{color:var(--sub);flex-shrink:0}
 @media(max-width:760px){.dli{padding:14px 18px;font-size:calc(16px*var(--z,1))}}
 .dq{padding:9px 10px;border-radius:10px;background:var(--inp);border:1px solid var(--ln);font-size:calc(13.5px*var(--z,1));flex:1;text-align:center;white-space:nowrap}
 .dq.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -2187,7 +2191,8 @@ function popHTML() {
   }
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
   const dt = p.type === "due" || p.type === "remind";
-  return (dt ? '<div class="dtpb"></div>' : "") + '<div class="pop' + (dt ? " dtp" : "") + '" id="pop" style="left:' + x + "px;top:" + y + 'px">' + h + "</div>";
+  const lst = p.type === "due" && ui.dtp && !ui.dtp.cal && !isMobile();
+  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + '" id="pop" style="left:' + x + "px;top:" + y + 'px">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
