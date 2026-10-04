@@ -606,7 +606,7 @@ const icsUtc = d => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 const icsFold = l => { const o = []; while (l.length > 60) { o.push(l.slice(0, 60)); l = " " + l.slice(60); } o.push(l); return o.join("\r\n"); };
 function buildIcs(t) {
   if (!t || (!t.remind_at && !t.due)) return null;
-  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Moi dela//RU", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT", "UID:" + t.id + "@moi-dela", "DTSTAMP:" + icsUtc(new Date()), "SUMMARY:" + icsEsc(t.title)];
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Moi dela//RU", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT", "UID:" + t.id + "@moi-dela", "SEQUENCE:" + Math.floor(Date.now() / 1000), "DTSTAMP:" + icsUtc(new Date()), "SUMMARY:" + icsEsc(t.title)];
   if (t.note) L.push("DESCRIPTION:" + icsEsc(t.note));
   if (t.remind_at) {
     const s = new Date(t.remind_at), e = new Date(s.getTime() + 15 * 60e3);
@@ -638,7 +638,10 @@ async function enablePush() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return "Браузер не умеет пуши (нужен Chrome по https)";
   if (!S.user || !sb) return "Сначала войдите в аккаунт";
   try {
-    const perm = await Notification.requestPermission(); if (perm !== "granted") return "Разрешение на уведомления не дано";
+    if (Notification.permission === "denied") return "Уведомления для этого сайта заблокированы в браузере. Нажмите на значок замка слева от адреса → «Уведомления» → «Разрешить», обновите страницу и повторите";
+    const perm = await Notification.requestPermission();
+    if (perm === "denied") return "Вы нажали «Блокировать». Разрешить можно в настройках сайта: значок замка слева от адреса → «Уведомления» → «Разрешить»";
+    if (perm !== "granted") return "Окно разрешения закрыли, не выбрав ответ. Нажмите кнопку ещё раз и выберите «Разрешить»";
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(vk) });
@@ -1383,7 +1386,7 @@ function detailHTML(t) {
     row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
     row("cal", di ? esc(di.txt) : "Добавить срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
     row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") + "</div>" +
-    ((t.remind_at || t.due) ? '<div class="dcard">' + row("cal", "Добавить в Google Календарь", 'data-a="ics"', "") + "</div>" : "") +
+    ((t.remind_at || t.due) ? '<div class="dcard">' + row("cal", "В календарь файлом .ics (повторно — обновит событие)", 'data-a="icsfile"', "") + row("cal", "Открыть в Google Календаре (создаст новое)", 'data-a="ics"', "") + "</div>" : "") +
     '<div class="dcard"><div class="drow stp">' + ic("tag", 18) + '<input id="d-cat" placeholder="Выберите категорию" value="' + esc(t.category || "") + '"></div></div>' +
     '<div class="dcard">' + row("clip", "Добавить файл", 'data-a="pickfile"', "") +
     (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:12px">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" +
@@ -1651,6 +1654,7 @@ const acts = {
   theme(a) { TH.theme = a.dataset.v; saveTheme(); render(); },
   accent(a) { TH.accent = a.dataset.v; saveTheme(); render(); },
   export() { closePop(); exportJson(); render(); }, ping() { ping(); }, logout() { closePop(); logout(); },
+  icsfile() { if (selId && exportIcs(selId)) toast("📅 Файл скачан — откройте его в Календаре. Если событие уже было, оно обновится", { ms: 6000 }); },
   ics() { const u = selId && gcalUrl(S.tasks[selId]); if (u) window.open(u, "_blank", "noopener"); },
   async pushtog() { showMsg("Подождите…", true); const was = pushOn(), r = was ? await disablePush() : await enablePush(); showMsg(r || (was ? "Пуши выключены" : "Пуши включены ✓ напоминания придут, даже когда приложение закрыто"), !r); render(); },
   notify() { askNotify(); showMsg("Если браузер спросил разрешение — нажмите «Разрешить»", true); },
