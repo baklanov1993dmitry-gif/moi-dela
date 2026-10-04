@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 22:53">
+<meta name="build" content="04.10 22:59">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 22:53";
+const BUILD = "04.10 22:59";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1857,6 +1857,8 @@ input[type=checkbox]#s-glass:checked::after,input[type=checkbox]#s-myday:checked
 .pop.mm{top:8px!important;right:8px!important;left:auto!important;bottom:auto!important;width:min(80vw,340px);max-height:94vh;border-radius:4px;padding:4px 0}
 .pop.mm .pi{padding:14px 16px;gap:18px;font-size:calc(17px*var(--z,1))} .pop.mm .pi svg{color:var(--sub);flex-shrink:0}
 .pop.mm .pi.danger svg{color:inherit}
+*{scrollbar-width:none} *::-webkit-scrollbar{display:none;width:0;height:0}
+#list{scrollbar-gutter:auto}
 .lacct{padding:10px 12px 8px 12px;border-bottom:1px solid var(--ln)}
 .lacc{gap:12px} .lacc .av{width:34px;height:34px;font-size:calc(14px*var(--z,1));font-weight:500}
 .lacc .lt b{font-size:calc(18px*var(--z,1));font-weight:500} .lacc .lt i{font-size:calc(16px*var(--z,1))}
