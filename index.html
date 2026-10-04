@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 18:59">
+<meta name="build" content="04.10 19:20">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 18:59";
+const BUILD = "04.10 19:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1783,6 +1783,16 @@ const subCSS = `
 .chip.on::before{top:10px;bottom:10px}
 .ghead{height:50px;padding:0 14px 0 18px;font-size:calc(18px*var(--z,1));font-weight:400}
 .gbody{margin-left:21px;border-left-width:2px} .gbody .chip{padding-left:14px}
+.qa-back{background:rgba(0,0,0,.4)}
+.qa{border-radius:12px 12px 0 0;padding:12px 16px max(10px,env(safe-area-inset-bottom))}
+.qrow{gap:14px;padding:4px 0 6px}
+.qrow .rad{width:28px;height:28px;border-color:var(--sub);opacity:.7}
+.qrow input{font-size:calc(20px*var(--z,1));height:48px}
+.qsend{width:44px;height:44px;border-radius:6px;background:var(--ln);color:var(--sub)} .qsend.on{background:var(--acc);color:#fff}
+.qchips{gap:4px;margin:0 -16px;padding:2px 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
+.qchips::-webkit-scrollbar{display:none}
+.qchip{border:0;background:transparent;padding:10px 12px;border-radius:8px;gap:8px;font-size:calc(17px*var(--z,1));color:var(--sub)} .qchip svg{width:22px;height:22px}
+.qchip.on{background:var(--sel);color:var(--acc)}
 .lfoot{border-top:0;padding-right:10px} .lfoot .chip{font-size:calc(18px*var(--z,1))}
 }
 `;
@@ -1993,7 +2003,7 @@ function qaHTML() {
   if (!ui.qa) return "";
   const q = ui.qa, di = dueInfo({ due: q.due, done: false });
   const chip = (svg, label, attrs, on) => '<button type="button" class="qchip ' + (on ? "on" : "") + '" ' + attrs + ">" + ic(svg, 16) + "<span>" + label + "</span></button>";
-  return '<div class="qa-back" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="send" autocomplete="off" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '"><button class="qsend" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
+  return '<div class="qa-back" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="done" autocomplete="off" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '"><button class="qsend' + ((ui.qaText || "").trim() ? " on" : "") + '" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
     chip("cal", di ? di.txt : "Задать дату выполнения", 'data-a="pop" data-p="due" data-id="__qa"', !!q.due) +
     chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "Напомнить", 'data-a="pop" data-p="remind" data-id="__qa"', !!q.remind_at) +
     chip("repeat", q.repeat_rule ? esc(repeatText(q.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="__qa"', !!q.repeat_rule) +
@@ -2532,7 +2542,7 @@ function init() {
   let qt;
   app.addEventListener("input", e => {
     if (e.target.id === "ds-q") { dayInput("ds-q", e.target.value); return; }
-    if (e.target.id === "qa-input") { ui.qaText = e.target.value; return; }   // черновик текста не теряется при выборе даты/времени
+    if (e.target.id === "qa-input") { ui.qaText = e.target.value; const sb = document.querySelector(".qsend"); if (sb) sb.classList.toggle("on", !!e.target.value.trim()); return; }   // черновик текста не теряется при выборе даты/времени
     if (e.target.id !== "q") return;
     const v = e.target.value; ui.q = v;
     if (v && view !== "search") { prevView = view; view = "search"; selId = null; }
