@@ -1242,7 +1242,8 @@ select.inp option{color:#111}
   .mhead{padding:6px 18px 2px} .mhead h1{font-size:28px;font-weight:700}
   .msub{padding:0 18px} .addbar,.hint{display:none}
   #list{padding:0 14px 100px} .sortbar{padding:6px 14px 0;justify-content:flex-start} .sugg{margin:0 14px 10px}
-  #left,#right{position:absolute;left:0;top:0;right:0;bottom:0;width:100%!important;max-width:none!important;z-index:20;box-shadow:none}
+  #left,#right{position:absolute;left:0;top:0;right:0;bottom:0;width:100%!important;max-width:none!important;z-index:20;box-shadow:none;background:var(--solid)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  #left:not(.hide) ~ #main{display:none}
   .chip{height:52px;font-size:16px} .ghead{height:46px;font-size:15px}
   .taskrow{border-radius:4px}
   .pop{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%;max-width:none;border-radius:14px 14px 0 0;max-height:65vh;padding-bottom:max(8px,env(safe-area-inset-bottom))}
@@ -1386,7 +1387,6 @@ function detailHTML(t) {
     row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
     row("cal", di ? esc(di.txt) : "Добавить срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
     row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") + "</div>" +
-    ((t.remind_at || t.due) ? '<div class="dcard">' + row("cal", "В календарь файлом .ics (повторно — обновит событие)", 'data-a="icsfile"', "") + row("cal", "Открыть в Google Календаре (создаст новое)", 'data-a="ics"', "") + "</div>" : "") +
     '<div class="dcard"><div class="drow stp">' + ic("tag", 18) + '<input id="d-cat" placeholder="Выберите категорию" value="' + esc(t.category || "") + '"></div></div>' +
     '<div class="dcard">' + row("clip", "Добавить файл", 'data-a="pickfile"', "") +
     (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:12px">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" +
@@ -1590,7 +1590,7 @@ function exportJson() {
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
 let hDepth = 0, hSkip = 0;
-const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 1 : 0) + (ui.msearch ? 1 : 0);
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0);
 function syncHistory() {
   try {
     const d = layerDepth();
@@ -1602,7 +1602,7 @@ function onBack() {
   if (hSkip > 0) { hSkip--; return; }
   if (hDepth > 0) hDepth--;
   if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) ui.settings = false;
-  else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (ui.left) ui.left = false;
+  else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) ui.left = true;
   render();
 }
 
