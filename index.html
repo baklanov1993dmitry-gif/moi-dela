@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 18:46">
+<meta name="build" content="04.10 18:59">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 18:46";
+const BUILD = "04.10 18:59";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1773,6 +1773,17 @@ const subCSS = `
 .taskrow.sub{min-height:46px;padding:8px 8px}
 .taskrow.sub .ttl{font-size:calc(16px*var(--z,1))} .taskrow.sub .rad{width:20px;height:20px}
 .subadd input{font-size:calc(16px*var(--z,1))}
+.lacct{padding:10px 12px 8px 12px;border-bottom:1px solid var(--ln)}
+.lacc{gap:12px} .lacc .av{width:34px;height:34px;font-size:calc(14px*var(--z,1));font-weight:500}
+.lacc .lt b{font-size:calc(18px*var(--z,1));font-weight:500} .lacc .lt i{font-size:calc(16px*var(--z,1))}
+.lsync{padding:4px 16px 0}
+.chip{height:50px;gap:16px;padding:0 18px 0 18px;font-size:calc(18px*var(--z,1))}
+.chip .em{width:24px;font-size:calc(20px*var(--z,1))} .chip .em svg{width:22px;height:22px}
+.chip .n{font-size:calc(17px*var(--z,1));color:var(--sub)}
+.chip.on::before{top:10px;bottom:10px}
+.ghead{height:50px;padding:0 14px 0 18px;font-size:calc(18px*var(--z,1));font-weight:400}
+.gbody{margin-left:21px;border-left-width:2px} .gbody .chip{padding-left:14px}
+.lfoot{border-top:0;padding-right:10px} .lfoot .chip{font-size:calc(18px*var(--z,1))}
 }
 `;
 
@@ -1957,7 +1968,7 @@ select.inp option{color:#111}
 }
 `;
 
-const listIcon = l => l && l.icon && l.icon !== "🗂️" && l.icon !== "🗂" ? '<span class="em">' + esc(l.icon) + "</span>" : '<span class="em">' + ic("list", 18) + "</span>";
+const listIcon = l => l && l.icon && l.icon !== "🗂️" && l.icon !== "🗂" ? '<span class="em">' + esc(l.icon) + "</span>" : '<span class="em" style="color:' + (l.color || "#5b5fc7") + '">' + ic("list", 18) + "</span>";
 function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
   if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
