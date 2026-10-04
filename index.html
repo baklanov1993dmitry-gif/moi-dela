@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 18:29">
+<meta name="build" content="04.10 18:46">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 18:29";
+const BUILD = "04.10 18:46";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -124,6 +124,7 @@ let P = jget(LSK.pending, { lists: {}, tasks: {}, time_log: {} });
 if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {}; if (!P.time_log) P.time_log = {};
 let TH = Object.assign({ v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", size: "l", glass: false }, jget(LSK.theme, {}));
 if (TH.v !== 2) TH = { v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", size: "l", glass: false };
+if (innerWidth <= 760 && !TH.sz2) { TH.size = "n"; TH.sz2 = 1; try { jset(LSK.theme, TH); } catch (e) {} } /* телефон: базовый размер подогнан под To Do */
 const PR = Object.assign({ sort: {}, group: {}, grid: {}, collapsed: {}, showDone: {}, rail: false, dayStart: 8, dayEnd: 17, reserve: 25 }, jget(LSK.prefs, {}));
 const savePrefs = () => jset(LSK.prefs, PR);
 let view = jget(LSK.view, "planned"), prevView = "planned", selId = null;
@@ -154,7 +155,7 @@ const THEMES = {
   sand:     { n: "Пустыня", bg: "#ecd7ad", l: "#e1c795", m: "#ecd7ad", r: "#e1c795", card: "#fbf1da", tx: "#40290f", sub: "#85673c", ln: "rgba(110,70,20,.35)", acc: "#c2410c", hd: "#7c3f12", font: "pal", rad: "8px", sh: "none", bd: "2px dashed #c4a063", tw: "600" }
 };
 const FONTS = { sys: '"Segoe UI",system-ui,-apple-system,Roboto,sans-serif', serif: "Georgia,'Times New Roman',serif", mono: "ui-monospace,'Courier New',Consolas,monospace", round: "'Trebuchet MS','Nunito',system-ui,sans-serif", hum: "Candara,Calibri,'Gill Sans',system-ui,sans-serif", narrow: "'Arial Narrow',Bahnschrift,'Roboto Condensed',Arial,sans-serif", pal: "'Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif" };
-const ZOOMS = { s: .9, n: 1, l: 1.15, xl: 1.3, xxl: 1.5 };
+const ZOOMS = { s: .9, n: 1, n2: 1.07, l: 1.15, l2: 1.22, xl: 1.3, xxl: 1.5 };
 const DENS = { compact: ["6px", "13px"], normal: ["10px", "14px"], cozy: ["14px", "15px"] };
 const ACCENTS = ["#2564cf", "#0063b1", "#038387", "#498205", "#c19c00", "#ca5010", "#d13438", "#e3008c", "#8764b8", "#6366f1", "#69797e"];
 const saveTheme = () => jset(LSK.theme, TH);
@@ -1751,7 +1752,28 @@ const subCSS = `
 .mi.par{color:var(--sub);font-style:italic}
 .subadd{display:flex;align-items:center;gap:8px;padding:8px 8px;color:var(--acc)}
 .subadd input{flex:1;min-width:0;border:0;background:transparent;color:var(--tx);font-size:calc(13.5px*var(--z,1));outline:0;font-family:inherit}
-@media(max-width:760px){.kids{padding-left:34px}}
+@media(max-width:760px){
+.kids{padding:2px 8px 4px 40px}
+#list{padding:0 8px 100px} .sortbar{padding:8px 8px 4px} .sugg{margin:0 8px 8px}
+.mhead{padding:4px 16px 0} .mhead h1{font-size:calc(30px*var(--z,1));font-weight:600}
+.msub{padding:0 16px 4px;font-size:calc(15px*var(--z,1))}
+.sortchip{background:var(--card);box-shadow:var(--shadow);border-radius:4px;padding:9px 12px;font-size:calc(15px*var(--z,1));font-weight:500}
+.taskrow{align-items:center;gap:12px;padding:10px 14px 10px 16px;margin-bottom:3px;border-radius:4px;min-height:60px}
+.tnode.has{margin-bottom:3px;border-radius:4px}
+.rad{width:24px;height:24px;border-width:2px;border-color:var(--sub);margin-top:0}
+.rad.on{border-color:var(--acc)} .rad svg{width:15px;height:15px}
+.tbody{padding:0}
+.ttl{font-size:calc(18px*var(--z,1));line-height:1.2}
+.meta{font-size:calc(15px*var(--z,1));margin-top:3px;gap:2px 9px}
+.meta svg{width:16px;height:16px} .mi{gap:5px}
+.mi.od{font-weight:400}
+.star{padding:4px} .star svg{width:24px;height:24px}
+.pp{height:26px;padding:0 10px;font-size:calc(14px*var(--z,1));border-color:var(--ln);color:var(--sub)}
+.subbtn{height:40px;min-width:60px;font-size:calc(15px*var(--z,1))}
+.taskrow.sub{min-height:46px;padding:8px 8px}
+.taskrow.sub .ttl{font-size:calc(16px*var(--z,1))} .taskrow.sub .rad{width:20px;height:20px}
+.subadd input{font-size:calc(16px*var(--z,1))}
+}
 `;
 
 // ----- позиция всплывающего меню: всегда целиком в окне + барабаны времени -----
@@ -2140,7 +2162,7 @@ function settingsHTML() {
   if (tab === "view") b =
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
     sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (TH.accent === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>") +
-    sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["n", "Обычный"], ["l", "Крупный"], ["xl", "Очень крупный"], ["xxl", "Огромный"]])) +
+    sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупный"], ["l2", "Ещё крупнее"], ["xl", "Очень крупный"], ["xxl", "Огромный"]])) +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
     sec("Фон-картинка (ссылка на изображение)", '<input id="s-bg" class="inp" placeholder="https://…jpg" value="' + esc(TH.bg) + '">') +
