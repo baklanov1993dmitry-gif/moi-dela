@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 17:40">
+<meta name="build" content="04.10 18:06">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 17:40";
+const BUILD = "04.10 18:06";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -140,7 +140,7 @@ function persistSoon() { clearTimeout(persistTimer); persistTimer = setTimeout(w
 
 /* ----- темы ----- */
 const THEMES = {
-  classic:  { n: "Классика", bg: "#faf9f8", l: "#faf9f8", m: "#faf9f8", r: "#faf9f8", acc: "#2564cf", font: "sys", rad: "6px", sh: "0 1px 2px rgba(0,0,0,.12)", bd: "0 solid transparent" },
+  classic:  { n: "Классика (как в To Do)", bg: "#faf9f8", l: "#ffffff", m: "#faf9f8", r: "#ffffff", tx: "#292827", sel: "#eff6fc", acc: "#2564cf", font: "sys", rad: "4px", sh: "0 0.3px 0.9px rgba(0,0,0,.1),0 1.6px 3.6px rgba(0,0,0,.1)", bd: "0 solid transparent", gap: "8px", rowh: "52px" },
   paper:    { n: "Бумага", bg: "#f3e9d2", l: "#ecdfc0", m: "#f3e9d2", r: "#ecdfc0", card: "#fffbef", tx: "#3b2f1e", sub: "#7a6a50", ln: "rgba(90,60,20,.22)", acc: "#8b4513", hd: "#5c3a1e", font: "serif", rad: "2px", sh: "none", bd: "1px solid #cdb98c", tw: "600" },
   brut:     { n: "Брутал", bg: "#ffe14d", l: "#ffd21f", m: "#ffe14d", r: "#ffd21f", card: "#ffffff", tx: "#111111", sub: "#333333", ln: "#111111", acc: "#ff2e63", hd: "#111111", font: "mono", rad: "0px", sh: "4px 4px 0 #111", bd: "2px solid #111", tw: "700" },
   sky:      { n: "Небо", bg: "linear-gradient(160deg,#a8d0ff,#d9e7ff 60%,#f1f6ff)", l: "rgba(255,255,255,.55)", m: "rgba(255,255,255,.2)", r: "rgba(255,255,255,.7)", card: "rgba(255,255,255,.78)", acc: "#1d6bf3", hd: "#1553c7", font: "round", rad: "20px", sh: "0 6px 20px rgba(29,107,243,.18)", bd: "1px solid rgba(255,255,255,.9)" },
@@ -166,10 +166,10 @@ function applyTheme() {
   const app = $("app"); if (!app) return;
   const T = THEMES[TH.theme] || THEMES.classic, d = 0, hasBg = !!TH.bg, dn = DENS[TH.dens] || DENS.normal, acc = curAccent();
   const v = {
-    "--bg": T.bg, "--tx": T.tx || "#323130", "--sub": T.sub || "#605e5c", "--rad": T.rad || "6px", "--cbd": T.bd || "0 solid transparent", "--tw": T.tw || "400",
+    "--bg": T.bg, "--tx": T.tx || "#323130", "--sub": T.sub || "#605e5c", "--rad": T.rad || "6px", "--gap": T.gap || "3px", "--rowh": T.rowh || "48px", "--cbd": T.bd || "0 solid transparent", "--tw": T.tw || "400",
     "--ln": T.ln || "rgba(0,0,0,.1)", "--card": hasBg ? "rgba(255,255,255,.9)" : (T.card || "#ffffff"),
     "--hov": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.05)", "--inp": d ? "rgba(255,255,255,.08)" : "#ffffff",
-    "--acc": acc, "--hd": (T.hd && acc === T.acc) ? T.hd : shade(acc, -0.12), "--sel": rgba(acc, d ? .28 : .13), "--solid": d ? "#1b2236" : "#ffffff",
+    "--acc": acc, "--hd": (T.hd && acc === T.acc) ? T.hd : shade(acc, -0.12), "--sel": T.sel && acc === T.acc ? T.sel : rgba(acc, .13), "--solid": d ? "#1b2236" : "#ffffff",
     "--od": d ? "#ff8a80" : "#a4262c", "--catl": d ? "72%" : "36%", "--shadow": T.sh || "0 1px 2px rgba(0,0,0,.12)",
     "--lp": hasBg ? (d ? "rgba(8,12,24,.62)" : "rgba(255,255,255,.66)") : T.l,
     "--mp": hasBg ? (d ? "rgba(8,12,24,.38)" : "rgba(255,255,255,.4)") : T.m,
@@ -1776,16 +1776,16 @@ const CSS = `
 #right{width:340px;flex-shrink:0;background:var(--rp);border-left:1px solid var(--ln)}
 .glass #left,.glass #main,.glass #right{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .lhead{height:44px;display:flex;align-items:center;padding:0 8px;flex-shrink:0}
-.chip{display:flex;align-items:center;gap:12px;height:40px;padding:0 14px;cursor:pointer;border-left:3px solid transparent;font-size:calc(14px*var(--z,1));color:var(--tx)}
-.chip:hover{background:var(--hov)} .chip.on{background:var(--sel);border-left-color:var(--acc)}
+.chip{position:relative;display:flex;align-items:center;gap:14px;height:44px;padding:0 20px 0 22px;cursor:pointer;font-size:calc(14px*var(--z,1));color:var(--tx)}
+.chip:hover{background:var(--hov)} .chip.on{background:var(--sel)} .chip.on::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:2px;background:var(--acc)} .chip.on .tx{font-weight:600}
 .chip .em{width:20px;flex-shrink:0;display:inline-flex;justify-content:center;font-size:calc(16px*var(--z,1))}
 .chip .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.chip .n{color:var(--sub);font-size:calc(12px*var(--z,1))}
-.ghead{display:flex;align-items:center;gap:4px;height:38px;padding:0 10px 0 14px;font-size:calc(13px*var(--z,1));font-weight:600;cursor:pointer}
+.chip .n{color:var(--tx);font-size:calc(13px*var(--z,1))}
+.ghead{display:flex;align-items:center;gap:4px;height:44px;padding:0 20px 0 22px;font-size:calc(14px*var(--z,1));font-weight:700;cursor:pointer}
 .ghead .tx{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ghead .ibtn{width:26px;height:26px;opacity:0}.ghead:hover .ibtn{opacity:1}
 .lfoot{display:flex;align-items:center;border-top:1px solid var(--ln);padding-right:6px;flex-shrink:0}
-.lfoot .chip{flex:1;color:var(--acc);border-left:0}
+.lfoot .chip{flex:1;color:var(--acc)}
 .railed .tx,.railed .n,.railed .ghead,.railed .lfoot .ibtn{display:none}
 .railed .chip{justify-content:center;padding:0}
 .mhead{display:flex;align-items:center;gap:6px;padding:14px 28px 4px;flex-wrap:wrap}
@@ -1806,7 +1806,7 @@ const CSS = `
 .cards.grid .taskrow{margin:0}
 .cards.grid .mi + .mi::before{display:none}
 .cards.grid .meta{gap:2px 12px}
-.taskrow{display:flex;gap:12px;align-items:flex-start;padding:var(--pad) 14px;background:var(--card);box-shadow:var(--shadow);border-radius:var(--rad);margin-bottom:3px;cursor:pointer;min-height:48px;border:var(--cbd)}
+.taskrow{display:flex;gap:12px;align-items:flex-start;padding:var(--pad) 14px;background:var(--card);box-shadow:var(--shadow);border-radius:var(--rad);margin-bottom:var(--gap,3px);cursor:pointer;min-height:var(--rowh,48px);border:var(--cbd)}
 .taskrow:hover{background:var(--hov)} .taskrow.sel{background:var(--sel)}
 .rad{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--acc);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
 .rad:hover{background:var(--sel)} .rad.on{background:var(--acc)}
@@ -1870,8 +1870,8 @@ select.inp option{color:#111}
 .toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:calc(13.5px*var(--z,1));display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
 .dropok{outline:2px dashed var(--acc);outline-offset:-3px}
-.gbody{margin-left:22px;border-left:2px solid var(--ln)}
-.gbody .chip{padding-left:12px}
+.gbody{margin-left:30px;border-left:2px solid var(--ln)}
+.gbody .chip{padding-left:14px}
 .mtop{display:flex;align-items:center;gap:2px;padding:8px 8px 0;color:var(--tx);flex-shrink:0}
 .mtop .ibtn{width:42px;height:42px}
 .searchbox.mob{flex:1;max-width:none;margin:0}
@@ -1913,7 +1913,7 @@ select.inp option{color:#111}
 }
 `;
 
-const listIcon = l => l && l.icon ? '<span class="em">' + esc(l.icon) + "</span>" : '<span class="em">' + ic("list", 18) + "</span>";
+const listIcon = l => l && l.icon && l.icon !== "🗂️" && l.icon !== "🗂" ? '<span class="em">' + esc(l.icon) + "</span>" : '<span class="em">' + ic("list", 18) + "</span>";
 function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
   if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
