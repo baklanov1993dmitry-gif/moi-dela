@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 22:32">
+<meta name="build" content="04.10 22:53">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 22:32";
+const BUILD = "04.10 22:53";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -202,6 +202,14 @@ const IC = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   help: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
   menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+  palette: '<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 22 10.8C22 5.9 17.5 2 12 2z"/>',
+  fmove: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M9 14h6M12 11l3 3-3 3"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  print: '<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  ccheck: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
+  img: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
   trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
   chevd: '<path d="M6 9l6 6 6-6"/>', chevr: '<path d="M9 6l6 6-6 6"/>',
   sort: '<path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 4v16"/>',
@@ -539,6 +547,13 @@ function moveList(id, dir) {
   if (i < 0 || j < 0 || j >= arr.length) return;
   const a = arr[i], b = arr[j]; const p = a.position; a.position = b.position; b.position = p;
   mark("lists", a.id, "u"); mark("lists", b.id, "u");
+}
+function reorderList(id, tid, after, grp) {
+  normPositions(); const D = S.lists[id]; if (!D) return;
+  const arr = listsArr().filter(l => l.id !== id); let i = tid ? arr.findIndex(l => l.id === tid) : arr.length; if (i < 0) i = arr.length; if (after && tid) i++;
+  arr.splice(i, 0, D);
+  if ((D.group_name || null) !== (grp || null)) { D.group_name = grp || null; mark("lists", D.id, "u"); }
+  arr.forEach((l, k) => { if (l.position !== k) { l.position = k; mark("lists", l.id, "u"); } });
 }
 function setListGroup(id, name) { const l = S.lists[id]; if (!l) return; l.group_name = name || null; mark("lists", id, "u"); }
 function renameGroup(old, nw) { listsArr().forEach(l => { if (l.group_name === old) { l.group_name = nw || null; mark("lists", l.id, "u"); } }); }
@@ -1762,6 +1777,17 @@ const subActs = {
   fltclr(a) { const k = a.dataset.k; if (k === "all") delete PR.flt[view]; else if (PR.flt[view]) { delete PR.flt[view][k]; if (!fltCount()) delete PR.flt[view]; } savePrefs(); closePop(); render(); }
 };
 const subCSS = `
+.bgprev{margin-top:10px;height:110px;border-radius:8px;background-size:cover;background-position:center;border:1px solid var(--ln)}
+.sacc .av{width:44px;height:44px;border-radius:50%;background:#5b3fc4;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.swrow{display:flex;align-items:center;gap:10px}
+input[type=checkbox]#s-glass,input[type=checkbox]#s-myday{-webkit-appearance:none;appearance:none;width:46px;height:26px;border-radius:13px;background:var(--ln);position:relative;flex-shrink:0;cursor:pointer;transition:background .15s;border:0;margin:0}
+input[type=checkbox]#s-glass::after,input[type=checkbox]#s-myday::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}
+input[type=checkbox]#s-glass:checked,input[type=checkbox]#s-myday:checked{background:var(--acc)}
+input[type=checkbox]#s-glass:checked::after,input[type=checkbox]#s-myday:checked::after{left:23px}
+.dghost{background:var(--solid);box-shadow:0 6px 20px rgba(0,0,0,.35);border-radius:6px;opacity:.96}
+.dragsrc{opacity:.3}
+.chip.dragbef{box-shadow:inset 0 3px 0 var(--acc)} .chip.dragaft{box-shadow:inset 0 -3px 0 var(--acc)} .ghead.dragin{background:var(--sel)}
+.chip[data-lid]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .tnode{display:block}
 .tnode.has{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:3px;overflow:hidden}
 .tnode.has>.taskrow{box-shadow:none;border:0;background:transparent;margin:0;border-radius:0}
@@ -1817,6 +1843,20 @@ const subCSS = `
 .dfoot{height:56px;font-size:calc(14px*var(--z,1))} .dfoot .ibtn svg{width:24px;height:24px}
 .pop.dtl{left:12px!important;right:12px!important;bottom:auto!important;width:auto;min-width:0;border-radius:6px;transform:none;max-height:none;padding:0 0 6px}
 .pop.dtl .dtp-t{display:none} .pop.dtl .dli{height:52px;padding:0 18px;gap:18px;font-size:calc(17px*var(--z,1))} .pop.dtl .dli svg{width:24px;height:24px;color:var(--tx)}
+.ovl{padding:0;align-items:stretch;background:var(--solid)}
+.sheet{width:100%;max-height:none;height:100%;border:0;border-radius:0;padding:8px 16px 28px;box-shadow:none}
+.shead{display:flex;align-items:center;gap:14px;padding:6px 0 4px}
+.stabs{flex-wrap:nowrap;overflow-x:auto;gap:0;margin:10px -16px 4px;padding:0 8px;border-bottom:1px solid var(--ln);scrollbar-width:none}
+.stab{border:0;border-radius:0;padding:12px 12px;font-size:calc(16px*var(--z,1));white-space:nowrap;border-bottom:3px solid transparent;color:var(--sub)}
+.stab.on{background:transparent;color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+.lbl{text-transform:none;letter-spacing:0;font-size:calc(15px*var(--z,1));margin:22px 0 8px}
+.inp,.btn{font-size:calc(17px*var(--z,1))} select.inp{height:52px} .inp{border-radius:6px}
+.btn{padding:13px 16px;border-radius:6px}
+.swrow{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center;font-size:calc(17px*var(--z,1));min-height:52px}
+.sacc{display:flex;align-items:center;gap:16px;padding:14px 0;font-size:calc(16px*var(--z,1));color:var(--sub)} .sacc b{color:var(--tx);font-size:calc(18px*var(--z,1));font-weight:500}
+.pop.mm{top:8px!important;right:8px!important;left:auto!important;bottom:auto!important;width:min(80vw,340px);max-height:94vh;border-radius:4px;padding:4px 0}
+.pop.mm .pi{padding:14px 16px;gap:18px;font-size:calc(17px*var(--z,1))} .pop.mm .pi svg{color:var(--sub);flex-shrink:0}
+.pop.mm .pi.danger svg{color:inherit}
 .lacct{padding:10px 12px 8px 12px;border-bottom:1px solid var(--ln)}
 .lacc{gap:12px} .lacc .av{width:34px;height:34px;font-size:calc(14px*var(--z,1));font-weight:500}
 .lacc .lt b{font-size:calc(18px*var(--z,1));font-weight:500} .lacc .lt i{font-size:calc(16px*var(--z,1))}
@@ -1841,6 +1881,72 @@ const subCSS = `
 }
 `;
 
+// ----- фон-картинка из файла -----
+function bgFromFile(f) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement("canvas"); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      try { TH.bg = c.toDataURL("image/jpeg", 0.8); saveTheme(); } catch (e) { toast("Картинка слишком большая"); return; }
+      render();
+    };
+    im.onerror = () => toast("Не удалось открыть картинку"); im.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+// ----- перетаскивание списков (долгое нажатие на телефоне, мышью — сразу) -----
+function listDragInit(app) {
+  let st = null, timer = 0;
+  const pt = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+  const clearT = () => { clearTimeout(timer); timer = 0; };
+  const hit = (x, y) => { if (st.ghost) st.ghost.style.display = "none"; const el = document.elementFromPoint(x, y); if (st.ghost) st.ghost.style.display = ""; return el && el.closest ? el.closest(".chip[data-lid],.ghead[data-g]") : null; };
+  const mark = (el, after) => { document.querySelectorAll(".dragbef,.dragaft,.dragin").forEach(n => n.classList.remove("dragbef", "dragaft", "dragin")); if (!el) return; el.classList.add(el.classList.contains("ghead") ? "dragin" : (after ? "dragaft" : "dragbef")); };
+  const begin = (chip, x, y) => {
+    const r = chip.getBoundingClientRect(), g = chip.cloneNode(true);
+    g.className = "chip dghost"; g.style.cssText = "position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;pointer-events:none;z-index:90";
+    ($("app") || document.body).appendChild(g); chip.classList.add("dragsrc"); st.drag = true; st.ghost = g; st.oy = y - r.top; st.ox = x - r.left; st.pre = [r.left, r.top];
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) {}
+  };
+  const move = (x, y) => {
+    st.ghost.style.top = (y - st.oy) + "px"; st.ghost.style.left = (x - st.ox) + "px";
+    const t = hit(x, y); if (!t) { st.tgt = null; mark(null); } else { const r = t.getBoundingClientRect(); st.tgt = t; st.after = y > r.top + r.height / 2; mark(t, st.after); }
+    const sc = $("lscroll"); if (sc) { const b = sc.getBoundingClientRect(); st.scroll = y < b.top + 50 ? -10 : y > b.bottom - 50 ? 10 : 0; }
+  };
+  const loop = () => { if (!st || !st.drag) return; const sc = $("lscroll"); if (sc && st.scroll) sc.scrollTop += st.scroll; requestAnimationFrame(loop); };
+  const end = (cancel) => {
+    clearT(); if (!st) return; const s = st; st = null;
+    if (s.ghost) s.ghost.remove(); mark(null); document.querySelectorAll(".dragsrc").forEach(n => n.classList.remove("dragsrc"));
+    if (!s.drag) return;
+    s.node.__nc = Date.now(); window.__lsd = Date.now();
+    if (cancel || !s.tgt) { render(); return; }
+    const t = s.tgt;
+    if (t.classList.contains("ghead")) { const g = t.dataset.g, f = listsArr().find(l => l.group_name === g); if (f) reorderList(s.id, f.id, false, g); }
+    else { const tl = S.lists[t.dataset.lid]; if (tl && tl.id !== s.id) reorderList(s.id, tl.id, s.after, tl.group_name); }
+    render();
+  };
+  const down = (e, touch) => {
+    if (e.target.closest("button,.ibtn")) return; const chip = e.target.closest && e.target.closest(".chip[data-lid]"); if (!chip) return;
+    const p = pt(e); st = { id: chip.dataset.lid, node: chip, x: p.clientX, y: p.clientY, touch, drag: false };
+    if (touch) timer = setTimeout(() => { if (st && !st.drag) { begin(chip, st.x, st.y); loop(); } }, 380);
+  };
+  app.addEventListener("touchstart", e => { if (e.touches.length === 1) down(e, true); else end(true); }, { passive: true });
+  app.addEventListener("touchmove", e => {
+    if (!st) return; const p = pt(e);
+    if (st.drag) { e.preventDefault(); move(p.clientX, p.clientY); return; }
+    if (Math.abs(p.clientX - st.x) > 8 || Math.abs(p.clientY - st.y) > 8) { clearT(); st = null; }
+  }, { passive: false });
+  app.addEventListener("touchend", () => end(false)); app.addEventListener("touchcancel", () => end(true));
+  app.addEventListener("mousedown", e => { if (e.button === 0 && !("ontouchstart" in window && isMobile())) down(e, false); });
+  window.addEventListener("mousemove", e => {
+    if (!st || st.touch) return;
+    if (!st.drag) { if (Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y) > 6) { begin(st.node, e.clientX, e.clientY); loop(); } else return; }
+    e.preventDefault(); move(e.clientX, e.clientY);
+  });
+  window.addEventListener("mouseup", () => { if (st && !st.touch) end(false); });
+  app.addEventListener("click", e => { if (window.__lsd && Date.now() - window.__lsd < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
 // ----- позиция всплывающего меню: всегда целиком в окне + барабаны времени -----
 function fitPop() {
   const pop = $("pop"); if (!pop) return;
@@ -2180,6 +2286,7 @@ function popHTML() {
   const t = p.id === "__qa" ? ui.qa : p.id && S.tasks[p.id], it = (k, label, extra, cls, r) => '<div class="pi ' + (cls || "") + '" data-a="pa" data-k="' + k + '" ' + (extra || "") + ">" + label + (r ? '<span class="r">' + r + "</span>" : "") + "</div>";
   const idA = 'data-id="' + esc(p.id || "") + '"';
   let h = "";
+  const im = (k, svg, label, cls) => it(k, ic(svg, 22) + "<span>" + label + "</span>", idA, cls);
   const dueQuick = (k) => {
     const d1 = parseISO(today), d2 = parseISO(addDays(today, 1)), d3 = parseISO(nextMonday());
     return it(k, "Сегодня", idA + ' data-v="today"', "", WDS[d1.getDay()]) + it(k, "Завтра", idA + ' data-v="tom"', "", WDS[d2.getDay()]) + it(k, "Следующая неделя", idA + ' data-v="week"', "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3));
@@ -2189,9 +2296,9 @@ function popHTML() {
   else switch (p.type) {
     case "mmenu": {
       const L = p.id && S.lists[p.id];
-      h = (L ? it("l_rename", "Переименовать список", idA) + it("l_icon", "Сменить значок", idA) + it("l_colorpop", "Изменить цвет", idA) + it("l_grouppop", "Переместить в группу…", idA) + it("l_up", "Выше", idA) + it("l_down", "Ниже", idA) + it("l_dup", "Дублировать список", idA) + it("l_deldone", "Удалить завершённые", idA) + it("l_del", "Удалить список", idA, "danger") + '<div class="psep"></div>' : "") +
-        (view !== "search" ? it("sub_sort", "Сортировка…", idA) + it("sub_group", "Группировать…", idA) + it("sub_filter", "Фильтр" + (fltCount() ? " · " + fltCount() : "") + "…", idA) + it("subs_mode", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)", idA) + it("gridtog", PR.grid[view] ? "Показать списком" : "Показать сеткой", idA) : "") +
-        (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + it("sync", "Синхронизировать") + it("settings", "Настройки");
+      h = (L ? im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + im("l_dup", "copy", "Дублировать список") + im("l_deldone", "ccheck", "Удалить завершённые") + im("l_del", "trash", "Удалить список", "danger") + '<div class="psep"></div>' : "") +
+        (view !== "search" ? im("sub_sort", "sort", "Сортировка…") + im("sub_group", "group", "Группировать…") + im("sub_filter", "list", "Фильтр" + (fltCount() ? " · " + fltCount() : "") + "…") + im("subs_mode", "list", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)") + im("gridtog", "grid", PR.grid[view] ? "Показать списком" : "Показать сеткой") : "") +
+        (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + im("sync", "repeat", "Синхронизировать") + im("settings", "gear", "Настройки");
       break;
     }
     case "due": case "remind": h = dtpHTML(p, t); break;
@@ -2203,7 +2310,7 @@ function popHTML() {
     }
     case "sort": { const s = getSort(view); h = '<div class="ptitle">Сортировать по</div>' + Object.keys(SORTS).map(k => it("sort", SORTS[k].n, 'data-v="' + k + '"', s.by === k ? "cur" : "", s.by === k ? (s.dir === 1 ? "↑" : "↓") : "")).join("") + (PR.sort[view] ? '<div class="psep"></div>' + it("sortclr", "Сбросить сортировку") : ""); break; }
     case "group": { const g = getGroup(view); h = '<div class="ptitle">Группировать</div>' + Object.keys(GROUPS).filter(k => k !== "list" || view.indexOf("list:") !== 0).map(k => it("group", GROUPS[k], 'data-v="' + k + '"', g === k ? "cur" : "", g === k ? "✓" : "")).join(""); break; }
-    case "listmenu": h = it("l_rename", "Переименовать список", idA) + it("l_icon", "Сменить значок", idA) + it("l_colorpop", "Изменить цвет", idA) + it("l_grouppop", "Переместить в группу…", idA) + '<div class="psep"></div>' + it("l_up", "Выше", idA) + it("l_down", "Ниже", idA) + '<div class="psep"></div>' + it("l_dup", "Дублировать список", idA) + it("l_print", "Напечатать список", idA) + it("l_deldone", "Удалить завершённые", idA) + '<div class="psep"></div>' + it("l_del", "Удалить список", idA, "danger"); break;
+    case "listmenu": h = im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + '<div class="psep"></div>' + im("l_dup", "copy", "Дублировать список") + im("l_print", "print", "Напечатать список") + im("l_deldone", "ccheck", "Удалить завершённые") + '<div class="psep"></div>' + im("l_del", "trash", "Удалить список", "danger"); break;
     case "color": h = '<div class="ptitle">Цвет списка</div><div class="pform">' + ACCENTS.map(c => '<button class="sw" style="background:' + c + '" data-a="pa" data-k="l_color" ' + idA + ' data-v="' + c + '"></button>').join("") + "</div>" + it("l_color", "По умолчанию", idA + ' data-v=""'); break;
     case "move": {
       const gs = [...new Set(listsArr().map(l => l.group_name).filter(Boolean))], cur = S.lists[p.id] && S.lists[p.id].group_name;
@@ -2228,7 +2335,7 @@ function popHTML() {
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
   const dt = p.type === "due" || p.type === "remind";
   const lst = p.type === "due" && ui.dtp && !ui.dtp.cal;
-  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + '" id="pop" style="left:' + x + "px;top:" + y + "px" + (lst ? "!important" : "") + '">' + h + "</div>";
+  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && isMobile() ? " mm" : "") + '" id="pop" style="left:' + x + "px;top:" + y + "px" + (lst ? "!important" : "") + '">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
@@ -2242,20 +2349,21 @@ function settingsHTML() {
     sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупный"], ["l2", "Ещё крупнее"], ["xl", "Очень крупный"], ["xxl", "Огромный"]])) +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
-    sec("Фон-картинка (ссылка на изображение)", '<input id="s-bg" class="inp" placeholder="https://…jpg" value="' + esc(TH.bg) + '">') +
-    '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>";
+    sec("Фон-картинка", '<div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn ghost bgpick">' + ic("img", 18) + " " + (isMobile() ? "Выбрать из галереи" : "Выбрать файл с компьютера") + '<input type="file" id="s-bgfile" accept="image/*" hidden></label>' + (TH.bg ? '<button class="btn ghost" data-a="bgclear">Убрать фон</button>' : "") + "</div>" + (TH.bg ? '<div class="bgprev" style="background-image:url(\'' + TH.bg.replace(/['"\\\n]/g, "") + '\')"></div>' : "")) +
+    '<label class="swrow" style="margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>";
   else if (tab === "work") b =
     sec("Рабочий день (для плана и сетки «День»)", '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">' + sel("s-ds", PR.dayStart, [6,7,8,9,10].map(h => [h, "с " + h + ":00"])) + sel("s-de", PR.dayEnd, [14,15,16,17,18,19,20,21,22].map(h => [h, "до " + h + ":00"])) + sel("s-rs", PR.reserve, [0,10,20,25,30,40].map(p => [p, "резерв " + p + "%"])) + "</div>") +
-    '<label style="display:flex;gap:8px;align-items:center;margin-top:14px"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
+    '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
     '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Мой день» — это список на сегодня, который каждое утро начинается с нуля: вы сами выбираете, что берёте в работу сегодня. Если вам хватает «Запланировано» (по датам), оставьте выключенным.</div>';
   else if (tab === "notif") b =
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button></div>' +
     '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Звук и вибрация этого приложения настраиваются в Android: долгое нажатие на уведомление → «Настройки».</div>';
   else if (tab === "bk") b = bkHTML();
   else b =
+    '<div class="sacc"><span class="av">' + esc((S.user ? S.user.email : "?").slice(0, 2).toUpperCase()) + '</span><span><b>' + esc((S.user ? S.user.email : "").split("@")[0]) + "</b><br>" + esc(S.user ? S.user.email : "") + "</span></div>" +
     '<div class="sub" style="margin:10px 0;color:var(--sub);line-height:1.5">' + esc(S.user ? S.user.email : "") + "<br>задач: " + Object.keys(S.tasks).length + " · сборка " + BUILD + "</div>" +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>';
-  return '<div class="ovl" data-a="ovl"><div class="sheet' + (freshS ? " fade" : "") + '"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>' +
+  return '<div class="ovl" data-a="ovl"><div class="sheet' + (freshS ? " fade" : "") + '">' + (isMobile() ? '<div class="shead"><button class="ibtn" data-a="closeSettings">' + ic("arrowl", 22) + '</button><div style="flex:1;font-size:calc(22px*var(--z,1))">Параметры</div></div>' : '<div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>') +
     '<div class="stabs">' + TABS.map(t => '<button class="stab' + (tab === t[0] ? " on" : "") + '" data-a="stab" data-v="' + t[0] + '">' + t[1] + "</button>").join("") + "</div>" + b +
     '<div id="msg" style="margin-top:10px;min-height:18px;font-size:calc(13px*var(--z,1));white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
 }
@@ -2455,6 +2563,7 @@ const acts = {
   },
   sync() { loadAll(); },
   settings() { ui.settings = true; ui.msg = ""; closePop(); render(); },
+  bgclear() { TH.bg = ""; saveTheme(); render(); },
   closeSettings() { ui.settings = false; render(); },
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
   stab(a) { ui.stab = a.dataset.v; render(); },
@@ -2585,6 +2694,7 @@ function init() {
   app.addEventListener("contextmenu", e => {
     const r = e.target.closest(".taskrow"), c = e.target.closest(".chip[data-lid]");
     if (!r && !c) return;
+    if (c && !r && isMobile()) { e.preventDefault(); return; }
     e.preventDefault();
     ui.pop = r ? { type: "ctx", id: r.dataset.id, x: e.clientX, y: e.clientY } : { type: "listmenu", id: c.dataset.lid, x: e.clientX, y: e.clientY };
     render();
@@ -2592,6 +2702,7 @@ function init() {
   app.addEventListener("change", e => {
     const id = e.target.id;
     if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView("planned"); render(); return; }
+    if (id === "s-bgfile") { const f = e.target.files && e.target.files[0]; if (f) bgFromFile(f); return; }
     if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); render(); return; }
     if (changes[id] && S.user) changes[id](e.target.value, e.target);
   });
@@ -2640,7 +2751,7 @@ function init() {
   setInterval(() => { if (!document.hidden) bkTick(); }, 120000); setTimeout(() => bkTick(), 25000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); }, 20000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
-  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); desktopInit(app);
+  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); desktopInit(app); listDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
   if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } });
