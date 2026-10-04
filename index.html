@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мои дела">
 <title>Мои дела</title>
-<meta name="build" content="04.10 15:12">
+<meta name="build" content="04.10 15:24">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased;margin:0;padding:0}
   html,body{height:100%}
@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 15:12";
+const BUILD = "04.10 15:24";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -164,7 +164,7 @@ function applyTheme() {
     "--ln": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.1)", "--card": hasBg ? (d ? "rgba(30,30,30,.86)" : "rgba(255,255,255,.9)") : (d ? "rgba(255,255,255,.07)" : "#ffffff"),
     "--hov": d ? "rgba(255,255,255,.1)" : "rgba(0,0,0,.05)", "--inp": d ? "rgba(255,255,255,.08)" : "#ffffff",
     "--acc": acc, "--hd": d ? shade(acc, -0.35) : shade(acc, -0.08), "--sel": rgba(acc, d ? .28 : .13), "--solid": d ? "#1b2236" : "#ffffff",
-    "--od": d ? "#ff8a80" : "#a4262c", "--shadow": d ? "none" : "0 1px 2px rgba(0,0,0,.12)",
+    "--od": d ? "#ff8a80" : "#a4262c", "--catl": d ? "72%" : "36%", "--shadow": d ? "none" : "0 1px 2px rgba(0,0,0,.12)",
     "--lp": hasBg ? (d ? "rgba(8,12,24,.62)" : "rgba(255,255,255,.66)") : T.l,
     "--mp": hasBg ? (d ? "rgba(8,12,24,.38)" : "rgba(255,255,255,.4)") : T.m,
     "--rp": hasBg ? (d ? "rgba(8,12,24,.7)" : "rgba(255,255,255,.75)") : T.r,
@@ -1165,7 +1165,7 @@ function dtpHTML(p, t) {
   if (rem) {
     h += '<form id="dtpform" class="dtp-time"><div class="dtp-tl">Время</div><div class="tfld big"><button type="button" class="tb" data-a="dstep" data-d="-60">−1ч</button><button type="button" class="tb" data-a="dstep" data-d="-15">−15</button>' +
       '<input id="dtp-t" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="чч:мм" value="' + esc(D.time || "") + '"><button type="button" class="tb" data-a="dstep" data-d="15">+15</button><button type="button" class="tb" data-a="dstep" data-d="60">+1ч</button></div>' +
-      '<div class="tchips">' + TCHIPS.map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
+      '<div class="tchips">' + tchipsList().map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
       '<div class="dtp-tl">Или через</div><div class="dqrow"><button type="button" class="dq" data-a="drel" data-v="15">15 мин</button><button type="button" class="dq" data-a="drel" data-v="60">1 час</button><button type="button" class="dq" data-a="drel" data-v="180">3 часа</button></div>' +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
@@ -1248,6 +1248,95 @@ const dtpCSS = `
 .tb:active{background:var(--acc);color:#fff}
 .dtp-sum{margin:12px 0 8px;font-weight:600;text-align:center;color:var(--acc)}
 .dtp-btns{display:flex;gap:8px}
+`;
+
+// ---- p8: удобство и визуал: свайпы, «Завтра» на просроченных, цвета категорий, значок-счётчик, анимация, любимое время ----
+function catColor(name) {
+  let h = 0; const s = String(name || "").toLowerCase();
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  return h;
+}
+function catPill(name) {
+  const h = catColor(name);
+  return '<span class="mi cat" style="--ch:' + h + '">' + ic("tag", 12) + " " + esc(name) + "</span>";
+}
+function usualTimes() {
+  const cnt = {};
+  Object.values(S.tasks).forEach(t => { if (t.remind_at) { const d = new Date(t.remind_at); if (!isNaN(d)) { const k = pad(d.getHours()) + ":" + pad(d.getMinutes()); cnt[k] = (cnt[k] || 0) + 1; } } });
+  return Object.keys(cnt).filter(k => cnt[k] >= 2).sort((a, b) => cnt[b] - cnt[a]).slice(0, 3);
+}
+function tchipsList() {
+  const u = usualTimes();
+  return u.concat(TCHIPS.filter(c => u.indexOf(c) < 0)).slice(0, 9);
+}
+function postpone(id, v) {
+  const t = S.tasks[id]; if (!t) return;
+  const nd = v === "week" ? nextMonday() : addDays(today, 1), patch = { due: nd };
+  if (t.remind_at) { const r = new Date(t.remind_at), x = parseISO(nd); x.setHours(r.getHours(), r.getMinutes(), 0, 0); patch.remind_at = x.toISOString(); }
+  patchTask(id, patch);
+  toast(v === "week" ? "Перенесено на понедельник" : "Перенесено на завтра");
+}
+function updBadge() {
+  let n = 0;
+  Object.values(S.tasks).forEach(t => { if (!t.done && t.status !== "someday" && t.due && t.due <= today) n++; });
+  try { if (navigator.setAppBadge) { n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch (e) {}
+  try { document.title = (n ? "(" + n + ") " : "") + "Мои дела"; } catch (e) {}
+  return n;
+}
+const uxActs = {
+  tog(a) {
+    const id = a.dataset.id, t = S.tasks[id], row = a.closest(".taskrow");
+    if (!t) return;
+    const willDone = !t.done;
+    toggleDone(id);
+    if (willDone && row && !CFG0.TEST) { row.classList.add("fin"); a.classList.add("on"); setTimeout(render, 260); } else render();
+  },
+  postp(a, e) { if (e && e.stopPropagation) e.stopPropagation(); postpone(a.dataset.id, a.dataset.v); render(); }
+};
+function swipeInit(app) {
+  let sx = 0, sy = 0, row = null, dx = 0, lock = 0, kids = [];
+  const reset = () => { if (row) { kids.forEach(k => { k.style.transform = ""; k.style.transition = ""; }); row.classList.remove("swr", "swl"); row.style.background = ""; } row = null; dx = 0; lock = 0; };
+  app.addEventListener("touchstart", e => {
+    if (!isMobile() || e.touches.length !== 1) return;
+    const r = e.target.closest && e.target.closest(".taskrow"); if (!r || e.target.closest(".rad,.star,[data-a=postp]")) return;
+    row = r; sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; lock = 0; kids = Array.prototype.slice.call(r.children);
+  }, { passive: true });
+  app.addEventListener("touchmove", e => {
+    if (!row) return;
+    const x = e.touches[0].clientX - sx, y = e.touches[0].clientY - sy;
+    if (!lock) { if (Math.abs(x) > 12 && Math.abs(x) > Math.abs(y) * 1.5) lock = 1; else if (Math.abs(y) > 12) { reset(); return; } else return; }
+    dx = Math.max(-140, Math.min(140, x));
+    kids.forEach(k => { k.style.transition = "none"; k.style.transform = "translateX(" + dx + "px)"; });
+    row.classList.toggle("swr", dx > 0); row.classList.toggle("swl", dx < 0);
+    const o = Math.min(1, Math.abs(dx) / 90);
+    row.style.background = dx > 0 ? "rgba(16,124,16," + (.12 * o + .02) + ")" : "rgba(255,140,0," + (.14 * o + .02) + ")";
+    row.style.setProperty("--so", o);
+  }, { passive: true });
+  app.addEventListener("touchend", () => {
+    if (!row) return;
+    const r = row, id = r.dataset.id, d = dx, was = lock; reset();
+    if (!was) return;
+    if (d > 90) { const rad = r.querySelector(".rad"); if (rad) uxActs.tog(rad); }
+    else if (d < -90) { postpone(id, "tom"); render(); }
+    r.__sw = Date.now();
+  });
+  app.addEventListener("touchcancel", reset);
+  app.addEventListener("click", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r && r.__sw && Date.now() - r.__sw < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+const uxCSS = `
+.mi.cat{color:hsl(var(--ch) 65% var(--catl,36%));background:hsl(var(--ch) 70% 50% / .14);padding:1px 7px;border-radius:10px;font-weight:600}
+.mi.cat::before{display:none!important}
+.mi.cat + .mi::before,.mi + .mi.cat::before{content:""!important;margin:0!important}
+.pp{border:1px solid var(--acc);color:var(--acc);background:transparent;border-radius:12px;padding:0 9px;height:22px;font-size:calc(12px*var(--z,1));cursor:pointer}
+.pp::before{display:none!important}
+.taskrow{transition:opacity .25s,transform .25s}
+.taskrow.fin{opacity:0;transform:translateX(24px)}
+.rad.on{animation:radpop .25s}
+@keyframes radpop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.taskrow{position:relative;touch-action:pan-y}
+.taskrow.swr::before,.taskrow.swl::before{position:absolute;top:50%;transform:translateY(-50%);font-weight:600;font-size:calc(13px*var(--z,1));opacity:var(--so,0);pointer-events:none}
+.taskrow.swr::before{content:"✓ Готово";left:14px;color:#107c10}
+.taskrow.swl::before{content:"Завтра →";right:14px;color:#c25e00}
 `;
 
 /* ===== p4: стили и HTML-шаблоны ===== */
@@ -1478,12 +1567,13 @@ function metaHTML(t, showList) {
   if (inMyDay(t) && view !== "myday") m.push('<span class="mi">' + ic("sun", 13) + " Мой день</span>");
   if (t.steps && t.steps.length) m.push('<span class="mi">' + t.steps.filter(s => s.d).length + " из " + t.steps.length + "</span>");
   if (di) m.push('<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>");
+  if (di && di.cls === "od") m.push('<button class="mi pp" data-a="postp" data-v="tom" data-id="' + t.id + '">Завтра</button>');
   if (t.repeat_rule) m.push('<span class="mi" title="' + esc(repeatText(t.repeat_rule)) + '">' + ic("repeat", 13) + "</span>");
   if (t.remind_at && !t.done) m.push('<span class="mi' + (new Date(t.remind_at) < new Date() ? " od" : "") + '" title="' + esc(fmtRemind(t.remind_at)) + '">' + ic("bell", 13) + "</span>");
   if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>");
   if (t.note) m.push('<span class="mi">' + ic("note", 13) + "</span>");
   if (t.est_minutes) m.push('<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>");
-  if (t.category) m.push('<span class="mi">' + ic("tag", 13) + " " + esc(t.category) + "</span>");
+  if (t.category) m.push(catPill(t.category));
   return m.length ? '<div class="meta">' + m.join("") + "</div>" : "";
 }
 function rowHTML(t, showList) {
@@ -1650,6 +1740,7 @@ function appHTML() {
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
   want = false;
+  try { updBadge(); } catch (e) {}
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
   let fv, fs, fe; if (fid) { fv = ae.value; try { fs = ae.selectionStart; fe = ae.selectionEnd; } catch (e) {} }
@@ -1896,9 +1987,9 @@ const changes = {
   "s-size"(v) { TH.size = v; saveTheme(); render(); }
 };
 
-Object.assign(acts, dayActs, dtpActs); Object.assign(changes, dayChanges);
+Object.assign(acts, dayActs, dtpActs, uxActs); Object.assign(changes, dayChanges);
 function init() {
-  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS; document.head.appendChild(st);
+  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS; document.head.appendChild(st);
   const app = $("app");
   app.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"), was = ui.pop;
@@ -1971,7 +2062,7 @@ function init() {
   setInterval(() => { if (!document.hidden && S.user && Date.now() - lastLoad > 300000) loadAll(); }, 60000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); }, 20000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
-  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown);
+  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app);
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
   if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } });
   applyTheme(); boot();
