@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "05.10 22:32";
+const BUILD = "05.10 23:04";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -403,7 +403,8 @@ async function loadAll() {
     while (flushing) await new Promise(r => setTimeout(r, 100));
     const seq = flushSeq;
     const ls = await fetchAll("lists"), ts = await fetchAll("tasks", q => q.or("done.eq.false,parent_id.not.is.null,done_at.gte." + new Date(Date.now() - 2 * 864e5).toISOString()));   // выполненные старше 2 дней — только по запросу
-    let lg = null; try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }   // нет таблицы (SQL не выполнен) — остальное работает
+    let lg = null; try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }
+    if (lg) { try { const pr = await sb.from("time_log").select("kind").limit(1); jxSet(!pr.error); } catch (e) {} }   // нет таблицы (SQL не выполнен) — остальное работает
     if (seq !== flushSeq) { loading = false; setTimeout(loadAll, 1500); return; }
     applyServer("lists", ls); applyServer("tasks", ts); if (lg) applyServer("time_log", lg);
     if (!ls.length && !ts.length && !Object.keys(S.lists).length && !pendCount()) seedLists();
@@ -1786,7 +1787,30 @@ const addCSS = `
 .addbar.v2:focus-within .abtn{background:var(--acc);border-color:var(--acc);color:#fff}
 }
 `;
-const uxCSS = uxCSS0 + mCSS + hkCSS + tdCSS + addCSS;
+const jrCSS = `
+.jr-box{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--solid,transparent);font-size:calc(14px*var(--z,1))}
+.jr-f{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.jr-f .inp{font-size:calc(14px*var(--z,1))}
+.jr-f input[type=date],.jr-f input[type=time]{width:auto}
+.jr-prev{font-size:calc(12px*var(--z,1));color:var(--sub);padding:6px 2px 4px;min-height:1.3em}
+.jr-hint{font-size:calc(13px*var(--z,1));color:var(--sub);margin:4px 0 8px}
+.jr-sql{background:rgba(128,128,128,.12);padding:8px 10px;border-radius:8px;font-size:calc(12px*var(--z,1));white-space:pre-wrap;margin:0 0 8px;user-select:all}
+.jr-nudge{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--acc);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:calc(13.5px*var(--z,1))}
+.jr-day{display:flex;justify-content:space-between;gap:8px;padding:14px 6px 4px;font-weight:600;font-size:calc(13px*var(--z,1));border-bottom:1px solid var(--ln)}
+.jr-sum{font-weight:400;color:var(--sub)}
+.jr-it{display:grid;grid-template-columns:112px 64px 1fr;gap:10px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:baseline;font-size:calc(14px*var(--z,1))}
+.jr-it:hover{background:var(--hov)}
+.jr-ed{display:block;cursor:default;background:var(--sel)}
+.jr-w{color:var(--acc);font-weight:600;white-space:nowrap}
+.jr-d{color:var(--sub);font-size:calc(12.5px*var(--z,1));white-space:nowrap}
+.jr-t{min-width:0;overflow-wrap:anywhere}
+.jr-c{font-style:normal;font-size:calc(11px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:0 6px;margin-left:4px}
+.linkbtn{background:none;border:0;color:var(--acc);cursor:pointer;padding:2px 0;font-size:calc(12.5px*var(--z,1))}
+.jr-box .btn,.jr-nudge .btn{height:34px;min-height:0;padding:0 14px;font-size:calc(13.5px*var(--z,1))}
+.jr-nudge{margin-top:6px}
+@media(max-width:760px){#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
+`;
+const uxCSS = uxCSS0 + mCSS + hkCSS + tdCSS + addCSS + jrCSS;
 
 // ---- p9: резервные копии: Excel/JSON, автокопии в базу (с настройкой частоты), восстановление ----
 const BKF = [[0, "Выключены"], [6, "Каждые 6 часов"], [24, "Раз в день"], [72, "Раз в 3 дня"], [168, "Раз в неделю"], [336, "Раз в 2 недели"]];
@@ -2385,6 +2409,7 @@ function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
   if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
   if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
+  if (view === "journal") return { svg: "note", name: "Журнал", sub: "Что делал: со временем или за период" };
   if (view === "starred") return { svg: "star", name: "Важно" };
   if (view === "planned") return { svg: "cal", name: "Запланировано" };
   if (view === "all") return { svg: "inbox", name: "Все задачи" };
@@ -2472,7 +2497,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") + sm("someday", "moon", "Когда-нибудь", c.someday, "#8764b8") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -2691,7 +2716,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
@@ -2944,6 +2969,176 @@ const acts = {
     if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); }
   }
 };
+
+/* ===== p12: журнал (дневник): записи «что делал» с временем или за период ===== */
+const JX_COLS = ["cat", "kind", "d1", "d2"];
+const JX_SQL = "alter table public.time_log\n  add column if not exists cat  text,\n  add column if not exists kind text not null default 't',\n  add column if not exists d1   date,\n  add column if not exists d2   date;";
+let JX = (() => { try { return localStorage.getItem("mytasks_jx") === "1"; } catch (e) { return false; } })();
+if (JX) COLS.time_log = GC.concat(JX_COLS);
+function jxSet(ok) { if (ok === JX) return; JX = ok; COLS.time_log = ok ? GC.concat(JX_COLS) : GC; try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
+const jrState = () => ui.jr || (ui.jr = { per: "14", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
+const jrKind = l => l.kind === "p" ? "p" : "t";
+const jrDay = l => jrKind(l) === "p" ? l.d1 : (l.start_at ? dayOf(l.start_at) : null);
+const jrHM = (h, m) => { h = +h; m = +m; return h < 24 && m < 60 ? pad2(h) + ":" + pad2(m) : null; };
+const jrDM = (a, b) => { if (!a || !b) return 0; const x = a.split(":"), y = b.split(":"); return ((+y[0] * 60 + +y[1]) - (+x[0] * 60 + +x[1]) + 1440) % 1440; };
+const jrDate = (day, t) => { const d = parseISO(day), p = t.split(":"); d.setHours(+p[0], +p[1], 0, 0); return d; };
+const jrShort = iso => iso ? iso.slice(8) + "." + iso.slice(5, 7) : "";
+const jrDur = m => Math.floor(m / 60) + ":" + pad2(m % 60);
+function jrParse(tx) {
+  const T = "(\\d{1,2})[:.](\\d{2})";
+  let m, st = null, en = null, s = String(tx || "");
+  if ((m = s.match(new RegExp("^\\s*(?:с\\s+)?" + T + "\\s*[-–—]\\s*" + T + "\\s*[,.:;\\-–—]?\\s*([\\s\\S]*)$")))) { st = jrHM(m[1], m[2]); en = jrHM(m[3], m[4]); if (st && en) s = m[5]; else { st = en = null; } }
+  else if ((m = s.match(new RegExp("^\\s*(?:до|по)\\s+" + T + "\\s*[,.:;\\-–—]?\\s*([\\s\\S]*)$", "i")))) { en = jrHM(m[1], m[2]); if (en) s = m[3]; }
+  return { st, en, tx: s.trim() };
+}
+function jrLastEnd(day) {
+  let best = null;
+  for (const id in S.time_log) { const l = S.time_log[id]; if (jrKind(l) === "t" && l.end_at && dayOf(l.end_at) === day && (!best || l.end_at > best)) best = l.end_at; }
+  return best ? hm(minOf(best)) : "";
+}
+function jrPlan() {
+  const J = jrState(), p = jrParse(J.tx), day = J.date || todayISO();
+  return { day, st: p.st || (J.st ? J.st : jrLastEnd(day)), en: p.en || J.en || "", tx: p.tx };
+}
+function jrPrevText() {
+  const J = jrState(); if (J.mode === "p") return "";
+  const q = jrPlan(); if (!q.st && !q.en) return "Начало подставится из конца прошлой записи; конец — «до 15:30» в тексте или кнопка «Сейчас»";
+  if (!q.en) return "Начало " + q.st + " · укажи конец: «до 15:30 …» или «Сейчас»";
+  if (!q.st) return "Укажи начало";
+  const dm = jrDM(q.st, q.en); return dm ? q.st + "–" + q.en + " · " + fmtDurM(dm) : "Начало и конец совпадают";
+}
+function jrList() {
+  const J = jrState(), lim = J.per === "all" ? null : addDays(todayISO(), -(+J.per - 1));
+  return Object.values(S.time_log).filter(l => { const d = jrDay(l); return d && (!lim || d >= lim); });
+}
+function jrItem(l) {
+  const J = jrState(); if (J.edit === l.id) return jrEditHTML(l);
+  const p = jrKind(l) === "p"; let when, dur = "";
+  if (p) when = '<span class="jr-per">' + (l.d2 && l.d2 !== l.d1 ? jrShort(l.d1) + " – " + jrShort(l.d2) : "за день") + "</span>";
+  else { when = hm(minOf(l.start_at)) + "–" + (l.end_at ? hm(minOf(l.end_at)) : "…"); if (l.end_at) dur = fmtDurM(Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000))); }
+  return '<div class="jr-it" data-a="jredit" data-id="' + l.id + '"><span class="jr-w">' + when + '</span><span class="jr-d">' + dur + '</span><span class="jr-t">' + esc(l.title) + (l.cat ? ' <i class="jr-c">' + esc(l.cat) + "</i>" : "") + "</span></div>";
+}
+function jrEditHTML(l) {
+  const e = jrState().e, p = jrKind(l) === "p";
+  const f = p ? '<input type="date" id="jr-e-d1" class="inp" value="' + esc(e.d1 || "") + '"><span>–</span><input type="date" id="jr-e-d2" class="inp" value="' + esc(e.d2 || "") + '">'
+    : '<input type="date" id="jr-e-date" class="inp" value="' + esc(e.date || "") + '"><input type="time" id="jr-e-st" class="inp" value="' + esc(e.st || "") + '"><span>–</span><input type="time" id="jr-e-en" class="inp" value="' + esc(e.en || "") + '">';
+  return '<div class="jr-it jr-ed"><div class="jr-f">' + f + '</div><div class="jr-f" style="margin-top:8px"><input id="jr-e-tx" class="inp" style="flex:1;min-width:0" autocomplete="off" value="' + esc(e.tx || "") + '"></div>' +
+    '<div class="jr-f" style="margin-top:8px"><button class="btn" data-a="jrsave">Сохранить</button><button class="btn ghost" data-a="jrcancel">Отмена</button><span class="sp" style="flex:1"></span><button class="btn ghost" data-a="jrdel">Удалить</button></div></div>';
+}
+function journalMainHTML(vi) {
+  const J = jrState(), today0 = todayISO(), yest = addDays(today0, -1), all = Object.values(S.time_log).filter(l => jrDay(l));
+  const items = jrList(), byDay = {}; items.forEach(l => { (byDay[jrDay(l)] = byDay[jrDay(l)] || []).push(l); });
+  const days = Object.keys(byDay).sort().reverse(), shown = days.slice(0, J.lim);
+  let setup = "";
+  if (!JX) setup = '<div class="jr-box"><b>Одноразовая настройка базы</b><div class="jr-hint">Скопируй SQL → Supabase → SQL Editor → Run, потом «Проверить». До этого запись в журнал отключена.</div><pre class="jr-sql">' + esc(JX_SQL) + '</pre><div class="jr-f"><button class="btn" data-a="jrcopy">Скопировать SQL</button><button class="btn ghost" data-a="jrcheck">Проверить</button></div></div>';
+  let add = "";
+  if (JX) {
+    const df = J.date || today0;
+    if (J.mode === "p") add = '<div class="jr-box"><div class="jr-f"><input type="date" id="jr-d1" class="inp" value="' + (J.d1 || yest) + '"><span>–</span><input type="date" id="jr-d2" class="inp" value="' + esc(J.d2 || "") + '" title="Конец периода (необязательно)"></div>' +
+      '<div class="jr-f" style="margin-top:8px"><input id="jr-tx" class="inp" style="flex:1;min-width:0" placeholder="Коротко за день или период" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"><button class="btn" data-a="jradd">Добавить</button></div>' +
+      '<div class="jr-f" style="margin-top:6px"><button class="linkbtn" data-a="jrmode" data-v="t">← Обычная запись со временем</button></div></div>';
+    else add = '<div class="jr-box"><div class="jr-f"><input type="date" id="jr-date" class="inp" value="' + df + '"><input type="time" id="jr-st" class="inp" value="' + esc(J.st || jrLastEnd(df)) + '"><span>–</span><input type="time" id="jr-en" class="inp" value="' + esc(J.en || "") + '"><button class="tool" data-a="jrnow">Сейчас</button></div>' +
+      '<div class="jr-f" style="margin-top:8px"><input id="jr-tx" class="inp" style="flex:1;min-width:0" placeholder="Что делал? Можно: «до 15:30 встали, умылись»" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"><button class="btn" data-a="jradd">Добавить</button></div>' +
+      '<div class="jr-prev" id="jr-prev">' + esc(jrPrevText()) + '</div><div class="jr-f"><button class="linkbtn" data-a="jrmode" data-v="p">За день / период без времени</button></div></div>';
+  }
+  let nudge = "";
+  if (JX && !J.nudgeOff && all.length && !all.some(l => { const d = jrDay(l); return d === yest || (jrKind(l) === "p" && l.d2 && d <= yest && l.d2 >= yest) || (jrKind(l) === "t" && l.end_at && dayOf(l.end_at) === yest); }))
+    nudge = '<div class="jr-nudge">Вчера (' + WDS[parseISO(yest).getDay()] + ", " + jrShort(yest) + ') пусто. Добить одной строкой?<span style="flex:1"></span><button class="btn" data-a="jrfill">Добить</button><button class="btn ghost" data-a="jrnudgeoff">Не сегодня</button></div>';
+  let body = "";
+  shown.forEach(d => {
+    const arr = byDay[d].sort((a, b) => ((a.start_at || "") + a.id).localeCompare((b.start_at || "") + b.id));
+    const sum = arr.reduce((s, l) => s + (jrKind(l) === "t" && l.end_at ? Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)) : 0), 0);
+    const dd = parseISO(d), rel = d === today0 ? "Сегодня, " : d === yest ? "Вчера, " : "";
+    body += '<div class="jr-day"><span>' + rel + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + (dd.getFullYear() !== new Date().getFullYear() ? " " + dd.getFullYear() : "") + '</span><span class="jr-sum">' + (sum ? "записано " + fmtDurM(sum) : "") + "</span></div>" + arr.map(jrItem).join("");
+  });
+  if (days.length > shown.length) body += '<div style="text-align:center;padding:10px"><button class="btn ghost" data-a="jrmore">Показать ещё (' + (days.length - shown.length) + " дн.)</button></div>";
+  if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет</div>';
+  const opt = [["7", "7 дней"], ["14", "14 дней"], ["30", "30 дней"], ["90", "90 дней"], ["all", "Всё"]].map(o => '<option value="' + o[0] + '"' + (J.per === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("");
+  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><select id="jr-per" class="inp" style="width:auto">' + opt + '</select>' +
+    '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
+    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + setup + nudge + add + body + "</div></div>";
+}
+function jrInput(el) {
+  const J = jrState(), m = /^jr-(e-)?(\w+)$/.exec(el.id); if (!m) return;
+  if (m[1]) { J.e[m[2]] = el.value; return; }
+  J[m[2]] = el.value; if (m[2] === "date") J.st = null;
+  const pv = $("jr-prev"); if (pv) pv.textContent = jrPrevText();
+}
+function jrXlsx() {
+  const all = Object.values(S.time_log).filter(l => jrDay(l)).sort((a, b) => (jrDay(a) + " " + (a.start_at || "")).localeCompare(jrDay(b) + " " + (b.start_at || "")));
+  const ds = iso => iso.slice(8) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4);
+  const rows = all.map(l => {
+    if (jrKind(l) === "p") return [l.d2 && l.d2 !== l.d1 ? ds(l.d1) + " - " + ds(l.d2) : ds(l.d1), "", "", "", l.cat || "", l.title || ""];
+    const dm = l.end_at ? Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)) : 0;
+    return [ds(dayOf(l.start_at)), hm(minOf(l.start_at)), l.end_at ? hm(minOf(l.end_at)) : "", l.end_at ? jrDur(dm) : "", l.cat || "", l.title || ""];
+  });
+  bkDownload("dnevnik-" + todayISO() + ".xlsx", new Blob([xlsxBook([{ name: "Журнал", heads: ["Дата", "Начало", "Конец", "Длит-ть", "Категория", "Подробное описание"], widths: [22, 9, 9, 9, 18, 80], rows }])], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+  toast("Выгружено записей: " + rows.length);
+}
+async function jrImport(file) {
+  try {
+    const d = JSON.parse(await file.text()), arr = Array.isArray(d) ? d : d.time_log;
+    if (!Array.isArray(arr) || !arr.length) { toast("В файле нет записей"); return; }
+    const keys = GC.concat(JX_COLS); let n = 0, skip = 0, last = null;
+    arr.slice(0, 6000).forEach(g => {
+      if (!g || !g.id || S.time_log[g.id]) { skip++; return; }
+      const o = {}; keys.forEach(k => { o[k] = g[k] === undefined ? null : g[k]; });
+      o.title = String(o.title || ""); if (!o.created_at) o.created_at = nowISO();
+      S.time_log[o.id] = o; P.time_log[o.id] = "u"; last = o.id; n++;
+    });
+    if (last) mark("time_log", last, "u");
+    toast("Импортировано: " + n + (skip ? " · уже было: " + skip : "")); render();
+  } catch (e) { toast("Не удалось прочитать файл"); }
+}
+Object.assign(acts, {
+  jrmode(a) { const J = jrState(); J.mode = a.dataset.v; J.tx = ""; render(); },
+  jrnow() { const J = jrState(), n = new Date(); J.en = pad2(n.getHours()) + ":" + pad2(n.getMinutes()); if (!J.date) J.date = todayISO(); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
+  jradd() {
+    const J = jrState(); if (!JX) return;
+    if (J.mode === "p") {
+      const d1 = J.d1 || addDays(todayISO(), -1), tx = (J.tx || "").trim();
+      if (!tx) { toast("Напиши, что было"); return; }
+      addLog({ title: tx, kind: "p", d1, d2: J.d2 && J.d2 > d1 ? J.d2 : null, start_at: null, end_at: null });
+      J.tx = ""; J.mode = "t"; J.d1 = null; J.d2 = ""; J.date = d1; toast("Записано"); render(); return;
+    }
+    const q = jrPlan();
+    if (!q.tx) { toast("Напиши, что делал"); return; }
+    if (!q.st) { toast("Укажи начало"); return; }
+    if (!q.en) { toast("Укажи конец: «до 15:30 …» или кнопка «Сейчас»"); return; }
+    const dm = jrDM(q.st, q.en); if (!dm) { toast("Начало и конец совпадают"); return; }
+    const s = jrDate(q.day, q.st), e = new Date(s.getTime() + dm * 60000);
+    addLog({ title: q.tx, kind: "t", start_at: s.toISOString(), end_at: e.toISOString() });
+    J.tx = ""; J.en = ""; J.date = q.day; J.st = isoLocal(e) === q.day ? hm(e.getHours() * 60 + e.getMinutes()) : null;
+    toast(q.st + "–" + q.en + " · " + fmtDurM(dm)); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0);
+  },
+  jredit(a) {
+    const l = S.time_log[a.dataset.id]; if (!l) return; const J = jrState(); J.edit = l.id;
+    J.e = jrKind(l) === "p" ? { d1: l.d1, d2: l.d2 || "", tx: l.title } : { date: dayOf(l.start_at), st: hm(minOf(l.start_at)), en: l.end_at ? hm(minOf(l.end_at)) : "", tx: l.title };
+    render(); setTimeout(() => { const x = $("jr-e-tx"); if (x) x.focus(); }, 0);
+  },
+  jrcancel() { jrState().edit = null; render(); },
+  jrsave() {
+    const J = jrState(), l = S.time_log[J.edit], e = J.e; if (!l) { J.edit = null; render(); return; }
+    const tx = (e.tx || "").trim(); if (!tx) { toast("Описание пустое"); return; }
+    if (jrKind(l) === "p") { if (!e.d1) { toast("Укажи дату"); return; } updLog(l.id, { title: tx, d1: e.d1, d2: e.d2 && e.d2 > e.d1 ? e.d2 : null }); }
+    else {
+      if (!e.date || !e.st || !e.en) { toast("Нужны дата, начало и конец"); return; }
+      const dm = jrDM(e.st, e.en); if (!dm) { toast("Начало и конец совпадают"); return; }
+      const s = jrDate(e.date, e.st); updLog(l.id, { title: tx, start_at: s.toISOString(), end_at: new Date(s.getTime() + dm * 60000).toISOString() });
+    }
+    J.edit = null; toast("Сохранено"); render();
+  },
+  jrdel() { const J = jrState(), l = S.time_log[J.edit]; if (!l) return; if (!confirm("Удалить запись?")) return; delLog(l.id); J.edit = null; toast("Удалено"); render(); },
+  jrmore() { jrState().lim += 40; render(); },
+  jrfill() { const J = jrState(); J.mode = "p"; J.d1 = addDays(todayISO(), -1); J.d2 = ""; J.tx = ""; render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
+  jrnudgeoff() { jrState().nudgeOff = true; render(); },
+  jrxl() { jrXlsx(); },
+  jrimp() { const f = $("jr-file"); if (f) f.click(); },
+  jrcopy() { try { navigator.clipboard.writeText(JX_SQL).then(() => toast("SQL скопирован"), () => toast("Не удалось скопировать — выдели текст вручную")); } catch (e) { toast("Выдели текст и скопируй вручную"); } },
+  async jrcheck() {
+    if (!sb) return; try { const r = await sb.from("time_log").select("kind").limit(1); jxSet(!r.error); toast(r.error ? "Колонок ещё нет — SQL не выполнен" : "Готово, журнал включён"); if (!r.error) loadAll(); } catch (e) { toast("Нет связи"); } render();
+  }
+});
 const changes = {
   "d-title"(v) { if (v.trim()) upd(selId, { title: v.trim() }); renderSoon(); },
   "d-cat"(v) { upd(selId, { category: v.trim().replace(/^#/, "") || null }); renderSoon(); },
@@ -2989,6 +3184,8 @@ function init() {
   });
   app.addEventListener("change", e => {
     const id = e.target.id;
+    if (id === "jr-per") { jrState().per = e.target.value; jrState().lim = 40; render(); return; }
+    if (id === "jr-file") { const f = e.target.files && e.target.files[0]; if (f) jrImport(f); e.target.value = ""; return; }
     if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView("planned"); render(); return; }
     if (id === "s-bgfile") { const f = e.target.files && e.target.files[0]; if (f) bgFromFile(f); return; }
     if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); render(); return; }
@@ -3001,6 +3198,7 @@ function init() {
   });
   let qt;
   app.addEventListener("input", e => {
+    if (e.target.id && e.target.id.indexOf("jr-") === 0) { jrInput(e.target); return; }
     if (e.target.id === "ds-q") { dayInput("ds-q", e.target.value); return; }
     if (e.target.id === "qa-input") { ui.qaText = e.target.value; const sb = document.querySelector(".qsend"); if (sb) sb.classList.toggle("on", !!e.target.value.trim()); return; }   // черновик текста не теряется при выборе даты/времени
     if (e.target.id !== "q") return;
@@ -3013,6 +3211,8 @@ function init() {
     const id = e.target.id;
     if (e.key === "Enter" && !e.isComposing) {
       if (id === "d-title") { e.preventDefault(); e.target.blur(); }
+      if (id && /^jr-(tx|st|en|date|d1|d2)$/.test(id)) { e.preventDefault(); acts.jradd(); return; }
+      if (id && id.indexOf("jr-e-") === 0) { e.preventDefault(); acts.jrsave(); return; }
     }
     if (e.key === "Escape") {
       if (ui.pop) { closePop(); render(); } else if (ui.qa) { ui.qa = null; render(); } else if (ui.settings) { ui.settings = false; render(); }
