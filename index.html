@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "05.10 23:41";
+const BUILD = "06.10 06:45";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1825,38 +1825,44 @@ const jrCSS = `
 `;
 const nuCSS = `
 .nu-wrap{max-width:760px;margin:0 auto;padding:0 2px}
-.nu-date{display:flex;align-items:center;gap:6px;padding:4px 0 2px}
-.nu-dl{position:relative;flex:1;text-align:center;font-weight:600;font-size:calc(17px*var(--z,1));padding:6px 8px;border-radius:8px;cursor:pointer}
+.nu-date{display:flex;align-items:center;gap:6px;padding:4px 8px;background:#9bc45f;color:#fff;border-radius:12px;margin:2px 0 8px}
+.nu-date .ibtn,.nu-date .tool{color:#fff}
+.nu-dl{position:relative;flex:1;text-align:center;font-weight:600;font-size:calc(18px*var(--z,1));padding:8px;border-radius:8px;cursor:pointer;color:#fff}
 .nu-dl:hover{background:var(--hov)}
 .nu-dl input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
-.nu-w{display:block;margin:2px auto 10px;background:none;border:0;color:var(--tx);font-size:calc(14px*var(--z,1));cursor:pointer;padding:4px 10px;border-radius:14px}
-.nu-w:hover{background:var(--hov)} .nu-w i{color:var(--sub);font-style:normal;font-size:.9em}
+.nu-w{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 12px;height:calc(64px*var(--z,1));border:0;border-radius:12px;cursor:pointer;color:#fff;font-size:calc(16px*var(--z,1));background:#6fb0f2 url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 400 64%27 preserveAspectRatio=%27none%27%3E%3Cpath d=%27M0 40 Q50 22 100 38 T200 36 T300 38 T400 34 V64 H0Z%27 fill=%27%23ffffff%27 fill-opacity=%27.18%27/%3E%3Cpath d=%27M0 50 Q60 36 120 48 T240 46 T400 48 V64 H0Z%27 fill=%27%23ffffff%27 fill-opacity=%27.18%27/%3E%3C/svg%3E") center/cover no-repeat}
+.nu-w:hover{filter:brightness(1.05)} .nu-w i{font-style:normal;opacity:.85;font-size:.85em} .nu-w b{font-size:1.15em}
 .nu-bars{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0 0 12px}
-.nu-bar{position:relative;height:calc(30px*var(--z,1));border-radius:8px;border:1.5px solid var(--bc);overflow:hidden;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:calc(14px*var(--z,1));font-weight:600;background:var(--solid,transparent)}
-.nu-fill{position:absolute;left:0;top:0;bottom:0;background:var(--bf);opacity:.55;transition:width .3s}
+.nu-bar{position:relative;height:calc(34px*var(--z,1));border-radius:9px;border:1.5px solid var(--bc);overflow:hidden;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:calc(15px*var(--z,1));font-weight:600;background:var(--bt)}
+.nu-fill{position:absolute;left:0;top:0;bottom:0;background:var(--bf);transition:width .3s}
 .nu-bl,.nu-bv{position:relative;z-index:1}
-.bp{--bc:#4aa3c9;--bf:#4aa3c9}.bf{--bc:#e0b800;--bf:#f7e04a}.bc{--bc:#e08a76;--bf:#f3a898}.bk{--bc:#3fae98;--bf:#53c1ae}.bw{--bc:#4a8fd0;--bf:#6aaef0}
+.bp{--bc:#3d9bc4;--bf:#4fb0d6;--bt:#eaf6fb}.bf{--bc:#e6b800;--bf:#fbe95a;--bt:#fffbe0}.bc{--bc:#d9736a;--bf:#f6c0b6;--bt:#fdf1ee}.bk{--bc:#35a58f;--bf:#66cdb6;--bt:#e7f8f4}.bw{--bc:#3f86cc;--bf:#8cc3f4;--bt:#eaf3fd}
 .nu-bs{font-size:calc(12.5px*var(--z,1));color:var(--sub);padding:3px 2px 0}
 .over{color:#d13438;font-weight:600}
-.nu-meal{border:1px solid var(--ln);border-radius:12px;margin:0 0 10px;background:var(--solid,transparent);overflow:hidden}
+.nu-meal{margin:0 0 12px}
+.nu-head{background:#e4f0fc;border:1px solid #c9def5;border-radius:12px;padding-bottom:4px}
 .nu-mh{display:flex;justify-content:space-between;padding:10px 14px 0;color:var(--sub);font-size:calc(14px*var(--z,1))}
 .nu-tm{color:var(--tx);font-weight:600}
-.nu-mm,.nu-im{display:flex;gap:12px;align-items:baseline;font-size:calc(13.5px*var(--z,1))}
-.nu-mm{padding:2px 14px 8px;border-bottom:1px solid var(--ln)}
+.nu-mm,.nu-im{display:flex;gap:12px;align-items:baseline;font-size:calc(14.5px*var(--z,1))}
+.nu-mm{padding:2px 14px 6px}
 .nu-sp{flex:1}
 .cp b,.cp{color:#2a8fbd}.cf b,.cf{color:#d29a00}.cc b,.cc{color:#d4604a}.ck{color:#2a9d85;font-weight:600}.cg{color:var(--sub)}
-.nu-it,.nu-res{padding:9px 14px;cursor:pointer;border-top:1px solid var(--ln)}
-.nu-mm + .nu-it{border-top:0}
+.nu-it{padding:10px 14px;cursor:pointer;margin-top:8px;border:1px solid #dcdfe4;border-radius:12px;background:var(--solid,#fff)}
+.nu-res{padding:10px 14px;cursor:pointer;border-top:1px solid var(--ln)}
+.nu-it:active{background:var(--hov)}
 .nu-it:hover,.nu-res:hover{background:var(--hov)}
-.nu-in{font-size:calc(15px*var(--z,1));overflow-wrap:anywhere}
+.nu-in{font-size:calc(16px*var(--z,1));overflow-wrap:anywhere}
+.nu-res .nu-in{color:#3d4fcf}
 .nu-im{margin-top:3px;font-size:calc(12.5px*var(--z,1))}
 .nu-water{margin:4px 0 12px}
-.nu-wb{border:1px solid var(--acc);background:transparent;color:var(--acc);border-radius:18px;padding:6px 14px;font-size:calc(14px*var(--z,1));cursor:pointer;min-width:44px}
-.nu-wb:hover{background:var(--sel)}
-.nu-fab{position:fixed;right:22px;bottom:24px;width:56px;height:56px;border-radius:50%;border:0;background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:40}
+.nu-wb{border:1.5px solid #4fb3c6;background:#e2f4f8;color:#2a7f94;border-radius:20px;padding:8px 16px;font-size:calc(15px*var(--z,1));cursor:pointer;min-width:52px}
+.nu-wb:hover{background:#cdecf3}
+.nu-tot{margin:6px 0 0;padding:10px 4px;font-size:calc(15px*var(--z,1));line-height:1.7}.nu-tot span{margin-right:14px}
+.nu-fab{position:fixed;right:22px;bottom:24px;width:58px;height:58px;border-radius:50%;border:0;background:#ee4f84;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:40}
 .nu-sheet{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.4);display:flex;justify-content:center;align-items:flex-start;overflow:auto}
 .nu-card{background:var(--solid,#fff);color:var(--tx);width:100%;max-width:560px;margin:32px 12px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
-.nu-sh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--ln);gap:8px}
+.nu-sh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#5da0ea;color:#fff;border-radius:14px 14px 0 0;gap:8px}
+.nu-sh .ibtn{color:#fff}
 .nu-st{font-size:calc(16px*var(--z,1));overflow-wrap:anywhere}
 .nu-sb{padding:12px 14px 16px}
 .nu-l{display:flex;flex-direction:column;gap:4px;font-size:calc(12.5px*var(--z,1));color:var(--sub);margin:8px 0 0;min-width:0}
@@ -1869,6 +1875,12 @@ const nuCSS = `
 .nu-chk{display:flex;gap:8px;align-items:center;margin:12px 0 0;font-size:calc(14px*var(--z,1))}
 .nu-video{width:100%;max-height:260px;background:#000;border-radius:10px;object-fit:cover}
 @media(max-width:760px){.nu-sheet{background:var(--solid,#fff)}.nu-card{margin:0;max-width:none;border-radius:0;box-shadow:none;min-height:100%}.nu-bars{gap:10px}.nu-fab{bottom:20px;right:16px}.nu-g4{grid-template-columns:repeat(2,1fr)}}
+
+.nu-sheet .jr-chip{background:#8dbbf0;color:#fff;border:0;border-radius:6px;padding:8px 16px;font-weight:600;text-transform:uppercase;font-size:calc(12.5px*var(--z,1))}
+.nu-sheet .jr-chip.on{background:#2f74d4}
+.nu-card .btn:not(.ghost){background:#ee4f84;border-color:#ee4f84}
+.nu-pv b{color:#2a9d85}
+.nu-water{background:#f1f9fb;border:1px solid #d3ecf1;border-radius:12px;padding:10px}
 `;
 const uxCSS = uxCSS0 + mCSS + hkCSS + tdCSS + addCSS + jrCSS + nuCSS;
 
@@ -3313,7 +3325,7 @@ function nutriMainHTML(vi) {
   if (!NX) return head + '<div class="msub">' + esc(vi.sub) + '</div><div class="scroll" id="list">' + nuSetupHTML() + "</div></div>";
   const day = N.day, ent = nuEntries(day), T = nuSum(ent), tg = nuTargets(day), P0 = nuProf(), wr = nuWeightAt(day), wat = nuWater(day).reduce((s, x) => s + (+x.grams || 0), 0);
   const dnav = '<div class="nu-date"><button class="ibtn" data-a="nuprev" title="Предыдущий день">' + ic("arrowl", 20) + '</button><label class="nu-dl">' + esc(nuDayLabel(day)) + '<input type="date" id="nu-day" value="' + day + '"></label><button class="ibtn" data-a="nunext" title="Следующий день"><span style="display:flex;transform:rotate(180deg)">' + ic("arrowl", 20) + "</span></button>" + (day !== todayISO() ? '<button class="tool" data-a="nutoday">Сегодня</button>' : "") + "</div>";
-  const wline = '<button class="nu-w" data-a="nuweight">Вес: <b>' + (wr ? r1(+wr.kg) + " кг" : "—") + "</b>" + (wr && wr.day !== day ? ' <i>(от ' + jrShort(wr.day) + ")</i>" : "") + " " + ic("pen", 14) + "</button>";
+  const wline = '<button class="nu-w" data-a="nuweight"><span>Ваш вес:</span> <b>' + (wr ? r1(+wr.kg) + " кг" : "—") + "</b>" + (wr && wr.day !== day ? ' <i>(от ' + jrShort(wr.day) + ")</i>" : "") + " " + ic("pen", 20) + "</button>";
   const pc = (v, t, m) => t > 0 ? Math.round(v / t * 100) + "% (" + r0(v * m) + " ккал)" : "";
   const over = (v, t) => v > t ? ' <b class="over">+' + r0(v - t) + "</b>" : "";
   const bars = '<div class="nu-bars">' + nuBar("bp", "Белки", T.p, tg.p, pc(T.p, tg.p, 4) + over(T.p, tg.p)) + nuBar("bf", "Жиры", T.f, tg.f, pc(T.f, tg.f, 9) + over(T.f, tg.f)) + nuBar("bc", "Углеводы", T.c, tg.c, pc(T.c, tg.c, 4) + over(T.c, tg.c)) +
@@ -3322,11 +3334,11 @@ function nutriMainHTML(vi) {
   const groups = {}; ent.forEach(x => { (groups[x.t] = groups[x.t] || []).push(x); });
   const meals = Object.keys(groups).sort().map((t, i) => {
     const g = groups[t], s = nuSum(g);
-    return '<div class="nu-meal"><div class="nu-mh"><span class="nu-mt">' + (i + 1) + "-й приём</span><span class=\"nu-tm\">" + esc(t) + '</span></div><div class="nu-mm"><span class="cp">Б: <b>' + r0(s.p) + '</b></span><span class="cf">Ж: <b>' + r0(s.f) + '</b></span><span class="cc">У: <b>' + r0(s.c) + '</b></span><span class="nu-sp"></span><span class="ck">' + r0(s.kcal) + ' ккал</span> <span class="cg">' + r0(s.g) + " г</span></div>" +
+    return '<div class="nu-meal"><div class="nu-head"><div class="nu-mh"><span class="nu-mt">' + (i + 1) + "-й приём</span><span class=\"nu-tm\">" + esc(t) + '</span></div><div class="nu-mm"><span class="cp">Б: <b>' + r0(s.p) + '</b></span><span class="cf">Ж: <b>' + r0(s.f) + '</b></span><span class="cc">У: <b>' + r0(s.c) + '</b></span><span class="nu-sp"></span><span class="ck">' + r0(s.kcal) + ' ккал</span> <span class="cg">' + r0(s.g) + " г</span></div></div>" +
       g.map(x => '<div class="nu-it" data-a="nuedit" data-id="' + x.id + '"><div class="nu-in">' + esc(x.name) + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="nu-sp"></span><span class="ck">' + r0(x.kcal) + " к</span> " + (x.grams > 0 ? '<span class="cg">' + r0(x.grams) + " г</span>" : "") + "</div></div>").join("") + "</div>";
   }).join("") || '<div style="text-align:center;padding:26px 10px;color:var(--sub)">В этот день ещё ничего не записано</div>';
   const water = '<div class="nu-water"><div class="nu-bar bw"><div class="nu-fill" style="width:' + Math.min(100, tg.water > 0 ? wat / tg.water * 100 : 0) + '%"></div><span class="nu-bl">Вода</span><span class="nu-bv">' + r0(wat) + "/" + r0(tg.water) + '</span></div><div class="jr-f" style="margin-top:8px"><button class="nu-wb" data-a="nuwater" data-v="200">+ 200</button><button class="nu-wb" data-a="nuwater" data-v="100">+ 100</button><button class="nu-wb" data-a="nuwater" data-v="50">+ 50</button><button class="nu-wb" data-a="nuwx">+ X</button>' + (wat ? '<button class="linkbtn" data-a="nuwundo">↶ убрать последнюю</button>' : "") + "</div></div>";
-  return head + '<div class="scroll" id="list"><div class="nu-wrap">' + dnav + wline + hint + bars + meals + water + '<div style="height:90px"></div></div></div><button class="nu-fab" data-a="nuopen" title="Добавить еду">' + ic("plus", 26) + "</button>" + nuSheetHTML() + "</div>";
+  return head + '<div class="scroll" id="list"><div class="nu-wrap">' + dnav + wline + hint + bars + meals + water + '<div class="nu-tot"><span class="cp">Белки: <b>' + r0(T.p) + '</b></span><span class="cf">Жиры: <b>' + r0(T.f) + '</b></span><span class="cc">Углеводы: <b>' + r0(T.c) + '</b></span><br><span class="cg">Вес: <b style="color:var(--tx)">' + r0(T.g) + ' г</b></span> <span class="ck">ккал: <b>' + r0(T.kcal) + '</b></span></div><div style="height:90px"></div></div></div><button class="nu-fab" data-a="nuopen" title="Добавить еду">' + ic("plus", 26) + "</button>" + nuSheetHTML() + "</div>";
 }
 function nuFoodRow(x, i) {
   return '<div class="nu-res" data-a="nupick" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + (x.mine ? ' <i class="jr-c">моё</i>' : "") + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>";
