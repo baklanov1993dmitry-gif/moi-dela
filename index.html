@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "05.10 23:04";
+const BUILD = "05.10 23:14";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1805,6 +1805,10 @@ const jrCSS = `
 .jr-d{color:var(--sub);font-size:calc(12.5px*var(--z,1));white-space:nowrap}
 .jr-t{min-width:0;overflow-wrap:anywhere}
 .jr-c{font-style:normal;font-size:calc(11px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:0 6px;margin-left:4px}
+.jr-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px}
+.jr-chip{border:1px solid var(--ln);background:var(--solid,transparent);color:inherit;border-radius:16px;padding:5px 12px;cursor:pointer;font-size:calc(13px*var(--z,1))}
+.jr-chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.jr-day .linkbtn{margin-left:8px}
 .linkbtn{background:none;border:0;color:var(--acc);cursor:pointer;padding:2px 0;font-size:calc(12.5px*var(--z,1))}
 .jr-box .btn,.jr-nudge .btn{height:34px;min-height:0;padding:0 14px;font-size:calc(13.5px*var(--z,1))}
 .jr-nudge{margin-top:6px}
@@ -2976,7 +2980,7 @@ const JX_SQL = "alter table public.time_log\n  add column if not exists cat  tex
 let JX = (() => { try { return localStorage.getItem("mytasks_jx") === "1"; } catch (e) { return false; } })();
 if (JX) COLS.time_log = GC.concat(JX_COLS);
 function jxSet(ok) { if (ok === JX) return; JX = ok; COLS.time_log = ok ? GC.concat(JX_COLS) : GC; try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
-const jrState = () => ui.jr || (ui.jr = { per: "14", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
+const jrState = () => ui.jr || (ui.jr = { per: "2", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
 const jrKind = l => l.kind === "p" ? "p" : "t";
 const jrDay = l => jrKind(l) === "p" ? l.d1 : (l.start_at ? dayOf(l.start_at) : null);
 const jrHM = (h, m) => { h = +h; m = +m; return h < 24 && m < 60 ? pad2(h) + ":" + pad2(m) : null; };
@@ -3008,7 +3012,7 @@ function jrPrevText() {
   const dm = jrDM(q.st, q.en); return dm ? q.st + "–" + q.en + " · " + fmtDurM(dm) : "Начало и конец совпадают";
 }
 function jrList() {
-  const J = jrState(), lim = J.per === "all" ? null : addDays(todayISO(), -(+J.per - 1));
+  const J = jrState(), lim = J.per === "all" ? null : addDays(todayISO(), -((+J.per || 2) - 1));
   return Object.values(S.time_log).filter(l => { const d = jrDay(l); return d && (!lim || d >= lim); });
 }
 function jrItem(l) {
@@ -3046,17 +3050,17 @@ function journalMainHTML(vi) {
     nudge = '<div class="jr-nudge">Вчера (' + WDS[parseISO(yest).getDay()] + ", " + jrShort(yest) + ') пусто. Добить одной строкой?<span style="flex:1"></span><button class="btn" data-a="jrfill">Добить</button><button class="btn ghost" data-a="jrnudgeoff">Не сегодня</button></div>';
   let body = "";
   shown.forEach(d => {
-    const arr = byDay[d].sort((a, b) => ((a.start_at || "") + a.id).localeCompare((b.start_at || "") + b.id));
+    const arr = byDay[d].sort((a, b) => ((b.start_at || "") + b.id).localeCompare((a.start_at || "") + a.id));   // свежие записи — сверху
     const sum = arr.reduce((s, l) => s + (jrKind(l) === "t" && l.end_at ? Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)) : 0), 0);
     const dd = parseISO(d), rel = d === today0 ? "Сегодня, " : d === yest ? "Вчера, " : "";
-    body += '<div class="jr-day"><span>' + rel + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + (dd.getFullYear() !== new Date().getFullYear() ? " " + dd.getFullYear() : "") + '</span><span class="jr-sum">' + (sum ? "записано " + fmtDurM(sum) : "") + "</span></div>" + arr.map(jrItem).join("");
+    body += '<div class="jr-day"><span>' + rel + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + (dd.getFullYear() !== new Date().getFullYear() ? " " + dd.getFullYear() : "") + '</span><span class="jr-sum">' + (sum ? "записано " + fmtDurM(sum) : "") + (JX ? ' <button class="linkbtn" data-a="jrday" data-d="' + d + '" title="Дописать в этот день">＋ дописать</button>' : "") + "</span></div>" + arr.map(jrItem).join("");
   });
   if (days.length > shown.length) body += '<div style="text-align:center;padding:10px"><button class="btn ghost" data-a="jrmore">Показать ещё (' + (days.length - shown.length) + " дн.)</button></div>";
-  if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет</div>';
-  const opt = [["7", "7 дней"], ["14", "14 дней"], ["30", "30 дней"], ["90", "90 дней"], ["all", "Всё"]].map(o => '<option value="' + o[0] + '"' + (J.per === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("");
-  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><select id="jr-per" class="inp" style="width:auto">' + opt + '</select>' +
+  if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет' + (all.length ? '<div style="margin-top:10px"><button class="btn ghost" data-a="jrper" data-v="all">Показать все записи</button></div>' : "") + "</div>";
+  const chips = [["2", "Вчера и сегодня"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
+  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + setup + nudge + add + body + "</div></div>";
+    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + setup + nudge + add + '<div class="jr-chips">' + chips + "</div>" + body + "</div></div>";
 }
 function jrInput(el) {
   const J = jrState(), m = /^jr-(e-)?(\w+)$/.exec(el.id); if (!m) return;
@@ -3129,6 +3133,8 @@ Object.assign(acts, {
     J.edit = null; toast("Сохранено"); render();
   },
   jrdel() { const J = jrState(), l = S.time_log[J.edit]; if (!l) return; if (!confirm("Удалить запись?")) return; delLog(l.id); J.edit = null; toast("Удалено"); render(); },
+  jrper(a) { const J = jrState(); J.per = a.dataset.v; J.lim = 40; render(); },
+  jrday(a) { const J = jrState(); J.mode = "t"; J.date = a.dataset.d; J.st = null; J.en = ""; render(); setTimeout(() => { const x = $("jr-tx"); if (x) { x.focus(); x.scrollIntoView({ block: "center" }); } }, 0); },
   jrmore() { jrState().lim += 40; render(); },
   jrfill() { const J = jrState(); J.mode = "p"; J.d1 = addDays(todayISO(), -1); J.d2 = ""; J.tx = ""; render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
   jrnudgeoff() { jrState().nudgeOff = true; render(); },
