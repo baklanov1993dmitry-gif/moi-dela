@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "05.10 23:28";
+const BUILD = "05.10 23:41";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -118,10 +118,12 @@ function getCfg() {
   return { url: normUrl(c.url), key: c.key || "", baked: false };
 }
 let cfg = getCfg(), sb = null, screen = null;
-const S = { user: null, lists: {}, tasks: {}, time_log: {} };
+const S = { user: null, lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} };
+const newP = () => ({ lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} });
 let pendingOpen = null;
 let P = jget(LSK.pending, { lists: {}, tasks: {}, time_log: {} });
 if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {}; if (!P.time_log) P.time_log = {};
+["foods", "food_log", "weight_log", "user_settings"].forEach(k => { if (!P[k]) P[k] = {}; });
 let TH = Object.assign({ v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", size: "l", glass: false }, jget(LSK.theme, {}));
 if (TH.v !== 2) TH = { v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", size: "l", glass: false };
 if (innerWidth <= 760 && !TH.sz2) { TH.size = "n"; TH.sz2 = 1; try { jset(LSK.theme, TH); } catch (e) {} } /* телефон: базовый размер подогнан под To Do */
@@ -134,9 +136,9 @@ const ui = { qa: null, msearch: false, left: false, settings: false, limit: 300,
 let sync = { state: "ok", msg: "" };
 let rt = null, flushing = false, flushSeq = 0, loading = false, flushTimer = null, retryTimer = null, persistTimer = null, lastLoad = 0;
 let down = false, want = false;
-const pendCount = () => Object.keys(P.lists).length + Object.keys(P.tasks).length + Object.keys(P.time_log).length;
+const pendCount = () => Object.keys(P.lists).length + Object.keys(P.tasks).length + Object.keys(P.time_log).length + Object.keys(P.foods).length + Object.keys(P.food_log).length + Object.keys(P.weight_log).length + Object.keys(P.user_settings).length;
 const savePending = () => jset(LSK.pending, P);
-function writeCache() { if (S.user) jset(LSK.cache, { user: { id: S.user.id, email: S.user.email }, lists: S.lists, tasks: Object.fromEntries(Object.entries(S.tasks).filter(([id, t]) => !t.done || t.parent_id || (t.done_at && Date.now() - new Date(t.done_at) < 2 * 864e5))), time_log: S.time_log }); }
+function writeCache() { if (S.user) jset(LSK.cache, { user: { id: S.user.id, email: S.user.email }, lists: S.lists, tasks: Object.fromEntries(Object.entries(S.tasks).filter(([id, t]) => !t.done || t.parent_id || (t.done_at && Date.now() - new Date(t.done_at) < 2 * 864e5))), time_log: S.time_log, foods: S.foods, food_log: S.food_log, weight_log: S.weight_log, user_settings: S.user_settings }); }
 function persistSoon() { clearTimeout(persistTimer); persistTimer = setTimeout(writeCache, 400); }
 
 /* ----- темы ----- */
@@ -209,6 +211,7 @@ const IC = {
   copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   print: '<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
   ccheck: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
+  food: '<path d="M6 3v6a2 2 0 0 0 4 0V3"/><path d="M8 3v18"/><path d="M17 21V3c-2.5 1.5-4 4.5-4 8h4"/>',
   img: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
   trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
   chevd: '<path d="M6 9l6 6 6-6"/>', chevr: '<path d="M9 6l6 6-6 6"/>',
@@ -311,11 +314,12 @@ function nextDue(t) {
 const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files", "plan_start", "parent_id"];
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
-const COLS = { tasks: TC, lists: LC, time_log: GC };
+const COLS = { tasks: TC, lists: LC, time_log: GC, foods: ["id", "name", "kcal", "p", "f", "c", "portions", "barcode", "created_at"], food_log: ["id", "day", "t", "name", "grams", "kcal", "p", "f", "c", "food_id", "created_at"], weight_log: ["id", "day", "kg", "created_at"], user_settings: ["id", "key", "data", "created_at"] };
 function toRow(tbl, o) {
   const r = {}; COLS[tbl].forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
   if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.steps = r.steps || []; r.files = r.files || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
   else if (tbl === "time_log") { r.title = r.title || ""; r.note = r.note || ""; }
+  else if (tbl === "foods" || tbl === "food_log" || tbl === "weight_log" || tbl === "user_settings") { if (r.portions === null) r.portions = []; if (r.data === null) r.data = {}; }
   else { r.icon = r.icon == null ? "🗂️" : r.icon; r.position = r.position || 0; r.name = r.name || "Список"; }
   return r;
 }
@@ -365,7 +369,7 @@ async function flush() {
   if (!sb || !S.user || flushing || !pendCount()) return;
   flushing = true; flushSeq++; setSync("sync");
   try {
-    await pushGroup("lists", "u"); await pushGroup("tasks", "u"); await pushGroup("time_log", "u"); await pushGroup("time_log", "d"); await pushGroup("tasks", "d"); await pushGroup("lists", "d");
+    await pushGroup("lists", "u"); await pushGroup("tasks", "u"); await pushGroup("time_log", "u"); await pushGroup("time_log", "d"); if (NX) { for (const t of ["foods", "food_log", "weight_log", "user_settings"]) { await pushGroup(t, "u"); await pushGroup(t, "d"); } } await pushGroup("tasks", "d"); await pushGroup("lists", "d");
     setSync("ok");
   } catch (e) {
     setSync("err", errText(e)); clearTimeout(retryTimer); retryTimer = setTimeout(flush, 15000);
@@ -404,9 +408,13 @@ async function loadAll() {
     const seq = flushSeq;
     const ls = await fetchAll("lists"), ts = await fetchAll("tasks", q => q.or("done.eq.false,parent_id.not.is.null,done_at.gte." + new Date(Date.now() - 2 * 864e5).toISOString()));   // выполненные старше 2 дней — только по запросу
     let lg = null; try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }
-    if (lg) { try { const pr = await sb.from("time_log").select("kind").limit(1); jxSet(!pr.error); } catch (e) {} }   // нет таблицы (SQL не выполнен) — остальное работает
+    if (lg) { try { const pr = await sb.from("time_log").select("kind").limit(1); jxSet(!pr.error); } catch (e) {} }
+    let nu = null;
+    try { nu = { foods: await fetchAll("foods"), food_log: await fetchAll("food_log", q => q.gte("day", addDays(todayISO(), -120))), weight_log: await fetchAll("weight_log"), user_settings: await fetchAll("user_settings") }; nxSet(true); }
+    catch (e) { nu = null; if (/relation|does not exist|schema cache|PGRST205|42P01/i.test((e && (e.message || e.code)) || "")) nxSet(false); }   // нет таблицы (SQL не выполнен) — остальное работает
     if (seq !== flushSeq) { loading = false; setTimeout(loadAll, 1500); return; }
     applyServer("lists", ls); applyServer("tasks", ts); if (lg) applyServer("time_log", lg);
+    if (nu) for (const t in nu) applyServer(t, nu[t]);
     if (!ls.length && !ts.length && !Object.keys(S.lists).length && !pendCount()) seedLists();
     lastLoad = Date.now(); persistSoon();
     setSync(pendCount() ? "err" : "ok", pendCount() ? "есть неотправленное" : "");
@@ -432,8 +440,9 @@ function subRt() {
     rt = sb.channel("mytasks-" + S.user.id)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, p => onRt("tasks", p))
       .on("postgres_changes", { event: "*", schema: "public", table: "lists" }, p => onRt("lists", p))
-      .on("postgres_changes", { event: "*", schema: "public", table: "time_log" }, p => onRt("time_log", p))
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_log" }, p => onRt("time_log", p));
+    if (NX) ["foods", "food_log", "weight_log", "user_settings"].forEach(t => { rt.on("postgres_changes", { event: "*", schema: "public", table: t }, p => onRt(t, p)); });
+    rt.subscribe();
   } catch (e) { rt = null; }
 }
 function unsubRt() { if (rt && sb) { try { sb.removeChannel(rt); } catch (e) {} } rt = null; }
@@ -1814,14 +1823,61 @@ const jrCSS = `
 .jr-nudge{margin-top:6px}
 @media(max-width:760px){#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
 `;
-const uxCSS = uxCSS0 + mCSS + hkCSS + tdCSS + addCSS + jrCSS;
+const nuCSS = `
+.nu-wrap{max-width:760px;margin:0 auto;padding:0 2px}
+.nu-date{display:flex;align-items:center;gap:6px;padding:4px 0 2px}
+.nu-dl{position:relative;flex:1;text-align:center;font-weight:600;font-size:calc(17px*var(--z,1));padding:6px 8px;border-radius:8px;cursor:pointer}
+.nu-dl:hover{background:var(--hov)}
+.nu-dl input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.nu-w{display:block;margin:2px auto 10px;background:none;border:0;color:var(--tx);font-size:calc(14px*var(--z,1));cursor:pointer;padding:4px 10px;border-radius:14px}
+.nu-w:hover{background:var(--hov)} .nu-w i{color:var(--sub);font-style:normal;font-size:.9em}
+.nu-bars{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0 0 12px}
+.nu-bar{position:relative;height:calc(30px*var(--z,1));border-radius:8px;border:1.5px solid var(--bc);overflow:hidden;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:calc(14px*var(--z,1));font-weight:600;background:var(--solid,transparent)}
+.nu-fill{position:absolute;left:0;top:0;bottom:0;background:var(--bf);opacity:.55;transition:width .3s}
+.nu-bl,.nu-bv{position:relative;z-index:1}
+.bp{--bc:#4aa3c9;--bf:#4aa3c9}.bf{--bc:#e0b800;--bf:#f7e04a}.bc{--bc:#e08a76;--bf:#f3a898}.bk{--bc:#3fae98;--bf:#53c1ae}.bw{--bc:#4a8fd0;--bf:#6aaef0}
+.nu-bs{font-size:calc(12.5px*var(--z,1));color:var(--sub);padding:3px 2px 0}
+.over{color:#d13438;font-weight:600}
+.nu-meal{border:1px solid var(--ln);border-radius:12px;margin:0 0 10px;background:var(--solid,transparent);overflow:hidden}
+.nu-mh{display:flex;justify-content:space-between;padding:10px 14px 0;color:var(--sub);font-size:calc(14px*var(--z,1))}
+.nu-tm{color:var(--tx);font-weight:600}
+.nu-mm,.nu-im{display:flex;gap:12px;align-items:baseline;font-size:calc(13.5px*var(--z,1))}
+.nu-mm{padding:2px 14px 8px;border-bottom:1px solid var(--ln)}
+.nu-sp{flex:1}
+.cp b,.cp{color:#2a8fbd}.cf b,.cf{color:#d29a00}.cc b,.cc{color:#d4604a}.ck{color:#2a9d85;font-weight:600}.cg{color:var(--sub)}
+.nu-it,.nu-res{padding:9px 14px;cursor:pointer;border-top:1px solid var(--ln)}
+.nu-mm + .nu-it{border-top:0}
+.nu-it:hover,.nu-res:hover{background:var(--hov)}
+.nu-in{font-size:calc(15px*var(--z,1));overflow-wrap:anywhere}
+.nu-im{margin-top:3px;font-size:calc(12.5px*var(--z,1))}
+.nu-water{margin:4px 0 12px}
+.nu-wb{border:1px solid var(--acc);background:transparent;color:var(--acc);border-radius:18px;padding:6px 14px;font-size:calc(14px*var(--z,1));cursor:pointer;min-width:44px}
+.nu-wb:hover{background:var(--sel)}
+.nu-fab{position:fixed;right:22px;bottom:24px;width:56px;height:56px;border-radius:50%;border:0;background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:40}
+.nu-sheet{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.4);display:flex;justify-content:center;align-items:flex-start;overflow:auto}
+.nu-card{background:var(--solid,#fff);color:var(--tx);width:100%;max-width:560px;margin:32px 12px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.nu-sh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--ln);gap:8px}
+.nu-st{font-size:calc(16px*var(--z,1));overflow-wrap:anywhere}
+.nu-sb{padding:12px 14px 16px}
+.nu-l{display:flex;flex-direction:column;gap:4px;font-size:calc(12.5px*var(--z,1));color:var(--sub);margin:8px 0 0;min-width:0}
+.nu-l .inp{font-size:calc(15px*var(--z,1))}
+.nu-g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.nu-g4 .nu-l{margin-top:8px}
+.nu-pv{margin:12px 0 0;font-size:calc(15px*var(--z,1))}
+.nu-per,.nu-wh{font-size:calc(12.5px*var(--z,1));color:var(--sub);margin-top:4px}
+.nu-wh{margin:10px 0 2px}
+.nu-chk{display:flex;gap:8px;align-items:center;margin:12px 0 0;font-size:calc(14px*var(--z,1))}
+.nu-video{width:100%;max-height:260px;background:#000;border-radius:10px;object-fit:cover}
+@media(max-width:760px){.nu-sheet{background:var(--solid,#fff)}.nu-card{margin:0;max-width:none;border-radius:0;box-shadow:none;min-height:100%}.nu-bars{gap:10px}.nu-fab{bottom:20px;right:16px}.nu-g4{grid-template-columns:repeat(2,1fr)}}
+`;
+const uxCSS = uxCSS0 + mCSS + hkCSS + tdCSS + addCSS + jrCSS + nuCSS;
 
 // ---- p9: резервные копии: Excel/JSON, автокопии в базу (с настройкой частоты), восстановление ----
 const BKF = [[0, "Выключены"], [6, "Каждые 6 часов"], [24, "Раз в день"], [72, "Раз в 3 дня"], [168, "Раз в неделю"], [336, "Раз в 2 недели"]];
 const BKKEEP = 20;
 const bkCfg = () => Object.assign({ freq: 24, file: false, lastFile: 0 }, PR.bk || {});
 const bkSet = o => { PR.bk = Object.assign(bkCfg(), o); savePrefs(); };
-function bkSnap() { return { v: 1, app: "moi-dela", exported: nowISO(), lists: Object.values(S.lists), tasks: Object.values(S.tasks), time_log: Object.values(S.time_log || {}) }; }
+function bkSnap() { return { v: 1, app: "moi-dela", exported: nowISO(), lists: Object.values(S.lists), tasks: Object.values(S.tasks), time_log: Object.values(S.time_log || {}), foods: Object.values(S.foods || {}), food_log: Object.values(S.food_log || {}), weight_log: Object.values(S.weight_log || {}), user_settings: Object.values(S.user_settings || {}) }; }
 function bkDownload(name, blob) {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
@@ -1904,6 +1960,7 @@ async function bkRestore(id) {
   (d.lists || []).forEach(l => { S.lists[l.id] = l; mark("lists", l.id, "u"); });
   (d.tasks || []).forEach(t => { S.tasks[t.id] = t; mark("tasks", t.id, "u"); });
   (d.time_log || []).forEach(g => { if (S.time_log) { S.time_log[g.id] = g; mark("time_log", g.id, "u"); } });
+  if (NX) ["foods", "food_log", "weight_log", "user_settings"].forEach(t => (d[t] || []).forEach(g => { S[t][g.id] = g; mark(t, g.id, "u"); }));
   toast("✅ Восстановлено: " + n + " задач"); render();
 }
 const bkKind = k => ({ auto: "авто", manual: "вручную", "before-restore": "перед восстановлением" }[k] || k);
@@ -2413,6 +2470,7 @@ function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
   if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
   if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
+  if (view === "food") return { svg: "food", name: "Питание", sub: "КБЖУ, вода и вес" };
   if (view === "journal") return { svg: "note", name: "Журнал", sub: "Что делал: со временем или за период" };
   if (view === "starred") return { svg: "star", name: "Важно" };
   if (view === "planned") return { svg: "cal", name: "Запланировано" };
@@ -2501,7 +2559,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") + sm("someday", "moon", "Когда-нибудь", c.someday, "#8764b8") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -2720,7 +2778,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
@@ -2738,7 +2796,7 @@ function render() {
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
-  updateSyncUI(); dayAfterRender(); syncHistory(); fitPop();
+  updateSyncUI(); dayAfterRender(); syncHistory(); fitPop(); nuAfter();
 }
 
 /* ===== p5: вход, действия, обработчики событий ===== */
@@ -2784,18 +2842,18 @@ function setUser(u) {
   const cur = S.user ? S.user.id : null, nid = u ? u.id : null;
   if (cur === nid) { if (u && S.user) S.user.email = u.email || S.user.email; return; }
   unsubRt();
-  if (!u) { S.user = null; S.lists = {}; S.tasks = {}; S.time_log = {}; selId = null; ui.settings = false; ui.pop = null; render(); return; }
+  if (!u) { S.user = null; S.lists = {}; S.tasks = {}; S.time_log = {}; S.foods = {}; S.food_log = {}; S.weight_log = {}; S.user_settings = {}; selId = null; ui.settings = false; ui.pop = null; render(); return; }
   S.user = { id: u.id, email: u.email };
-  if (P.uid && P.uid !== u.id) { P = { lists: {}, tasks: {}, time_log: {} }; savePending(); }
+  if (P.uid && P.uid !== u.id) { P = newP(); savePending(); }
   const c = jget(LSK.cache, null);
-  S.lists = {}; S.tasks = {}; S.time_log = {};
-  if (c && c.user && c.user.id === u.id) { S.lists = c.lists || {}; S.tasks = c.tasks || {}; S.time_log = c.time_log || {}; }
+  S.lists = {}; S.tasks = {}; S.time_log = {}; S.foods = {}; S.food_log = {}; S.weight_log = {}; S.user_settings = {};
+  if (c && c.user && c.user.id === u.id) { S.lists = c.lists || {}; S.tasks = c.tasks || {}; S.time_log = c.time_log || {}; S.foods = c.foods || {}; S.food_log = c.food_log || {}; S.weight_log = c.weight_log || {}; S.user_settings = c.user_settings || {}; }
   ui.msg = ""; render(); subRt(); setTimeout(loadAll, 0);
 }
 async function logout() {
   if (pendCount() && !confirm("Есть неотправленные изменения (" + pendCount() + "). Выйти и потерять их?")) return;
   try { await sb.auth.signOut(); } catch (e) {}
-  P = { lists: {}, tasks: {}, time_log: {} }; savePending(); try { localStorage.removeItem(LSK.cache); } catch (e) {}
+  P = newP(); savePending(); try { localStorage.removeItem(LSK.cache); } catch (e) {}
   setUser(null);
 }
 async function boot() {
@@ -3147,6 +3205,337 @@ Object.assign(acts, {
     if (!sb) return; try { const r = await sb.from("time_log").select("kind").limit(1); jxSet(!r.error); toast(r.error ? "Колонок ещё нет — SQL не выполнен" : "Готово, журнал включён"); if (!r.error) loadAll(); } catch (e) { toast("Нет связи"); } render();
   }
 });
+
+/* ===== p13: питание (КБЖУ): дневник еды, свои продукты, вес, цели ===== */
+const NU_TABLES = ["foods", "food_log", "weight_log", "user_settings"];
+const NU_SQL = `create or replace function public.touch_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
+
+create table if not exists public.foods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name text not null, kcal numeric not null default 0, p numeric not null default 0, f numeric not null default 0, c numeric not null default 0,
+  portions jsonb not null default '[]'::jsonb, barcode text,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists public.food_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  day date not null, t text not null default '12:00', name text not null, grams numeric not null default 0,
+  kcal numeric not null default 0, p numeric not null default 0, f numeric not null default 0, c numeric not null default 0, food_id uuid,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create index if not exists food_log_user_day on public.food_log (user_id, day);
+create table if not exists public.weight_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  day date not null, kg numeric not null,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now(), unique (user_id, day));
+create table if not exists public.user_settings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  key text not null, data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now(), unique (user_id, key));
+
+do $$ declare t text; begin
+  foreach t in array array['foods','food_log','weight_log','user_settings'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists "own rows" on public.%I', t);
+    execute format('create policy "own rows" on public.%I for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+    execute format('drop trigger if exists touch on public.%I', t);
+    execute format('create trigger touch before update on public.%I for each row execute function public.touch_updated_at()', t);
+    begin execute format('alter publication supabase_realtime add table public.%I', t); exception when duplicate_object then null; end;
+  end loop;
+end $$;`;
+let NX = (() => { try { return localStorage.getItem("mytasks_nx") === "1"; } catch (e) { return false; } })();
+function nxSet(ok) { if (ok === NX) return; NX = ok; try { localStorage.setItem("mytasks_nx", ok ? "1" : "0"); } catch (e) {} }
+function huid(s) {                                    // стабильный «uuid» из строки: одна запись на день/ключ, даже если создана с двух устройств
+  const out = [];
+  for (let k = 0; k < 4; k++) {
+    let h = (0x811c9dc5 ^ Math.imul(k + 1, 0x9e3779b1)) >>> 0;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    h ^= h >>> 15; h = Math.imul(h, 2246822507) >>> 0; h ^= h >>> 13; out.push(h.toString(16).padStart(8, "0"));
+  }
+  const x = out.join(""); return x.slice(0, 8) + "-" + x.slice(8, 12) + "-" + x.slice(12, 16) + "-" + x.slice(16, 20) + "-" + x.slice(20, 32);
+}
+let NF = null, nfBusy = false;                          // встроенная база (foods.json)
+function nuLoadBase() {
+  if (NF || nfBusy) return; nfBusy = true;
+  fetch("foods.json?v=1").then(r => r.json()).then(a => { NF = a.map(x => ({ n: x[0], k: x[1], p: x[2], f: x[3], c: x[4], u: x[5] || [] })); }).catch(() => { NF = []; }).then(() => { nfBusy = false; renderSoon(); });
+}
+const NUN = () => ui.nu || (ui.nu = { day: todayISO(), sheet: null, tab: "all", q: "", f: {}, sel: null, res: [], web: null, webBusy: false, werr: "", stream: null, scanMsg: "" });
+const nrm = s => String(s == null ? "" : s).toLowerCase().replace(/ё/g, "е");
+const r1 = x => Math.round(x * 10) / 10, r0 = x => Math.round(x);
+const num = v => { const x = parseFloat(String(v == null ? "" : v).replace(",", ".")); return isNaN(x) ? 0 : x; };
+const nowHM = () => { const n = new Date(); return pad2(n.getHours()) + ":" + pad2(n.getMinutes()); };
+function nuDayLabel(d) { const t = todayISO(), x = parseISO(d), rel = d === t ? "Сегодня, " : d === addDays(t, -1) ? "Вчера, " : d === addDays(t, 1) ? "Завтра, " : WDS[x.getDay()] + ", "; return rel + x.getDate() + " " + MONS[x.getMonth()]; }
+const nuEntries = d => Object.values(S.food_log).filter(x => x.day === d && x.name !== "__water").sort((a, b) => (a.t + a.created_at).localeCompare(b.t + b.created_at));
+const nuWater = d => Object.values(S.food_log).filter(x => x.day === d && x.name === "__water");
+const nuSum = arr => arr.reduce((s, x) => { s.kcal += +x.kcal || 0; s.p += +x.p || 0; s.f += +x.f || 0; s.c += +x.c || 0; s.g += +x.grams || 0; return s; }, { kcal: 0, p: 0, f: 0, c: 0, g: 0 });
+function nuWeightAt(d) { let b = null; for (const id in S.weight_log) { const w = S.weight_log[id]; if (w.day <= d && (!b || w.day > b.day)) b = w; } return b; }
+const nuSetKey = () => huid((S.user ? S.user.id : "") + ":s:nut");
+function nuProf() { const r = S.user_settings[nuSetKey()]; return Object.assign({ sex: "m", age: 30, h: 175, act: 1.4, mode: "cut", manual: false, kcal: 2000, p: 140, f: 65, c: 200, water: 2000, set: false }, r && r.data || {}, { set: !!r }); }
+function nuTargets(d) {
+  const P0 = nuProf(); if (P0.manual) return { kcal: +P0.kcal, p: +P0.p, f: +P0.f, c: +P0.c, water: +P0.water, manual: true };
+  const wr = nuWeightAt(d || todayISO()), w = wr ? +wr.kg : 70, bmr = 10 * w + 6.25 * P0.h - 5 * P0.age + (P0.sex === "m" ? 5 : -161), tdee = bmr * P0.act;
+  const k = { cut: 0.82, recomp: 0.9, keep: 1, gain: 1.1 }[P0.mode] || 1, kcal = Math.round(tdee * k / 10) * 10;
+  const p = Math.round(w * (P0.mode === "cut" || P0.mode === "recomp" ? 2 : 1.8)), f = Math.round(w * 0.9), c = Math.max(0, Math.round((kcal - 4 * p - 9 * f) / 4));
+  return { kcal, p, f, c, water: Math.round(w * 30 / 50) * 50, tdee: Math.round(tdee), bmr: Math.round(bmr), w, noW: !wr };
+}
+const nuCalc = (f, g) => ({ kcal: f.k * g / 100, p: f.p * g / 100, f: f.f * g / 100, c: f.c * g / 100 });
+function nuAddEntry(food, g, t, day) {
+  const m = nuCalc(food, g), o = { id: uid(), day, t, name: food.n, grams: g, kcal: r1(m.kcal), p: r1(m.p), f: r1(m.f), c: r1(m.c), food_id: food.id || null, created_at: nowISO() };
+  S.food_log[o.id] = o; mark("food_log", o.id, "u"); return o;
+}
+function nuRecent() {
+  const seen = new Set(), out = [];
+  Object.values(S.food_log).filter(x => x.name !== "__water" && x.grams > 0).sort((a, b) => (b.day + b.t + b.created_at).localeCompare(a.day + a.t + a.created_at)).forEach(x => {
+    if (seen.has(x.name) || out.length >= 40) return; seen.add(x.name);
+    out.push({ n: x.name, k: r1(x.kcal * 100 / x.grams), p: r1(x.p * 100 / x.grams), f: r1(x.f * 100 / x.grams), c: r1(x.c * 100 / x.grams), u: [], lg: x.grams, id: x.food_id || null });
+  });
+  return out;
+}
+function nuMine() { return Object.values(S.foods).map(f => ({ id: f.id, n: f.name, k: +f.kcal, p: +f.p, f: +f.f, c: +f.c, u: Array.isArray(f.portions) ? f.portions : [], mine: true, bc: f.barcode })); }
+function nuSearch() {
+  const N = NUN(), toks = nrm(N.q).split(/\s+/).filter(Boolean);
+  const src = N.tab === "mine" ? nuMine() : N.tab === "recent" ? nuRecent() : (toks.length ? nuMine().concat(NF || []) : nuRecent().concat(nuMine()));
+  let r = toks.length ? src.filter(x => { const n = nrm(x.n); return toks.every(t => n.indexOf(t) >= 0); }) : src;
+  if (toks.length) r = r.map(x => { const n = nrm(x.n); return { x, s: (n.indexOf(toks[0]) === 0 ? 0 : n.indexOf(" " + toks[0]) >= 0 ? 1 : 2) * 1000 + (x.mine ? -500 : 0) + n.length }; }).sort((a, b) => a.s - b.s).map(o => o.x);
+  const seen = new Set(); return r.filter(x => { const k = nrm(x.n); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 60);
+}
+function nuBar(cls, label, cur, tgt, sub) {
+  const pct = tgt > 0 ? Math.min(100, cur / tgt * 100) : 0;
+  return '<div class="nu-cell"><div class="nu-bar ' + cls + '"><div class="nu-fill" style="width:' + pct + '%"></div><span class="nu-bl">' + label + '</span><span class="nu-bv">' + r0(cur) + "/" + r0(tgt) + '</span></div><div class="nu-bs">' + sub + "</div></div>";
+}
+function nuSetupHTML() {
+  return '<div class="jr-box"><b>Одноразовая настройка базы</b><div class="jr-hint">Скопируй SQL → Supabase → SQL Editor → Run, потом «Проверить». Создаются 4 таблицы (продукты, дневник, вес, настройки) с защитой строк: каждый видит только свои.</div><pre class="jr-sql">' + esc(NU_SQL) + '</pre><div class="jr-f"><button class="btn" data-a="nucopy">Скопировать SQL</button><button class="btn ghost" data-a="nucheck">Проверить</button></div></div>';
+}
+function nutriMainHTML(vi) {
+  const N = NUN(); nuLoadBase();
+  const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool" data-a="nugoals">' + ic("gear", 16) + '<span class="tl"> Цели</span></button></div>';
+  if (!NX) return head + '<div class="msub">' + esc(vi.sub) + '</div><div class="scroll" id="list">' + nuSetupHTML() + "</div></div>";
+  const day = N.day, ent = nuEntries(day), T = nuSum(ent), tg = nuTargets(day), P0 = nuProf(), wr = nuWeightAt(day), wat = nuWater(day).reduce((s, x) => s + (+x.grams || 0), 0);
+  const dnav = '<div class="nu-date"><button class="ibtn" data-a="nuprev" title="Предыдущий день">' + ic("arrowl", 20) + '</button><label class="nu-dl">' + esc(nuDayLabel(day)) + '<input type="date" id="nu-day" value="' + day + '"></label><button class="ibtn" data-a="nunext" title="Следующий день"><span style="display:flex;transform:rotate(180deg)">' + ic("arrowl", 20) + "</span></button>" + (day !== todayISO() ? '<button class="tool" data-a="nutoday">Сегодня</button>' : "") + "</div>";
+  const wline = '<button class="nu-w" data-a="nuweight">Вес: <b>' + (wr ? r1(+wr.kg) + " кг" : "—") + "</b>" + (wr && wr.day !== day ? ' <i>(от ' + jrShort(wr.day) + ")</i>" : "") + " " + ic("pen", 14) + "</button>";
+  const pc = (v, t, m) => t > 0 ? Math.round(v / t * 100) + "% (" + r0(v * m) + " ккал)" : "";
+  const over = (v, t) => v > t ? ' <b class="over">+' + r0(v - t) + "</b>" : "";
+  const bars = '<div class="nu-bars">' + nuBar("bp", "Белки", T.p, tg.p, pc(T.p, tg.p, 4) + over(T.p, tg.p)) + nuBar("bf", "Жиры", T.f, tg.f, pc(T.f, tg.f, 9) + over(T.f, tg.f)) + nuBar("bc", "Углеводы", T.c, tg.c, pc(T.c, tg.c, 4) + over(T.c, tg.c)) +
+    nuBar("bk", "Калории", T.kcal, tg.kcal, T.kcal > tg.kcal ? '<b class="over">+' + r0(T.kcal - tg.kcal) + " ккал сверх</b>" : Math.round(T.kcal / tg.kcal * 100) + "% (" + r0(tg.kcal - T.kcal) + " до лим.)") + "</div>";
+  const hint = !P0.set ? '<div class="jr-nudge">Цели пока «по умолчанию». <span style="flex:1"></span><button class="btn" data-a="nugoals">Рассчитать под себя</button></div>' : "";
+  const groups = {}; ent.forEach(x => { (groups[x.t] = groups[x.t] || []).push(x); });
+  const meals = Object.keys(groups).sort().map((t, i) => {
+    const g = groups[t], s = nuSum(g);
+    return '<div class="nu-meal"><div class="nu-mh"><span class="nu-mt">' + (i + 1) + "-й приём</span><span class=\"nu-tm\">" + esc(t) + '</span></div><div class="nu-mm"><span class="cp">Б: <b>' + r0(s.p) + '</b></span><span class="cf">Ж: <b>' + r0(s.f) + '</b></span><span class="cc">У: <b>' + r0(s.c) + '</b></span><span class="nu-sp"></span><span class="ck">' + r0(s.kcal) + ' ккал</span> <span class="cg">' + r0(s.g) + " г</span></div>" +
+      g.map(x => '<div class="nu-it" data-a="nuedit" data-id="' + x.id + '"><div class="nu-in">' + esc(x.name) + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="nu-sp"></span><span class="ck">' + r0(x.kcal) + " к</span> " + (x.grams > 0 ? '<span class="cg">' + r0(x.grams) + " г</span>" : "") + "</div></div>").join("") + "</div>";
+  }).join("") || '<div style="text-align:center;padding:26px 10px;color:var(--sub)">В этот день ещё ничего не записано</div>';
+  const water = '<div class="nu-water"><div class="nu-bar bw"><div class="nu-fill" style="width:' + Math.min(100, tg.water > 0 ? wat / tg.water * 100 : 0) + '%"></div><span class="nu-bl">Вода</span><span class="nu-bv">' + r0(wat) + "/" + r0(tg.water) + '</span></div><div class="jr-f" style="margin-top:8px"><button class="nu-wb" data-a="nuwater" data-v="200">+ 200</button><button class="nu-wb" data-a="nuwater" data-v="100">+ 100</button><button class="nu-wb" data-a="nuwater" data-v="50">+ 50</button><button class="nu-wb" data-a="nuwx">+ X</button>' + (wat ? '<button class="linkbtn" data-a="nuwundo">↶ убрать последнюю</button>' : "") + "</div></div>";
+  return head + '<div class="scroll" id="list"><div class="nu-wrap">' + dnav + wline + hint + bars + meals + water + '<div style="height:90px"></div></div></div><button class="nu-fab" data-a="nuopen" title="Добавить еду">' + ic("plus", 26) + "</button>" + nuSheetHTML() + "</div>";
+}
+function nuFoodRow(x, i) {
+  return '<div class="nu-res" data-a="nupick" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + (x.mine ? ' <i class="jr-c">моё</i>' : "") + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>";
+}
+function nuSheetHTML() {
+  const N = NUN(); if (!N.sheet) return "";
+  const F = N.f, lbl = (t, h) => '<label class="nu-l"><span>' + t + "</span>" + h + "</label>", inp = (id, ph, type, extra) => '<input id="nu-' + id + '" class="inp" ' + (type ? 'type="' + type + '" ' : "") + (extra || "") + ' placeholder="' + (ph || "") + '" autocomplete="off" value="' + esc(F[id] == null ? "" : F[id]) + '">';
+  const close = '<button class="ibtn" data-a="nuclose" title="Закрыть">' + ic("x", 20) + "</button>";
+  let title = "", body = "";
+  if (N.sheet === "pick") {
+    title = "Что съел?";
+    const res = N.res = nuSearch();
+    const tabs = [["all", "Все"], ["recent", "Недавние"], ["mine", "Мои"]].map(t => '<button class="jr-chip' + (N.tab === t[0] ? " on" : "") + '" data-a="nutab" data-v="' + t[0] + '">' + t[1] + "</button>").join("");
+    const web = N.webBusy ? '<div class="jr-hint">Ищу в Open Food Facts…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">Open Food Facts (упаковки, значения с этикеток):</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts ничего не нашлось") + "</div>") : "";
+    body = '<div class="jr-f"><input id="nu-q" class="inp" style="flex:1;min-width:0" placeholder="Поиск: гречка, борщ, творог…" autocomplete="off" value="' + esc(N.q) + '"></div><div class="jr-chips" style="margin-top:8px">' + tabs + "</div>" +
+      '<div class="jr-f" style="margin:8px 0"><button class="tool" data-a="nucustom">＋ Свой продукт</button><button class="tool" data-a="nuscan">📷 Штрихкод</button><button class="tool" data-a="nuquick">Быстро: только ккал</button>' + (N.q.trim() ? '<button class="tool" data-a="nuweb">🌐 Искать в интернете</button>' : "") + "</div>" +
+      (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Нажми «Искать в интернете» или «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
+  } else if (N.sheet === "grams") {
+    const s = N.sel, g = num(F.g), m = nuCalc(s, g);
+    title = s.n;
+    body = '<div class="nu-pv" id="nu-prev">' + nuPrevText(s, g) + '</div><div class="nu-per">на 100 г: Б ' + r1(s.p) + " · Ж " + r1(s.f) + " · У " + r1(s.c) + " · " + r0(s.k) + " ккал</div>" +
+      '<div class="jr-f" style="margin-top:12px">' + lbl("Вес, г", '<div class="jr-f"><button class="nu-wb" data-a="nugstep" data-v="-10">−</button><input id="nu-g" class="inp" inputmode="decimal" style="width:90px" value="' + esc(F.g) + '"><button class="nu-wb" data-a="nugstep" data-v="10">+</button></div>') + lbl("Время", inp("t", "", "time")) + "</div>" +
+      (s.u && s.u.length ? '<div class="jr-chips" style="margin-top:10px">' + s.u.map((u, i) => '<button class="jr-chip" data-a="nugp" data-v="' + u[1] + '">' + esc(u[0]) + " · " + u[1] + " г</button>").join("") + "</div>" : "") +
+      (s.web ? '<label class="nu-chk"><input type="checkbox" id="nu-save"' + (F.save === false ? "" : " checked") + '> Сохранить в «Мои»</label>' : "") +
+      '<div class="jr-f" style="margin-top:14px"><button class="btn" data-a="nuok">Добавить</button><button class="btn ghost" data-a="nuback">← К поиску</button></div>';
+  } else if (N.sheet === "custom") {
+    title = "Свой продукт";
+    body = '<div class="jr-hint">Значения на 100 г — как на этикетке.</div>' + lbl("Название", inp("cn", "Название")) + '<div class="nu-g4">' + lbl("Ккал", inp("ck", "", "text", 'inputmode="decimal"')) + lbl("Белки", inp("cp", "", "text", 'inputmode="decimal"')) + lbl("Жиры", inp("cf", "", "text", 'inputmode="decimal"')) + lbl("Углев.", inp("cc", "", "text", 'inputmode="decimal"')) + "</div>" +
+      lbl("Порция, г (необязательно)", inp("cu", "например 40", "text", 'inputmode="decimal"')) + '<div class="nu-pv" id="nu-cprev">' + nuCustomPrev() + '</div><div class="jr-f" style="margin-top:12px"><button class="btn" data-a="nucsave">Сохранить и добавить</button><button class="btn ghost" data-a="nuback">Отмена</button></div>';
+  } else if (N.sheet === "quick") {
+    title = "Быстрая запись";
+    body = lbl("Название", inp("qn", "Что это было")) + '<div class="nu-g4">' + lbl("Ккал", inp("qk", "", "text", 'inputmode="decimal"')) + lbl("Белки", inp("qp", "", "text", 'inputmode="decimal"')) + lbl("Жиры", inp("qf", "", "text", 'inputmode="decimal"')) + lbl("Углев.", inp("qc", "", "text", 'inputmode="decimal"')) + "</div>" + lbl("Время", inp("t", "", "time")) + '<div class="jr-f" style="margin-top:12px"><button class="btn" data-a="nuqsave">Добавить</button><button class="btn ghost" data-a="nuback">Отмена</button></div>';
+  } else if (N.sheet === "scan") {
+    title = "Штрихкод";
+    body = '<video id="nu-video" class="nu-video" playsinline muted></video><div class="jr-hint">' + esc(N.scanMsg || "Наведи камеру на штрихкод упаковки") + '</div><div class="jr-f">' + inp("bc", "или введи номер под штрихкодом", "text", 'inputmode="numeric" style="flex:1"') + '<button class="btn" data-a="nubc">Найти</button></div><div style="margin-top:10px"><button class="btn ghost" data-a="nuback">← К поиску</button></div>';
+  } else if (N.sheet === "edit") {
+    const x = S.food_log[N.eid]; if (!x) { N.sheet = null; return ""; }
+    title = x.name;
+    body = '<div class="nu-per">Сейчас: Б ' + r1(x.p) + " · Ж " + r1(x.f) + " · У " + r1(x.c) + " · " + r0(x.kcal) + " ккал</div>" + (x.grams > 0 ? '<div class="jr-f" style="margin-top:10px">' + lbl("Вес, г", '<input id="nu-g" class="inp" inputmode="decimal" style="width:100px" value="' + esc(F.g) + '">') + "</div>" : "") + '<div class="jr-f" style="margin-top:10px">' + lbl("Время", inp("t", "", "time")) + lbl("Дата", inp("d", "", "date")) + '</div><div class="jr-f" style="margin-top:14px"><button class="btn" data-a="nuesave">Сохранить</button><button class="btn ghost" data-a="nuclose">Отмена</button><span style="flex:1"></span><button class="btn ghost" data-a="nudel">Удалить</button></div>';
+  } else if (N.sheet === "weight") {
+    title = "Вес";
+    const ws = Object.values(S.weight_log).sort((a, b) => a.day.localeCompare(b.day)).slice(-30);
+    body = '<div class="jr-f">' + lbl("Дата", inp("wd", "", "date")) + lbl("Вес, кг", inp("wk", "72.0", "text", 'inputmode="decimal"')) + '</div><div class="jr-f" style="margin-top:12px"><button class="btn" data-a="nuwsave">Сохранить</button><button class="btn ghost" data-a="nuclose">Отмена</button></div>' + nuWeightChart(ws);
+  } else if (N.sheet === "goals") {
+    title = "Цели и параметры";
+    const sel = (id, opts) => '<select id="nu-' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (String(F[id]) === String(o[0]) ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+    const tg = nuGoalsPreview();
+    body = '<div class="nu-g4">' + lbl("Пол", sel("gs", [["m", "Муж"], ["f", "Жен"]])) + lbl("Возраст", inp("ga", "", "text", 'inputmode="numeric"')) + lbl("Рост, см", inp("gh", "", "text", 'inputmode="numeric"')) + lbl("Вес, кг", inp("gwt", "", "text", 'inputmode="decimal"')) + "</div>" +
+      lbl("Активность", sel("gact", [["1.2", "Сидячая, без тренировок (1,2)"], ["1.375", "Лёгкая: 1–2 тренировки (1,375)"], ["1.4", "Офис + 3 тренировки в неделю (1,4)"], ["1.55", "Умеренная: 4–5 тренировок (1,55)"], ["1.725", "Высокая: ежедневно (1,725)"]])) +
+      lbl("Режим", sel("gm", [["cut", "Похудение (−18%)"], ["recomp", "Рекомпозиция (−10%)"], ["keep", "Поддержание"], ["gain", "Набор (+10%)"]])) +
+      '<label class="nu-chk"><input type="checkbox" id="nu-gman"' + (F.gman ? " checked" : "") + '> Задать цели вручную</label>' +
+      (F.gman ? '<div class="nu-g4">' + lbl("Ккал", inp("gk", "", "text", 'inputmode="numeric"')) + lbl("Белки", inp("gp", "", "text", 'inputmode="numeric"')) + lbl("Жиры", inp("gf", "", "text", 'inputmode="numeric"')) + lbl("Углев.", inp("gc", "", "text", 'inputmode="numeric"')) + "</div>" + lbl("Вода, мл", inp("gw", "", "text", 'inputmode="numeric"')) : "") +
+      '<div class="nu-pv" id="nu-gprev">' + tg + '</div><div class="jr-hint">Формула Миффлина–Сан Жеора даёт ±10%: сверяй с трендом веса за 2–3 недели и подправляй.</div><div class="jr-f"><button class="btn" data-a="nugsave">Сохранить</button><button class="btn ghost" data-a="nuclose">Отмена</button></div>';
+  } else if (N.sheet === "water") {
+    title = "Вода, мл";
+    body = '<div class="jr-f">' + inp("wx", "250", "text", 'inputmode="numeric" style="flex:1"') + '<button class="btn" data-a="nuwxok">Добавить</button></div>';
+  }
+  return '<div class="nu-sheet"><div class="nu-card"><div class="nu-sh"><b class="nu-st">' + esc(title) + "</b>" + close + '</div><div class="nu-sb">' + body + "</div></div></div>";
+}
+const nuPrevText = (s, g) => { const m = nuCalc(s, g); return "Б " + r1(m.p) + " · Ж " + r1(m.f) + " · У " + r1(m.c) + " · <b>" + r0(m.kcal) + " ккал</b>"; };
+function nuCustomPrev() { const F = NUN().f; return (num(F.ck) || num(F.cp) || num(F.cf) || num(F.cc)) ? "По формуле 4·Б + 4·У + 9·Ж ≈ " + r0(4 * num(F.cp) + 4 * num(F.cc) + 9 * num(F.cf)) + " ккал" : ""; }
+function nuGoalsPreview() {
+  const F = NUN().f, w = num(F.gwt) || (nuWeightAt(todayISO()) || {}).kg;
+  if (F.gman) return "Цели заданы вручную";
+  const age = num(F.ga) || 30, h = num(F.gh) || 175, wk = w ? +w : 0;
+  if (!wk) return "Укажи вес — и цели рассчитаются.";
+  const bmr = 10 * wk + 6.25 * h - 5 * age + (F.gs === "f" ? -161 : 5), tdee = bmr * num(F.gact || 1.4), k = { cut: 0.82, recomp: 0.9, keep: 1, gain: 1.1 }[F.gm] || 1, kcal = Math.round(tdee * k / 10) * 10;
+  const p = Math.round(wk * (F.gm === "cut" || F.gm === "recomp" ? 2 : 1.8)), f = Math.round(wk * 0.9), c = Math.max(0, Math.round((kcal - 4 * p - 9 * f) / 4));
+  return "Расход ≈ <b>" + r0(tdee) + "</b> ккал (обмен " + r0(bmr) + "). Цель: <b>" + kcal + "</b> ккал · Б " + p + " · Ж " + f + " · У " + c;
+}
+function nuWeightChart(ws) {
+  if (ws.length < 2) return '<div class="jr-hint" style="margin-top:12px">График появится после двух записей веса.</div>';
+  const W = 320, H = 110, v = ws.map(w => +w.kg), mn = Math.min.apply(null, v) - 0.3, mx = Math.max.apply(null, v) + 0.3;
+  const pts = ws.map((w, i) => (8 + i * (W - 16) / (ws.length - 1)).toFixed(1) + "," + (H - 8 - (+w.kg - mn) / (mx - mn) * (H - 16)).toFixed(1)).join(" ");
+  const avg = a => a.reduce((s, x) => s + x, 0) / a.length, last7 = ws.filter(w => w.day > addDays(todayISO(), -7)), prev7 = ws.filter(w => w.day <= addDays(todayISO(), -7) && w.day > addDays(todayISO(), -14));
+  const tr = last7.length && prev7.length ? (avg(last7.map(w => +w.kg)) - avg(prev7.map(w => +w.kg))) : null;
+  return '<svg viewBox="0 0 ' + W + " " + H + '" style="width:100%;margin-top:14px"><polyline points="' + pts + '" fill="none" stroke="var(--acc)" stroke-width="2"/></svg><div class="jr-hint">' + r1(v[0]) + " → " + r1(v[v.length - 1]) + " кг за " + ws.length + " зап." + (tr != null ? " · тренд недели: " + (tr > 0 ? "+" : "") + r1(tr) + " кг" : "") + "</div>";
+}
+function nuInput(el) {
+  const N = NUN(), id = el.id.slice(3);
+  if (id === "q") { N.q = el.value; N.web = null; N.werr = ""; clearTimeout(N._qt); N._qt = setTimeout(renderSoon, 120); return; }
+  N.f[id] = el.type === "checkbox" ? el.checked : el.value;
+  if (id === "g" && N.sel && N.sheet === "grams") { const pv = $("nu-prev"); if (pv) pv.innerHTML = nuPrevText(N.sel, num(el.value)); }
+  else if (/^c[nkpfcu]$/.test(id)) { const pv = $("nu-cprev"); if (pv) pv.textContent = nuCustomPrev(); }
+  else if (/^g/.test(id) && N.sheet === "goals") { if (el.tagName === "SELECT" || el.type === "checkbox") render(); else { const pv = $("nu-gprev"); if (pv) pv.innerHTML = nuGoalsPreview(); } }
+  else if (id === "save") { /* галочка «в мои» — просто значение */ }
+  else if (id === "day") { if (el.value) { N.day = el.value; render(); } }
+}
+function nuClose() { nuScanStop(); const N = NUN(); N.sheet = null; N.sel = null; N.f = {}; render(); }
+function nuScanStop() { const N = ui.nu; if (N && N.stream) { try { N.stream.getTracks().forEach(t => t.stop()); } catch (e) {} N.stream = null; } }
+function nuAfter() { const N = ui.nu; if (!N || N.sheet !== "scan" || !N.stream) return; const v = $("nu-video"); if (v && v.srcObject !== N.stream) { v.srcObject = N.stream; v.play().catch(() => {}); } }
+function nuOpenGrams(food) {
+  const N = NUN(); N.sel = food; N.sheet = "grams";
+  const g = food.lg || (food.u && food.u.length ? food.u[0][1] : 100);
+  N.f = { g: String(g), t: nowHM(), save: true }; render();
+  setTimeout(() => { const x = $("nu-g"); if (x) { x.focus(); x.select(); } }, 0);
+}
+const nuFromOFF = p => {
+  const n = p && p.nutriments || {}, k = n["energy-kcal_100g"] != null ? +n["energy-kcal_100g"] : (n["energy_100g"] != null ? +n["energy_100g"] / 4.184 : null);
+  if (k == null || isNaN(k) || !p.product_name) return null;
+  return { n: (p.product_name + (p.brands ? " (" + String(p.brands).split(",")[0].trim() + ")" : "")).slice(0, 90), k: r1(k), p: r1(+n.proteins_100g || 0), f: r1(+n.fat_100g || 0), c: r1(+n.carbohydrates_100g || 0), u: [], web: true, bc: p.code || null };
+};
+async function nuWeb() {
+  const N = NUN(), q = N.q.trim(); if (!q) return; N.webBusy = true; N.web = null; N.werr = ""; render();
+  try {
+    const r = await fetch("https://world.openfoodfacts.org/cgi/search.pl?search_terms=" + encodeURIComponent(q) + "&search_simple=1&action=process&json=1&page_size=24&lc=ru&cc=ru&fields=code,product_name,brands,nutriments"), j = await r.json();
+    N.web = (j.products || []).map(nuFromOFF).filter(Boolean);
+  } catch (e) { N.web = []; N.werr = "Нет связи с Open Food Facts"; }
+  N.webBusy = false; render();
+}
+async function nuBarcode(code) {
+  const N = NUN(); code = String(code || "").replace(/\D/g, ""); if (!code) return;
+  const mine = Object.values(S.foods).find(f => f.barcode === code);
+  if (mine) { nuScanStop(); nuOpenGrams(nuMine().find(x => x.id === mine.id)); return; }
+  N.scanMsg = "Ищу " + code + "…"; render(); nuAfter();
+  try {
+    const r = await fetch("https://world.openfoodfacts.org/api/v2/product/" + code + ".json?fields=code,product_name,brands,nutriments"), j = await r.json(), f = j && j.status === 1 ? nuFromOFF(Object.assign({ code }, j.product)) : null;
+    if (f) { nuScanStop(); nuOpenGrams(f); return; }
+    N.scanMsg = "Не нашёл " + code + ". Можно добавить вручную: «Свой продукт»."; N.f.bc = code;
+  } catch (e) { N.scanMsg = "Нет связи с Open Food Facts"; }
+  render(); nuAfter();
+}
+async function nuScan() {
+  const N = NUN(); N.sheet = "scan"; N.scanMsg = ""; N.f = {}; render();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { N.scanMsg = "Камера недоступна — введи номер вручную"; render(); return; }
+  try { N.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); } catch (e) { N.scanMsg = "Нет доступа к камере (разреши в настройках сайта) — или введи номер вручную"; render(); return; }
+  if (N.sheet !== "scan") { nuScanStop(); return; }
+  nuAfter();
+  if (!("BarcodeDetector" in window)) { N.scanMsg = "Автоскан в этом браузере не работает — введи номер под штрихкодом"; render(); nuAfter(); return; }
+  let det; try { det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] }); } catch (e) { return; }
+  const tick = async () => {
+    if (N.sheet !== "scan" || !N.stream) return;
+    const v = $("nu-video");
+    try { if (v && v.readyState >= 2) { const r = await det.detect(v); if (r && r.length) { nuBarcode(r[0].rawValue); return; } } } catch (e) {}
+    setTimeout(tick, 350);
+  };
+  tick();
+}
+Object.assign(acts, {
+  nuprev() { const N = NUN(); N.day = addDays(N.day, -1); render(); },
+  nunext() { const N = NUN(); N.day = addDays(N.day, 1); render(); },
+  nutoday() { NUN().day = todayISO(); render(); },
+  nucopy() { try { navigator.clipboard.writeText(NU_SQL).then(() => toast("SQL скопирован"), () => toast("Выдели текст и скопируй вручную")); } catch (e) { toast("Выдели текст и скопируй вручную"); } },
+  async nucheck() {
+    if (!sb) return;
+    try { const r = await sb.from("foods").select("id").limit(1); const okk = !r.error; nxSet(okk); toast(okk ? "Готово, питание включено" : "Таблиц ещё нет — SQL не выполнен"); if (okk) loadAll(); } catch (e) { toast("Нет связи"); } render();
+  },
+  nuopen() { const N = NUN(); N.sheet = "pick"; N.q = ""; N.tab = "all"; N.web = null; N.f = {}; render(); setTimeout(() => { const x = $("nu-q"); if (x && !isMobile()) x.focus(); }, 0); },
+  nuclose() { nuClose(); },
+  nuback() { nuScanStop(); const N = NUN(); N.sheet = "pick"; N.f = {}; render(); },
+  nutab(a) { const N = NUN(); N.tab = a.dataset.v; render(); },
+  nupick(a) { const x = NUN().res[+a.dataset.i]; if (x) nuOpenGrams(x); },
+  nupickw(a) { const x = NUN().web && NUN().web[+a.dataset.i]; if (x) nuOpenGrams(x); },
+  nugstep(a) { const N = NUN(), g = Math.max(0, num(N.f.g) + +a.dataset.v); N.f.g = String(g); const x = $("nu-g"); if (x) x.value = g; const pv = $("nu-prev"); if (pv && N.sel) pv.innerHTML = nuPrevText(N.sel, g); },
+  nugp(a) { const N = NUN(); N.f.g = a.dataset.v; const x = $("nu-g"); if (x) x.value = a.dataset.v; const pv = $("nu-prev"); if (pv && N.sel) pv.innerHTML = nuPrevText(N.sel, num(a.dataset.v)); },
+  nuok() {
+    const N = NUN(), s = N.sel, g = num(N.f.g); if (!s || g <= 0) { toast("Укажи вес в граммах"); return; }
+    let food = s;
+    if (s.web && N.f.save !== false) {                       // из интернета — по желанию сохраняем в «Мои»
+      const have = Object.values(S.foods).find(f => (s.bc && f.barcode === s.bc) || nrm(f.name) === nrm(s.n));
+      if (!have) { const o = { id: uid(), name: s.n, kcal: s.k, p: s.p, f: s.f, c: s.c, portions: [], barcode: s.bc || null, created_at: nowISO() }; S.foods[o.id] = o; mark("foods", o.id, "u"); food = Object.assign({}, s, { id: o.id }); }
+    }
+    const o = nuAddEntry(food, g, N.f.t || nowHM(), N.day); toast("+" + r0(o.kcal) + " ккал"); nuClose();
+  },
+  nucustom() { const N = NUN(); N.sheet = "custom"; N.f = { cn: N.q.trim() }; render(); setTimeout(() => { const x = $("nu-cn"); if (x) x.focus(); }, 0); },
+  nucsave() {
+    const N = NUN(), F = N.f, name = (F.cn || "").trim(); if (!name) { toast("Укажи название"); return; }
+    let k = num(F.ck); const p = num(F.cp), f = num(F.cf), c = num(F.cc); if (!k) k = r0(4 * p + 4 * c + 9 * f); if (!k && !p && !f && !c) { toast("Укажи калории или БЖУ на 100 г"); return; }
+    const pg = num(F.cu), o = { id: uid(), name, kcal: k, p, f, c, portions: pg > 0 ? [["порция", pg]] : [], barcode: F.bc || null, created_at: nowISO() };
+    S.foods[o.id] = o; mark("foods", o.id, "u"); nuOpenGrams(nuMine().find(x => x.id === o.id));
+  },
+  nuquick() { const N = NUN(); N.sheet = "quick"; N.f = { t: nowHM() }; render(); setTimeout(() => { const x = $("nu-qn"); if (x) x.focus(); }, 0); },
+  nuqsave() {
+    const N = NUN(), F = N.f, name = (F.qn || "").trim() || "Без названия"; let k = num(F.qk); const p = num(F.qp), f = num(F.qf), c = num(F.qc); if (!k) k = r0(4 * p + 4 * c + 9 * f); if (!k) { toast("Укажи калории"); return; }
+    const o = { id: uid(), day: N.day, t: F.t || nowHM(), name, grams: 0, kcal: r1(k), p: r1(p), f: r1(f), c: r1(c), food_id: null, created_at: nowISO() }; S.food_log[o.id] = o; mark("food_log", o.id, "u"); toast("+" + r0(k) + " ккал"); nuClose();
+  },
+  nuweb() { nuWeb(); },
+  nuscan() { nuScan(); },
+  nubc() { nuBarcode(NUN().f.bc); },
+  nuedit(a) { const x = S.food_log[a.dataset.id]; if (!x) return; const N = NUN(); N.sheet = "edit"; N.eid = x.id; N.f = { g: x.grams > 0 ? String(x.grams) : "", t: x.t, d: x.day }; render(); },
+  nuesave() {
+    const N = NUN(), x = S.food_log[N.eid]; if (!x) { nuClose(); return; }
+    const patch = { t: N.f.t || x.t, day: N.f.d || x.day };
+    if (x.grams > 0) { const g = num(N.f.g); if (g <= 0) { toast("Укажи вес"); return; } const k = g / x.grams; Object.assign(patch, { grams: g, kcal: r1(x.kcal * k), p: r1(x.p * k), f: r1(x.f * k), c: r1(x.c * k) }); }
+    Object.assign(x, patch); mark("food_log", x.id, "u"); toast("Сохранено"); nuClose();
+  },
+  nudel() { const N = NUN(), x = S.food_log[N.eid]; if (!x) return; delete S.food_log[x.id]; mark("food_log", x.id, "d"); toast("Удалено"); nuClose(); },
+  nuwater(a) { nuAddWater(+a.dataset.v); },
+  nuwx() { const N = NUN(); N.sheet = "water"; N.f = {}; render(); setTimeout(() => { const x = $("nu-wx"); if (x) x.focus(); }, 0); },
+  nuwxok() { const v = num(NUN().f.wx); if (v <= 0) { toast("Укажи миллилитры"); return; } nuAddWater(v); nuClose(); },
+  nuwundo() { const N = NUN(), w = nuWater(N.day).sort((a, b) => (a.created_at).localeCompare(b.created_at)).pop(); if (!w) return; delete S.food_log[w.id]; mark("food_log", w.id, "d"); render(); },
+  nuweight() { const N = NUN(), w = nuWeightAt(N.day); N.sheet = "weight"; N.f = { wd: N.day, wk: w ? String(w.kg) : "" }; render(); },
+  nuwsave() {
+    const N = NUN(), kg = num(N.f.wk), d = N.f.wd; if (!(kg > 20 && kg < 400) || !d) { toast("Проверь дату и вес"); return; }
+    const id = huid(S.user.id + ":w:" + d); S.weight_log[id] = { id, day: d, kg: r1(kg), created_at: (S.weight_log[id] || {}).created_at || nowISO() }; mark("weight_log", id, "u"); toast("Вес записан"); nuClose();
+  },
+  nugoals() {
+    const N = NUN(), P0 = nuProf(); N.sheet = "goals";
+    N.f = { gs: P0.sex, ga: String(P0.age), gh: String(P0.h), gact: String(P0.act), gm: P0.mode, gman: !!P0.manual, gwt: (nuWeightAt(todayISO()) ? String(nuWeightAt(todayISO()).kg) : ""), gk: String(P0.kcal), gp: String(P0.p), gf: String(P0.f), gc: String(P0.c), gw: String(P0.water) }; render();
+  },
+  nugsave() {
+    const N = NUN(), F = N.f, id = nuSetKey(), data = { sex: F.gs || "m", age: num(F.ga) || 30, h: num(F.gh) || 175, act: num(F.gact) || 1.4, mode: F.gm || "cut", manual: !!F.gman, kcal: num(F.gk), p: num(F.gp), f: num(F.gf), c: num(F.gc), water: num(F.gw) || 2000 };
+    S.user_settings[id] = { id, key: "nut", data, created_at: (S.user_settings[id] || {}).created_at || nowISO() }; mark("user_settings", id, "u");
+    const kg = num(F.gwt), cur = nuWeightAt(todayISO()); if (kg > 20 && kg < 400 && (!cur || +cur.kg !== kg)) { const wid = huid(S.user.id + ":w:" + todayISO()); S.weight_log[wid] = { id: wid, day: todayISO(), kg: r1(kg), created_at: (S.weight_log[wid] || {}).created_at || nowISO() }; mark("weight_log", wid, "u"); }
+    toast("Цели сохранены"); nuClose();
+  }
+});
+function nuAddWater(ml) { const N = NUN(), o = { id: uid(), day: N.day, t: nowHM(), name: "__water", grams: ml, kcal: 0, p: 0, f: 0, c: 0, food_id: null, created_at: nowISO() }; S.food_log[o.id] = o; mark("food_log", o.id, "u"); render(); }
+
 const changes = {
   "d-title"(v) { if (v.trim()) upd(selId, { title: v.trim() }); renderSoon(); },
   "d-cat"(v) { upd(selId, { category: v.trim().replace(/^#/, "") || null }); renderSoon(); },
@@ -3207,6 +3596,7 @@ function init() {
   let qt;
   app.addEventListener("input", e => {
     if (e.target.id && e.target.id.indexOf("jr-") === 0) { jrInput(e.target); return; }
+    if (e.target.id && e.target.id.indexOf("nu-") === 0) { nuInput(e.target); return; }
     if (e.target.id === "ds-q") { dayInput("ds-q", e.target.value); return; }
     if (e.target.id === "qa-input") { ui.qaText = e.target.value; const sb = document.querySelector(".qsend"); if (sb) sb.classList.toggle("on", !!e.target.value.trim()); return; }   // черновик текста не теряется при выборе даты/времени
     if (e.target.id !== "q") return;
@@ -3221,9 +3611,12 @@ function init() {
       if (id === "d-title") { e.preventDefault(); e.target.blur(); }
       if (id && /^jr-(tx|st|en|date|d1|d2)$/.test(id)) { e.preventDefault(); acts.jradd(); return; }
       if (id && id.indexOf("jr-e-") === 0) { e.preventDefault(); acts.jrsave(); return; }
+      if (id === "nu-g") { e.preventDefault(); (ui.nu && ui.nu.sheet === "edit" ? acts.nuesave : acts.nuok)(); return; }
+      if (id === "nu-wx") { e.preventDefault(); acts.nuwxok(); return; }
+      if (id === "nu-bc") { e.preventDefault(); acts.nubc(); return; }
     }
     if (e.key === "Escape") {
-      if (ui.pop) { closePop(); render(); } else if (ui.qa) { ui.qa = null; render(); } else if (ui.settings) { ui.settings = false; render(); }
+      if (ui.nu && ui.nu.sheet) { nuClose(); } else if (ui.pop) { closePop(); render(); } else if (ui.qa) { ui.qa = null; render(); } else if (ui.settings) { ui.settings = false; render(); }
       else if (ui.q) { acts.qclear(); } else if (selId) { selId = null; render(); }
     }
   });
