@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "05.10 07:39";
+const BUILD = "05.10 08:03";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1725,7 +1725,19 @@ const mCSS = `
 @media (max-width:760px){.mbar{display:none}}
 `;
 
-const uxCSS = uxCSS0 + mCSS + hkCSS;
+/* вид строки задачи на компьютере — по меркам Microsoft To Do: кружок 16px, текст начинается на 62px правее края карточки, шрифт ~14px (при масштабе «Крупный»); подзадачи выровнены под текст родителя */
+const tdCSS = `
+@media(min-width:761px){
+.cards .taskrow:not(.sub){align-items:center;gap:22px;padding:var(--pad) 14px var(--pad) 24px}
+.cards .taskrow:not(.sub) .rad{width:16px;height:16px;border-width:1.5px;margin-top:0}
+.cards .taskrow:not(.sub) .rad svg{width:10px;height:10px}
+.cards .taskrow:not(.sub) .ttl{font-size:calc(12.2px*var(--z,1));line-height:1.4}
+.cards .taskrow:not(.sub) .meta{font-size:calc(10.4px*var(--z,1));margin-top:2px}
+.cards .taskrow:not(.sub) .meta svg{width:12px;height:12px}
+.kids{padding-left:54px}
+}
+`;
+const uxCSS = uxCSS0 + mCSS + hkCSS + tdCSS;
 
 // ---- p9: резервные копии: Excel/JSON, автокопии в базу (с настройкой частоты), восстановление ----
 const BKF = [[0, "Выключены"], [6, "Каждые 6 часов"], [24, "Раз в день"], [72, "Раз в 3 дня"], [168, "Раз в неделю"], [336, "Раз в 2 недели"]];
