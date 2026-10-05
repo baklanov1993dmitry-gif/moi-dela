@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "04.10 23:34";
+const BUILD = "05.10 07:39";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -462,6 +462,7 @@ function toggleDone(id) {
     toast("Следующий раз: " + dateLong(parseISO(nd)));
   }
   upd(id, { done: d, done_at: d ? nowISO() : null });
+  if (d) snd("done");
   if (d) { const op = kidsOf(id).filter(k => !k.done); op.forEach(k => upd(k.id, { done: true, done_at: nowISO() })); if (op.length) toast("Закрыто и подзадач: " + op.length); }
 }
 function matches(t) {
@@ -492,7 +493,7 @@ function createFromText(raw, draft) {
   if (f.repeat_rule && !f.due) f.due = today;
   if (view.indexOf("list:") === 0 && !f.list_id) f.list_id = view.slice(5);
   if (!f.list_id && ls.length) f.list_id = ls[0].id;
-  const t = addTask(f); if (f.remind_at) askNotify(); return t;
+  const t = addTask(f); if (f.remind_at) askNotify(); snd("add"); return t;
 }
 function addFromInput(inp) {
   const raw = inp.value.trim(); if (!raw) return;
@@ -581,6 +582,7 @@ function deleteDoneIn(id) {
 }
 function deleteTask(id) {
   const t = S.tasks[id]; if (!t) return;
+  snd("del");
   if (t.files && t.files.length && sb) { try { sb.storage.from("attachments").remove(t.files.map(f => f.path)); } catch (e) {} }
   kidsOf(id).forEach(k => deleteTask(k.id));
   delete S.tasks[id]; mark("tasks", id, "d");
@@ -626,7 +628,7 @@ function toast(text, opt) {
 }
 function askNotify() { try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); } catch (e) {} }
 function fireReminder(t) {
-  ui.alerts.unshift({ id: t.id, title: t.title, at: t.remind_at });
+  ui.alerts.unshift({ id: t.id, title: t.title, at: t.remind_at }); snd("remind");
   toast("🔔 " + t.title, { ms: 20000, buttons: [["Открыть", () => { selId = t.id; render(); }], ["Выполнено", () => { toggleDone(t.id); render(); }]] });
   try { if (!pushOn() && "Notification" in window && Notification.permission === "granted") new Notification("Напоминание", { body: t.title }); } catch (e) {}
   const b = $("bellbadge"); if (b) { b.textContent = ui.alerts.length; b.style.display = "flex"; }
@@ -1493,7 +1495,181 @@ function multiPopHTML(type, mi) {
     '<div class="mrow" style="flex-wrap:wrap">' + q(-1, "d", "−1 д") + q(1, "d", "+1 д") + q(2, "d", "+2 д") + q(3, "d", "+3 д") + q(1, "w", "+1 нед") + q(2, "w", "+2 нед") + q(30, "d", "+30 д") + "</div>" +
     '<div class="ptitle">Или точная дата</div><div class="mrow"><input id="m-date" type="date" value="' + today + '"><button type="button" class="dq on" data-a="mact" data-k="date">OK</button></div><div class="ptext" style="color:var(--sub);font-size:12px">Число может быть отрицательным: −2 вернёт срок на два дня назад. Время напоминаний сохраняется.</div>';
 }
+/* ===== p11: горячие клавиши и звуки (настройки хранятся на этом устройстве, в PR) ===== */
+// [действие, подпись, клавиша по умолчанию, подсказка]. Клавиши записаны по физическому коду (KeyJ = клавиша J / «О» в русской раскладке): работают в любой раскладке.
+const HK = [
+  ["nav_next", "Следующая задача", "KeyJ", "стрелка ↓ работает всегда"],
+  ["nav_prev", "Предыдущая задача", "KeyK", "стрелка ↑ работает всегда"],
+  ["done", "Выполнить / вернуть в работу", "KeyD"],
+  ["open_note", "Войти в заметку задачи", "Enter", "Esc — выйти из заметки"],
+  ["edit_title", "Переименовать задачу", "F2"],
+  ["due_pick", "Срок: открыть календарь", "KeyT"],
+  ["remind", "Напоминание: открыть", "KeyR"],
+  ["star", "Важно: поставить / снять", "KeyS"],
+  ["myday", "«Мой день»: добавить / убрать", "KeyM"],
+  ["tolist", "Переместить в список…", "KeyL"],
+  ["subtask", "Добавить подзадачу", "Shift+KeyN"],
+  ["del", "Удалить задачу", "Delete", "Ctrl+Z вернёт"],
+  ["new_task", "Новая задача (поле ввода)", "KeyN"],
+  ["search", "Поиск", "Slash"],
+  ["go_myday", "Перейти: Мой день", "Alt+Digit1"],
+  ["go_planned", "Перейти: Запланировано", "Alt+Digit2"],
+  ["go_all", "Перейти: Все задачи", "Alt+Digit3"],
+  ["go_week", "Перейти: Итоги недели", "Alt+Digit4"],
+  ["help", "Открыть эту вкладку (шпаргалку)", "Shift+Slash"]
+];
+const HK_GROUPS = [["Работа с задачей", 0, 12], ["Общее", 12, HK.length]];
+const hkMap = () => { const m = {}; HK.forEach(a => { m[a[0]] = PR.keys && a[0] in PR.keys ? PR.keys[a[0]] : a[2]; }); return m; };
+const hkCombo = e => (e.altKey ? "Alt+" : "") + (e.shiftKey ? "Shift+" : "") + e.code;
+const hkName = c => c.split("+").map(p => ({ Enter: "Enter", Delete: "Del", Slash: "/", Space: "Пробел", ArrowUp: "↑", ArrowDown: "↓", Backslash: "\\", Comma: ",", Period: ".", Minus: "-", Equal: "=", Backquote: "`", BracketLeft: "[", BracketRight: "]", Semicolon: ";", Quote: "'" }[p] || p.replace(/^Key/, "").replace(/^Digit/, "").replace(/^Numpad/, "Num "))).join(" + ");
+const hkReserved = c => /^(Digit[0-7]|Numpad[0-7]|Escape|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Tab|Space|Backspace)$/.test(c) ? "занято приложением или браузером" : "";
+const hkReveal = id => { const r = id && document.querySelector('#main .taskrow[data-id="' + id + '"]'); if (r && r.scrollIntoView) r.scrollIntoView({ block: "nearest" }); };
+function hkRun(a) {
+  const ids = visIds(), id = selId && S.tasks[selId] ? selId : null, t = id && S.tasks[id];
+  const need = () => { toast("Сначала выберите задачу: стрелки ↑ ↓"); return true; };
+  const MK = { done: "done", star: "star", myday: "myday", del: "del" };
+  if (MK[a] && mIds().length) { mApply(MK[a], { dataset: {} }); return true; }          // выбрано несколько — действуем на всех
+  const popAt = type => { const row = document.querySelector('#main .taskrow[data-id="' + id + '"]'), r = row ? row.getBoundingClientRect() : { left: 320, bottom: 160 }; ui.pop = { type, id, g: null, x: Math.min(r.left + 60, innerWidth - 270), y: r.bottom + 4 }; render(); return true; };
+  switch (a) {
+    case "nav_next": case "nav_prev": {
+      if (!ids.length) return true;
+      let i = ids.indexOf(selId); i = i < 0 ? (a === "nav_next" ? 0 : ids.length - 1) : Math.max(0, Math.min(ids.length - 1, i + (a === "nav_next" ? 1 : -1)));
+      mClear(); selId = ids[i]; render(); hkReveal(selId); return true;
+    }
+    case "done": {
+      if (!t) return need();
+      const k = ids.indexOf(id), nxt = ids[k + 1] || ids[k - 1] || null, was = t.done;
+      toggleDone(id); render();
+      if (!was && !document.querySelector('#main .taskrow[data-id="' + id + '"]')) { selId = nxt && S.tasks[nxt] ? nxt : null; render(); hkReveal(selId); }   // задача ушла в «выполненные» — переходим к соседней
+      return true;
+    }
+    case "open_note": case "edit_title": {
+      if (!t) return need();
+      const el = $(a === "open_note" ? "d-note" : "d-title"); if (!el) return false;
+      el.focus(); if (a === "open_note") { try { el.setSelectionRange(el.value.length, el.value.length); } catch (x) {} } else el.select();
+      return true;
+    }
+    case "due_pick": if (!t) return need(); return popAt("due");
+    case "remind": if (!t) return need(); return popAt("remind");
+    case "tolist": if (!t) return need(); return popAt("tolist");
+    case "star": if (!t) return need(); upd(id, { starred: !t.starred }); render(); return true;
+    case "myday": if (!t) return need(); if (!PR.myday) { toast("Раздел «Мой день» выключен: Настройки → Дела"); return true; } setMyDay(id, !inMyDay(t)); toast(inMyDay(t) ? "☀️ Добавлено в «Мой день»" : "Убрано из «Мой день»"); render(); return true;
+    case "subtask": if (!t) return need(); if (t.parent_id) { toast("Подзадачи вкладываются только на один уровень"); return true; } PR.subClosed[id] = false; PR.subOpen[id] = true; ui.subAdd = id; savePrefs(); render(); setTimeout(() => { const i = $("sub-" + id); if (i) i.focus(); }, 60); return true;
+    case "del": {
+      if (!t) return need();
+      if (!confirm("Удалить задачу «" + t.title.slice(0, 60) + "»?")) return true;
+      const k = ids.indexOf(id), nxt = ids[k + 1] || ids[k - 1] || null;
+      mSnap([id].concat(kidsOf(id).map(x => x.id))); deleteTask(id); toast("Удалено (Ctrl+Z — вернуть)");
+      selId = nxt && S.tasks[nxt] && nxt !== id ? nxt : null; render(); hkReveal(selId); return true;
+    }
+    case "new_task": { const i = $("newtask"); if (i) { i.focus(); return true; } if (acts.qaopen) { acts.qaopen(); return true; } return false; }
+    case "search": { const q = $("q"); if (!q) return false; q.focus(); q.select(); return true; }
+    case "go_myday": if (!PR.myday) { toast("Раздел «Мой день» выключен: Настройки → Дела"); return true; } goView("myday"); render(); return true;
+    case "go_planned": goView("planned"); render(); return true;
+    case "go_all": goView("all"); render(); return true;
+    case "go_week": goView("week"); render(); return true;
+    case "help": ui.settings = true; ui.stab = "keys"; ui.msg = ""; closePop(); render(); return true;
+  }
+  return false;
+}
+function hkKey(e) {
+  if (isMobile() || e.isComposing) return;
+  if (ui.keyRec && !ui.settings) ui.keyRec = null;
+  if (ui.keyRec) {                                              // режим «нажмите новую клавишу»
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (/^(Shift|Control|Alt|Meta)(Left|Right)$/.test(e.code)) return;
+    const act = ui.keyRec;
+    if (e.code === "Escape") { ui.keyRec = null; render(); return; }
+    if (e.code === "Backspace" && !e.shiftKey && !e.altKey) { PR.keys = PR.keys || {}; PR.keys[act] = ""; savePrefs(); ui.keyRec = null; render(); showMsg("Клавиша снята — действие доступно только мышью", true); return; }
+    if (e.ctrlKey || e.metaKey) { showMsg("Ctrl/Cmd не подходят: их занимает браузер. Возьмите Alt, Shift или клавишу без модификаторов.", false); return; }
+    const c = hkCombo(e);
+    if (hkReserved(e.code) && !e.altKey && !e.shiftKey) { showMsg(hkName(c) + ": " + hkReserved(e.code) + ". Выберите другую.", false); return; }
+    const M = hkMap(), dup = HK.find(a => a[0] !== act && M[a[0]] === c);
+    if (dup) { showMsg(hkName(c) + " уже занято действием «" + dup[1] + "». Сначала освободите её (Backspace в режиме записи).", false); return; }
+    PR.keys = PR.keys || {}; PR.keys[act] = c; savePrefs(); ui.keyRec = null; render(); showMsg("Готово: " + hkName(c), true); return;
+  }
+  if (PR.keysOff) return;
+  const tg = e.target, tag = tg && tg.tagName, typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (tg && tg.isContentEditable);
+  if (typing) {
+    if (e.code === "Escape" && tg && (tg.id === "d-note" || tg.id === "d-title")) { e.preventDefault(); e.stopImmediatePropagation(); tg.blur(); }   // Esc в заметке: просто выйти из ввода, карточка остаётся
+    return;
+  }
+  if (ui.settings || ui.qa || ui.pop || e.ctrlKey || e.metaKey) return;
+  if ((tag === "BUTTON" || tag === "A") && (e.code === "Enter" || e.code === "Space")) return;     // не перехватываем нажатие на сфокусированной кнопке
+  let act = null;
+  if (!e.altKey && !e.shiftKey && e.code === "ArrowDown") act = "nav_next"; else if (!e.altKey && !e.shiftKey && e.code === "ArrowUp") act = "nav_prev";
+  else { const M = hkMap(), c = hkCombo(e); for (const k in M) if (M[k] && M[k] === c) { act = k; break; } }
+  if (!act) return;
+  if (hkRun(act)) { e.preventDefault(); e.stopImmediatePropagation(); }
+}
+function hkHTML() {
+  const M = hkMap(), on = !PR.keysOff;
+  const row = a => '<div class="hkrow"><span class="hkl">' + a[1] + (a[3] ? "<small>" + a[3] + "</small>" : "") + '</span><button class="hkb' + (ui.keyRec === a[0] ? " rec" : "") + '" data-a="hkrec" data-k="' + a[0] + '">' + (ui.keyRec === a[0] ? "нажмите клавишу…" : M[a[0]] ? esc(hkName(M[a[0]])) : "—") + '</button><button class="hkr" data-a="hkreset" data-k="' + a[0] + '" title="По умолчанию">↺</button></div>';
+  const fix = (k, t) => '<div class="hkrow"><span class="hkl">' + t + '</span><span class="hkfix">' + k + "</span></div>";
+  return '<label class="swrow" style="margin-top:10px"><input type="checkbox" class="sw" id="s-keyson"' + (on ? " checked" : "") + "> Горячие клавиши включены</label>" +
+    '<div style="margin:6px 0 2px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Работают в браузере на компьютере, пока вы не печатаете в поле. Выберите задачу стрелками — справа откроется карточка. Чтобы сменить клавишу, нажмите на неё и нажмите новую; Backspace — снять, ↺ — вернуть стандартную. Буквы привязаны к физической клавише, поэтому работают и в русской раскладке.</div>' +
+    HK_GROUPS.map(g => '<div class="lbl">' + g[0] + "</div>" + HK.slice(g[1], g[2]).map(row).join("")).join("") +
+    '<div class="lbl">Всегда (не меняются)</div>' + fix("↑ ↓", "Двигаться по задачам") + fix("1 – 7", "Срок: сегодня, завтра … 7 — понедельник") + fix("0", "Убрать срок") + fix("Esc", "Закрыть окно / снять выделение / выйти из заметки") +
+    fix("Ctrl + A", "Выделить все задачи в списке") + fix("Ctrl + Z", "Отменить последнее действие со сроком, удалением") + fix("Ctrl/Shift + клик", "Выбрать несколько задач") +
+    '<div style="margin-top:10px"><button class="btn ghost" data-a="hkresetall">↺ Сбросить все клавиши</button></div>';
+}
+Object.assign(uxActs, {
+  hkrec(a) { ui.keyRec = ui.keyRec === a.dataset.k ? null : a.dataset.k; render(); },
+  hkreset(a) { if (PR.keys) delete PR.keys[a.dataset.k]; savePrefs(); ui.keyRec = null; render(); },
+  hkresetall() { PR.keys = {}; savePrefs(); ui.keyRec = null; render(); showMsg("Все клавиши сброшены к стандартным", true); }
+});
+
+/* ----- звуки: синтез в браузере (Web Audio), файлов нет ----- */
+const SND_EV = [["done", "Задача выполнена"], ["add", "Задача добавлена"], ["del", "Задача удалена"], ["remind", "Сработало напоминание"]];
+const SND_EV_DEF = { done: true, add: false, del: false, remind: true };
+const SND_PACKS = {   // каждая нота: [частота Гц, сдвиг с, длительность с, тип волны, громкость, (частота в конце — «скольжение»)]
+  soft: { n: "Мягкий", done: [[784, 0, .16, "sine", .5], [1175, .09, .3, "sine", .5]], add: [[880, 0, .14, "sine", .4]], del: [[330, 0, .24, "sine", .45, 170]], remind: [[880, 0, .2, "sine", .5], [880, .26, .2, "sine", .5], [1175, .52, .38, "sine", .5]] },
+  bell: { n: "Колокольчик", done: [[1047, 0, .5, "triangle", .4], [2093, 0, .3, "sine", .12], [1568, .12, .65, "triangle", .35]], add: [[1319, 0, .35, "triangle", .35]], del: [[392, 0, .32, "triangle", .4, 196]], remind: [[1047, 0, .6, "triangle", .4], [1047, .45, .6, "triangle", .4], [1047, .9, .85, "triangle", .4]] },
+  click: { n: "Щелчки", done: [[1500, 0, .04, "square", .1], [2200, .05, .07, "square", .1]], add: [[1200, 0, .04, "square", .09]], del: [[300, 0, .08, "square", .1, 120]], remind: [[1800, 0, .05, "square", .1], [1800, .13, .05, "square", .1], [1800, .26, .05, "square", .1]] }
+};
+const sndCfg = () => { const c = PR.snd || {}; return { on: !!c.on, vol: c.vol == null ? 60 : c.vol, pack: SND_PACKS[c.pack] ? c.pack : "soft", ev: Object.assign({}, SND_EV_DEF, c.ev || {}) }; };
+const sndSet = p => { PR.snd = Object.assign(sndCfg(), p); savePrefs(); };
+let sndAC = null; const sndLast = {};
+function snd(ev, force) {
+  try {
+    const c = sndCfg(); if (!force && (!c.on || !c.ev[ev])) return;
+    const now = Date.now(); if (!force && sndLast[ev] && now - sndLast[ev] < 250) return; sndLast[ev] = now;   // пакетное удаление/выполнение — один звук
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    if (!sndAC) sndAC = new AC(); if (sndAC.state === "suspended") sndAC.resume();
+    const notes = SND_PACKS[c.pack][ev]; if (!notes || !c.vol) return;
+    const out = sndAC.createGain(); out.gain.value = c.vol / 100 * .7; out.connect(sndAC.destination);
+    const t0 = sndAC.currentTime + .01;
+    notes.forEach(n => {
+      const o = sndAC.createOscillator(), v = sndAC.createGain(), s = t0 + n[1], e = s + n[2];
+      o.type = n[3]; o.frequency.setValueAtTime(n[0], s); if (n[5]) o.frequency.exponentialRampToValueAtTime(n[5], e);
+      v.gain.setValueAtTime(.0001, s); v.gain.exponentialRampToValueAtTime(n[4], s + .01); v.gain.exponentialRampToValueAtTime(.0001, e);
+      o.connect(v); v.connect(out); o.start(s); o.stop(e + .03);
+    });
+  } catch (x) {}
+}
+function sndHTML() {
+  const c = sndCfg(), sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+  return '<label class="swrow" style="margin-top:10px"><input type="checkbox" class="sw" id="s-sndon"' + (c.on ? " checked" : "") + "> Звуки включены</label>" +
+    '<div class="lbl">Громкость: ' + c.vol + "%</div>" + '<input type="range" id="s-vol" min="0" max="100" step="5" value="' + c.vol + '" style="width:100%">' +
+    '<div class="lbl">Набор звуков</div>' + sel("s-pack", c.pack, Object.keys(SND_PACKS).map(k => [k, SND_PACKS[k].n])) +
+    '<div class="lbl">Когда играть</div>' + SND_EV.map(e => '<div class="hkrow"><label class="swrow" style="flex:1;margin:0"><input type="checkbox" class="sw" id="s-snd-' + e[0] + '"' + (c.ev[e[0]] ? " checked" : "") + "> " + e[1] + '</label><button class="hkr" data-a="sndplay" data-k="' + e[0] + '" title="Послушать" style="font-size:calc(14px*var(--z,1))">▶ послушать</button></div>').join("") +
+    '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Настройка хранится на этом устройстве: на телефоне и на компьютере звуки включаются отдельно. Звук напоминания играет, пока приложение открыто; звук пуш-уведомлений в фоне задаёт сама система (Android / Windows).</div>';
+}
+Object.assign(uxActs, { sndplay(a) { snd(a.dataset.k, true); } });
+const hkCSS = `
+.hkrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--ln)}
+.hkl{flex:1;font-size:calc(14px*var(--z,1));line-height:1.3} .hkl small{display:block;color:var(--sub);font-size:calc(12px*var(--z,1))}
+.hkb{min-width:104px;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:6px;padding:5px 10px;font-size:calc(13px*var(--z,1));font-family:ui-monospace,Consolas,monospace;cursor:pointer}
+.hkb:hover{background:var(--hov)} .hkb.rec{border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
+.hkr{border:0;background:transparent;color:var(--sub);cursor:pointer;font-size:calc(16px*var(--z,1));padding:4px 6px;border-radius:6px} .hkr:hover{background:var(--hov);color:var(--tx)}
+.hkfix{font-family:ui-monospace,Consolas,monospace;font-size:calc(13px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:6px;padding:3px 9px;white-space:nowrap}
+input[type=checkbox].sw{-webkit-appearance:none;appearance:none;width:46px;height:26px;border-radius:13px;background:var(--ln);position:relative;flex-shrink:0;cursor:pointer;transition:background .15s;border:0;margin:0}
+input[type=checkbox].sw::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}
+input[type=range]#s-vol{accent-color:var(--acc)}
+input[type=checkbox].sw:checked{background:var(--acc)} input[type=checkbox].sw:checked::after{left:23px}
+`;
 function desktopInit(app) {
+  document.addEventListener("keydown", hkKey, true);
   app.addEventListener("mousedown", e => { if (e.shiftKey && !isMobile() && e.target.closest && e.target.closest(".taskrow")) e.preventDefault(); }, true);
   app.addEventListener("click", e => {
     if (isMobile()) return;
@@ -1528,10 +1704,10 @@ function desktopInit(app) {
     if (c && (k === "a" || k === "ф")) { const v = visIds(); if (v.length) { e.preventDefault(); v.forEach(id => { ui.multi[id] = 1; }); selId = null; render(); } }
     else if (c && (k === "z" || k === "я")) { e.preventDefault(); mUndo(); }
     else if (e.key === "Escape" && mIds().length && !ui.pop) { e.stopPropagation(); mClear(); render(); }
-    else if (!c && !e.altKey && !ui.pop && /^[1-7]$/.test(e.key) && (mIds().length || (selId && S.tasks[selId]))) {
-      e.preventDefault(); const n = +e.key, ids = mIds().length ? mIds() : [selId], nd = n === 7 ? nextMonday() : addDays(today, n - 1);
+    else if (!c && !e.altKey && !ui.pop && /^[0-7]$/.test(e.key) && (mIds().length || (selId && S.tasks[selId]))) {
+      e.preventDefault(); const n = +e.key, ids = mIds().length ? mIds() : [selId], nd = n === 0 ? null : n === 7 ? nextMonday() : addDays(today, n - 1);
       mSnap(ids); ids.forEach(id => setDueKeepRemind(S.tasks[id], nd));
-      toast("Срок: " + dateLong(parseISO(nd)) + (ids.length > 1 ? " · задач: " + ids.length : "") + " (Ctrl+Z — отмена)"); render();
+      toast((nd ? "Срок: " + dateLong(parseISO(nd)) : "Срок убран") + (ids.length > 1 ? " · задач: " + ids.length : "") + " (Ctrl+Z — отмена)"); render();
     }
     else if (e.key === "Delete" && mIds().length && !ui.pop) { e.preventDefault(); mApply("del", { dataset: {} }); }
   }, true);
@@ -1549,7 +1725,7 @@ const mCSS = `
 @media (max-width:760px){.mbar{display:none}}
 `;
 
-const uxCSS = uxCSS0 + mCSS;
+const uxCSS = uxCSS0 + mCSS + hkCSS;
 
 // ---- p9: резервные копии: Excel/JSON, автокопии в базу (с настройкой частоты), восстановление ----
 const BKF = [[0, "Выключены"], [6, "Каждые 6 часов"], [24, "Раз в день"], [72, "Раз в 3 дня"], [168, "Раз в неделю"], [336, "Раз в 2 недели"]];
@@ -2386,7 +2562,7 @@ function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
   const sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
   const sec = (t, inner) => '<div class="lbl">' + t + "</div>" + inner;
-  const TABS = [["view", "🎨 Вид"], ["work", "🗓️ Дела"], ["notif", "🔔 Уведомления"], ["bk", "💾 Копии"], ["acc", "👤 Аккаунт"]];
+  const TABS = [["view", "🎨 Вид"], ["work", "🗓️ Дела"], ["notif", "🔔 Уведомления"], ["snd", "🔊 Звуки"]].concat(isMobile() ? [] : [["keys", "⌨️ Клавиши"]]).concat([["bk", "💾 Копии"], ["acc", "👤 Аккаунт"]]);
   let b = "";
   if (tab === "view") b =
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
@@ -2403,6 +2579,8 @@ function settingsHTML() {
   else if (tab === "notif") b =
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button></div>' +
     '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Звук и вибрация этого приложения настраиваются в Android: долгое нажатие на уведомление → «Настройки».</div>';
+  else if (tab === "snd") b = sndHTML();
+  else if (tab === "keys" && !isMobile()) b = hkHTML();
   else if (tab === "bk") b = bkHTML();
   else b =
     '<div class="sacc"><span class="av">' + esc((S.user ? S.user.email : "?").slice(0, 2).toUpperCase()) + '</span><span><b>' + esc((S.user ? S.user.email : "").split("@")[0]) + "</b><br>" + esc(S.user ? S.user.email : "") + "</span></div>" +
@@ -2752,6 +2930,11 @@ function init() {
     if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView("planned"); render(); return; }
     if (id === "s-bgfile") { const f = e.target.files && e.target.files[0]; if (f) bgFromFile(f); return; }
     if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); render(); return; }
+    if (id === "s-keyson") { PR.keysOff = !e.target.checked; savePrefs(); render(); return; }
+    if (id === "s-sndon") { sndSet({ on: e.target.checked }); if (e.target.checked) snd("done", true); render(); return; }
+    if (id === "s-vol") { sndSet({ vol: +e.target.value }); snd("done", true); render(); return; }
+    if (id === "s-pack") { sndSet({ pack: e.target.value }); snd("done", true); return; }
+    if (id && id.indexOf("s-snd-") === 0) { const k = id.slice(6), c = sndCfg(); c.ev[k] = e.target.checked; sndSet({ ev: c.ev }); if (e.target.checked) snd(k, true); return; }
     if (changes[id] && S.user) changes[id](e.target.value, e.target);
   });
   let qt;
