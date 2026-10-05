@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "05.10 23:14";
+const BUILD = "05.10 23:28";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2980,7 +2980,7 @@ const JX_SQL = "alter table public.time_log\n  add column if not exists cat  tex
 let JX = (() => { try { return localStorage.getItem("mytasks_jx") === "1"; } catch (e) { return false; } })();
 if (JX) COLS.time_log = GC.concat(JX_COLS);
 function jxSet(ok) { if (ok === JX) return; JX = ok; COLS.time_log = ok ? GC.concat(JX_COLS) : GC; try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
-const jrState = () => ui.jr || (ui.jr = { per: "2", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
+const jrState = () => ui.jr || (ui.jr = { per: "r", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
 const jrKind = l => l.kind === "p" ? "p" : "t";
 const jrDay = l => jrKind(l) === "p" ? l.d1 : (l.start_at ? dayOf(l.start_at) : null);
 const jrHM = (h, m) => { h = +h; m = +m; return h < 24 && m < 60 ? pad2(h) + ":" + pad2(m) : null; };
@@ -3012,8 +3012,10 @@ function jrPrevText() {
   const dm = jrDM(q.st, q.en); return dm ? q.st + "–" + q.en + " · " + fmtDurM(dm) : "Начало и конец совпадают";
 }
 function jrList() {
-  const J = jrState(), lim = J.per === "all" ? null : addDays(todayISO(), -((+J.per || 2) - 1));
-  return Object.values(S.time_log).filter(l => { const d = jrDay(l); return d && (!lim || d >= lim); });
+  const J = jrState(), all = Object.values(S.time_log).filter(l => jrDay(l));
+  if (J.per === "r") { const keep = new Set(Array.from(new Set(all.map(jrDay))).sort().reverse().slice(0, 7)); return all.filter(l => keep.has(jrDay(l))); }   // последние 7 дней, в которые есть записи
+  const lim = J.per === "all" ? null : addDays(todayISO(), -((+J.per || 7) - 1));
+  return all.filter(l => !lim || jrDay(l) >= lim);
 }
 function jrItem(l) {
   const J = jrState(); if (J.edit === l.id) return jrEditHTML(l);
@@ -3057,7 +3059,7 @@ function journalMainHTML(vi) {
   });
   if (days.length > shown.length) body += '<div style="text-align:center;padding:10px"><button class="btn ghost" data-a="jrmore">Показать ещё (' + (days.length - shown.length) + " дн.)</button></div>";
   if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет' + (all.length ? '<div style="margin-top:10px"><button class="btn ghost" data-a="jrper" data-v="all">Показать все записи</button></div>' : "") + "</div>";
-  const chips = [["2", "Вчера и сегодня"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
+  const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
     '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + setup + nudge + add + '<div class="jr-chips">' + chips + "</div>" + body + "</div></div>";
