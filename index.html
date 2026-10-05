@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "05.10 13:36";
+const BUILD = "05.10 22:32";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1771,6 +1771,11 @@ const tdCSS = `
 `;
 const addCSS = `
 @media(min-width:761px){
+#left .chip,#left .ghead{height:40px;font-size:calc(12.2px*var(--z,1))}
+#left .chip .n{font-size:calc(11.3px*var(--z,1))}
+#left .chip .em{font-size:calc(14px*var(--z,1))}
+.taskrow .subbtn{height:26px;min-width:0;padding:0 5px 0 10px;border-radius:13px;font-size:calc(10.4px*var(--z,1))}
+.taskrow .subbtn svg{width:14px;height:14px}
 .addbar.v2{flex-direction:column;align-items:stretch;gap:0;height:auto;padding:0}
 .addbar.v2 .arow{display:flex;align-items:center;gap:12px;height:48px;padding:0 14px}
 .addbar.v2 .arow input{height:100%}
