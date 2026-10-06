@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 12:22";
+const BUILD = "06.10 12:29";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1890,6 +1890,7 @@ const nuCSS = `
 .nu-hr{border:0;border-top:1px solid var(--ln);margin:12px 0}
 .nu-pink{color:#ee4f84;font-size:calc(12.2px*var(--z,1));margin:12px 0 56px}
 .nu-fab2{position:sticky;float:right;bottom:16px;width:56px;height:56px;border-radius:50%;border:0;background:#ee4f84;color:#fff;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center}
+@media(max-width:760px){.nu-sheet .nu-fr>span:first-child,.nu-l{font-size:calc(14px*var(--z,1))}.nu-sheet .inp,.nu-l .inp,.nu-sheet select.inp{font-size:19px;min-height:46px}.nu-mt{font-size:calc(12.5px*var(--z,1))}.nu-sheet .nu-per,.nu-sheet .jr-hint,.nu-pink,.nu-wh,.nu-sheet .nu-pv{font-size:calc(14px*var(--z,1))}.nu-st{font-size:calc(17px*var(--z,1))}.nu-sheet .nu-in{font-size:calc(16px*var(--z,1))}.nu-sheet .nu-im{font-size:calc(14px*var(--z,1))}.nu-sheet .jr-chip{font-size:calc(13px*var(--z,1));padding:10px 18px}.nu-sheet .tool,.nu-sheet .btn{font-size:calc(14px*var(--z,1))}.nu-ib{width:52px;height:46px}.nu-fr{grid-template-columns:96px 1fr;margin-bottom:12px}.nu-chk{font-size:calc(14px*var(--z,1))}}
 .nu-card .btn:not(.ghost){background:#ee4f84;border-color:#ee4f84}
 .nu-pv b{color:#2a9d85}
 .nu-water{background:#f1f9fb;border:1px solid #d3ecf1;border-radius:12px;padding:10px}
