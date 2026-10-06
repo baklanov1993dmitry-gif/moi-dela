@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 06:45";
+const BUILD = "06.10 08:08";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1797,29 +1797,29 @@ const addCSS = `
 }
 `;
 const jrCSS = `
-.jr-box{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--solid,transparent);font-size:calc(14px*var(--z,1))}
+.jr-box{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--solid,transparent);font-size:calc(12.2px*var(--z,1))}
 .jr-f{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.jr-f .inp{font-size:calc(14px*var(--z,1))}
+.jr-f .inp{font-size:calc(12.2px*var(--z,1))}
 .jr-f input[type=date],.jr-f input[type=time]{width:auto}
-.jr-prev{font-size:calc(12px*var(--z,1));color:var(--sub);padding:6px 2px 4px;min-height:1.3em}
-.jr-hint{font-size:calc(13px*var(--z,1));color:var(--sub);margin:4px 0 8px}
-.jr-sql{background:rgba(128,128,128,.12);padding:8px 10px;border-radius:8px;font-size:calc(12px*var(--z,1));white-space:pre-wrap;margin:0 0 8px;user-select:all}
-.jr-nudge{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--acc);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:calc(13.5px*var(--z,1))}
-.jr-day{display:flex;justify-content:space-between;gap:8px;padding:14px 6px 4px;font-weight:600;font-size:calc(13px*var(--z,1));border-bottom:1px solid var(--ln)}
+.jr-prev{font-size:calc(11.3px*var(--z,1));color:var(--sub);padding:6px 2px 4px;min-height:1.3em}
+.jr-hint{font-size:calc(12.2px*var(--z,1));color:var(--sub);margin:4px 0 8px}
+.jr-sql{background:rgba(128,128,128,.12);padding:8px 10px;border-radius:8px;font-size:calc(11.3px*var(--z,1));white-space:pre-wrap;margin:0 0 8px;user-select:all}
+.jr-nudge{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--acc);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:calc(12.2px*var(--z,1))}
+.jr-day{display:flex;justify-content:space-between;gap:8px;padding:14px 6px 4px;font-weight:600;font-size:calc(12.2px*var(--z,1));border-bottom:1px solid var(--ln)}
 .jr-sum{font-weight:400;color:var(--sub)}
-.jr-it{display:grid;grid-template-columns:112px 64px 1fr;gap:10px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:baseline;font-size:calc(14px*var(--z,1))}
+.jr-it{display:grid;grid-template-columns:112px 64px 1fr;gap:10px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:baseline;font-size:calc(12.2px*var(--z,1))}
 .jr-it:hover{background:var(--hov)}
 .jr-ed{display:block;cursor:default;background:var(--sel)}
 .jr-w{color:var(--acc);font-weight:600;white-space:nowrap}
-.jr-d{color:var(--sub);font-size:calc(12.5px*var(--z,1));white-space:nowrap}
+.jr-d{color:var(--sub);font-size:calc(11.3px*var(--z,1));white-space:nowrap}
 .jr-t{min-width:0;overflow-wrap:anywhere}
-.jr-c{font-style:normal;font-size:calc(11px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:0 6px;margin-left:4px}
+.jr-c{font-style:normal;font-size:calc(10.4px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:0 6px;margin-left:4px}
 .jr-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px}
-.jr-chip{border:1px solid var(--ln);background:var(--solid,transparent);color:inherit;border-radius:16px;padding:5px 12px;cursor:pointer;font-size:calc(13px*var(--z,1))}
+.jr-chip{border:1px solid var(--ln);background:var(--solid,transparent);color:inherit;border-radius:16px;padding:5px 12px;cursor:pointer;font-size:calc(12.2px*var(--z,1))}
 .jr-chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .jr-day .linkbtn{margin-left:8px}
-.linkbtn{background:none;border:0;color:var(--acc);cursor:pointer;padding:2px 0;font-size:calc(12.5px*var(--z,1))}
-.jr-box .btn,.jr-nudge .btn{height:34px;min-height:0;padding:0 14px;font-size:calc(13.5px*var(--z,1))}
+.linkbtn{background:none;border:0;color:var(--acc);cursor:pointer;padding:2px 0;font-size:calc(11.3px*var(--z,1))}
+.jr-box .btn,.jr-nudge .btn{height:34px;min-height:0;padding:0 14px;font-size:calc(12.2px*var(--z,1))}
 .jr-nudge{margin-top:6px}
 @media(max-width:760px){#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
 `;
@@ -3128,7 +3128,7 @@ function journalMainHTML(vi) {
     body += '<div class="jr-day"><span>' + rel + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + (dd.getFullYear() !== new Date().getFullYear() ? " " + dd.getFullYear() : "") + '</span><span class="jr-sum">' + (sum ? "записано " + fmtDurM(sum) : "") + (JX ? ' <button class="linkbtn" data-a="jrday" data-d="' + d + '" title="Дописать в этот день">＋ дописать</button>' : "") + "</span></div>" + arr.map(jrItem).join("");
   });
   if (days.length > shown.length) body += '<div style="text-align:center;padding:10px"><button class="btn ghost" data-a="jrmore">Показать ещё (' + (days.length - shown.length) + " дн.)</button></div>";
-  if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет' + (all.length ? '<div style="margin-top:10px"><button class="btn ghost" data-a="jrper" data-v="all">Показать все записи</button></div>' : "") + "</div>";
+  if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет' + (all.length ? '<div style="margin-top:6px;font-size:calc(11.3px*var(--z,1))">последняя запись: ' + jrShort(all.map(jrDay).sort().pop()) + '</div><div style="margin-top:10px"><button class="btn ghost" data-a="jrper" data-v="all">Показать все записи</button></div>' : "") + "</div>";
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
