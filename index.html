@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 08:09";
+const BUILD = "06.10 12:10";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1874,7 +1874,7 @@ const nuCSS = `
 .nu-wh{margin:10px 0 2px}
 .nu-chk{display:flex;gap:8px;align-items:center;margin:12px 0 0;font-size:calc(12.2px*var(--z,1))}
 .nu-video{width:100%;max-height:260px;background:#000;border-radius:10px;object-fit:cover}
-@media(max-width:760px){.nu-sheet{background:var(--solid,#fff)}.nu-card{margin:0;max-width:none;border-radius:0;box-shadow:none;min-height:100%}.nu-bars{gap:10px}.nu-fab{bottom:20px;right:16px}.nu-g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.nu-in{font-size:calc(14.5px*var(--z,1))}.nu-im,.nu-bs{font-size:calc(12.5px*var(--z,1))}.nu-bar{font-size:calc(14px*var(--z,1))}.nu-mm,.nu-mh,.nu-tot{font-size:calc(13.5px*var(--z,1))}.nu-sheet .inp,.nu-l .inp{font-size:16px}.nu-sheet .tool{font-size:calc(13px*var(--z,1))}.nu-sheet .jr-hint,.nu-wh,.nu-per{font-size:calc(12.5px*var(--z,1))}.nu-sheet .jr-chip{font-size:calc(12px*var(--z,1))}.nu-st{font-size:calc(15px*var(--z,1))}.nu-sheet{background:var(--solid,#fff)}.nu-card{margin:0;max-width:none;border-radius:0;box-shadow:none;min-height:100%}.nu-bars{gap:10px}.nu-fab{bottom:20px;right:16px}.nu-g4{grid-template-columns:repeat(2,1fr)}}
 
 .nu-sheet .jr-chip{background:#8dbbf0;color:#fff;border:0;border-radius:6px;padding:8px 16px;font-weight:600;text-transform:uppercase;font-size:calc(11px*var(--z,1))}
 .nu-sheet .jr-chip.on{background:#2f74d4}
@@ -3270,7 +3270,7 @@ function huid(s) {                                    // стабильный «
 let NF = null, nfBusy = false;                          // встроенная база (foods.json)
 function nuLoadBase() {
   if (NF || nfBusy) return; nfBusy = true;
-  fetch("foods.json?v=1").then(r => r.json()).then(a => { NF = a.map(x => ({ n: x[0], k: x[1], p: x[2], f: x[3], c: x[4], u: x[5] || [] })); }).catch(() => { NF = []; }).then(() => { nfBusy = false; renderSoon(); });
+  fetch("foods.json?v=2").then(r => r.json()).then(a => { NF = a.map(x => ({ n: x[0], k: x[1], p: x[2], f: x[3], c: x[4], u: x[5] || [] })); }).catch(() => { NF = []; }).then(() => { nfBusy = false; renderSoon(); });
 }
 const NUN = () => ui.nu || (ui.nu = { day: todayISO(), sheet: null, tab: "all", q: "", f: {}, sel: null, res: [], web: null, webBusy: false, werr: "", stream: null, scanMsg: "" });
 const nrm = s => String(s == null ? "" : s).toLowerCase().replace(/ё/g, "е");
@@ -3343,6 +3343,11 @@ function nutriMainHTML(vi) {
 function nuFoodRow(x, i) {
   return '<div class="nu-res" data-a="nupick" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + (x.mine ? ' <i class="jr-c">моё</i>' : "") + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>";
 }
+function nuPickRes() {
+  const N = NUN(), res = N.res = nuSearch();
+  const web = N.webBusy ? '<div class="jr-hint">Ищу в Open Food Facts…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">Open Food Facts (упаковки, значения с этикеток):</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts такого нет. Нажми «Свой продукт» и впиши значения с этикетки — он сохранится в «Мои»") + "</div>") : "";
+  return (N.q.trim() ? '<div class="jr-f" style="margin:0 0 6px"><button class="tool" data-a="nuweb">🌐 Искать в интернете</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Нажми «Искать в интернете» или «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
+}
 function nuSheetHTML() {
   const N = NUN(); if (!N.sheet) return "";
   const F = N.f, lbl = (t, h) => '<label class="nu-l"><span>' + t + "</span>" + h + "</label>", inp = (id, ph, type, extra) => '<input id="nu-' + id + '" class="inp" ' + (type ? 'type="' + type + '" ' : "") + (extra || "") + ' placeholder="' + (ph || "") + '" autocomplete="off" value="' + esc(F[id] == null ? "" : F[id]) + '">';
@@ -3350,12 +3355,10 @@ function nuSheetHTML() {
   let title = "", body = "";
   if (N.sheet === "pick") {
     title = "Что съел?";
-    const res = N.res = nuSearch();
+    const resHTML = nuPickRes();
     const tabs = [["all", "Все"], ["recent", "Недавние"], ["mine", "Мои"]].map(t => '<button class="jr-chip' + (N.tab === t[0] ? " on" : "") + '" data-a="nutab" data-v="' + t[0] + '">' + t[1] + "</button>").join("");
-    const web = N.webBusy ? '<div class="jr-hint">Ищу в Open Food Facts…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">Open Food Facts (упаковки, значения с этикеток):</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts ничего не нашлось") + "</div>") : "";
     body = '<div class="jr-f"><input id="nu-q" class="inp" style="flex:1;min-width:0" placeholder="Поиск: гречка, борщ, творог…" autocomplete="off" value="' + esc(N.q) + '"></div><div class="jr-chips" style="margin-top:8px">' + tabs + "</div>" +
-      '<div class="jr-f" style="margin:8px 0"><button class="tool" data-a="nucustom">＋ Свой продукт</button><button class="tool" data-a="nuscan">📷 Штрихкод</button><button class="tool" data-a="nuquick">Быстро: только ккал</button>' + (N.q.trim() ? '<button class="tool" data-a="nuweb">🌐 Искать в интернете</button>' : "") + "</div>" +
-      (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Нажми «Искать в интернете» или «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
+      '<div class="jr-f" style="margin:8px 0"><button class="tool" data-a="nucustom">＋ Свой продукт</button><button class="tool" data-a="nuscan">📷 Штрихкод</button><button class="tool" data-a="nuquick">Быстро: только ккал</button></div><div id="nu-resbox">' + resHTML + "</div>";
   } else if (N.sheet === "grams") {
     const s = N.sel, g = num(F.g), m = nuCalc(s, g);
     title = s.n;
@@ -3419,7 +3422,7 @@ function nuWeightChart(ws) {
 }
 function nuInput(el) {
   const N = NUN(), id = el.id.slice(3);
-  if (id === "q") { N.q = el.value; N.web = null; N.werr = ""; clearTimeout(N._qt); N._qt = setTimeout(renderSoon, 120); return; }
+  if (id === "q") { N.q = el.value; N.web = null; N.werr = ""; clearTimeout(N._qt); N._qt = setTimeout(() => { const bx = $("nu-resbox"); if (bx) bx.innerHTML = nuPickRes(); }, 150); return; }
   N.f[id] = el.type === "checkbox" ? el.checked : el.value;
   if (id === "g" && N.sel && N.sheet === "grams") { const pv = $("nu-prev"); if (pv) pv.innerHTML = nuPrevText(N.sel, num(el.value)); }
   else if (/^c[nkpfcu]$/.test(id)) { const pv = $("nu-cprev"); if (pv) pv.textContent = nuCustomPrev(); }
@@ -3443,11 +3446,14 @@ const nuFromOFF = p => {
 };
 async function nuWeb() {
   const N = NUN(), q = N.q.trim(); if (!q) return; N.webBusy = true; N.web = null; N.werr = ""; render();
-  try {
-    const r = await fetch("https://world.openfoodfacts.org/cgi/search.pl?search_terms=" + encodeURIComponent(q) + "&search_simple=1&action=process&json=1&page_size=24&lc=ru&cc=ru&fields=code,product_name,brands,nutriments"), j = await r.json();
-    N.web = (j.products || []).map(nuFromOFF).filter(Boolean);
-  } catch (e) { N.web = []; N.werr = "Нет связи с Open Food Facts"; }
-  N.webBusy = false; render();
+  const seen = new Set(), out = [], stem = w => w.length > 5 ? w.slice(0, -2) : w, toks = q.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const tries = [q, toks.map(stem).join(" "), ...toks.map(stem)].filter((x, i, a) => x && a.indexOf(x) === i).slice(0, 4);
+  const one = async t => {
+    const r = await fetch("https://world.openfoodfacts.org/cgi/search.pl?search_terms=" + encodeURIComponent(t) + "&search_simple=1&action=process&json=1&page_size=30&lc=ru&fields=code,product_name,product_name_ru,brands,nutriments"), j = await r.json();
+    (j.products || []).map(nuFromOFF).filter(Boolean).forEach(x => { const k = x.n.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(x); } });
+  };
+  try { for (const t of tries) { await one(t); if (out.length >= 8) break; } } catch (e) { if (!out.length) N.werr = "Нет связи с Open Food Facts"; }
+  N.web = out; N.webBusy = false; render();
 }
 async function nuBarcode(code) {
   const N = NUN(); code = String(code || "").replace(/\D/g, ""); if (!code) return;
