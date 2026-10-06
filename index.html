@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 22:37";
+const BUILD = "06.10 22:46";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1424,13 +1424,14 @@ function swipeInit(app) {
     const o = Math.min(1, Math.abs(dx) / 90);
     row.style.background = dx > 0 ? "rgba(16,124,16," + (.12 * o + .02) + ")" : "rgba(255,140,0," + (.14 * o + .02) + ")";
     row.style.setProperty("--so", o);
+    const ar = Math.abs(dx) > 70; if (ar !== row.__ar) { row.__ar = ar; if (ar && navigator.vibrate) try { navigator.vibrate(12); } catch (e) {} }
   }, { passive: true });
   app.addEventListener("touchend", () => {
     if (!row) return;
     const r = row, id = r.dataset.id, d = dx, was = lock; reset();
     if (!was) return;
-    if (d > 90) { const rad = r.querySelector(".rad"); if (rad) uxActs.tog(rad); }
-    else if (d < -90) { postpone(id, "tom"); render(); }
+    if (d > 70) { const rad = r.querySelector(".rad"); if (rad) uxActs.tog(rad); }
+    else if (d < -70) { postpone(id, "tom"); render(); }
     r.__sw = Date.now();
   });
   app.addEventListener("touchcancel", reset);
@@ -1448,8 +1449,9 @@ const uxCSS0 = `
 @keyframes radpop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
 .taskrow{position:relative;touch-action:pan-y}
 .taskrow.swr::before,.taskrow.swl::before{position:absolute;top:50%;transform:translateY(-50%);font-weight:600;font-size:calc(13px*var(--z,1));opacity:var(--so,0);pointer-events:none}
-.taskrow.swr::before{content:"✓ Готово";left:14px;color:#107c10}
-.taskrow.swl::before{content:"Завтра →";right:14px;color:#c25e00}
+.taskrow.swr::before{content:"✓ Готово";left:14px;color:#107c10;font-size:calc(15px*var(--z,1))!important}
+.taskrow.swl::before{content:"Завтра →";right:14px;color:#c25e00;font-size:calc(15px*var(--z,1))!important}
+.taskrow.fin .ttl{text-decoration:line-through;color:var(--sub);transition:color .2s}
 `;
 
 // ---- массовый выбор на компьютере: Ctrl/Shift+клик, Ctrl+A, ПКМ → сдвиг на N дней, отмена Ctrl+Z ----
@@ -1851,7 +1853,17 @@ const jrCSS = `
 .jr-wc>.jr-wp{height:68px;scroll-snap-align:none}
 .jr-wsel{position:absolute;left:0;right:0;top:68px;height:34px;border-top:2px solid var(--acc);border-bottom:2px solid var(--acc);pointer-events:none;opacity:.7}
 .jr-wb{display:flex;gap:8px;margin-top:14px;align-items:center}
-@media(max-width:760px){.jr-it{font-size:calc(18px*var(--z,1));padding:12px 6px;grid-template-columns:118px 1fr}.jr-w{font-size:calc(18px*var(--z,1))}.jr-d,.jr-c{font-size:calc(15.5px*var(--z,1))}.jr-tot{font-size:calc(16px*var(--z,1))}.jr-hint,.jr-prev{font-size:calc(15px*var(--z,1))}.linkbtn{font-size:calc(16px*var(--z,1));padding:10px 4px}.jr-box .btn,.jr-nudge .btn{height:44px;font-size:calc(16px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(16px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(17px*var(--z,1))}.jr-wc{font-size:30px}.jr-empty{font-size:calc(16px*var(--z,1))}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
+.jr-bot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:14px}
+.jr-sbox{border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--solid,transparent)}
+.jr-st{font-weight:600;margin-bottom:8px;font-size:calc(14px*var(--z,1))}
+.jr-sr{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:center;padding:5px 0;font-size:calc(13px*var(--z,1))}
+.jr-sn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jr-sb{position:relative;height:14px}.jr-sb i,.jr-sb u{position:absolute;left:0;border-radius:4px;display:block}.jr-sb i{top:0;height:8px;background:var(--acc)}.jr-sb u{top:9px;height:4px;background:var(--ln);opacity:.9}
+.jr-sv{text-align:right;white-space:nowrap}.jr-up{color:#107c10;font-size:.9em}.jr-dn{color:#c25e00;font-size:.9em}
+.jr-leg{color:var(--sub);font-size:calc(11.5px*var(--z,1));margin-top:6px}.jr-leg i{display:inline-block;width:14px;height:8px;background:var(--acc);border-radius:3px;margin-right:4px}.jr-leg u{display:inline-block;width:14px;height:4px;background:var(--ln);margin:0 4px 0 10px;vertical-align:middle}
+.jr-ul{margin:0;padding-left:18px;font-size:calc(13.5px*var(--z,1));line-height:1.5}
+.jr-ai{border:1px solid var(--acc);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:calc(14px*var(--z,1));line-height:1.55;background:var(--sel)}
+@media(max-width:760px){.jr-sr{font-size:calc(15px*var(--z,1));grid-template-columns:96px 1fr auto}.jr-ul,.jr-ai{font-size:calc(16px*var(--z,1))}.jr-st{font-size:calc(16px*var(--z,1))}.jr-it{font-size:calc(18px*var(--z,1));padding:12px 6px;grid-template-columns:118px 1fr}.jr-w{font-size:calc(18px*var(--z,1))}.jr-d,.jr-c{font-size:calc(15.5px*var(--z,1))}.jr-tot{font-size:calc(16px*var(--z,1))}.jr-hint,.jr-prev{font-size:calc(15px*var(--z,1))}.linkbtn{font-size:calc(16px*var(--z,1));padding:10px 4px}.jr-box .btn,.jr-nudge .btn{height:44px;font-size:calc(16px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(16px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(17px*var(--z,1))}.jr-wc{font-size:30px}.jr-empty{font-size:calc(16px*var(--z,1))}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
 `;
 const nuCSS = `
 .nu-wrap{max-width:760px;margin:0 auto;padding:0 2px}
@@ -2681,7 +2693,7 @@ function mainHTML(items, done, vi) {
       (sg.length ? sg.map(t => { const di = dueInfo(t); return '<div class="sr"><span style="flex:1;min-width:0;word-break:break-word">' + esc(t.title) + '</span><span class="mi ' + (di ? di.cls : "") + '" style="font-size:calc(12px*var(--z,1))">' + (di ? di.txt : "") + '</span><button class="ibtn" data-a="sgadd" data-id="' + t.id + '" title="Добавить в «Мой день»" style="color:var(--acc);width:28px;height:28px">' + ic("plus", 16) + "</button></div>"; }).join("") : '<div class="sr" style="color:var(--sub)">Нет задач, горящих сегодня или завтра</div>') + "</div>";
   }
   h += '<div class="scroll" id="list">';
-  if (!items.length && !done.length) h += '<div style="text-align:center;padding:50px 10px;color:var(--sub);font-size:calc(15px*var(--z,1))">' + (view === "search" ? "Ничего не найдено" : "Здесь пока пусто — впишите первую задачу выше") + "</div>";
+  if (!items.length && !done.length) h += '<div style="text-align:center;padding:50px 10px;color:var(--sub);font-size:calc(15px*var(--z,1))">' + (view === "search" ? "Ничего не найдено" : '<div style="font-size:42px;margin-bottom:6px">' + (view === "myday" ? "☀️" : view === "starred" ? "⭐" : view === "planned" ? "📅" : "✨") + "</div><b style=\"color:var(--tx);font-weight:600\">" + (view === "myday" ? "Мой день пока свободен" : view === "starred" ? "Важных задач нет" : view === "planned" ? "Запланированных задач нет" : "Здесь пока пусто") + "</b><div style=\"margin-top:4px\">" + (view === "myday" ? "Добавь задачу сюда или выбери из «Предложений»" : "Впиши первую задачу — поле выше") + "</div>") + "</div>";
   groups.forEach(g => {
     const k = view + "|" + g.key, col = ui.gcol[k];
     if (g.label) h += '<div class="gh" data-a="ggtoggle" data-k="' + esc(k) + '">' + ic(col ? "chevr" : "chevd", 14) + "<span>" + esc(g.label) + '</span><span class="cnt">' + g.items.length + "</span></div>";
@@ -2954,12 +2966,12 @@ let hDepth = 0, hSkip = 0;
 const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() {
   if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
-  if (view === "journal" && ui.jr) return (ui.jr.wh ? 1 : 0) + (ui.jr.hist ? 1 : 0) + (ui.jr.edit ? 1 : 0) + (ui.jr.mode === "p" ? 1 : 0);
+  if (view === "journal" && ui.jr) return (ui.jr.wh ? 1 : 0) + (ui.jr.hist ? 1 : 0) + (ui.jr.sum ? 1 : 0) + (ui.jr.edit ? 1 : 0) + (ui.jr.mode === "p" ? 1 : 0);
   return 0;
 }
 function innerBack() {
   if (view === "food" && ui.nu && ui.nu.sheet) { const N = ui.nu; if (["grams", "custom", "scan", "quick"].indexOf(N.sheet) >= 0) { nuScanStop(); N.sheet = "pick"; N.f = {}; } else nuClose(); return true; }
-  if (view === "journal" && ui.jr) { const J = ui.jr; if (J.wh) J.wh = null; else if (J.edit) J.edit = null; else if (J.mode === "p") J.mode = "t"; else if (J.hist) J.hist = false; else return false; return true; }
+  if (view === "journal" && ui.jr) { const J = ui.jr; if (J.wh) J.wh = null; else if (J.sum) J.sum = false; else if (J.edit) J.edit = null; else if (J.mode === "p") J.mode = "t"; else if (J.hist) J.hist = false; else return false; return true; }
   return false;
 }
 function syncHistory() {
@@ -3126,7 +3138,7 @@ const JX_SQL = "alter table public.time_log\n  add column if not exists cat  tex
 let JX = (() => { try { return localStorage.getItem("mytasks_jx") === "1"; } catch (e) { return false; } })();
 if (JX) COLS.time_log = GC.concat(JX_COLS);
 function jxSet(ok) { if (ok === JX) return; JX = ok; COLS.time_log = ok ? GC.concat(JX_COLS) : GC; try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
-const jrState = () => ui.jr || (ui.jr = { per: "r", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", hist: false, vd: null, wh: null, d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
+const jrState = () => ui.jr || (ui.jr = { per: "r", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", hist: false, vd: null, wh: null, sum: false, sw: null, ai: null, d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
 document.addEventListener("scroll", e => { const t = e.target, J = ui.jr; if (!J || !J.wh || !t || !t.id) return; if (t.id === "jr-wh-h") J.wh.h = Math.max(0, Math.min(23, Math.round(t.scrollTop / 34))); else if (t.id === "jr-wh-m") J.wh.m = Math.max(0, Math.min(59, Math.round(t.scrollTop / 34))); }, true);
 const jrKind = l => l.kind === "p" ? "p" : "t";
 const jrDay = l => jrKind(l) === "p" ? l.d1 : (l.start_at ? dayOf(l.start_at) : null);
@@ -3218,9 +3230,9 @@ function journalMainHTML(vi) {
   const nav = '<div class="jr-nav"><button class="ibtn" data-a="jrdprev" title="Раньше">' + ic("arrowl", 22) + '</button><label class="jr-nl">' + vrel + ", " + WDS[vdd.getDay()] + " " + vdd.getDate() + " " + MONS[vdd.getMonth()] + '<input type="date" id="jr-vd" value="' + J.vd + '"></label><button class="ibtn jr-nr" data-a="jrdnext" title="Позже">' + ic("arrowl", 22) + '</button></div>';
   const wheel = J.wh ? jrWheelHTML() : "";
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
-  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
+  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button>' + chips + "</div>" : nav) + body + (J.hist ? "" : '<div style="text-align:center;padding:14px"><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>') + "</div>" + wheel + "</div>";
+    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button>' + chips + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
@@ -3232,6 +3244,50 @@ function jrInput(el) {
   if (m[1]) { J.e[m[2]] = el.value; return; }
   J[m[2]] = el.value; if (m[2] === "date") J.st = null; if (m[2] === "vd") { if (!el.value) return; render(); return; }
   const pv = $("jr-prev"); if (pv) pv.textContent = jrPrevText();
+}
+const jrMon = iso => addDays(iso, -((parseISO(iso).getDay() + 6) % 7));
+function jrGuessCat(tx) {
+  const toks = String(tx || "").toLowerCase().split(/[^а-яa-z0-9ё]+/).filter(w => w.length >= 4).map(w => w.slice(0, 5)); if (!toks.length) return null;
+  const cn = {}; let tot = 0;
+  Object.values(S.time_log).forEach(l => { if (!l.cat || !l.title) return; const t = l.title.toLowerCase(); toks.forEach(k => { if (t.indexOf(k) >= 0) { cn[l.cat] = (cn[l.cat] || 0) + 1; tot++; } }); });
+  let best = null; for (const c in cn) if (!best || cn[c] > cn[best]) best = c;
+  return best && cn[best] >= 2 && cn[best] / tot >= 0.6 ? best : null;
+}
+function jrWeekData(m0) {
+  const end = addDays(m0, 7), cat = {}, days = new Set(); let tot = 0, n = 0;
+  Object.values(S.time_log).forEach(l => {
+    const d = jrDay(l); if (!d || d < m0 || d >= end) return; days.add(d); n++;
+    if (jrKind(l) === "t" && l.end_at) { const m = Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)), c = l.cat || "без категории"; cat[c] = (cat[c] || 0) + m; tot += m; }
+  });
+  return { cat, tot, days: days.size, n };
+}
+async function aiCall(kind, data) {
+  const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("Нет входа");
+  const r = await fetch(cfg.url + "/functions/v1/analyze", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: cfg.key }, body: JSON.stringify({ kind, data }) });
+  if (r.status === 404) throw new Error("setup");
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.error || "Ошибка " + r.status); return j.text || "";
+}
+const aiBox = a => !a ? "" : a.busy ? '<div class="jr-ai">Думаю над твоими записями…</div>' : a.err === "setup" ? '<div class="jr-ai">ИИ-разбор ещё не подключён. Нужна одноразовая настройка (файл <b>AI_SETUP.md</b> в проекте, 5 минут). Остальные итоги работают и без неё.</div>' : a.err ? '<div class="jr-ai">Не получилось: ' + esc(a.err) + "</div>" : '<div class="jr-ai">' + esc(a.text).replace(/\n/g, "<br>") + "</div>";
+function jrSummaryHTML() {
+  const J = jrState(); if (!J.sw) J.sw = jrMon(todayISO());
+  const cur = jrWeekData(J.sw), prev = jrWeekData(addDays(J.sw, -7)), lab = jrShort(J.sw) + " – " + jrShort(addDays(J.sw, 6)) + (J.sw === jrMon(todayISO()) ? " (эта неделя)" : "");
+  const cats = Object.keys(Object.assign({}, cur.cat, prev.cat)).sort((a, b) => (cur.cat[b] || 0) - (cur.cat[a] || 0)), mx = Math.max.apply(null, cats.map(c => Math.max(cur.cat[c] || 0, prev.cat[c] || 0)).concat([1]));
+  const sg = d => d > 0 ? '<span class="jr-up">+' + fmtDurM(d) + "</span>" : d < 0 ? '<span class="jr-dn">−' + fmtDurM(-d) + "</span>" : "";
+  const rows = cats.map(c => { const a = cur.cat[c] || 0, b = prev.cat[c] || 0; return '<div class="jr-sr"><div class="jr-sn">' + esc(c) + '</div><div class="jr-sb"><i style="width:' + (a / mx * 100) + '%"></i><u style="width:' + (b / mx * 100) + '%"></u></div><div class="jr-sv"><b>' + fmtDurM(a) + "</b> " + sg(a - b) + "</div></div>"; }).join("");
+  const el = Math.min(7, Math.max(1, Math.round((parseISO(todayISO()) - parseISO(J.sw)) / 864e5) + 1)), ins = [];
+  if (cur.tot) {
+    const top = cats[0], sh = Math.round((cur.cat[top] || 0) / cur.tot * 100); ins.push("Больше всего времени — «" + top + "»: " + sh + "% (" + fmtDurM(cur.cat[top]) + ").");
+    if (prev.tot) ins.push("Записано всего " + fmtDurM(cur.tot) + (cur.tot >= prev.tot ? ", на " + fmtDurM(cur.tot - prev.tot) + " больше" : ", на " + fmtDurM(prev.tot - cur.tot) + " меньше") + " прошлой недели.");
+    let up = null, dn = null; cats.forEach(c => { const d = (cur.cat[c] || 0) - (prev.cat[c] || 0); if (prev.tot && d > 30 && (!up || d > up[1])) up = [c, d]; if (prev.tot && d < -30 && (!dn || d < dn[1])) dn = [c, d]; });
+    if (up) ins.push("Выросло: «" + up[0] + "» (+" + fmtDurM(up[1]) + ")."); if (dn) ins.push("Просело: «" + dn[0] + "» (−" + fmtDurM(-dn[1]) + ").");
+    const avg = cur.tot / Math.max(1, cur.days); ins.push("Записи есть в " + cur.days + " из " + el + " дней, в среднем " + fmtDurM(Math.round(avg)) + " в день" + (avg < 600 ? " — значит, часть дня не записана." : "."));
+    const nc = cur.cat["без категории"] || 0; if (nc / cur.tot > 0.3) ins.push("Без категории " + Math.round(nc / cur.tot * 100) + "% времени — выводы будут точнее, если проставить категории.");
+  } else ins.push("За эту неделю записей со временем пока нет.");
+  return '<div class="jr-nav"><button class="ibtn" data-a="jrswp">' + ic("arrowl", 22) + '</button><div class="jr-nl" style="cursor:default">' + lab + '</div><button class="ibtn jr-nr" data-a="jrswn">' + ic("arrowl", 22) + "</button></div>" +
+    '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> эта неделя <u></u> прошлая</div></div>' +
+    '<div class="jr-sbox"><div class="jr-st">Выводы</div><ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul></div>" +
+    '<button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' + aiBox(J.ai);
 }
 function jrXlsx() {
   const all = Object.values(S.time_log).filter(l => jrDay(l)).sort((a, b) => (jrDay(a) + " " + (a.start_at || "")).localeCompare(jrDay(b) + " " + (b.start_at || "")));
@@ -3276,7 +3332,7 @@ Object.assign(acts, {
     if (!q.en) { if (q.day === todayISO()) q.en = nowHM(); else { toast("Укажи конец записи"); return; } }
     const dm = jrDM(q.st, q.en); if (!dm) { toast("Начало и конец совпадают"); return; }
     const s = jrDate(q.day, q.st), e = new Date(s.getTime() + dm * 60000);
-    addLog({ title: q.tx, kind: "t", start_at: s.toISOString(), end_at: e.toISOString() });
+    const gc = jrGuessCat(q.tx); addLog(Object.assign({ title: q.tx, kind: "t", start_at: s.toISOString(), end_at: e.toISOString() }, gc ? { cat: gc } : {}));
     J.tx = ""; J.en = ""; J.vd = q.day; J.date = q.day; J.st = isoLocal(e) === q.day ? hm(e.getHours() * 60 + e.getMinutes()) : null;
     toast(q.st + "–" + q.en + " · " + fmtDurM(dm)); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0);
   },
@@ -3302,6 +3358,15 @@ Object.assign(acts, {
   jrday(a) { const J = jrState(); J.mode = "t"; J.date = a.dataset.d; J.st = null; J.en = ""; render(); setTimeout(() => { const x = $("jr-tx"); if (x) { x.focus(); x.scrollIntoView({ block: "center" }); } }, 0); },
   jrwheel(a) { const J = jrState(), q = jrPlan(), v = (a.dataset.k === "st" ? q.st : q.en) || nowHM(), p = v.split(":"); J.wh = { k: a.dataset.k, h: +p[0], m: +p[1] }; render(); },
   jrnop() {},
+  jrsum() { const J = jrState(); J.sum = !J.sum; J.ai = null; render(); },
+  jrswp() { const J = jrState(); J.sw = addDays(J.sw || jrMon(todayISO()), -7); J.ai = null; render(); },
+  jrswn() { const J = jrState(); J.sw = addDays(J.sw || jrMon(todayISO()), 7); J.ai = null; render(); },
+  jrai() {
+    const J = jrState(), m0 = J.sw || jrMon(todayISO()), weeks = [];
+    for (let i = 3; i >= 0; i--) { const w = addDays(m0, -7 * i), d = jrWeekData(w); weeks.push({ week_from: w, minutes_by_category: d.cat, total_minutes: d.tot, days_with_records: d.days }); }
+    J.ai = { busy: true }; render();
+    aiCall("journal", { weeks, focus_week: m0 }).then(t => { J.ai = { text: t }; render(); }).catch(e => { J.ai = { err: e.message }; render(); });
+  },
   jrwcancel() { jrState().wh = null; render(); },
   jrwnow() { const J = jrState(), n = new Date(); J.wh.h = n.getHours(); J.wh.m = n.getMinutes(); const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTo({ top: J.wh.h * 34, behavior: "smooth" }); if (m) m.scrollTo({ top: J.wh.m * 34, behavior: "smooth" }); },
   jrwok() { const J = jrState(), w = J.wh; if (!w) return; const v = pad2(w.h) + ":" + pad2(w.m); if (w.k === "st") J.st = v; else J.en = v; J.wh = null; render(); setTimeout(() => { const x = $("jr-tx"); if (x && !isMobile()) x.focus(); }, 0); },
@@ -3423,7 +3488,7 @@ function nuSetupHTML() {
 }
 function nutriMainHTML(vi) {
   const N = NUN(); nuLoadBase();
-  const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool nu-big" data-a="nuallm" title="Свернуть / развернуть все приёмы">' + ic("list", 20) + '<span class="tm"> ' + (N.allc ? "Развернуть" : "Свернуть") + '</span></button><button class="tool nu-big" data-a="nugoals">' + ic("gear", 20) + '<span class="tl"> Цели</span></button></div>';
+  const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#e3680c;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool nu-big" data-a="nustats" title="Графики и итоги">' + ic("sort", 20) + '<span class="tm"> Графики</span></button><button class="tool nu-big" data-a="nuallm" title="Свернуть / развернуть все приёмы">' + ic("list", 20) + '<span class="tm"> ' + (N.allc ? "Развернуть" : "Свернуть") + '</span></button><button class="tool nu-big" data-a="nugoals">' + ic("gear", 20) + '<span class="tl"> Цели</span></button></div>';
   if (!NX) return head + '<div class="msub">' + esc(vi.sub) + '</div><div class="scroll" id="list">' + nuSetupHTML() + "</div></div>";
   const day = N.day, ent = nuEntries(day), T = nuSum(ent), tg = nuTargets(day), P0 = nuProf(), wr = nuWeightAt(day), wat = nuWater(day).reduce((s, x) => s + (+x.grams || 0), 0);
   const dnav = '<div class="nu-date"><button class="ibtn" data-a="nuprev" title="Предыдущий день">' + ic("arrowl", 20) + '</button><label class="nu-dl">' + esc(nuDayLabel(day)) + '<input type="date" id="nu-day" value="' + day + '"></label><button class="ibtn" data-a="nunext" title="Следующий день"><span style="display:flex;transform:rotate(180deg)">' + ic("arrowl", 20) + "</span></button>" + (day !== todayISO() ? '<button class="tool" data-a="nutoday">Сегодня</button>' : "") + "</div>";
@@ -3477,6 +3542,8 @@ function nuSheetHTML() {
       '<div class="nu-per">' + esc(s.n) + " &nbsp;" + r1(s.p) + " / " + r1(s.f) + " / " + r1(s.c) + " / " + r0(s.k) + " ккал на 100 грамм</div>" +
       (s.web ? '<label class="nu-chk"><input type="checkbox" id="nu-save"' + (F.save === false ? "" : " checked") + '> Сохранить в «Мои»</label>' : "") +
       '<div class="nu-pink">Нажмите на ✓, чтобы добавить продукт в приёмы пищи</div><button class="nu-fab2" data-a="nuok" title="Добавить">' + ic("check", 28) + "</button>";
+  } else if (N.sheet === "stats") {
+    title = "Графики"; body = nuStatsHTML();
   } else if (N.sheet === "custom") {
     title = "Свой продукт";
     body = '<div class="jr-hint">Значения на 100 г — как на этикетке.</div>' + lbl("Название", inp("cn", "Название")) + '<div class="nu-g4">' + lbl("Ккал", inp("ck", "", "text", 'inputmode="decimal"')) + lbl("Белки", inp("cp", "", "text", 'inputmode="decimal"')) + lbl("Жиры", inp("cf", "", "text", 'inputmode="decimal"')) + lbl("Углев.", inp("cc", "", "text", 'inputmode="decimal"')) + "</div>" +
@@ -3533,6 +3600,17 @@ function nuGoalsPreview() {
   const bmr = 10 * wk + 6.25 * h - 5 * age + (F.gs === "f" ? -161 : 5), tdee = bmr * num(F.gact || 1.4), k = { cut: 0.82, recomp: 0.9, keep: 1, gain: 1.1 }[F.gm] || 1, kcal = Math.round(tdee * k / 10) * 10;
   const p = Math.round(wk * (F.gm === "cut" || F.gm === "recomp" ? 2 : 1.8)), f = Math.round(wk * 0.9), c = Math.max(0, Math.round((kcal - 4 * p - 9 * f) / 4));
   return "Расход ≈ <b>" + r0(tdee) + "</b> ккал (обмен " + r0(bmr) + "). Цель: <b>" + kcal + "</b> ккал · Б " + p + " · Ж " + f + " · У " + c;
+}
+function nuStatsHTML() {
+  const N = NUN(), days = []; for (let i = 13; i >= 0; i--) days.push(addDays(todayISO(), -i));
+  const data = days.map(d => { const e = nuEntries(d); return { d, s: nuSum(e), has: e.length > 0 }; }), tg = nuTargets(todayISO());
+  const mx = Math.max.apply(null, [tg.kcal * 1.25].concat(data.map(x => x.s.kcal))), W = 330, H = 140, top = 12, bot = 16, bh = H - top - bot;
+  const bars = data.map((x, i) => { const h = x.s.kcal / mx * bh, c = x.s.kcal > tg.kcal * 1.05 ? "#d9736a" : x.s.kcal >= tg.kcal * 0.9 ? "#35a58f" : "#8cc3f4"; return (x.has ? '<rect x="' + (6 + i * 23) + '" y="' + (top + bh - h).toFixed(1) + '" width="17" height="' + h.toFixed(1) + '" rx="3" fill="' + c + '"/>' : "") + '<text x="' + (14.5 + i * 23) + '" y="' + (H - 3) + '" font-size="8" text-anchor="middle" fill="currentColor" opacity=".6">' + +x.d.slice(8) + "</text>"; }).join("");
+  const ty = top + bh - tg.kcal / mx * bh, w = data.filter(x => x.has), avg = k => w.length ? w.reduce((a, x) => a + x.s[k], 0) / w.length : 0, ok = w.filter(x => x.s.kcal >= tg.kcal * 0.9 && x.s.kcal <= tg.kcal * 1.1).length;
+  const ws = Object.values(S.weight_log).sort((a, b) => a.day.localeCompare(b.day)).slice(-30);
+  return '<div class="jr-st">Калории за 14 дней</div><svg viewBox="0 0 ' + W + " " + H + '" style="width:100%">' + bars + '<line x1="0" x2="' + W + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '" stroke="currentColor" stroke-dasharray="4 3" opacity=".5"/><text x="' + (W - 2) + '" y="' + (ty - 3).toFixed(1) + '" font-size="8" text-anchor="end" fill="currentColor" opacity=".7">цель ' + r0(tg.kcal) + "</text></svg>" +
+    '<div class="nu-per">' + (w.length ? "В среднем " + r0(avg("kcal")) + " ккал, белка " + r0(avg("p")) + " г · в норме (±10%) " + ok + " из " + w.length + " дн." : "Пока нет записей за 14 дней") + "</div>" +
+    '<div class="jr-st" style="margin-top:14px">Вес</div>' + nuWeightChart(ws) + '<button class="btn jr-go" data-a="nuai" style="margin-top:12px">🤖 ИИ-разбор питания</button>' + aiBox(N.ai);
 }
 function nuWeightChart(ws) {
   if (ws.length < 2) return '<div class="jr-hint" style="margin-top:12px">График появится после двух записей веса.</div>';
@@ -3648,6 +3726,13 @@ Object.assign(acts, {
   },
   numeal(a) { const N = NUN(); N.col = N.col || {}; N.col[a.dataset.k] = !N.col[a.dataset.k]; N.allc = false; render(); },
   nuallm() { const N = NUN(); N.allc = !N.allc; N.col = {}; if (N.allc) { const m = t => { const p = String(t || "0:0").split(":"); return (+p[0]) * 60 + (+p[1] || 0); }; let st = null; nuEntries(N.day).forEach(x => { if (st === null || m(x.t) - m(st) >= 60) { st = x.t; N.col[N.day + "|" + st] = true; } }); } render(); },
+  nustats() { const N = NUN(); N.sheet = "stats"; N.ai = null; render(); },
+  nuai() {
+    const N = NUN(), days = [], tg = nuTargets(todayISO()); for (let i = 13; i >= 0; i--) { const d = addDays(todayISO(), -i), e = nuEntries(d); if (e.length) { const t = nuSum(e); days.push({ day: d, kcal: r0(t.kcal), protein: r0(t.p), fat: r0(t.f), carbs: r0(t.c) }); } }
+    const weights = Object.values(S.weight_log).sort((a, b) => a.day.localeCompare(b.day)).slice(-30).map(w => ({ day: w.day, kg: +w.kg }));
+    N.ai = { busy: true }; render();
+    aiCall("nutrition", { targets: { kcal: tg.kcal, protein: tg.p, fat: tg.f, carbs: tg.c }, days, weights }).then(t => { N.ai = { text: t }; render(); }).catch(e => { N.ai = { err: e.message }; render(); });
+  },
   nuweb() { nuWeb(); },
   nugoogle() { const q = NUN().q.trim(); if (q) window.open("https://www.google.com/search?q=" + encodeURIComponent(q + " калорийность БЖУ на 100 г"), "_blank"); },
   nuscan() { nuScan(); },
