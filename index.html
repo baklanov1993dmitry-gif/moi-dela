@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 22:20";
+const BUILD = "06.10 22:37";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2060,6 +2060,7 @@ function buildSubIdx() {
   subIdx = {};
   for (const id in S.tasks) { const t = S.tasks[id]; if (t.parent_id && S.tasks[t.parent_id]) (subIdx[t.parent_id] = subIdx[t.parent_id] || []).push(t); }
   for (const id in S.tasks) { const t = S.tasks[id]; if (t.parent_id && (t.starred || t.due || t.remind_at || t.repeat_rule || t.category || t.est_minutes || t.plan_start || t.my_day_date || t.status === "someday")) upd(id, { starred: false, due: null, remind_at: null, repeat_rule: null, category: null, est_minutes: null, plan_start: null, my_day: false, my_day_date: null, status: "active" }); }
+  for (const id in S.tasks) { const t = S.tasks[id]; if (!t.parent_id && t.status === "someday") upd(id, { status: "active" }); }   // раздел «Когда-нибудь» убран — задачи возвращаются в общие списки
   for (const k in subIdx) subIdx[k].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || String(a.created_at).localeCompare(String(b.created_at)));
 }
 const subOpen = t => { const k = subIdx[t.id]; return ui.subAdd === t.id || (k && k.length && (PR.subs === "top" ? !!PR.subOpen[t.id] : !PR.subClosed[t.id])); };
@@ -2636,7 +2637,7 @@ function leftHTML(c) {
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
     (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
-    sm("all", "inbox", "Все задачи", c.all, "#69797e") + sm("someday", "moon", "Когда-нибудь", c.someday, "#8764b8") +
+    sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
 }
@@ -2770,7 +2771,7 @@ function popHTML() {
       break;
     }
     case "gmenu": h = it("g_up", "Переместить выше", 'data-g="' + esc(p.g) + '"') + it("g_down", "Переместить ниже", 'data-g="' + esc(p.g) + '"') + it("g_rename", "Переименовать группу", 'data-g="' + esc(p.g) + '"') + it("g_ungroup", "Расформировать группу", 'data-g="' + esc(p.g) + '"', "danger"); break;
-    case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + it("ctx_someday", t && t.status === "someday" ? "Вернуть из «Когда-нибудь»" : "Отложить в «Когда-нибудь»", idA) + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
+    case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + "" + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
     case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
     case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
     case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b></div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
