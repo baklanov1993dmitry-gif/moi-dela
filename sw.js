@@ -1,6 +1,6 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html и так грузится «сначала из сети».
-const CACHE = "moidela-shell-v7";
-const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./foods.json?v=2"];
+const CACHE = "moidela-shell-v8";
+const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./foods.json?v=3"];
 
 self.addEventListener("install", e => {
   self.skipWaiting();

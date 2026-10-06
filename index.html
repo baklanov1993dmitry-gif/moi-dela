@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 12:10";
+const BUILD = "06.10 12:14";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3270,7 +3270,7 @@ function huid(s) {                                    // стабильный «
 let NF = null, nfBusy = false;                          // встроенная база (foods.json)
 function nuLoadBase() {
   if (NF || nfBusy) return; nfBusy = true;
-  fetch("foods.json?v=2").then(r => r.json()).then(a => { NF = a.map(x => ({ n: x[0], k: x[1], p: x[2], f: x[3], c: x[4], u: x[5] || [] })); }).catch(() => { NF = []; }).then(() => { nfBusy = false; renderSoon(); });
+  fetch("foods.json?v=3").then(r => r.json()).then(a => { NF = a.map(x => ({ n: x[0], k: x[1], p: x[2], f: x[3], c: x[4], u: x[5] || [] })); }).catch(() => { NF = []; }).then(() => { nfBusy = false; renderSoon(); });
 }
 const NUN = () => ui.nu || (ui.nu = { day: todayISO(), sheet: null, tab: "all", q: "", f: {}, sel: null, res: [], web: null, webBusy: false, werr: "", stream: null, scanMsg: "" });
 const nrm = s => String(s == null ? "" : s).toLowerCase().replace(/ё/g, "е");
