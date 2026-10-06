@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 17:47";
+const BUILD = "06.10 19:28";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -515,7 +515,7 @@ const draftOf = id => id === "__qa" ? ui.qa : id === "__dd" ? ui.dd : null;
 function addBarHTML() {
   const q = ui.dd || (ui.dd = newDD()), di = dueInfo({ due: q.due, done: false });
   const chip = (svg, label, attrs, on, title) => '<button type="button" class="achip' + (on ? " on" : "") + '" ' + attrs + ' title="' + title + '">' + ic(svg, 16) + (label ? "<span>" + label + "</span>" : "") + "</button>";
-  return '<form id="addform" class="addbar v2"><div class="arow">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" enterkeyhint="send" placeholder="Добавить задачу"></div>' +
+  return '<form id="addform" class="addbar v2"><div class="arow">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" enterkeyhint="send" placeholder="Добавить задачу" value="' + esc(q.text || "") + '"></div>' +
     '<div class="achips">' +
     chip("cal", di ? di.txt : "Срок", 'data-a="pop" data-p="due" data-id="__dd"', !!q.due, "Срок выполнения (Alt+1…7, Alt+0 — убрать)") +
     chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "", 'data-a="pop" data-p="remind" data-id="__dd"', !!q.remind_at, "Напомнить") +
@@ -590,6 +590,10 @@ function reorderList(id, tid, after, grp) {
   if ((D.group_name || null) !== (grp || null)) { D.group_name = grp || null; mark("lists", D.id, "u"); }
   arr.forEach((l, k) => { if (l.position !== k) { l.position = k; mark("lists", l.id, "u"); } });
 }
+function lUnits() { const out = [], idx = {}; for (const l of listsArr()) { const g = l.group_name; if (!g) { out.push({ k: "l:" + l.id, ls: [l] }); continue; } if (!(g in idx)) { idx[g] = out.length; out.push({ k: "g:" + g, g, ls: [] }); } out[idx[g]].ls.push(l); } return out; }
+function lApply(u) { let i = 0; u.forEach(x => x.ls.forEach(l => { if (l.position !== i) { l.position = i; mark("lists", l.id, "u"); } i++; })); }
+function moveGroup(g, dir) { const u = lUnits(), i = u.findIndex(x => x.g === g), j = i + dir; if (i < 0 || j < 0 || j >= u.length) return; const t = u[i]; u[i] = u[j]; u[j] = t; lApply(u); }
+function moveGroupTo(g, key, after) { const u = lUnits(), i = u.findIndex(x => x.g === g); if (i < 0) return; const m = u.splice(i, 1)[0]; let j = u.findIndex(x => x.k === key); if (j < 0) j = u.length; else if (after) j++; u.splice(j, 0, m); lApply(u); }
 function setListGroup(id, name) { const l = S.lists[id]; if (!l) return; l.group_name = name || null; mark("lists", id, "u"); }
 /* архив списков: отдельная группа (поле group_name уже есть в базе — новых колонок не нужно); задачи архивных списков не попадают в общие виды */
 const ARCH = "📦 Архив";
@@ -1840,13 +1844,13 @@ const jrCSS = `
 .jr-wt{font-weight:600;text-align:center;margin-bottom:6px;font-size:calc(14px*var(--z,1))}
 .jr-wr{position:relative;display:flex;justify-content:center;align-items:center;gap:6px}
 .jr-wr>b{font-size:30px}
-.jr-wc{height:240px;width:90px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;text-align:center;font-size:30px;font-variant-numeric:tabular-nums}
+.jr-wc{height:170px;width:90px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;text-align:center;font-size:30px;font-variant-numeric:tabular-nums}
 .jr-wc::-webkit-scrollbar{display:none}
-.jr-wc>div{height:48px;line-height:48px;scroll-snap-align:center}
-.jr-wc>.jr-wp{height:96px;scroll-snap-align:none}
-.jr-wsel{position:absolute;left:0;right:0;top:96px;height:48px;border-top:2px solid var(--acc);border-bottom:2px solid var(--acc);pointer-events:none;opacity:.7}
+.jr-wc>div{height:34px;line-height:34px;scroll-snap-align:center}
+.jr-wc>.jr-wp{height:68px;scroll-snap-align:none}
+.jr-wsel{position:absolute;left:0;right:0;top:68px;height:34px;border-top:2px solid var(--acc);border-bottom:2px solid var(--acc);pointer-events:none;opacity:.7}
 .jr-wb{display:flex;gap:8px;margin-top:14px;align-items:center}
-@media(max-width:760px){.jr-it{font-size:calc(14px*var(--z,1))}.jr-w{font-size:calc(14px*var(--z,1))}.jr-d,.jr-c{font-size:calc(12px*var(--z,1))}.jr-tot,.jr-hint,.jr-prev{font-size:calc(13px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(13.5px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(14px*var(--z,1))}.jr-wc{font-size:34px}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
+@media(max-width:760px){.jr-it{font-size:calc(18px*var(--z,1));padding:12px 6px;grid-template-columns:118px 1fr}.jr-w{font-size:calc(18px*var(--z,1))}.jr-d,.jr-c{font-size:calc(15.5px*var(--z,1))}.jr-tot{font-size:calc(16px*var(--z,1))}.jr-hint,.jr-prev{font-size:calc(15px*var(--z,1))}.linkbtn{font-size:calc(16px*var(--z,1));padding:10px 4px}.jr-box .btn,.jr-nudge .btn{height:44px;font-size:calc(16px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(16px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(17px*var(--z,1))}.jr-wc{font-size:30px}.jr-empty{font-size:calc(16px*var(--z,1))}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
 `;
 const nuCSS = `
 .nu-wrap{max-width:760px;margin:0 auto;padding:0 2px}
@@ -1911,11 +1915,18 @@ const nuCSS = `
 .nu-pn{cursor:pointer;text-overflow:ellipsis}
 .nu-ib{width:44px;height:38px;border:0;border-radius:10px;background:#5da0ea;color:#fff;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 3px rgba(0,0,0,.25)}
 .nu-mf{position:relative;flex:1}.nu-mf .inp{width:100%;padding-right:78px;box-sizing:border-box}
-.nu-mt{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:calc(11px*var(--z,1));color:var(--sub);pointer-events:none}
+.nu-mht{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:calc(11px*var(--z,1));color:var(--sub);pointer-events:none}
 .nu-hr{border:0;border-top:1px solid var(--ln);margin:12px 0}
 .nu-pink{color:#ee4f84;font-size:calc(12.2px*var(--z,1));margin:12px 0 56px}
 .nu-fab2{position:sticky;float:right;bottom:16px;width:56px;height:56px;border-radius:50%;border:0;background:#ee4f84;color:#fff;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center}
-@media(max-width:760px){.nu-sheet .nu-fr>span:first-child,.nu-l{font-size:calc(14px*var(--z,1))}.nu-sheet .inp,.nu-l .inp,.nu-sheet select.inp{font-size:19px;min-height:46px}.nu-mt{font-size:calc(12.5px*var(--z,1))}.nu-sheet .nu-per,.nu-sheet .jr-hint,.nu-pink,.nu-wh,.nu-sheet .nu-pv{font-size:calc(14px*var(--z,1))}.nu-st{font-size:calc(17px*var(--z,1))}.nu-sheet .nu-in{font-size:calc(16px*var(--z,1))}.nu-sheet .nu-im{font-size:calc(14px*var(--z,1))}.nu-sheet .jr-chip{font-size:calc(13px*var(--z,1));padding:10px 18px}.nu-sheet .tool,.nu-sheet .btn{font-size:calc(14px*var(--z,1))}.nu-ib{width:52px;height:46px}.nu-fr{grid-template-columns:96px 1fr;margin-bottom:12px}.nu-chk{font-size:calc(14px*var(--z,1))}}
+@media(max-width:760px){.nu-sheet .nu-fr>span:first-child,.nu-l{font-size:calc(14px*var(--z,1))}.nu-sheet .inp,.nu-l .inp,.nu-sheet select.inp{font-size:19px;min-height:46px}.nu-mht{font-size:calc(12.5px*var(--z,1))}.nu-sheet .nu-per,.nu-sheet .jr-hint,.nu-pink,.nu-wh,.nu-sheet .nu-pv{font-size:calc(14px*var(--z,1))}.nu-st{font-size:calc(17px*var(--z,1))}.nu-sheet .nu-in{font-size:calc(16px*var(--z,1))}.nu-sheet .nu-im{font-size:calc(14px*var(--z,1))}.nu-sheet .jr-chip{font-size:calc(13px*var(--z,1));padding:10px 18px}.nu-sheet .tool,.nu-sheet .btn{font-size:calc(14px*var(--z,1))}.nu-ib{width:52px;height:46px}.nu-fr{grid-template-columns:96px 1fr;margin-bottom:12px}.nu-chk{font-size:calc(14px*var(--z,1))}}
+.nu-meal{margin:0 0 16px}
+.nu-head{background:color-mix(in srgb,var(--mc,#3d8fe0) 16%,var(--solid,#fff));border:1px solid color-mix(in srgb,var(--mc,#3d8fe0) 45%,transparent);border-left:6px solid var(--mc,#3d8fe0);border-radius:12px 12px 4px 4px;padding-bottom:6px}
+.nu-head .nu-mt{font-weight:700;color:var(--mc,#3d8fe0);font-size:calc(13px*var(--z,1))}
+.nu-head .nu-mm{font-weight:600}
+.nu-meal .nu-it{margin:6px 0 0 18px;border:1px solid var(--ln);border-left:4px solid color-mix(in srgb,var(--mc,#3d8fe0) 55%,transparent);border-radius:4px 10px 10px 4px;padding:8px 12px;background:var(--solid,#fff)}
+.nu-meal .nu-in{font-weight:500}
+.nu-itm{color:var(--sub);font-size:.85em;margin-left:6px}
 .nu-card .btn:not(.ghost){background:#ee4f84;border-color:#ee4f84}
 .nu-pv b{color:#2a9d85}
 .nu-water{background:#f1f9fb;border:1px solid #d3ecf1;border-radius:12px;padding:10px}
@@ -2037,7 +2048,7 @@ const bkActs = {
 };
 
 // ---- p10: подзадачи, фильтры, комбинированная сортировка, своя оценка времени ----
-PR.flt = PR.flt || {}; PR.subClosed = PR.subClosed || {}; PR.subOpen = PR.subOpen || {}; if (!PR.subs) PR.subs = "all";
+PR.flt = PR.flt || {}; PR.subClosed = PR.subClosed || {}; PR.subOpen = PR.subOpen || {}; if (!PR.subs) PR.subs = "top"; if (!PR.subsV2) { PR.subsV2 = 1; PR.subs = "top"; }
 let subIdx = {};
 function buildSubIdx() {
   subIdx = {};
@@ -2073,7 +2084,7 @@ function rowHTML(t, showList, depth) {
 function subSubmit(form) {
   const inp = form.querySelector("input"), v = inp ? inp.value.trim() : "", pid = form.dataset.pid, par = S.tasks[pid];
   if (!v || !par) return;
-  addTask({ title: v, list_id: par.list_id, parent_id: pid, status: "active" });
+  addTask({ title: v, list_id: par.list_id, parent_id: pid, status: "active" }); inp.value = "";
   ui.subAdd = pid; PR.subClosed[pid] = false; PR.subOpen[pid] = true; savePrefs(); render();
   setTimeout(() => { const i = $("sub-" + pid) || document.querySelector('.subadd[data-pid="' + pid + '"] input'); if (i) i.focus(); }, 30);
 }
@@ -2303,13 +2314,17 @@ function listDragInit(app) {
     s.node.__nc = Date.now(); window.__lsd = Date.now();
     if (cancel || !s.tgt) { render(); return; }
     const t = s.tgt;
+    if (s.g) {
+      let key = null; if (t.classList.contains("ghead")) key = "g:" + t.dataset.g; else { const tl = S.lists[t.dataset.lid]; if (tl) key = tl.group_name ? "g:" + tl.group_name : "l:" + tl.id; }
+      if (key && key !== "g:" + s.g) moveGroupTo(s.g, key, s.after); render(); return;
+    }
     if (t.classList.contains("ghead")) { const g = t.dataset.g, f = listsArr().find(l => l.group_name === g); if (f) reorderList(s.id, f.id, false, g); }
     else { const tl = S.lists[t.dataset.lid]; if (tl && tl.id !== s.id) reorderList(s.id, tl.id, s.after, tl.group_name); }
     render();
   };
   const down = (e, touch) => {
-    if (e.target.closest("button,.ibtn")) return; const chip = e.target.closest && e.target.closest(".chip[data-lid]"); if (!chip) return;
-    const p = pt(e); st = { id: chip.dataset.lid, node: chip, x: p.clientX, y: p.clientY, touch, drag: false };
+    if (e.target.closest("button,.ibtn")) return; const chip = e.target.closest && e.target.closest(".chip[data-lid],.ghead[data-g]"); if (!chip) return;
+    const p = pt(e); st = { id: chip.dataset.lid, g: chip.dataset.lid ? null : chip.dataset.g, node: chip, x: p.clientX, y: p.clientY, touch, drag: false };
     if (touch) timer = setTimeout(() => { if (st && !st.drag) { begin(chip, st.x, st.y); loop(); } }, 380);
   };
   app.addEventListener("touchstart", e => { if (e.touches.length === 1) down(e, true); else end(true); }, { passive: true });
@@ -2532,7 +2547,7 @@ function viewInfo() {
 function mtopHTML(vi) {
   if (!isMobile()) return "";
   if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
-  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button><span style="flex:1"></span><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button><button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button></div>";
+  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button><span style="flex:1"></span><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
 function lheadHTML() {
   if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
@@ -2745,7 +2760,7 @@ function popHTML() {
         '<div class="pform" style="padding:4px 12px 8px;gap:8px"><button class="btn" style="flex:1" data-a="pa" data-k="estok" ' + idA + ">Готово</button><button class=\"btn ghost\" data-a=\"pa\" data-k=\"estclr\" " + idA + ">Сбросить</button></div>";
       break;
     }
-    case "gmenu": h = it("g_rename", "Переименовать группу", 'data-g="' + esc(p.g) + '"') + it("g_ungroup", "Расформировать группу", 'data-g="' + esc(p.g) + '"', "danger"); break;
+    case "gmenu": h = it("g_up", "Переместить выше", 'data-g="' + esc(p.g) + '"') + it("g_down", "Переместить ниже", 'data-g="' + esc(p.g) + '"') + it("g_rename", "Переименовать группу", 'data-g="' + esc(p.g) + '"') + it("g_ungroup", "Расформировать группу", 'data-g="' + esc(p.g) + '"', "danger"); break;
     case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + it("ctx_someday", t && t.status === "someday" ? "Вернуть из «Когда-нибудь»" : "Отложить в «Когда-нибудь»", idA) + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
     case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
     case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
@@ -2926,7 +2941,17 @@ function exportJson() {
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
 let hDepth = 0, hSkip = 0;
-const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0);
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
+function innerLayers() {
+  if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
+  if (view === "journal" && ui.jr) return (ui.jr.wh ? 1 : 0) + (ui.jr.hist ? 1 : 0) + (ui.jr.edit ? 1 : 0) + (ui.jr.mode === "p" ? 1 : 0);
+  return 0;
+}
+function innerBack() {
+  if (view === "food" && ui.nu && ui.nu.sheet) { const N = ui.nu; if (["grams", "custom", "scan", "quick"].indexOf(N.sheet) >= 0) { nuScanStop(); N.sheet = "pick"; N.f = {}; } else nuClose(); return true; }
+  if (view === "journal" && ui.jr) { const J = ui.jr; if (J.wh) J.wh = null; else if (J.edit) J.edit = null; else if (J.mode === "p") J.mode = "t"; else if (J.hist) J.hist = false; else return false; return true; }
+  return false;
+}
 function syncHistory() {
   try {
     if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;   // Chrome пропускает записи истории, созданные без тапа
@@ -2938,6 +2963,7 @@ function syncHistory() {
 function onBack() {
   if (hSkip > 0) { hSkip--; return; }
   if (hDepth > 0) hDepth--;
+  if (innerBack()) { render(); return; }
   if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) ui.settings = false;
   else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) ui.left = true;
   render();
@@ -3048,6 +3074,8 @@ const acts = {
       case "l_deldone": if (confirm("Удалить все завершённые задачи списка «" + l.name + "»?")) deleteDoneIn(id); break;
       case "l_del": if (confirm("Удалить список «" + l.name + "»? Задачи останутся (в «Все задачи»).")) { deleteList(id); if (view === "list:" + id) goView("myday"); } break;
       case "g_rename": { if (d.g === ARCH) { toast("Архив переименовать нельзя"); break; } const n = prompt("Название группы", d.g); if (n && n.trim()) renameGroup(d.g, n.trim()); break; }
+      case "g_up": moveGroup(d.g, -1); break;
+      case "g_down": moveGroup(d.g, 1); break;
       case "g_ungroup": renameGroup(d.g, null); break;
       case "ctx_myday": if (t) setMyDay(id, !inMyDay(t)); break;
       case "star": if (t) upd(id, { starred: !t.starred }); break;
@@ -3089,7 +3117,7 @@ let JX = (() => { try { return localStorage.getItem("mytasks_jx") === "1"; } cat
 if (JX) COLS.time_log = GC.concat(JX_COLS);
 function jxSet(ok) { if (ok === JX) return; JX = ok; COLS.time_log = ok ? GC.concat(JX_COLS) : GC; try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
 const jrState = () => ui.jr || (ui.jr = { per: "r", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", hist: false, vd: null, wh: null, d1: null, d2: "", edit: null, e: {}, nudgeOff: false });
-document.addEventListener("scroll", e => { const t = e.target, J = ui.jr; if (!J || !J.wh || !t || !t.id) return; if (t.id === "jr-wh-h") J.wh.h = Math.max(0, Math.min(23, Math.round(t.scrollTop / 48))); else if (t.id === "jr-wh-m") J.wh.m = Math.max(0, Math.min(59, Math.round(t.scrollTop / 48))); }, true);
+document.addEventListener("scroll", e => { const t = e.target, J = ui.jr; if (!J || !J.wh || !t || !t.id) return; if (t.id === "jr-wh-h") J.wh.h = Math.max(0, Math.min(23, Math.round(t.scrollTop / 34))); else if (t.id === "jr-wh-m") J.wh.m = Math.max(0, Math.min(59, Math.round(t.scrollTop / 34))); }, true);
 const jrKind = l => l.kind === "p" ? "p" : "t";
 const jrDay = l => jrKind(l) === "p" ? l.d1 : (l.start_at ? dayOf(l.start_at) : null);
 const jrHM = (h, m) => { h = +h; m = +m; return h < 24 && m < 60 ? pad2(h) + ":" + pad2(m) : null; };
@@ -3186,7 +3214,7 @@ function journalMainHTML(vi) {
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
-  setTimeout(() => { const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTop = w.h * 48; if (m) m.scrollTop = w.m * 48; }, 0);
+  setTimeout(() => { const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTop = w.h * 34; if (m) m.scrollTop = w.m * 34; }, 0);
   return '<div class="jr-wov" data-a="jrwcancel"><div class="jr-wbox" data-a="jrnop"><div class="jr-wt">' + (w.k === "st" ? "Начало" : "Конец") + '</div><div class="jr-wr">' + col("jr-wh-h", 24) + '<b>:</b>' + col("jr-wh-m", 60) + '<div class="jr-wsel"></div></div><div class="jr-wb"><button class="btn ghost" data-a="jrwnow">Сейчас</button><span style="flex:1"></span><button class="btn ghost" data-a="jrwcancel">Отмена</button><button class="btn" data-a="jrwok">Готово</button></div></div></div>';
 }
 function jrInput(el) {
@@ -3265,7 +3293,7 @@ Object.assign(acts, {
   jrwheel(a) { const J = jrState(), q = jrPlan(), v = (a.dataset.k === "st" ? q.st : q.en) || nowHM(), p = v.split(":"); J.wh = { k: a.dataset.k, h: +p[0], m: +p[1] }; render(); },
   jrnop() {},
   jrwcancel() { jrState().wh = null; render(); },
-  jrwnow() { const J = jrState(), n = new Date(); J.wh.h = n.getHours(); J.wh.m = n.getMinutes(); const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTo({ top: J.wh.h * 48, behavior: "smooth" }); if (m) m.scrollTo({ top: J.wh.m * 48, behavior: "smooth" }); },
+  jrwnow() { const J = jrState(), n = new Date(); J.wh.h = n.getHours(); J.wh.m = n.getMinutes(); const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTo({ top: J.wh.h * 34, behavior: "smooth" }); if (m) m.scrollTo({ top: J.wh.m * 34, behavior: "smooth" }); },
   jrwok() { const J = jrState(), w = J.wh; if (!w) return; const v = pad2(w.h) + ":" + pad2(w.m); if (w.k === "st") J.st = v; else J.en = v; J.wh = null; render(); setTimeout(() => { const x = $("jr-tx"); if (x && !isMobile()) x.focus(); }, 0); },
   jrtoday() { const J = jrState(); J.date = todayISO(); J.st = null; render(); },
   jrdprev() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), -1); render(); },
@@ -3334,7 +3362,7 @@ function huid(s) {                                    // стабильный «
 let NF = null, nfBusy = false;                          // встроенная база (foods.json)
 function nuLoadBase() {
   if (NF || nfBusy) return; nfBusy = true;
-  fetch("foods.json?v=3").then(r => r.json()).then(a => { NF = a.map(x => ({ n: x[0], k: x[1], p: x[2], f: x[3], c: x[4], u: x[5] || [] })); }).catch(() => { NF = []; }).then(() => { nfBusy = false; renderSoon(); });
+  fetch("foods.json?v=4").then(r => r.json()).then(a => { NF = a.map(x => ({ n: x[0], k: x[1], p: x[2], f: x[3], c: x[4], u: x[5] || [] })); }).catch(() => { NF = []; }).then(() => { nfBusy = false; renderSoon(); });
 }
 const NUN = () => ui.nu || (ui.nu = { day: todayISO(), sheet: null, tab: "all", q: "", f: {}, sel: null, res: [], web: null, webBusy: false, werr: "", stream: null, scanMsg: "" });
 const nrm = s => String(s == null ? "" : s).toLowerCase().replace(/ё/g, "е");
@@ -3395,11 +3423,13 @@ function nutriMainHTML(vi) {
   const bars = '<div class="nu-bars">' + nuBar("bp", "Белки", T.p, tg.p, pc(T.p, tg.p, 4) + over(T.p, tg.p)) + nuBar("bf", "Жиры", T.f, tg.f, pc(T.f, tg.f, 9) + over(T.f, tg.f)) + nuBar("bc", "Углеводы", T.c, tg.c, pc(T.c, tg.c, 4) + over(T.c, tg.c)) +
     nuBar("bk", "Калории", T.kcal, tg.kcal, T.kcal > tg.kcal ? '<b class="over">+' + r0(T.kcal - tg.kcal) + " ккал сверх</b>" : Math.round(T.kcal / tg.kcal * 100) + "% (" + r0(tg.kcal - T.kcal) + " до лим.)") + "</div>";
   const hint = !P0.set ? '<div class="jr-nudge">Цели пока «по умолчанию». <span style="flex:1"></span><button class="btn" data-a="nugoals">Рассчитать под себя</button></div>' : "";
-  const groups = {}; ent.forEach(x => { (groups[x.t] = groups[x.t] || []).push(x); });
-  const meals = Object.keys(groups).sort().map((t, i) => {
-    const g = groups[t], s = nuSum(g);
-    return '<div class="nu-meal"><div class="nu-head"><div class="nu-mh"><span class="nu-mt">' + (i + 1) + "-й приём</span><span class=\"nu-tm\">" + esc(t) + '</span></div><div class="nu-mm"><span class="cp">Б: <b>' + r0(s.p) + '</b></span><span class="cf">Ж: <b>' + r0(s.f) + '</b></span><span class="cc">У: <b>' + r0(s.c) + '</b></span><span class="nu-sp"></span><span class="ck">' + r0(s.kcal) + ' ккал</span> <span class="cg">' + r0(s.g) + " г</span></div></div>" +
-      g.map(x => '<div class="nu-it" data-a="nuedit" data-id="' + x.id + '"><div class="nu-in">' + esc(x.name) + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="nu-sp"></span><span class="ck">' + r0(x.kcal) + " к</span> " + (x.grams > 0 ? '<span class="cg">' + r0(x.grams) + " г</span>" : "") + "</div></div>").join("") + "</div>";
+  const mins = t => { const p = String(t || "0:0").split(":"); return (+p[0]) * 60 + (+p[1] || 0); }, clusters = [];
+  ent.forEach(x => { const c = clusters[clusters.length - 1]; if (c && mins(x.t) - mins(c.t) < 60) c.g.push(x); else clusters.push({ t: x.t, g: [x] }); });
+  const MC = ["#3d8fe0", "#e8892b", "#3fa66a", "#9b5de5", "#e0507a", "#2aa5a5"];
+  const meals = clusters.map((c, i) => {
+    const t = c.t, g = c.g, s = nuSum(g), col = MC[i % MC.length];
+    return '<div class="nu-meal" style="--mc:' + col + '"><div class="nu-head"><div class="nu-mh"><span class="nu-mt">' + (i + 1) + "-й приём</span><span class=\"nu-tm\">" + esc(t) + '</span></div><div class="nu-mm"><span class="cp">Б: <b>' + r0(s.p) + '</b></span><span class="cf">Ж: <b>' + r0(s.f) + '</b></span><span class="cc">У: <b>' + r0(s.c) + '</b></span><span class="nu-sp"></span><span class="ck">' + r0(s.kcal) + ' ккал</span> <span class="cg">' + r0(s.g) + " г</span></div></div>" +
+      g.map(x => '<div class="nu-it" data-a="nuedit" data-id="' + x.id + '"><div class="nu-in">' + esc(x.name) + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="nu-sp"></span><span class="ck">' + r0(x.kcal) + " к</span> " + (x.grams > 0 ? '<span class="cg">' + r0(x.grams) + " г</span>" : "") + '<span class="nu-itm">' + esc(x.t) + "</span></div></div>").join("") + "</div>";
   }).join("") || '<div style="text-align:center;padding:26px 10px;color:var(--sub)">В этот день ещё ничего не записано</div>';
   const water = '<div class="nu-water"><div class="nu-bar bw"><div class="nu-fill" style="width:' + Math.min(100, tg.water > 0 ? wat / tg.water * 100 : 0) + '%"></div><span class="nu-bl">Вода</span><span class="nu-bv">' + r0(wat) + "/" + r0(tg.water) + '</span></div><div class="jr-f" style="margin-top:8px"><button class="nu-wb" data-a="nuwater" data-v="200">+ 200</button><button class="nu-wb" data-a="nuwater" data-v="100">+ 100</button><button class="nu-wb" data-a="nuwater" data-v="50">+ 50</button><button class="nu-wb" data-a="nuwx">+ X</button>' + (wat ? '<button class="linkbtn" data-a="nuwundo">↶ убрать последнюю</button>' : "") + "</div></div>";
   return head + '<div class="scroll" id="list"><div class="nu-wrap">' + dnav + wline + hint + bars + meals + water + '<div class="nu-tot"><span class="cp">Белки: <b>' + r0(T.p) + '</b></span><span class="cf">Жиры: <b>' + r0(T.f) + '</b></span><span class="cc">Углеводы: <b>' + r0(T.c) + '</b></span><br><span class="cg">Вес: <b style="color:var(--tx)">' + r0(T.g) + ' г</b></span> <span class="ck">ккал: <b>' + r0(T.kcal) + '</b></span></div><div style="height:90px"></div></div></div><button class="nu-fab" data-a="nuopen" title="Добавить еду">' + ic("plus", 26) + "</button>" + nuSheetHTML() + "</div>";
@@ -3410,7 +3440,7 @@ function nuFoodRow(x, i) {
 function nuPickRes() {
   const N = NUN(), res = N.res = nuSearch();
   const web = N.webBusy ? '<div class="jr-hint">Ищу в Open Food Facts…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">Open Food Facts (упаковки, значения с этикеток):</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts такого нет. Нажми «Свой продукт» и впиши значения с этикетки — он сохранится в «Мои»") + "</div>") : "";
-  return (N.q.trim() ? '<div class="jr-f" style="margin:0 0 6px"><button class="tool" data-a="nuweb">🌐 Искать в интернете</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Нажми «Искать в интернете» или «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
+  return (N.q.trim() ? '<div class="jr-f" style="margin:0 0 6px"><button class="tool" data-a="nuweb">🌐 Open Food Facts</button><button class="tool" data-a="nugoogle">🔎 Найти в Google</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Попробуй Open Food Facts, найди КБЖУ в Google и добавь через «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
 }
 function nuSheetHTML() {
   const N = NUN(); if (!N.sheet) return "";
@@ -3426,7 +3456,7 @@ function nuSheetHTML() {
   } else if (N.sheet === "grams") {
     const s = N.sel, v = nuGV(), T0 = nuTargets(N.day), base = nuSum(nuEntries(N.day));
     title = "Съесть";
-    const mf = (id, label, key, tg) => '<div class="nu-fr"><span>' + label + '</span><div class="nu-mf"><input id="nu-' + id + '" class="inp" inputmode="decimal" autocomplete="off" value="' + r1(v[key]) + '"><span class="nu-mt" id="nu-h' + id + '">' + r0(base[key] + v[key]) + "/" + r0(tg) + "</span></div></div>";
+    const mf = (id, label, key, tg) => '<div class="nu-fr"><span>' + label + '</span><div class="nu-mf"><input id="nu-' + id + '" class="inp" inputmode="decimal" autocomplete="off" value="' + r1(v[key]) + '"><span class="nu-mht" id="nu-h' + id + '">' + r0(base[key] + v[key]) + "/" + r0(tg) + "</span></div></div>";
     const opts = '<option value="">—</option>' + (s.u || []).map(u => '<option value="' + u[1] + '"' + (String(F.g) === String(u[1]) ? " selected" : "") + ">" + esc(u[0]) + " · " + u[1] + " г</option>").join("");
     body = '<div class="nu-fr"><span>Время</span><div class="nu-fc"><input id="nu-t" class="inp" type="time" value="' + esc(F.t || "") + '"><button class="nu-ib" data-a="nunow" title="Сейчас">' + ic("clock", 20) + "</button></div></div>" +
       '<div class="nu-fr"><span>Продукт</span><div class="nu-fc"><input class="inp nu-pn" readonly data-a="nuback" value="' + esc(s.n) + '"><button class="nu-ib" data-a="nuback" title="Найти другой">' + ic("search", 20) + '</button><button class="nu-ib" data-a="nucustom" title="Свой продукт">' + ic("plus", 20) + "</button></div></div>" +
@@ -3606,6 +3636,7 @@ Object.assign(acts, {
     const o = { id: uid(), day: N.day, t: F.t || nowHM(), name, grams: 0, kcal: r1(k), p: r1(p), f: r1(f), c: r1(c), food_id: null, created_at: nowISO() }; S.food_log[o.id] = o; mark("food_log", o.id, "u"); toast("+" + r0(k) + " ккал"); nuClose();
   },
   nuweb() { nuWeb(); },
+  nugoogle() { const q = NUN().q.trim(); if (q) window.open("https://www.google.com/search?q=" + encodeURIComponent(q + " калорийность БЖУ на 100 г"), "_blank"); },
   nuscan() { nuScan(); },
   nubc() { nuBarcode(NUN().f.bc); },
   nuedit(a) { const x = S.food_log[a.dataset.id]; if (!x) return; const N = NUN(); N.sheet = "edit"; N.eid = x.id; N.f = { g: x.grams > 0 ? String(x.grams) : "", t: x.t, d: x.day }; render(); },
@@ -3697,6 +3728,7 @@ function init() {
   });
   let qt;
   app.addEventListener("input", e => {
+    if (e.target.id === "newtask") { (ui.dd || (ui.dd = newDD())).text = e.target.value; }
     if (e.target.id && e.target.id.indexOf("jr-") === 0) { jrInput(e.target); return; }
     if (e.target.id && e.target.id.indexOf("nu-") === 0) { nuInput(e.target); return; }
     if (e.target.id === "ds-q") { dayInput("ds-q", e.target.value); return; }
