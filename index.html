@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 21:07";
+const BUILD = "06.10 22:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1860,8 +1860,13 @@ const nuCSS = `
 .nu-dl{position:relative;flex:1;text-align:center;font-weight:600;font-size:calc(14px*var(--z,1));padding:8px;border-radius:8px;cursor:pointer;color:#fff}
 .nu-dl:hover{background:var(--hov)}
 .nu-dl input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
-.nu-w{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 12px;height:calc(64px*var(--z,1));border:0;border-radius:12px;cursor:pointer;color:#fff;font-size:calc(13px*var(--z,1));background:#6fb0f2 url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 400 64%27 preserveAspectRatio=%27none%27%3E%3Cpath d=%27M0 40 Q50 22 100 38 T200 36 T300 38 T400 34 V64 H0Z%27 fill=%27%23ffffff%27 fill-opacity=%27.18%27/%3E%3Cpath d=%27M0 50 Q60 36 120 48 T240 46 T400 48 V64 H0Z%27 fill=%27%23ffffff%27 fill-opacity=%27.18%27/%3E%3C/svg%3E") center/cover no-repeat}
+.nu-w{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 8px;height:44px;border:0;border-radius:12px;cursor:pointer;color:#fff;font-size:calc(13px*var(--z,1));background:#6fb0f2 url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 400 64%27 preserveAspectRatio=%27none%27%3E%3Cpath d=%27M0 40 Q50 22 100 38 T200 36 T300 38 T400 34 V64 H0Z%27 fill=%27%23ffffff%27 fill-opacity=%27.18%27/%3E%3Cpath d=%27M0 50 Q60 36 120 48 T240 46 T400 48 V64 H0Z%27 fill=%27%23ffffff%27 fill-opacity=%27.18%27/%3E%3C/svg%3E") center/cover no-repeat}
 .nu-w:hover{filter:brightness(1.05)} .nu-w i{font-style:normal;opacity:.85;font-size:.85em} .nu-w b{font-size:1.15em}
+.nu-sticky{position:sticky;top:0;z-index:4;background:var(--bg);padding:4px 0 2px;margin:0 0 6px}
+.nu-sticky .nu-bars{margin:0}
+.nu-big{font-size:calc(16px*var(--z,1))!important;padding:8px 12px!important}
+.nu-mchev{display:inline-flex;margin-right:6px;vertical-align:middle}
+.nu-head{cursor:pointer}
 .nu-bars{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0 0 12px}
 .nu-bar{position:relative;height:calc(34px*var(--z,1));border-radius:9px;border:1.5px solid var(--bc);overflow:hidden;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:calc(12.2px*var(--z,1));font-weight:600;background:var(--bt)}
 .nu-fill{position:absolute;left:0;top:0;bottom:0;background:var(--bf);transition:width .3s}
@@ -2304,6 +2309,7 @@ function listDragInit(app) {
   };
   const move = (x, y) => {
     st.ghost.style.top = (y - st.oy) + "px"; st.ghost.style.left = (x - st.ox) + "px";
+    if (Math.abs(x - st.x) + Math.abs(y - st.y) > 12) st.moved = true;
     const t = hit(x, y); if (!t) { st.tgt = null; mark(null); } else { const r = t.getBoundingClientRect(); st.tgt = t; st.after = y > r.top + r.height / 2; mark(t, st.after); }
     const sc = $("lscroll"); if (sc) { const b = sc.getBoundingClientRect(); st.scroll = y < b.top + 50 ? -10 : y > b.bottom - 50 ? 10 : 0; }
   };
@@ -2313,6 +2319,7 @@ function listDragInit(app) {
     if (s.ghost) s.ghost.remove(); mark(null); document.querySelectorAll(".dragsrc").forEach(n => n.classList.remove("dragsrc"));
     if (!s.drag) return;
     s.node.__nc = Date.now(); window.__lsd = Date.now();
+    if (s.g && !s.moved && !cancel) { ui.pop = { type: "gmenu", id: null, g: s.g, x: s.x, y: s.y }; render(); return; }
     if (cancel || !s.tgt) { render(); return; }
     const t = s.tgt;
     if (s.g) {
@@ -2518,6 +2525,8 @@ select.inp option{color:#111}
 @media(max-width:760px){
   .mhead{padding:6px 18px 2px} .mhead h1{font-size:calc(28px*var(--z,1));font-weight:700}
   .msub{padding:0 18px} .addbar,.hint{display:none}
+  .tm{display:none} .mcnt{flex:1;padding-left:14px;color:var(--sub);font-size:calc(15px*var(--z,1))} .mrow>.mrc,.dsk{display:none} .mrow{padding:0 14px;gap:8px} .mrow:has(.mchips:empty){display:none}
+  .mchips{margin-left:0;justify-content:flex-start;gap:8px;padding:2px 0} .mchips .sortchip{padding:6px 10px;font-size:calc(13px*var(--z,1))} .gh{font-size:calc(16px*var(--z,1));margin:16px 0 8px}
   #list{padding:0 14px 100px} .sortbar{padding:6px 14px 0;justify-content:flex-start} .sugg{margin:0 14px 10px}
   #left,#right{position:absolute;left:0;top:0;right:0;bottom:0;width:100%!important;max-width:none!important;z-index:20;box-shadow:none;background:var(--solid)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
   #left:not(.hide) ~ #main{display:none}
@@ -2546,10 +2555,10 @@ function viewInfo() {
   if (view === "search") return { svg: "search", name: "Результаты поиска", sub: "«" + ui.q + "»" };
   const l = S.lists[view.slice(5)]; return { emoji: l.icon, svg: "list", name: l.name, list: l };
 }
-function mtopHTML(vi) {
+function mtopHTML(vi, cnt) {
   if (!isMobile()) return "";
   if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
-  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button><span style="flex:1"></span><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
+  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null ? '<span class="mcnt">' + cnt + " активн.</span>" : "") + '<span style="flex:1"></span><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
 function lheadHTML() {
   if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
@@ -2621,7 +2630,7 @@ function leftHTML(c) {
     if (!g) { tree += lc(l); continue; }
     if (seen.has(g)) continue; seen.add(g);
     const mem = ls.filter(x => x.group_name === g), col = g === ARCH ? PR.collapsed[g] !== false : PR.collapsed[g];   // архив свёрнут по умолчанию
-    tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"><span class="tx">' + esc(g) + '</span><button class="ibtn" data-a="pop" data-p="gmenu" data-g="' + esc(g) + '">' + ic("dots", 16) + "</button>" + ic(col ? "chevr" : "chevd", 14) + "</div>";
+    tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"><span class="tx">' + esc(g) + '</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>";
     if (!col) tree += '<div class="gbody">' + mem.map(lc).join("") + "</div>";
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
@@ -2657,13 +2666,13 @@ function mainHTML(items, done, vi) {
   const fr = freshTask(items), grid = !!PR.grid[view], showList = view.indexOf("list:") !== 0, sorted = sortItems((fr ? items.filter(t => t !== fr) : items).slice());
   const groups = groupItems(sorted.slice(0, ui.limit)), sc = PR.sort[view];
   if (fr) groups.unshift({ key: "~fresh", label: "Только что добавлено", items: [fr] });   // подвисает сверху независимо от фильтра/сортировки, пока не смените раздел
-  let h = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead">' +
+  let h = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, items.length) + '<div class="mhead">' +
     '<h1>' + (vi.emoji ? '<span style="font-size:calc(22px*var(--z,1))">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 22)) + "<span>" + esc(vi.name) + "</span></h1>" +
     (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
     (view !== "search" && !isMobile() ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + '<span class="tg"> Сетка</span></button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + '<span class="tg"> Список</span></button>' +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" + fltBtns() : "") + "</div>" +
-    '<div class="msub mrow"><span>' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + ' активн.</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + " Сортировка: " + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>";
+    '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + ' активн.</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>";
   if (view !== "search" && !isMobile()) h += addBarHTML();
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
@@ -3413,7 +3422,7 @@ function nuSetupHTML() {
 }
 function nutriMainHTML(vi) {
   const N = NUN(); nuLoadBase();
-  const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool" data-a="nugoals">' + ic("gear", 16) + '<span class="tl"> Цели</span></button></div>';
+  const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool nu-big" data-a="nuallm" title="Свернуть / развернуть все приёмы">' + ic("list", 20) + '<span class="tm"> ' + (N.allc ? "Развернуть" : "Свернуть") + '</span></button><button class="tool nu-big" data-a="nugoals">' + ic("gear", 20) + '<span class="tl"> Цели</span></button></div>';
   if (!NX) return head + '<div class="msub">' + esc(vi.sub) + '</div><div class="scroll" id="list">' + nuSetupHTML() + "</div></div>";
   const day = N.day, ent = nuEntries(day), T = nuSum(ent), tg = nuTargets(day), P0 = nuProf(), wr = nuWeightAt(day), wat = nuWater(day).reduce((s, x) => s + (+x.grams || 0), 0);
   const dnav = '<div class="nu-date"><button class="ibtn" data-a="nuprev" title="Предыдущий день">' + ic("arrowl", 20) + '</button><label class="nu-dl">' + esc(nuDayLabel(day)) + '<input type="date" id="nu-day" value="' + day + '"></label><button class="ibtn" data-a="nunext" title="Следующий день"><span style="display:flex;transform:rotate(180deg)">' + ic("arrowl", 20) + "</span></button>" + (day !== todayISO() ? '<button class="tool" data-a="nutoday">Сегодня</button>' : "") + "</div>";
@@ -3428,11 +3437,12 @@ function nutriMainHTML(vi) {
   const MC = ["#3d8fe0", "#e8892b", "#3fa66a", "#9b5de5", "#e0507a", "#2aa5a5"];
   const meals = clusters.map((c, i) => {
     const t = c.t, g = c.g, s = nuSum(g), col = MC[i % MC.length];
-    return '<div class="nu-meal" style="--mc:' + col + '"><div class="nu-head"><div class="nu-mh"><span class="nu-mt">' + (i + 1) + "-й приём</span><span class=\"nu-tm\">" + esc(t) + '</span></div><div class="nu-mm"><span class="cp">Б: <b>' + r0(s.p) + '</b></span><span class="cf">Ж: <b>' + r0(s.f) + '</b></span><span class="cc">У: <b>' + r0(s.c) + '</b></span><span class="nu-sp"></span><span class="ck">' + r0(s.kcal) + ' ккал</span> <span class="cg">' + r0(s.g) + " г</span></div></div>" +
-      g.map(x => '<div class="nu-it" data-a="nuedit" data-id="' + x.id + '"><div class="nu-in">' + esc(x.name) + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="nu-sp"></span><span class="ck">' + r0(x.kcal) + " к</span> " + (x.grams > 0 ? '<span class="cg">' + r0(x.grams) + " г</span>" : "") + '<span class="nu-itm">' + esc(x.t) + "</span></div></div>").join("") + "</div>";
+    const key = day + "|" + t, cl = !!(N.col && N.col[key]);
+    return '<div class="nu-meal" style="--mc:' + col + '"><div class="nu-head" data-a="numeal" data-k="' + key + '"><div class="nu-mh"><span class="nu-mt"><span class="nu-mchev">' + ic(cl ? "chevr" : "chevd", 14) + "</span>" + (i + 1) + "-й приём" + (cl ? " · " + g.length : "") + "</span><span class=\"nu-tm\">" + esc(t) + '</span></div><div class="nu-mm"><span class="cp">Б: <b>' + r0(s.p) + '</b></span><span class="cf">Ж: <b>' + r0(s.f) + '</b></span><span class="cc">У: <b>' + r0(s.c) + '</b></span><span class="nu-sp"></span><span class="ck">' + r0(s.kcal) + ' ккал</span> <span class="cg">' + r0(s.g) + " г</span></div></div>" +
+      (cl ? "" : g.map(x => '<div class="nu-it" data-a="nuedit" data-id="' + x.id + '"><div class="nu-in">' + esc(x.name) + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="nu-sp"></span><span class="ck">' + r0(x.kcal) + " к</span> " + (x.grams > 0 ? '<span class="cg">' + r0(x.grams) + " г</span>" : "") + '<span class="nu-itm">' + esc(x.t) + "</span></div></div>").join("")) + "</div>";
   }).join("") || '<div style="text-align:center;padding:26px 10px;color:var(--sub)">В этот день ещё ничего не записано</div>';
   const water = '<div class="nu-water"><div class="nu-bar bw"><div class="nu-fill" style="width:' + Math.min(100, tg.water > 0 ? wat / tg.water * 100 : 0) + '%"></div><span class="nu-bl">Вода</span><span class="nu-bv">' + r0(wat) + "/" + r0(tg.water) + '</span></div><div class="jr-f" style="margin-top:8px"><button class="nu-wb" data-a="nuwater" data-v="200">+ 200</button><button class="nu-wb" data-a="nuwater" data-v="100">+ 100</button><button class="nu-wb" data-a="nuwater" data-v="50">+ 50</button><button class="nu-wb" data-a="nuwx">+ X</button>' + (wat ? '<button class="linkbtn" data-a="nuwundo">↶ убрать последнюю</button>' : "") + "</div></div>";
-  return head + '<div class="scroll" id="list"><div class="nu-wrap">' + dnav + wline + hint + bars + meals + water + '<div class="nu-tot"><span class="cp">Белки: <b>' + r0(T.p) + '</b></span><span class="cf">Жиры: <b>' + r0(T.f) + '</b></span><span class="cc">Углеводы: <b>' + r0(T.c) + '</b></span><br><span class="cg">Вес: <b style="color:var(--tx)">' + r0(T.g) + ' г</b></span> <span class="ck">ккал: <b>' + r0(T.kcal) + '</b></span></div><div style="height:90px"></div></div></div><button class="nu-fab" data-a="nuopen" title="Добавить еду">' + ic("plus", 26) + "</button>" + nuSheetHTML() + "</div>";
+  return head + '<div class="scroll" id="list"><div class="nu-wrap">' + dnav + wline + hint + '<div class="nu-sticky">' + bars + '</div>' + meals + water + '<div class="nu-tot"><span class="cp">Белки: <b>' + r0(T.p) + '</b></span><span class="cf">Жиры: <b>' + r0(T.f) + '</b></span><span class="cc">Углеводы: <b>' + r0(T.c) + '</b></span><br><span class="cg">Вес: <b style="color:var(--tx)">' + r0(T.g) + ' г</b></span> <span class="ck">ккал: <b>' + r0(T.kcal) + '</b></span></div><div style="height:90px"></div></div></div><button class="nu-fab" data-a="nuopen" title="Добавить еду">' + ic("plus", 26) + "</button>" + nuSheetHTML() + "</div>";
 }
 function nuFoodRow(x, i) {
   return '<div class="nu-res" data-a="nupick" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + (x.mine ? ' <i class="jr-c">моё</i>' : "") + '</div><div class="nu-im"><span class="cp">Б: ' + r1(x.p) + '</span><span class="cf">Ж: ' + r1(x.f) + '</span><span class="cc">У: ' + r1(x.c) + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>";
@@ -3635,6 +3645,8 @@ Object.assign(acts, {
     const N = NUN(), F = N.f, name = (F.qn || "").trim() || "Без названия"; let k = num(F.qk); const p = num(F.qp), f = num(F.qf), c = num(F.qc); if (!k) k = r0(4 * p + 4 * c + 9 * f); if (!k) { toast("Укажи калории"); return; }
     const o = { id: uid(), day: N.day, t: F.t || nowHM(), name, grams: 0, kcal: r1(k), p: r1(p), f: r1(f), c: r1(c), food_id: null, created_at: nowISO() }; S.food_log[o.id] = o; mark("food_log", o.id, "u"); toast("+" + r0(k) + " ккал"); nuClose();
   },
+  numeal(a) { const N = NUN(); N.col = N.col || {}; N.col[a.dataset.k] = !N.col[a.dataset.k]; N.allc = false; render(); },
+  nuallm() { const N = NUN(); N.allc = !N.allc; N.col = {}; if (N.allc) { const m = t => { const p = String(t || "0:0").split(":"); return (+p[0]) * 60 + (+p[1] || 0); }; let st = null; nuEntries(N.day).forEach(x => { if (st === null || m(x.t) - m(st) >= 60) { st = x.t; N.col[N.day + "|" + st] = true; } }); } render(); },
   nuweb() { nuWeb(); },
   nugoogle() { const q = NUN().q.trim(); if (q) window.open("https://www.google.com/search?q=" + encodeURIComponent(q + " калорийность БЖУ на 100 г"), "_blank"); },
   nuscan() { nuScan(); },
@@ -3705,7 +3717,8 @@ function init() {
     else daySubmit(id);
   });
   app.addEventListener("contextmenu", e => {
-    const r = e.target.closest(".taskrow"), c = e.target.closest(".chip[data-lid]");
+    const r = e.target.closest(".taskrow"), c = e.target.closest(".chip[data-lid]"), gh = e.target.closest(".ghead[data-g]");
+    if (gh) { e.preventDefault(); if (!isMobile()) { ui.pop = { type: "gmenu", id: null, g: gh.dataset.g, x: e.clientX, y: e.clientY }; render(); } return; }
     if (!r && !c) return;
     if (c && !r && isMobile()) { e.preventDefault(); return; }
     e.preventDefault();
