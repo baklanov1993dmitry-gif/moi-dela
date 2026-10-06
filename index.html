@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 12:14";
+const BUILD = "06.10 12:22";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1878,6 +1878,18 @@ const nuCSS = `
 
 .nu-sheet .jr-chip{background:#8dbbf0;color:#fff;border:0;border-radius:6px;padding:8px 16px;font-weight:600;text-transform:uppercase;font-size:calc(11px*var(--z,1))}
 .nu-sheet .jr-chip.on{background:#2f74d4}
+.nu-fr{display:grid;grid-template-columns:86px 1fr;gap:8px;align-items:center;margin:0 0 10px}
+.nu-fr>span:first-child{color:var(--sub);font-size:calc(12.2px*var(--z,1))}
+.nu-fr>span.nu-red{color:#e53e5a}
+.nu-fc{display:flex;gap:8px;align-items:center;min-width:0}
+.nu-fc .inp{flex:1;min-width:0}
+.nu-pn{cursor:pointer;text-overflow:ellipsis}
+.nu-ib{width:44px;height:38px;border:0;border-radius:10px;background:#5da0ea;color:#fff;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 3px rgba(0,0,0,.25)}
+.nu-mf{position:relative;flex:1}.nu-mf .inp{width:100%;padding-right:78px;box-sizing:border-box}
+.nu-mt{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:calc(11px*var(--z,1));color:var(--sub);pointer-events:none}
+.nu-hr{border:0;border-top:1px solid var(--ln);margin:12px 0}
+.nu-pink{color:#ee4f84;font-size:calc(12.2px*var(--z,1));margin:12px 0 56px}
+.nu-fab2{position:sticky;float:right;bottom:16px;width:56px;height:56px;border-radius:50%;border:0;background:#ee4f84;color:#fff;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center}
 .nu-card .btn:not(.ghost){background:#ee4f84;border-color:#ee4f84}
 .nu-pv b{color:#2a9d85}
 .nu-water{background:#f1f9fb;border:1px solid #d3ecf1;border-radius:12px;padding:10px}
@@ -3360,13 +3372,18 @@ function nuSheetHTML() {
     body = '<div class="jr-f"><input id="nu-q" class="inp" style="flex:1;min-width:0" placeholder="Поиск: гречка, борщ, творог…" autocomplete="off" value="' + esc(N.q) + '"></div><div class="jr-chips" style="margin-top:8px">' + tabs + "</div>" +
       '<div class="jr-f" style="margin:8px 0"><button class="tool" data-a="nucustom">＋ Свой продукт</button><button class="tool" data-a="nuscan">📷 Штрихкод</button><button class="tool" data-a="nuquick">Быстро: только ккал</button></div><div id="nu-resbox">' + resHTML + "</div>";
   } else if (N.sheet === "grams") {
-    const s = N.sel, g = num(F.g), m = nuCalc(s, g);
-    title = s.n;
-    body = '<div class="nu-pv" id="nu-prev">' + nuPrevText(s, g) + '</div><div class="nu-per">на 100 г: Б ' + r1(s.p) + " · Ж " + r1(s.f) + " · У " + r1(s.c) + " · " + r0(s.k) + " ккал</div>" +
-      '<div class="jr-f" style="margin-top:12px">' + lbl("Вес, г", '<div class="jr-f"><button class="nu-wb" data-a="nugstep" data-v="-10">−</button><input id="nu-g" class="inp" inputmode="decimal" style="width:90px" value="' + esc(F.g) + '"><button class="nu-wb" data-a="nugstep" data-v="10">+</button></div>') + lbl("Время", inp("t", "", "time")) + "</div>" +
-      (s.u && s.u.length ? '<div class="jr-chips" style="margin-top:10px">' + s.u.map((u, i) => '<button class="jr-chip" data-a="nugp" data-v="' + u[1] + '">' + esc(u[0]) + " · " + u[1] + " г</button>").join("") + "</div>" : "") +
+    const s = N.sel, v = nuGV(), T0 = nuTargets(N.day), base = nuSum(nuEntries(N.day));
+    title = "Съесть";
+    const mf = (id, label, key, tg) => '<div class="nu-fr"><span>' + label + '</span><div class="nu-mf"><input id="nu-' + id + '" class="inp" inputmode="decimal" autocomplete="off" value="' + r1(v[key]) + '"><span class="nu-mt" id="nu-h' + id + '">' + r0(base[key] + v[key]) + "/" + r0(tg) + "</span></div></div>";
+    const opts = '<option value="">—</option>' + (s.u || []).map(u => '<option value="' + u[1] + '"' + (String(F.g) === String(u[1]) ? " selected" : "") + ">" + esc(u[0]) + " · " + u[1] + " г</option>").join("");
+    body = '<div class="nu-fr"><span>Время</span><div class="nu-fc"><input id="nu-t" class="inp" type="time" value="' + esc(F.t || "") + '"><button class="nu-ib" data-a="nunow" title="Сейчас">' + ic("clock", 20) + "</button></div></div>" +
+      '<div class="nu-fr"><span>Продукт</span><div class="nu-fc"><input class="inp nu-pn" readonly data-a="nuback" value="' + esc(s.n) + '"><button class="nu-ib" data-a="nuback" title="Найти другой">' + ic("search", 20) + '</button><button class="nu-ib" data-a="nucustom" title="Свой продукт">' + ic("plus", 20) + "</button></div></div>" +
+      '<div class="nu-fr"><span>Порция</span><div class="nu-fc"><select id="nu-por" class="inp">' + opts + "</select></div></div>" +
+      '<div class="nu-fr"><span class="nu-red">Вес, г</span><div class="nu-fc"><input id="nu-g" class="inp nu-gi" inputmode="decimal" autocomplete="off" value="' + esc(F.g) + '"><button class="nu-ib" data-a="nugstep" data-v="10">' + ic("plus", 20) + '</button><button class="nu-ib" data-a="nugstep" data-v="-10"><b style="font-size:22px;line-height:1">−</b></button></div></div>' +
+      '<hr class="nu-hr">' + mf("mp", "Белки", "p", T0.p) + mf("mf", "Жиры", "f", T0.f) + mf("mc", "Углеводы", "c", T0.c) + mf("mk", "Калории", "kcal", T0.kcal) + '<hr class="nu-hr">' +
+      '<div class="nu-per">' + esc(s.n) + " &nbsp;" + r1(s.p) + " / " + r1(s.f) + " / " + r1(s.c) + " / " + r0(s.k) + " ккал на 100 грамм</div>" +
       (s.web ? '<label class="nu-chk"><input type="checkbox" id="nu-save"' + (F.save === false ? "" : " checked") + '> Сохранить в «Мои»</label>' : "") +
-      '<div class="jr-f" style="margin-top:14px"><button class="btn" data-a="nuok">Добавить</button><button class="btn ghost" data-a="nuback">← К поиску</button></div>';
+      '<div class="nu-pink">Нажмите на ✓, чтобы добавить продукт в приёмы пищи</div><button class="nu-fab2" data-a="nuok" title="Добавить">' + ic("check", 28) + "</button>";
   } else if (N.sheet === "custom") {
     title = "Свой продукт";
     body = '<div class="jr-hint">Значения на 100 г — как на этикетке.</div>' + lbl("Название", inp("cn", "Название")) + '<div class="nu-g4">' + lbl("Ккал", inp("ck", "", "text", 'inputmode="decimal"')) + lbl("Белки", inp("cp", "", "text", 'inputmode="decimal"')) + lbl("Жиры", inp("cf", "", "text", 'inputmode="decimal"')) + lbl("Углев.", inp("cc", "", "text", 'inputmode="decimal"')) + "</div>" +
@@ -3399,8 +3416,20 @@ function nuSheetHTML() {
     title = "Вода, мл";
     body = '<div class="jr-f">' + inp("wx", "250", "text", 'inputmode="numeric" style="flex:1"') + '<button class="btn" data-a="nuwxok">Добавить</button></div>';
   }
-  return '<div class="nu-sheet"><div class="nu-card"><div class="nu-sh"><b class="nu-st">' + esc(title) + "</b>" + close + '</div><div class="nu-sb">' + body + "</div></div></div>";
+  const hdr = N.sheet === "grams" ? '<button class="ibtn" data-a="nuback" title="К поиску">' + ic("arrowl", 22) + '</button><b class="nu-st" style="flex:1;margin-left:6px">' + esc(title) + '</b><button class="ibtn" data-a="nuok" title="Добавить">' + ic("check", 24) + "</button>" : '<b class="nu-st">' + esc(title) + "</b>" + close;
+  return '<div class="nu-sheet"><div class="nu-card"><div class="nu-sh">' + hdr + '</div><div class="nu-sb">' + body + "</div></div></div>";
 }
+function nuGV() {
+  const N = NUN(), F = N.f, g = num(F.g), m = nuCalc(N.sel, g), ov = k => (F[k] !== undefined && F[k] !== "" ? num(F[k]) : null), pick = (k, x) => { const o = ov(k); return o == null ? x : o; };
+  return { g, p: pick("mp", m.p), f: pick("mf", m.f), c: pick("mc", m.c), kcal: pick("mk", m.kcal) };
+}
+function nuGRefresh(skip) {
+  const N = NUN(); if (N.sheet !== "grams" || !N.sel) return; const v = nuGV(), T0 = nuTargets(N.day), base = nuSum(nuEntries(N.day)), tg = { p: T0.p, f: T0.f, c: T0.c, kcal: T0.kcal };
+  [["mp", "p"], ["mf", "f"], ["mc", "c"], ["mk", "kcal"]].forEach(a => {
+    const e = $("nu-" + a[0]), h = $("nu-h" + a[0]); if (e && a[0] !== skip && (N.f[a[0]] === undefined || N.f[a[0]] === "")) e.value = r1(v[a[1]]); if (h) h.textContent = r0(base[a[1]] + v[a[1]]) + "/" + r0(tg[a[1]]);
+  });
+}
+const nuGClear = () => { const F = NUN().f; delete F.mp; delete F.mf; delete F.mc; delete F.mk; };
 const nuPrevText = (s, g) => { const m = nuCalc(s, g); return "Б " + r1(m.p) + " · Ж " + r1(m.f) + " · У " + r1(m.c) + " · <b>" + r0(m.kcal) + " ккал</b>"; };
 function nuCustomPrev() { const F = NUN().f; return (num(F.ck) || num(F.cp) || num(F.cf) || num(F.cc)) ? "По формуле 4·Б + 4·У + 9·Ж ≈ " + r0(4 * num(F.cp) + 4 * num(F.cc) + 9 * num(F.cf)) + " ккал" : ""; }
 function nuGoalsPreview() {
@@ -3424,7 +3453,9 @@ function nuInput(el) {
   const N = NUN(), id = el.id.slice(3);
   if (id === "q") { N.q = el.value; N.web = null; N.werr = ""; clearTimeout(N._qt); N._qt = setTimeout(() => { const bx = $("nu-resbox"); if (bx) bx.innerHTML = nuPickRes(); }, 150); return; }
   N.f[id] = el.type === "checkbox" ? el.checked : el.value;
-  if (id === "g" && N.sel && N.sheet === "grams") { const pv = $("nu-prev"); if (pv) pv.innerHTML = nuPrevText(N.sel, num(el.value)); }
+  if (N.sheet === "grams" && id === "g") { nuGClear(); const pr = $("nu-por"); if (pr) pr.value = ""; nuGRefresh(); }
+  else if (N.sheet === "grams" && id === "por") { if (el.value) { N.f.g = el.value; const gi = $("nu-g"); if (gi) gi.value = el.value; nuGClear(); nuGRefresh(); } }
+  else if (N.sheet === "grams" && /^m[pfck]$/.test(id)) { nuGRefresh(id); }
   else if (/^c[nkpfcu]$/.test(id)) { const pv = $("nu-cprev"); if (pv) pv.textContent = nuCustomPrev(); }
   else if (/^g/.test(id) && N.sheet === "goals") { if (el.tagName === "SELECT" || el.type === "checkbox") render(); else { const pv = $("nu-gprev"); if (pv) pv.innerHTML = nuGoalsPreview(); } }
   else if (id === "save") { /* галочка «в мои» — просто значение */ }
@@ -3498,8 +3529,9 @@ Object.assign(acts, {
   nutab(a) { const N = NUN(); N.tab = a.dataset.v; render(); },
   nupick(a) { const x = NUN().res[+a.dataset.i]; if (x) nuOpenGrams(x); },
   nupickw(a) { const x = NUN().web && NUN().web[+a.dataset.i]; if (x) nuOpenGrams(x); },
-  nugstep(a) { const N = NUN(), g = Math.max(0, num(N.f.g) + +a.dataset.v); N.f.g = String(g); const x = $("nu-g"); if (x) x.value = g; const pv = $("nu-prev"); if (pv && N.sel) pv.innerHTML = nuPrevText(N.sel, g); },
-  nugp(a) { const N = NUN(); N.f.g = a.dataset.v; const x = $("nu-g"); if (x) x.value = a.dataset.v; const pv = $("nu-prev"); if (pv && N.sel) pv.innerHTML = nuPrevText(N.sel, num(a.dataset.v)); },
+  nugstep(a) { const N = NUN(), g = Math.max(0, num(N.f.g) + +a.dataset.v); N.f.g = String(g); const x = $("nu-g"); if (x) x.value = g; const pr = $("nu-por"); if (pr) pr.value = ""; nuGClear(); nuGRefresh(); },
+  nunow() { const N = NUN(); N.f.t = nowHM(); const x = $("nu-t"); if (x) x.value = N.f.t; },
+  nugp(a) { const N = NUN(); N.f.g = a.dataset.v; const x = $("nu-g"); if (x) x.value = a.dataset.v; nuGClear(); nuGRefresh(); },
   nuok() {
     const N = NUN(), s = N.sel, g = num(N.f.g); if (!s || g <= 0) { toast("Укажи вес в граммах"); return; }
     let food = s;
@@ -3507,7 +3539,7 @@ Object.assign(acts, {
       const have = Object.values(S.foods).find(f => (s.bc && f.barcode === s.bc) || nrm(f.name) === nrm(s.n));
       if (!have) { const o = { id: uid(), name: s.n, kcal: s.k, p: s.p, f: s.f, c: s.c, portions: [], barcode: s.bc || null, created_at: nowISO() }; S.foods[o.id] = o; mark("foods", o.id, "u"); food = Object.assign({}, s, { id: o.id }); }
     }
-    const o = nuAddEntry(food, g, N.f.t || nowHM(), N.day); toast("+" + r0(o.kcal) + " ккал"); nuClose();
+    const o = nuAddEntry(food, g, N.f.t || nowHM(), N.day), v = nuGV(); Object.assign(o, { p: r1(v.p), f: r1(v.f), c: r1(v.c), kcal: r1(v.kcal) }); mark("food_log", o.id, "u"); toast("+" + r0(o.kcal) + " ккал"); nuClose();
   },
   nucustom() { const N = NUN(); N.sheet = "custom"; N.f = { cn: N.q.trim() }; render(); setTimeout(() => { const x = $("nu-cn"); if (x) x.focus(); }, 0); },
   nucsave() {
