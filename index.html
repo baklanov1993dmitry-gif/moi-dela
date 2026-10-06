@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 22:46";
+const BUILD = "06.10 23:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1243,13 +1243,18 @@ function dtpInit(p, t) {
   return ref;
 }
 function calHTML(sel, y, m) {
-  const off = (new Date(y, m, 1).getDay() + 6) % 7, dim = new Date(y, m + 1, 0).getDate();
-  let g = ""; for (let i = 0; i < off; i++) g += "<span></span>";
-  for (let d = 1; d <= dim; d++) {
-    const iso = y + "-" + pad(m + 1) + "-" + pad(d);
-    g += '<button type="button" class="cal-d' + (iso === today ? " today" : "") + (iso === sel ? " sel" : "") + (iso < today ? " past" : "") + '" data-a="calday" data-v="' + iso + '">' + d + "</button>";
+  const D = ui.dtp || {};
+  if (D.pick) {
+    let g = ""; for (let k = 0; k < 12; k++) g += '<button type="button" class="cal-m' + (k === m && D.py === y ? " sel" : "") + (k === new Date().getMonth() && D.py === new Date().getFullYear() ? " today" : "") + '" data-a="calmon" data-v="' + k + '">' + MONN[k].slice(0, 3) + "</button>";
+    return '<div class="cal-h"><button type="button" class="cal-n" data-a="calyr" data-d="-1" aria-label="Год назад">‹</button><div class="cal-t">' + D.py + '</div><button type="button" class="cal-n" data-a="calyr" data-d="1" aria-label="Год вперёд">›</button></div><div class="cal-mg">' + g + "</div>";
   }
-  return '<div class="cal-h"><button type="button" class="cal-n" data-a="calnav" data-d="-1" aria-label="Назад">‹</button><div class="cal-t">' + MONN[m] + " " + y + '</div><button type="button" class="cal-n" data-a="calnav" data-d="1" aria-label="Вперёд">›</button></div>' +
+  const off = (new Date(y, m, 1).getDay() + 6) % 7, start = new Date(y, m, 1 - off);
+  let g = "";
+  for (let i = 0; i < 42; i++) {
+    const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), iso = dt.getFullYear() + "-" + pad(dt.getMonth() + 1) + "-" + pad(dt.getDate());
+    g += '<button type="button" class="cal-d' + (dt.getMonth() !== m ? " oth" : "") + (iso === today ? " today" : "") + (iso === sel ? " sel" : "") + (iso < today ? " past" : "") + '" data-a="calday" data-v="' + iso + '">' + dt.getDate() + "</button>";
+  }
+  return '<div class="cal-h"><button type="button" class="cal-n" data-a="calnav" data-d="-1" aria-label="Назад">‹</button><button type="button" class="cal-t" data-a="calpick" title="Выбрать месяц и год">' + MONN[m] + " " + y + ' ▾</button><button type="button" class="cal-n" data-a="calnav" data-d="1" aria-label="Вперёд">›</button></div>' +
     '<div class="cal-w"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div><div class="cal-g">' + g + "</div>";
 }
 function dtpHTML(p, t) {
@@ -1265,7 +1270,7 @@ function dtpHTML(p, t) {
       (t && t.due ? '<button type="button" class="dli" data-a="dclear" style="color:#d13438">' + ic("x", 18) + '<span class="dlx">Убрать срок</span></button>' : "");
   }
   let h = '<div class="dtp-t">' + (rem ? "Напомнить" : "Срок выполнения") + "</div>" +
-    '<div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + "</div>" +
+    '<div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + q("mon", "+ месяц") + "</div>" +
     calHTML(D.date, D.y, D.m);
   if (rem) {
     h += '<form id="dtpform" class="dtp-time"><div class="dtp-tl">Время</div><div class="tfld big"><button type="button" class="tb" data-a="dstep" data-d="-60">−1ч</button><button type="button" class="tb" data-a="dstep" data-d="-15">−15</button>' +
@@ -1279,7 +1284,7 @@ function dtpHTML(p, t) {
   return h;
 }
 function dtpSum() { const D = ui.dtp, b = parseISO(D.date), mm = parseTimeText(D.time); return WDS[b.getDay()] + ", " + b.getDate() + " " + MONG[b.getMonth()] + (mm != null ? " в " + hm(mm) : ""); }
-const dtpDay = v => v === "today" ? today : v === "tom" ? addDays(today, 1) : v === "week" ? nextMonday() : v;
+const dtpDay = v => v === "today" ? today : v === "tom" ? addDays(today, 1) : v === "week" ? nextMonday() : v === "mon" ? (() => { const d = parseISO(today); d.setMonth(d.getMonth() + 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); })() : v;
 function dtpIso() {
   const D = ui.dtp; if (!D || !D.date) return null;
   const mm = parseTimeText(D.time); if (mm == null) return null;
@@ -1289,6 +1294,9 @@ const dtpDone = () => { const dd = ui.pop && ui.pop.id === "__dd"; ui.dtp = null
 const dtpId = () => ui.pop && ui.pop.id;
 const dtpActs = {
   dcal() { if (ui.dtp) { ui.dtp.cal = true; render(); } },
+  calpick() { const D = ui.dtp; if (!D) return; keepTime(); D.pick = true; D.py = D.y; render(); },
+  calyr(a) { const D = ui.dtp; if (!D) return; D.py += +a.dataset.d; render(); },
+  calmon(a) { const D = ui.dtp; if (!D) return; D.y = D.py; D.m = +a.dataset.v; D.pick = false; render(); },
   calnav(a) { const D = ui.dtp; if (!D) return; let m = D.m + (+a.dataset.d), y = D.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } D.m = m; D.y = y; keepTime(); render(); },
   calday(a) {
     const D = ui.dtp; if (!D) return; const iso = a.dataset.v;
@@ -1325,6 +1333,12 @@ const dtpActs = {
     el.value = hm(clampMin((cur != null ? cur : 9 * 60) + (+a.dataset.d)));
   }
 };
+let _cs = null;
+document.addEventListener("touchstart", e => { const g = e.target.closest && e.target.closest(".cal-g"); _cs = g ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
+document.addEventListener("touchend", e => {
+  if (!_cs || !ui.dtp) return; const t = e.changedTouches[0], dx = t.clientX - _cs.x, dy = t.clientY - _cs.y; _cs = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { dtpActs.calnav({ dataset: { d: dx < 0 ? 1 : -1 } }); }
+}, { passive: true });
 function keepTime() { const e = $("dtp-t"); if (e && ui.dtp) { const v = e.value.trim(); if (v) ui.dtp.time = v; } }   // не терять набранное время при перерисовке
 const tfield = (id, v) => '<div class="tfld"><button type="button" class="tb" data-a="tstep" data-t="' + id + '" data-d="-15">−</button><input id="' + id + '" type="text" inputmode="numeric" autocomplete="off" maxlength="5" value="' + esc(v) + '"><button type="button" class="tb" data-a="tstep" data-t="' + id + '" data-d="15">+</button></div>';
 
@@ -1335,7 +1349,7 @@ const dtpCSS = `
 .pop.dtl .dli{height:34px;padding:0 14px;gap:12px;font-size:calc(13px*var(--z,1))} .pop.dtl .dli svg{width:16px;height:16px;color:var(--tx)}
 .pop.dtl .dli .dr{font-size:calc(12px*var(--z,1))} .pop.dtl .psep{margin:6px 0}
 .dtpb{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.4);z-index:59}
-@media(max-width:760px){.pop.dtp{left:0!important;right:0!important;top:auto!important;bottom:0!important;transform:none;width:100%;border-radius:18px 18px 0 0;max-height:90vh;padding:14px 14px max(14px,env(safe-area-inset-bottom))}}
+@media(max-width:760px){.pop.dtp{left:8px!important;right:8px!important;top:calc(env(safe-area-inset-top) + 52px)!important;bottom:auto!important;transform:none;width:auto;border-radius:18px;max-height:calc(100dvh - 70px);overflow-y:auto;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.35)}.cal-d{height:46px;font-size:calc(16px*var(--z,1))}.cal-w span{font-size:calc(13.5px*var(--z,1))}.cal-n{height:44px;width:48px}.cal-t{font-size:calc(17px*var(--z,1))}.dq{padding:12px 8px;font-size:calc(14.5px*var(--z,1))}}
 .dtp-t{font-weight:700;font-size:1.1em;margin-bottom:10px}
 .dqrow,.tchips{display:flex;gap:6px;flex-wrap:wrap}
 .tchips{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px}
@@ -1349,7 +1363,10 @@ const dtpCSS = `
 .cal-w,.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
 .cal-w span{font-size:calc(12px*var(--z,1));color:var(--sub);padding:4px 0}
 .cal-d{height:38px;border-radius:50%;font-size:calc(14.5px*var(--z,1));color:var(--tx)}
-.cal-d.past{opacity:.45}.cal-d.today{border:1.5px solid var(--acc);font-weight:700}
+.cal-d.oth{opacity:.3}.cal-d.past{opacity:.45}.cal-d.oth.past{opacity:.22}
+.cal-t{border-radius:10px;padding:6px 0}.cal-t:active{background:var(--inp)}
+.cal-mg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 0}.cal-m{height:62px;border-radius:14px;background:var(--inp);font-size:calc(16px*var(--z,1));color:var(--tx);text-transform:capitalize}.cal-m.today{border:1.5px solid var(--acc);font-weight:700}.cal-m.sel{background:var(--acc);color:#fff}
+.cal-g{min-height:6px}.cal-d.today{border:1.5px solid var(--acc);font-weight:700}
 .cal-d.sel{background:var(--acc);color:#fff;opacity:1;border-color:var(--acc)}
 .cal-d:active{background:var(--inp)}
 .dtp-time{margin-top:10px;border-top:1px solid var(--ln);padding-top:10px}
