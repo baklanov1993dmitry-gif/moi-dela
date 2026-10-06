@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "06.10 19:28";
+const BUILD = "06.10 21:07";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1759,13 +1759,14 @@ function desktopInit(app) {
   }, true);
 }
 const mCSS = `
-.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
+.taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
 .mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
 .mbar button{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 12px;cursor:pointer;font-size:inherit}
 .mbar button:hover{background:var(--hov)} .mbar .mx{color:var(--sub);padding:6px 10px}
 .stabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
 .stab{border:1px solid var(--ln);background:transparent;color:var(--tx);border-radius:18px;padding:7px 12px;font-size:calc(13px*var(--z,1));cursor:pointer}
 .stab.on{background:var(--acc);border-color:var(--acc);color:#fff}
+@media(max-width:1500px){.tg{display:none}}
 .mrow{display:flex;gap:6px;align-items:center;padding:6px 14px}
 .mrow input,.mrow select{height:32px;border:1px solid var(--ln);border-radius:6px;background:var(--card);color:var(--tx);padding:0 8px;font-size:calc(14px*var(--z,1))} .mrow input[type=number]{width:70px}
 @media (max-width:760px){.mbar{display:none}}
@@ -2069,7 +2070,7 @@ function subBtn(t) {
   return '<button class="subbtn ' + (subOpen(t) ? "open" : "") + '" data-a="subtog" data-id="' + t.id + '" title="Показать / скрыть подзадачи"><span>' + k.filter(x => x.done).length + "/" + k.length + "</span>" + ic(subOpen(t) ? "chevd" : "chevr", 18) + "</button>";
 }
 function subRow(k) {
-  return '<div class="taskrow sub ' + (selId === k.id ? "sel " : "") + (k.done ? "done" : "") + '" data-a="sel" data-id="' + k.id + '">' +
+  return '<div class="taskrow sub ' + (selId === k.id ? "sel " : "") + (ui.multi && ui.multi[k.id] ? "msel " : "") + (k.done ? "done" : "") + '" data-a="sel" data-id="' + k.id + '">' +
     '<div class="rad ' + (k.done ? "on" : "") + '" data-a="tog" data-id="' + k.id + '">' + (k.done ? ic("check", 11) : "") + "</div>" +
     '<div class="tbody"><div class="ttl">' + esc(k.title) + "</div>" + metaHTML(k, false, false) + "</div></div>";
 }
@@ -2132,7 +2133,7 @@ function fltBtns() {
 function fltBarHTML() {
   const f = PR.flt[view]; if (!f || !fltCount()) return "";
   const ch = (k, txt) => '<span class="sortchip">' + txt + ' <button data-a="fltclr" data-k="' + k + '" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>";
-  return '<div class="sortbar">' + (f.date ? ch("date", "Срок: " + (FLT_DATES.filter(x => x[0] === f.date)[0] || [0, ""])[1].toLowerCase()) : "") + (f.star ? ch("star", "Только важные") : "") + (f.rem ? ch("rem", "С напоминанием") : "") + (f.cat ? ch("cat", "Категория: " + esc(f.cat)) : "") + '<span class="sortchip" data-a="fltclr" data-k="all" style="cursor:pointer">Сбросить все</span></div>';
+  return (f.date ? ch("date", "Срок: " + (FLT_DATES.filter(x => x[0] === f.date)[0] || [0, ""])[1].toLowerCase()) : "") + (f.star ? ch("star", "Только важные") : "") + (f.rem ? ch("rem", "С напоминанием") : "") + (f.cat ? ch("cat", "Категория: " + esc(f.cat)) : "") + '<span class="sortchip" data-a="fltclr" data-k="all" style="cursor:pointer">Сбросить все</span>';
 }
 function filterPopHTML() {
   const f = PR.flt[view] || {}, it = (k, v, label, on) => '<div class="pi" data-a="flt" data-k="' + k + '" data-v="' + esc(v) + '"><span style="width:20px">' + (on ? "☑" : "☐") + "</span>" + label + "</div>";
@@ -2399,6 +2400,7 @@ const CSS = `
 .tool{display:inline-flex;align-items:center;gap:6px;color:var(--acc);padding:6px 10px;border-radius:4px;font-size:calc(13px*var(--z,1));border-bottom:2px solid transparent}
 .tool:hover{background:var(--hov)} .tool.on{border-bottom-color:var(--acc)}
 .sortbar{padding:6px 28px 0;display:flex;justify-content:flex-end}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.mchips{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
 .sortchip{display:inline-flex;align-items:center;gap:6px;font-size:calc(12px*var(--z,1));font-weight:600;color:var(--tx)}
 .addbar{margin:10px 28px 12px;background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);display:flex;align-items:center;gap:12px;padding:0 14px;height:52px;color:var(--acc);flex-shrink:0}
 .addbar input{flex:1;background:transparent;border:0;color:var(--tx);font-size:calc(14px*var(--z,1));height:100%;min-width:0}
@@ -2659,11 +2661,9 @@ function mainHTML(items, done, vi) {
     '<h1>' + (vi.emoji ? '<span style="font-size:calc(22px*var(--z,1))">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 22)) + "<span>" + esc(vi.name) + "</span></h1>" +
     (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
-    (view !== "search" && !isMobile() ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + ' Сетка</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + " Список</button>" +
+    (view !== "search" && !isMobile() ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + '<span class="tg"> Сетка</span></button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + '<span class="tg"> Список</span></button>' +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" + fltBtns() : "") + "</div>" +
-    '<div class="msub">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + " активн.</div>" +
-    (sc && view !== "search" ? '<div class="sortbar"><span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + " Сортировка: " + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span></div>" : "");
-  h += fltBarHTML();
+    '<div class="msub mrow"><span>' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + ' активн.</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + " Сортировка: " + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>";
   if (view !== "search" && !isMobile()) h += addBarHTML();
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
