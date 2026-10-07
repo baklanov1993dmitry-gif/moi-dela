@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "07.10 08:09";
+const BUILD = "07.10 12:45";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2522,6 +2522,7 @@ select.inp option{color:#111}
 .ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:70;display:flex;align-items:center;justify-content:center;padding:14px}
 .sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
 .lbl{font-size:calc(12px*var(--z,1));color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+@media(max-width:760px){#toasts{bottom:100px!important}}
 #toasts{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:min(380px,92vw)}
 .toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:calc(13.5px*var(--z,1));display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
@@ -3557,8 +3558,8 @@ function nuFoodRow(x, i) {
 }
 function nuPickRes() {
   const N = NUN(), res = N.res = nuSearch();
-  const web = N.webBusy ? '<div class="jr-hint">Ищу в Open Food Facts…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">Open Food Facts (упаковки, значения с этикеток):</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts такого нет. Нажми «Свой продукт» и впиши значения с этикетки — он сохранится в «Мои»") + "</div>") : "";
-  return (N.q.trim() ? '<div class="jr-f" style="margin:0 0 6px"><button class="tool" data-a="nuweb">🌐 Open Food Facts</button><button class="tool" data-a="nugoogle">🔎 Найти в Google</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Попробуй Open Food Facts, найди КБЖУ в Google и добавь через «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
+  const web = N.webBusy ? '<div class="jr-hint">Ищу…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">' + (N.web.length && /\(ИИ\)$/.test(N.web[0].n) ? 'Нашёл ИИ по сайтам (на 100 г, проверь):' : 'Open Food Facts (упаковки, значения с этикеток):') + '</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts такого нет. Нажми «Свой продукт» и впиши значения с этикетки — он сохранится в «Мои»") + "</div>") : "";
+  return (N.q.trim() ? '<div class="jr-f" style="margin:0 0 6px"><button class="tool" data-a="nuweb">🌐 Open Food Facts</button><button class="tool" data-a="nuaifood">🤖 Найти через ИИ</button><button class="tool" data-a="nugoogle">🔎 Google</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Попробуй Open Food Facts, найди КБЖУ в Google и добавь через «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
 }
 function nuSheetHTML() {
   const N = NUN(); if (!N.sheet) return "";
@@ -3683,10 +3684,11 @@ function nuOpenGrams(food) {
   N.f = { g: String(g), t: nowHM(), save: true }; render();
   setTimeout(() => { const x = $("nu-g"); if (x) { x.focus(); x.select(); } }, 0);
 }
+const unent = s => String(s == null ? "" : s).replace(/&quot;/g, "\"").replace(/&amp;/g, "&").replace(/&#0?39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 const nuFromOFF = p => {
   const n = p && p.nutriments || {}, k = n["energy-kcal_100g"] != null ? +n["energy-kcal_100g"] : (n["energy_100g"] != null ? +n["energy_100g"] / 4.184 : null);
   if (k == null || isNaN(k) || !p.product_name) return null;
-  return { n: (p.product_name + (p.brands ? " (" + String(p.brands).split(",")[0].trim() + ")" : "")).slice(0, 90), k: r1(k), p: r1(+n.proteins_100g || 0), f: r1(+n.fat_100g || 0), c: r1(+n.carbohydrates_100g || 0), u: [], web: true, bc: p.code || null };
+  return { n: unent(p.product_name + (p.brands ? " (" + String(p.brands).split(",")[0].trim() + ")" : "")).slice(0, 90), k: r1(k), p: r1(+n.proteins_100g || 0), f: r1(+n.fat_100g || 0), c: r1(+n.carbohydrates_100g || 0), u: [], web: true, bc: p.code || null };
 };
 async function nuWeb() {
   const N = NUN(), q = N.q.trim(); if (!q) return; N.webBusy = true; N.web = null; N.werr = ""; render();
@@ -3736,7 +3738,7 @@ Object.assign(acts, {
     if (!sb) return;
     try { const r = await sb.from("foods").select("id").limit(1); const okk = !r.error; nxSet(okk); toast(okk ? "Готово, питание включено" : "Таблиц ещё нет — SQL не выполнен"); if (okk) loadAll(); } catch (e) { toast("Нет связи"); } render();
   },
-  nuopen() { const N = NUN(); N.sheet = "pick"; N.q = ""; N.tab = "all"; N.web = null; N.f = {}; render(); setTimeout(() => { const x = $("nu-q"); if (x && !isMobile()) x.focus(); }, 0); },
+  nuopen() { const N = NUN(); N.sheet = "pick"; N.q = ""; N.tab = "all"; N.web = null; N.f = {}; render(); const fq = () => { const x = $("nu-q"); if (x && document.activeElement !== x) x.focus(); }; fq(); setTimeout(fq, 60); },
   nuclose() { nuClose(); },
   nuback() { nuScanStop(); const N = NUN(); N.sheet = "pick"; N.f = {}; render(); },
   nutab(a) { const N = NUN(); N.tab = a.dataset.v; render(); },
@@ -3776,6 +3778,16 @@ Object.assign(acts, {
     aiCall("nutrition", { targets: { kcal: tg.kcal, protein: tg.p, fat: tg.f, carbs: tg.c }, days, weights }).then(t => { N.ai = { text: t }; render(); }).catch(e => { N.ai = { err: e.message }; render(); });
   },
   nuweb() { nuWeb(); },
+  async nuaifood() {
+    const N = NUN(), q = N.q.trim(); if (!q) return; N.webBusy = true; N.web = null; N.werr = ""; render();
+    try {
+      const t = await aiCall("food", { query: q }), m = t.match(/\{[\s\S]*\}/); if (!m) throw new Error("не разобрал ответ");
+      const o = JSON.parse(m[0]), k = +o.kcal; if (!(k >= 0) || !o.name) throw new Error("ИИ не нашёл значения");
+      N.web = [{ n: unent(String(o.name)).slice(0, 90) + " (ИИ)", k: r1(k), p: r1(+o.protein || 0), f: r1(+o.fat || 0), c: r1(+o.carbs || 0), u: o.portion_g ? [[o.portion_name || "порция", +o.portion_g]] : [], web: true, bc: null }];
+      N.wnote = String(o.note || "").slice(0, 160);
+    } catch (e) { N.web = []; N.werr = e.message === "setup" ? "ИИ-поиск ещё не подключён (одноразовая настройка, см. AI_SETUP.md)" : "ИИ-поиск не сработал: " + e.message; }
+    N.webBusy = false; render();
+  },
   nugoogle() { const q = NUN().q.trim(); if (q) window.open("https://www.google.com/search?q=" + encodeURIComponent(q + " калорийность БЖУ на 100 г"), "_blank"); },
   nuscan() { nuScan(); },
   nubc() { nuBarcode(NUN().f.bc); },
