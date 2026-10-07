@@ -62,7 +62,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "07.10 12:45";
+const BUILD = "07.10 15:29";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2820,7 +2820,7 @@ function settingsHTML() {
   let b = "";
   if (tab === "view") b =
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
-    sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (TH.accent === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>") +
+    sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (curAccent() === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" + (view.indexOf("list:") === 0 && S.lists[view.slice(5)] && S.lists[view.slice(5)].color ? '<div class="jr-hint" style="margin-top:6px">У списка «' + esc(S.lists[view.slice(5)].name) + '» свой цвет — выбор здесь поменяет и его.</div>' : "")) +
     sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупный"], ["l2", "Ещё крупнее"], ["xl", "Очень крупный"], ["xxl", "Огромный"]])) +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
@@ -3058,7 +3058,11 @@ const acts = {
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
   stab(a) { ui.stab = a.dataset.v; render(); },
   theme(a) { const T = THEMES[a.dataset.v]; TH.theme = a.dataset.v; if (T) { TH.accent = T.acc; TH.font = T.font; } saveTheme(); render(); },
-  accent(a) { TH.accent = a.dataset.v; saveTheme(); render(); },
+  accent(a) {
+    TH.accent = a.dataset.v; const l = view.indexOf("list:") === 0 && S.lists[view.slice(5)];
+    if (l && l.color) { l.color = a.dataset.v; mark("lists", l.id, "u"); toast("Цвет списка «" + l.name + "» тоже сменён: у него был свой"); }   // свой цвет списка перекрывал акцент — казалось, что ничего не меняется
+    saveTheme(); render();
+  },
   export() { closePop(); exportJson(); render(); }, ping() { ping(); }, logout() { closePop(); logout(); },
   icsfile() { if (selId && exportIcs(selId)) toast("📅 Файл скачан — откройте его в Календаре. Если событие уже было, оно обновится", { ms: 6000 }); },
   ics() { const u = selId && gcalUrl(S.tasks[selId]); if (u) window.open(u, "_blank", "noopener"); },
