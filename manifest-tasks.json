@@ -1,0 +1,33 @@
+{
+  "id": "/moi-dela-tasks",
+  "name": "Мои дела — задачи",
+  "short_name": "Дела",
+  "description": "Личный список дел с облачной синхронизацией",
+  "start_url": "./?app=tasks",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#2564cf",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icon-tasks-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-tasks-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-tasks-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

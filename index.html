@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0f172a">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json" id="mf">
+<script>try{var _a=new URLSearchParams(location.search).get("app");if(/^(tasks|journal|food)$/.test(_a)){document.getElementById("mf").href="manifest-"+_a+".json";var _ti=document.querySelector('link[rel=apple-touch-icon]');if(_ti)_ti.href="icon-"+_a+"-192.png";}}catch(e){}</script>
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -62,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "07.10 15:29";
+const BUILD = "08.10 07:06";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -130,6 +131,7 @@ if (innerWidth <= 760 && !TH.sz2) { TH.size = "n"; TH.sz2 = 1; try { jset(LSK.th
 const PR = Object.assign({ sort: {}, group: {}, grid: {}, collapsed: {}, showDone: {}, rail: false, dayStart: 8, dayEnd: 17, reserve: 25 }, jget(LSK.prefs, {}));
 const savePrefs = () => jset(LSK.prefs, PR);
 let view = jget(LSK.view, "planned"), prevView = "planned", selId = null;
+try { const _ap = new URLSearchParams(location.search).get("app"); if (_ap === "journal" || _ap === "food") view = _ap; else if (_ap === "tasks" && (view === "journal" || view === "food")) view = "planned"; } catch (e) {}   // три ярлыка: ?app=journal|food|tasks
 const HOME = () => PR.myday ? "myday" : "planned";
 if (view === "myday" && !PR.myday) view = "planned";
 const ui = { qa: null, msearch: false, left: false, settings: false, limit: 300, doneLimit: 30, msg: "", msgOk: true, busy: false, q: "", pop: null, sugg: false, alerts: [], gcol: {}, day: null, dsheet: null };
@@ -230,6 +232,7 @@ const IC = {
   arrowl: '<path d="M19 12H5M12 19l-7-7 7-7"/>', dotsv: '<circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/>',
   down: '<path d="M12 5v14M19 12l-7 7-7-7"/>', up: '<path d="M12 19V5M5 12l7-7 7 7"/>'
 };
+IC.rst = '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>'; IC.flt = '<path d="M3 5h18l-7 8v6l-4-2v-4z"/>';
 const ic = (n, s, extra) => '<svg class="ic ' + (extra || "") + '" width="' + (s || 16) + '" height="' + (s || 16) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + "</svg>";
 const icf = (n, s) => ic(n, s, "fill");
 
@@ -2165,10 +2168,15 @@ function fltBtns() {
   const n = fltCount();
   return '<button class="tool ' + (n ? "on" : "") + '" data-a="pop" data-p="filter">▽ Фильтр' + (n ? " · " + n : "") + '</button><button class="tool" data-a="submode" title="Показывать подзадачи внутри списка или только задачи верхнего уровня">' + (PR.subs === "top" ? "☰ Только главные" : "☷ С подзадачами") + "</button>";
 }
+function mToolsHTML() {
+  const sc = PR.sort[view], gr = getGroup(view) !== (view === "planned" ? "due" : "none"), n = fltCount(), any = !!sc || gr || n;
+  return '<div class="mtools"><button class="mt ' + (sc ? "on" : "") + '" data-a="pop" data-p="sort">' + ic("sort", 18) + '<span>Сортир.</span></button><button class="mt ' + (gr ? "on" : "") + '" data-a="pop" data-p="group">' + ic("group", 18) + '<span>Группы</span></button><button class="mt ' + (n ? "on" : "") + '" data-a="pop" data-p="filter">' + ic("flt", 18) + '<span>Фильтр' + (n ? " · " + n : "") + '</span></button>' +
+    '<button class="mt rs" data-a="resetall" title="Сбросить сортировку, группировку и фильтры"' + (any ? "" : " disabled") + ">" + ic("rst", 19) + "</button></div>";
+}
 function fltBarHTML() {
   const f = PR.flt[view]; if (!f || !fltCount()) return "";
-  const ch = (k, txt) => '<span class="sortchip">' + txt + ' <button data-a="fltclr" data-k="' + k + '" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>";
-  return (f.date ? ch("date", "Срок: " + (FLT_DATES.filter(x => x[0] === f.date)[0] || [0, ""])[1].toLowerCase()) : "") + (f.star ? ch("star", "Только важные") : "") + (f.rem ? ch("rem", "С напоминанием") : "") + (f.cat ? ch("cat", "Категория: " + esc(f.cat)) : "") + '<span class="sortchip" data-a="fltclr" data-k="all" style="cursor:pointer">Сбросить все</span>';
+  const ch = (k, txt) => '<span class="sortchip"><button data-a="pop" data-p="filter" title="Настроить фильтр" style="font:inherit;color:inherit;text-align:left">' + txt + '</button> <button data-a="fltclr" data-k="' + k + '" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>";
+  return (f.date ? ch("date", "Срок: " + (FLT_DATES.filter(x => x[0] === f.date)[0] || [0, ""])[1].toLowerCase()) : "") + (f.star ? ch("star", "Только важные") : "") + (f.rem ? ch("rem", "С напоминанием") : "") + (f.cat ? ch("cat", "Категория: " + esc(f.cat)) : "") + '<span class="sortchip rst" data-a="fltclr" data-k="all" style="cursor:pointer">Сбросить все</span>';
 }
 function filterPopHTML() {
   const f = PR.flt[view] || {}, it = (k, v, label, on) => '<div class="pi" data-a="flt" data-k="' + k + '" data-v="' + esc(v) + '"><span style="width:20px">' + (on ? "☑" : "☐") + "</span>" + label + "</div>";
@@ -2200,6 +2208,7 @@ const subActs = {
     if (k === "date") { if (v) f.date = v; else delete f.date; } else if (k === "cat") { if (f.cat === v) delete f.cat; else f.cat = v; } else { if (f[k]) delete f[k]; else f[k] = 1; }
     if (!fltCount()) delete PR.flt[view]; savePrefs(); render();
   },
+  resetall() { delete PR.flt[view]; delete PR.sort[view]; delete PR.group[view]; savePrefs(); closePop(); render(); },
   fltclr(a) { const k = a.dataset.k; if (k === "all") delete PR.flt[view]; else if (PR.flt[view]) { delete PR.flt[view][k]; if (!fltCount()) delete PR.flt[view]; } savePrefs(); closePop(); render(); }
 };
 const subCSS = `
@@ -2523,6 +2532,11 @@ select.inp option{color:#111}
 .sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
 .lbl{font-size:calc(12px*var(--z,1));color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
 @media(max-width:760px){#toasts{bottom:100px!important}}
+.mtools{display:flex;gap:6px;padding:4px 14px 6px;align-items:stretch}
+.mt{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:40px;border-radius:10px;background:var(--card);box-shadow:var(--shadow);color:var(--tx);font-size:calc(14px*var(--z,1));font-weight:600;white-space:nowrap;min-width:0}
+.mt span{overflow:hidden;text-overflow:ellipsis}.mt svg{flex-shrink:0;color:var(--sub)}
+.mt.on{background:var(--acc);color:#fff}.mt.on svg{color:#fff}
+.mt.rs{flex:0 0 44px}.mt.rs:disabled{opacity:.35}
 #toasts{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:min(380px,92vw)}
 .toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:calc(13.5px*var(--z,1));display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
@@ -2557,7 +2571,7 @@ select.inp option{color:#111}
   .mhead{padding:6px 18px 2px} .mhead h1{font-size:calc(28px*var(--z,1));font-weight:700}
   .msub{padding:0 18px} .addbar,.hint{display:none}
   .tm{display:none} .mcnt{flex:1;padding-left:14px;color:var(--sub);font-size:calc(15px*var(--z,1))} .mrow>.mrc,.dsk{display:none} .mrow{padding:0 14px;gap:8px} .mrow:has(.mchips:empty){display:none}
-  .mchips{margin-left:0;justify-content:flex-start;gap:8px;padding:2px 0} .mchips .sortchip{padding:6px 10px;font-size:calc(13px*var(--z,1))} .gh{font-size:calc(16px*var(--z,1));margin:16px 0 8px}
+  .mchips .rst{display:none}.mchips{margin-left:0;justify-content:flex-start;gap:8px;padding:2px 0} .mchips .sortchip{padding:6px 10px;font-size:calc(13px*var(--z,1))} .gh{font-size:calc(16px*var(--z,1));margin:16px 0 8px}
   #list{padding:0 14px 100px} .sortbar{padding:6px 14px 0;justify-content:flex-start} .sugg{margin:0 14px 10px}
   #left,#right{position:absolute;left:0;top:0;right:0;bottom:0;width:100%!important;max-width:none!important;z-index:20;box-shadow:none;background:var(--solid)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
   #left:not(.hide) ~ #main{display:none}
@@ -2703,7 +2717,7 @@ function mainHTML(items, done, vi) {
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
     (view !== "search" && !isMobile() ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + '<span class="tg"> Сетка</span></button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + '<span class="tg"> Список</span></button>' +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" + fltBtns() : "") + "</div>" +
-    '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + ' активн.</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + ' <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>";
+    '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + ' активн.</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() : "");
   if (view !== "search" && !isMobile()) h += addBarHTML();
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
@@ -2711,7 +2725,7 @@ function mainHTML(items, done, vi) {
       (sg.length ? sg.map(t => { const di = dueInfo(t); return '<div class="sr"><span style="flex:1;min-width:0;word-break:break-word">' + esc(t.title) + '</span><span class="mi ' + (di ? di.cls : "") + '" style="font-size:calc(12px*var(--z,1))">' + (di ? di.txt : "") + '</span><button class="ibtn" data-a="sgadd" data-id="' + t.id + '" title="Добавить в «Мой день»" style="color:var(--acc);width:28px;height:28px">' + ic("plus", 16) + "</button></div>"; }).join("") : '<div class="sr" style="color:var(--sub)">Нет задач, горящих сегодня или завтра</div>') + "</div>";
   }
   h += '<div class="scroll" id="list">';
-  if (!items.length && !done.length) h += '<div style="text-align:center;padding:50px 10px;color:var(--sub);font-size:calc(15px*var(--z,1))">' + (view === "search" ? "Ничего не найдено" : '<div style="font-size:42px;margin-bottom:6px">' + (view === "myday" ? "☀️" : view === "starred" ? "⭐" : view === "planned" ? "📅" : "✨") + "</div><b style=\"color:var(--tx);font-weight:600\">" + (view === "myday" ? "Мой день пока свободен" : view === "starred" ? "Важных задач нет" : view === "planned" ? "Запланированных задач нет" : "Здесь пока пусто") + "</b><div style=\"margin-top:4px\">" + (view === "myday" ? "Добавь задачу сюда или выбери из «Предложений»" : "Впиши первую задачу — поле выше") + "</div>") + "</div>";
+  if (!items.length && !done.length) h += '<div style="text-align:center;padding:50px 10px;color:var(--sub);font-size:calc(15px*var(--z,1))">' + (view === "search" ? "Ничего не найдено" : fltCount() ? '<div style="font-size:42px;margin-bottom:6px">🔍</div><b style="color:var(--tx);font-weight:600">Под фильтр ничего не подходит</b><div style="margin-top:4px">Нажми на фильтр выше, чтобы изменить, или ↺ — сбросить</div>' : '<div style="font-size:42px;margin-bottom:6px">' + (view === "myday" ? "☀️" : view === "starred" ? "⭐" : view === "planned" ? "📅" : "✨") + "</div><b style=\"color:var(--tx);font-weight:600\">" + (view === "myday" ? "Мой день пока свободен" : view === "starred" ? "Важных задач нет" : view === "planned" ? "Запланированных задач нет" : "Здесь пока пусто") + "</b><div style=\"margin-top:4px\">" + (view === "myday" ? "Добавь задачу сюда или выбери из «Предложений»" : "Впиши первую задачу — поле выше") + "</div>") + "</div>";
   groups.forEach(g => {
     const k = view + "|" + g.key, col = ui.gcol[k];
     if (g.label) h += '<div class="gh" data-a="ggtoggle" data-k="' + esc(k) + '">' + ic(col ? "chevr" : "chevd", 14) + "<span>" + esc(g.label) + '</span><span class="cnt">' + g.items.length + "</span></div>";
@@ -2772,7 +2786,7 @@ function popHTML() {
     case "mmenu": {
       const L = p.id && S.lists[p.id];
       h = (L ? im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + im("l_dup", "copy", "Дублировать список") + im("l_arch", "inbox", L.group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_deldone", "ccheck", "Удалить завершённые") + im("l_del", "trash", "Удалить список", "danger") + '<div class="psep"></div>' : "") +
-        (view !== "search" ? im("sub_sort", "sort", "Сортировка…") + im("sub_group", "group", "Группировать…") + im("sub_filter", "list", "Фильтр" + (fltCount() ? " · " + fltCount() : "") + "…") + im("subs_mode", "list", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)") + im("gridtog", "grid", PR.grid[view] ? "Показать списком" : "Показать сеткой") : "") +
+        (view !== "search" ? im("subs_mode", "list", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)") + im("gridtog", "grid", PR.grid[view] ? "Показать списком" : "Показать сеткой") : "") +
         (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + im("sync", "repeat", "Синхронизировать") + im("settings", "gear", "Настройки");
       break;
     }
