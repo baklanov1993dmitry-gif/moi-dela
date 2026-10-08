@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "08.10 15:13";
+const BUILD = "08.10 19:46";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2994,8 +2994,13 @@ async function boot() {
   sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { storageKey: "mytasks-auth", persistSession: true, autoRefreshToken: true } });
   sb.auth.onAuthStateChange((ev, session) => { setTimeout(() => setUser(session && session.user), 0); });
   let u = null, r = null;
-  try { r = await sb.auth.getSession(); u = r && r.data && r.data.session && r.data.session.user; } catch (e) { r = { error: e }; }
-  if (!u) { const c = jget(LSK.cache, null); if (c && c.user && (!navigator.onLine || (r && r.error))) u = c.user; }
+  const cc = jget(LSK.cache, null);
+  if (!navigator.onLine && cc && cc.user) { u = cc.user; r = { error: "offline" }; }                  // нет сети: сразу открываем из кэша, не ждём обновления токена
+  else {
+    try { r = await Promise.race([sb.auth.getSession(), new Promise(res => setTimeout(() => res({ timeout: true }), 1800))]); u = r && r.data && r.data.session && r.data.session.user; } catch (e) { r = { error: e }; }
+    if (r && r.timeout) r = { error: "timeout" };   // слабая связь: getSession зависает с повторами — не держим пустой экран
+  }
+  if (!u && cc && cc.user && (!navigator.onLine || (r && r.error))) u = cc.user;
   render();
   setUser(u);
 }

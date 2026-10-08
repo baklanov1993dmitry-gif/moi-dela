@@ -1,5 +1,5 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html и так грузится «сначала из сети».
-const CACHE = "moidela-shell-v21";
+const CACHE = "moidela-shell-v22";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./manifest-journal.json", "./manifest-food.json", "./manifest-tasks.json", "./icon-journal-192.png", "./icon-food-192.png", "./icon-tasks-192.png", "./foods.json?v=4"];
 
 self.addEventListener("install", e => {
@@ -17,11 +17,18 @@ self.addEventListener("fetch", e => {
   if (url.origin !== location.origin) return;          // Supabase и всё чужое — мимо кэша, всегда напрямую
   if (url.pathname.endsWith("build.txt")) return;      // метка версии — всегда с сервера
   const isShell = req.mode === "navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("index.html") || url.pathname.endsWith("manifest.json");
-  if (isShell) {                                        // страница и манифест: сначала сеть, кэш — только если сети нет
-    e.respondWith(fetch(req).then(res => {
-      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
-      return res;
-    }).catch(() => caches.match(req).then(r => r || caches.match("./index.html"))));
+  if (isShell) {                                        // страница и манифест: сначала сеть (до 3 с), потом кэш — работает и без сети, и при «зависшей» связи
+    e.respondWith(new Promise(resolve => {
+      let done = false;
+      const serve = r => { if (!done && r) { done = true; resolve(r); } };
+      const fromCache = () => caches.match(req, { ignoreSearch: true }).then(r => r || (req.mode === "navigate" ? caches.match("./index.html") : null));
+      const t = setTimeout(() => { fromCache().then(serve); }, 3000);
+      fetch(req).then(res => {
+        clearTimeout(t);
+        if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+        serve(res);
+      }).catch(() => { clearTimeout(t); fromCache().then(r => { if (r) serve(r); else if (!done) { done = true; resolve(Response.error()); } }); });
+    }));
     return;
   }
   e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {   // иконки: кэш первым
