@@ -9,6 +9,7 @@ const SYS: Record<string, string> = {
   nutrition: "Ты — внимательный нутрициолог-практик. Тебе дают цели (ккал/БЖУ), дневные итоги питания и динамику веса. Цель пользователя — рекомпозиция тела. Ответь по-русски, кратко (до 150 слов): оценка соответствия цели, связь питания с весом, 2–3 конкретных шага. Не ставь диагнозов и не давай медицинских назначений. Если данных мало — скажи.",
   food: "Ты помогаешь заполнить дневник питания. По названию блюда/продукта найди в интернете (российские сайты калорийности, этикетки, справочники) типичные значения на 100 г. Ответь ТОЛЬКО одним JSON без пояснений и markdown: {\"name\":\"короткое название\",\"kcal\":число,\"protein\":число,\"fat\":число,\"carbs\":число,\"portion_name\":\"необязательно, например шт.\",\"portion_g\":число или null,\"note\":\"1 короткая фраза: на чём основана оценка, диапазон\"}. Если источники расходятся — бери середину диапазона. Если блюда нет — оцени по составу и скажи об этом в note.",
 };
+SYS.categorize = "Ты раскладываешь записи дневника времени по категориям. Тебе дают JSON: cats — уже существующие категории пользователя (по убыванию частоты), items — записи {i, t (текст), m (минуты или null)}. Для каждой записи выбери ОДНУ категорию из cats; новую (1–2 слова, строчными) заводи только если ни одна не подходит. Если запись про несколько дел — бери то, что заняло больше времени/названо первым. Ответь ТОЛЬКО JSON-массивом без пояснений и markdown: [{\"i\":0,\"c\":\"категория\"}, ...] — по элементу на каждую запись.";
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 
 Deno.serve(async (req) => {
@@ -25,11 +26,11 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
-        model: Deno.env.get("ANTHROPIC_MODEL") || "claude-sonnet-4-5",
-        max_tokens: kind === "food" ? 900 : 600,
+        model: kind === "categorize" ? (Deno.env.get("ANTHROPIC_MODEL_FAST") || "claude-haiku-4-5") : (Deno.env.get("ANTHROPIC_MODEL") || "claude-sonnet-4-5"),
+        max_tokens: kind === "categorize" ? 3500 : kind === "food" ? 900 : 600,
         system: sys,
         ...(kind === "food" ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] } : {}),
-        messages: [{ role: "user", content: (kind === "food" ? "Продукт/блюдо: " + String((data ?? {}).query ?? "").slice(0, 200) : "Данные (JSON):\n" + body) }],
+        messages: [{ role: "user", content: (kind === "categorize" ? "Данные (JSON):\n" + body : kind === "food" ? "Продукт/блюдо: " + String((data ?? {}).query ?? "").slice(0, 200) : "Данные (JSON):\n" + body) }],
       }),
     });
     const j = await r.json();
