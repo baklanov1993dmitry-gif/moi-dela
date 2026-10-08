@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "08.10 07:36";
+const BUILD = "08.10 07:43";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2537,6 +2537,7 @@ select.inp option{color:#111}
 .mt span{overflow:hidden;text-overflow:ellipsis}.mt svg{flex-shrink:0;color:var(--sub)}
 .mt.on{background:var(--acc);color:#fff}.mt.on svg{color:#fff}
 .mt.rs{flex:0 0 44px}.mt.rs:disabled{opacity:.35}
+.nu-act{flex-wrap:nowrap!important;gap:6px}.nu-act .tool{flex:1;justify-content:center;padding-left:6px;padding-right:6px;white-space:nowrap;min-width:0}
 #toasts{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:min(380px,92vw)}
 .toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:calc(13.5px*var(--z,1));display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
@@ -3577,7 +3578,7 @@ function nuFoodRow(x, i) {
 function nuPickRes() {
   const N = NUN(), res = N.res = nuSearch();
   const web = N.webBusy ? '<div class="jr-hint">Ищу…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">' + (N.web.length && /\(ИИ\)$/.test(N.web[0].n) ? 'Нашёл ИИ по сайтам (на 100 г, проверь):' : 'Open Food Facts (упаковки, значения с этикеток):') + '</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts такого нет. Нажми «Свой продукт» и впиши значения с этикетки — он сохранится в «Мои»") + "</div>") : "";
-  return (N.q.trim() ? '<div class="jr-f" style="margin:0 0 6px"><button class="tool" data-a="nuweb">🌐 Open Food Facts</button><button class="tool" data-a="nuaifood">🤖 Найти через ИИ</button><button class="tool" data-a="nugoogle">🔎 Google</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Попробуй Open Food Facts, найди КБЖУ в Google и добавь через «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
+  return (N.q.trim() ? '<div class="jr-f nu-act" style="margin:0 0 4px"><button class="tool" data-a="nuweb" title="Open Food Facts — база упаковок">🌐 OFF</button><button class="tool" data-a="nuaifood" title="ИИ найдёт КБЖУ по сайтам">🤖 ИИ</button><button class="tool" data-a="nugoogle" title="Открыть поиск Google">🔎 Google</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Попробуй Open Food Facts, найди КБЖУ в Google и добавь через «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
 }
 function nuSheetHTML() {
   const N = NUN(); if (!N.sheet) return "";
@@ -3589,7 +3590,7 @@ function nuSheetHTML() {
     const resHTML = nuPickRes();
     const tabs = [["all", "Все"], ["recent", "Недавние"], ["mine", "Мои"]].map(t => '<button class="jr-chip' + (N.tab === t[0] ? " on" : "") + '" data-a="nutab" data-v="' + t[0] + '">' + t[1] + "</button>").join("");
     body = '<div class="jr-f"><input id="nu-q" class="inp" style="flex:1;min-width:0" placeholder="Поиск: гречка, борщ, творог…" autocomplete="off" value="' + esc(N.q) + '"></div><div class="jr-chips" style="margin-top:8px">' + tabs + "</div>" +
-      '<div class="jr-f" style="margin:8px 0"><button class="tool" data-a="nucustom">＋ Свой продукт</button><button class="tool" data-a="nuscan">📷 Штрихкод</button><button class="tool" data-a="nuquick">Быстро: только ккал</button></div><div id="nu-resbox">' + resHTML + "</div>";
+      '<div class="jr-f nu-act" style="margin:6px 0 2px"><button class="tool" data-a="nucustom">＋ Свой продукт</button><button class="tool" data-a="nuscan">📷 Штрихкод</button></div><div id="nu-resbox">' + resHTML + "</div>";
   } else if (N.sheet === "grams") {
     const s = N.sel, v = nuGV(), T0 = nuTargets(N.day), base = nuSum(nuEntries(N.day));
     title = "Съесть";
