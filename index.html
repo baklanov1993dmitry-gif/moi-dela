@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "08.10 19:46";
+const BUILD = "08.10 21:19";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2549,6 +2549,18 @@ select.inp option{color:#111}
 .mt.rs{flex:0 0 44px}.mt.rs:disabled{opacity:.35}
 .nu-act{flex-wrap:nowrap!important;gap:6px}.nu-act .tool{flex:1;justify-content:center;padding-left:6px;padding-right:6px;white-space:nowrap;min-width:0}
 .mi.dueb{background:none;border:0;padding:2px 6px;margin:-2px -6px;border-radius:8px;font:inherit;color:inherit;cursor:pointer}.mi.dueb:active,.mi.dueb:hover{background:var(--inp)}
+.jr-ed{padding:14px!important}
+.jr-et{font-weight:700;font-size:calc(17px*var(--z,1));margin-bottom:10px}
+.jr-eb{position:relative;display:flex;flex-direction:column;justify-content:center;gap:2px;flex:1;min-width:0;border:1.5px solid var(--ln);background:var(--solid,#fff);border-radius:14px;padding:10px 14px;margin-bottom:10px;cursor:pointer}
+.jr-eb i{font-style:normal;font-size:calc(12px*var(--z,1));color:var(--sub)}.jr-eb span{font-size:calc(19px*var(--z,1));font-weight:600}
+.jr-eb input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.jr-ed .jr-tr{margin-bottom:10px}.jr-ed .jr-tr .jr-eb{margin-bottom:0}
+.jr-ed .jr-tb{padding:12px 10px;font-size:calc(28px*var(--z,1))}.jr-ed .jr-tb i{font-size:calc(12px*var(--z,1))}
+.jr-edur{color:var(--sub);font-size:calc(14px*var(--z,1));margin:-2px 0 10px 4px}.jr-edur b{color:var(--tx)}
+.jr-etx{width:100%;box-sizing:border-box;font-size:calc(19px*var(--z,1));padding:12px 14px;border-radius:14px;resize:vertical;min-height:64px;font-family:inherit;line-height:1.35}
+.jr-ebt{display:flex;gap:10px;margin-top:12px}.jr-ebt .btn{flex:1}
+.jr-big{height:52px;font-size:calc(18px*var(--z,1));border-radius:14px}
+.jr-edel{width:100%;margin-top:10px;height:46px;color:#d13438;display:flex;align-items:center;justify-content:center;gap:8px;font-size:calc(16px*var(--z,1))}
 #toasts{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:min(380px,92vw)}
 .toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:calc(13.5px*var(--z,1));display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
@@ -3263,10 +3275,18 @@ function jrItem(l) {
 }
 function jrEditHTML(l) {
   const e = jrState().e, p = jrKind(l) === "p";
-  const f = p ? '<input type="date" id="jr-e-d1" class="inp" value="' + esc(e.d1 || "") + '"><span>–</span><input type="date" id="jr-e-d2" class="inp" value="' + esc(e.d2 || "") + '">'
-    : '<input type="date" id="jr-e-date" class="inp" value="' + esc(e.date || "") + '"><input type="time" id="jr-e-st" class="inp" value="' + esc(e.st || "") + '"><span>–</span><input type="time" id="jr-e-en" class="inp" value="' + esc(e.en || "") + '">';
-  return '<div class="jr-it jr-ed"><div class="jr-f">' + f + '</div><div class="jr-f" style="margin-top:8px"><input id="jr-e-tx" class="inp" style="flex:1;min-width:0" autocomplete="off" value="' + esc(e.tx || "") + '"></div>' +
-    '<div class="jr-f" style="margin-top:8px"><button class="btn" data-a="jrsave">Сохранить</button><button class="btn ghost" data-a="jrcancel">Отмена</button><span class="sp" style="flex:1"></span><button class="btn ghost" data-a="jrdel">Удалить</button></div></div>';
+  const dl = iso => { if (!iso) return "—"; const d = parseISO(iso), t = todayISO(), rel = iso === t ? "Сегодня, " : iso === addDays(t, -1) ? "Вчера, " : ""; return rel + WDS[d.getDay()] + " " + d.getDate() + " " + MONS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); };
+  const dbtn = (id, lab, v) => '<label class="jr-eb"><i>' + lab + '</i><span>' + esc(dl(v)) + '</span><input type="date" id="' + id + '" value="' + esc(v || "") + '"></label>';
+  let top;
+  if (p) top = '<div class="jr-tr">' + dbtn("jr-e-d1", "С даты", e.d1) + '<span>→</span>' + dbtn("jr-e-d2", "По дату", e.d2) + "</div>";
+  else {
+    const dm = e.st && e.en ? jrDM(e.st, e.en) : 0;
+    top = dbtn("jr-e-date", "Дата", e.date) + '<div class="jr-tr"><button class="jr-tb" data-a="jrwheel" data-k="est"><i>Начало</i>' + (e.st || "—:—") + '</button><span>→</span><button class="jr-tb" data-a="jrwheel" data-k="een"><i>Конец</i>' + (e.en || "—:—") + '</button></div>' + (dm ? '<div class="jr-edur">Длительность: <b>' + fmtDurM(dm) + "</b></div>" : "");
+  }
+  return '<div class="jr-it jr-ed"><div class="jr-et">Редактирование записи</div>' + top +
+    '<textarea id="jr-e-tx" class="inp jr-etx" rows="2" autocomplete="off" placeholder="Что делал">' + esc(e.tx || "") + '</textarea>' +
+    '<div class="jr-ebt"><button class="btn jr-big" data-a="jrsave">Сохранить</button><button class="btn ghost jr-big" data-a="jrcancel">Отмена</button></div>' +
+    '<button class="btn ghost jr-edel" data-a="jrdel">' + ic("trash", 18) + " Удалить запись</button></div>";
 }
 function journalMainHTML(vi) {
   const J = jrState(), today0 = todayISO(), yest = addDays(today0, -1), all = Object.values(S.time_log).filter(l => jrDay(l));
@@ -3315,11 +3335,11 @@ function journalMainHTML(vi) {
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
   setTimeout(() => { const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTop = w.h * 34; if (m) m.scrollTop = w.m * 34; jrWCol(w.col || "h"); }, 0);
-  return '<div class="jr-wov" data-a="jrwcancel"><div class="jr-wbox" data-a="jrnop"><div class="jr-wt">' + (w.k === "st" ? "Начало" : "Конец") + '</div><div class="jr-wr">' + col("jr-wh-h", 24) + '<b>:</b>' + col("jr-wh-m", 60) + '<div class="jr-wsel"></div></div><div class="jr-wb"><button class="btn ghost" data-a="jrwnow">Сейчас</button><span style="flex:1"></span><button class="btn ghost" data-a="jrwcancel">Отмена</button><button class="btn" data-a="jrwok">Готово</button></div></div></div>';
+  return '<div class="jr-wov" data-a="jrwcancel"><div class="jr-wbox" data-a="jrnop"><div class="jr-wt">' + (w.k === "st" || w.k === "est" ? "Начало" : "Конец") + '</div><div class="jr-wr">' + col("jr-wh-h", 24) + '<b>:</b>' + col("jr-wh-m", 60) + '<div class="jr-wsel"></div></div><div class="jr-wb"><button class="btn ghost" data-a="jrwnow">Сейчас</button><span style="flex:1"></span><button class="btn ghost" data-a="jrwcancel">Отмена</button><button class="btn" data-a="jrwok">Готово</button></div></div></div>';
 }
 function jrInput(el) {
   const J = jrState(), m = /^jr-(e-)?(\w+)$/.exec(el.id); if (!m) return;
-  if (m[1]) { J.e[m[2]] = el.value; return; }
+  if (m[1]) { J.e[m[2]] = el.value; if (/^(date|d1|d2)$/.test(m[2])) render(); return; }
   J[m[2]] = el.value; if (m[2] === "date") J.st = null; if (m[2] === "vd") { if (!el.value) return; render(); return; }
   const pv = $("jr-prev"); if (pv) pv.textContent = jrPrevText();
 }
@@ -3434,7 +3454,10 @@ Object.assign(acts, {
   jrdel() { const J = jrState(), l = S.time_log[J.edit]; if (!l) return; if (!confirm("Удалить запись?")) return; delLog(l.id); J.edit = null; toast("Удалено"); render(); },
   jrper(a) { const J = jrState(); J.per = a.dataset.v; J.lim = 40; render(); },
   jrday(a) { const J = jrState(); J.mode = "t"; J.date = a.dataset.d; J.st = null; J.en = ""; render(); setTimeout(() => { const x = $("jr-tx"); if (x) { x.focus(); x.scrollIntoView({ block: "center" }); } }, 0); },
-  jrwheel(a) { const J = jrState(), q = jrPlan(), v = (a.dataset.k === "st" ? q.st : q.en) || nowHM(), p = v.split(":"); J.wh = { k: a.dataset.k, h: +p[0], m: +p[1] }; render(); },
+  jrwheel(a) {
+    const J = jrState(), k = a.dataset.k, q = jrPlan(), v = (k === "est" ? J.e.st : k === "een" ? J.e.en || J.e.st : k === "st" ? q.st : q.en) || nowHM(), p = v.split(":");
+    J.wh = { k, h: +p[0], m: +p[1] }; render();
+  },
   jrnop() {},
   jrsum() { const J = jrState(); J.sum = !J.sum; J.ai = null; render(); },
   jrswp() { const J = jrState(); J.sw = addDays(J.sw || jrMon(todayISO()), -7); J.ai = null; render(); },
@@ -3447,7 +3470,7 @@ Object.assign(acts, {
   },
   jrwcancel() { jrState().wh = null; render(); },
   jrwnow() { const J = jrState(), n = new Date(); J.wh.h = n.getHours(); J.wh.m = n.getMinutes(); const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTo({ top: J.wh.h * 34, behavior: "smooth" }); if (m) m.scrollTo({ top: J.wh.m * 34, behavior: "smooth" }); },
-  jrwok() { const J = jrState(), w = J.wh; if (!w) return; const v = pad2(w.h) + ":" + pad2(w.m); if (w.k === "st") J.st = v; else J.en = v; J.wh = null; render(); setTimeout(() => { const x = $("jr-tx"); if (x && !isMobile()) x.focus(); }, 0); },
+  jrwok() { const J = jrState(), w = J.wh; if (!w) return; const v = pad2(w.h) + ":" + pad2(w.m); if (w.k === "est") J.e.st = v; else if (w.k === "een") J.e.en = v; else if (w.k === "st") J.st = v; else J.en = v; J.wh = null; render(); setTimeout(() => { const x = $("jr-tx"); if (x && !isMobile() && !J.edit) x.focus(); }, 0); },
   jrtoday() { const J = jrState(); J.date = todayISO(); J.st = null; render(); },
   jrdprev() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), -1); render(); },
   jrdnext() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), 1); render(); },
