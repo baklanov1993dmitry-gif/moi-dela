@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "09.10 15:46";
+const BUILD = "09.10 15:49";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -461,16 +461,24 @@ function unsubRt() { if (rt && sb) { try { sb.removeChannel(rt); } catch (e) {} 
 
 /* ----- задачи ----- */
 const listsArr = () => Object.values(S.lists).sort((a, b) => (a.position - b.position) || String(a.created_at).localeCompare(String(b.created_at)));
+// ---- многоуровневая отмена (Ctrl+Z): каждое изменение задач пишется в стек, действия в одно мгновение — одним шагом ----
+const UST = []; let uBusy = false;
+function uRec(id, old, created) {
+  if (uBusy) return; const now = Date.now(), g = UST[UST.length - 1];
+  const sig = created ? "+" : Object.keys(old || {}).length ? "u" : "";
+  if (g && now - g.at < 400) { if (!g.m[id]) g.m[id] = created ? { created: true } : { old: JSON.parse(JSON.stringify(old)) }; g.at = now; return; }
+  const ng = { at: now, m: {} }; ng.m[id] = created ? { created: true } : { old: JSON.parse(JSON.stringify(old)) }; UST.push(ng); if (UST.length > 60) UST.shift();
+}
 function addTask(f) {
   const t = Object.assign({ id: uid(), parent_id: null, list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [], plan_start: null }, f);
-  S.tasks[t.id] = t; mark("tasks", t.id, "u"); return t;
+  S.tasks[t.id] = t; uRec(t.id, null, true); mark("tasks", t.id, "u"); return t;
 }
 const kidsOf = id => Object.values(S.tasks).filter(x => x.parent_id === id);
 function upd(id, patch) {
   const t = S.tasks[id]; if (!t) return;
   if (ui.fresh && ui.fresh.id === id && "due" in patch) ui.fresh = null;   // «только что добавлено» держится до первой смены срока — иначе задача не уходит из фильтра
   if ("due" in patch && t.due && patch.due && patch.due > t.due && !t.done) { PR.moves = PR.moves || {}; PR.moves[id] = (PR.moves[id] || 0) + 1; savePrefs(); }   // счётчик переносов срока (для «Итогов недели»; хранится на устройстве)
-  Object.assign(t, patch); mark("tasks", id, "u");
+  uRec(id, t); Object.assign(t, patch); mark("tasks", id, "u");
   if ("list_id" in patch) kidsOf(id).forEach(k => upd(k.id, { list_id: patch.list_id }));   // подзадачи едут в тот же список
 }
 const inMyDay = t => t.my_day_date === today;
@@ -633,7 +641,7 @@ function deleteTask(id) {
   snd("del");
   if (t.files && t.files.length && sb) { try { sb.storage.from("attachments").remove(t.files.map(f => f.path)); } catch (e) {} }
   kidsOf(id).forEach(k => deleteTask(k.id));
-  delete S.tasks[id]; mark("tasks", id, "d");
+  uRec(id, t); delete S.tasks[id]; mark("tasks", id, "d");
   if (selId === id) selId = null;
 }
 
@@ -1496,9 +1504,10 @@ const visIds = () => Array.prototype.map.call(document.querySelectorAll("#main .
 const mClear = () => { ui.multi = {}; ui.mAnchor = null; };
 function mSnap(ids) { ui.undo = ids.map(id => JSON.parse(JSON.stringify(S.tasks[id]))); }
 function mUndo() {
-  if (!ui.undo || !ui.undo.length) { toast("Нечего отменять"); return; }
-  const n = ui.undo.length; ui.undo.forEach(o => { S.tasks[o.id] = o; mark("tasks", o.id, "u"); }); ui.undo = null;
-  toast("Отменено (" + n + ")"); render();
+  const g = UST.pop(); if (!g) { toast("Нечего отменять"); return; }
+  uBusy = true; let n = 0;
+  try { Object.keys(g.m).forEach(id => { const r = g.m[id]; n++; if (r.created) { if (S.tasks[id]) { delete S.tasks[id]; mark("tasks", id, "d"); if (selId === id) selId = null; } } else { S.tasks[id] = r.old; mark("tasks", id, "u"); } }); } finally { uBusy = false; }
+  toast("Отменено (" + n + "). Ещё шагов назад: " + UST.length); render();
 }
 function addWork(iso, n) {
   const d = parseISO(iso), st = n < 0 ? -1 : 1; let k = Math.abs(n);
