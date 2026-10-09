@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "09.10 11:41";
+const BUILD = "09.10 15:46";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1594,7 +1594,7 @@ const HK_GROUPS = [["Работа с задачей", 0, 12], ["Общее", 12,
 const hkMap = () => { const m = {}; HK.forEach(a => { m[a[0]] = PR.keys && a[0] in PR.keys ? PR.keys[a[0]] : a[2]; }); return m; };
 const hkCombo = e => (e.altKey ? "Alt+" : "") + (e.shiftKey ? "Shift+" : "") + e.code;
 const hkName = c => c.split("+").map(p => ({ Enter: "Enter", Delete: "Del", Slash: "/", Space: "Пробел", ArrowUp: "↑", ArrowDown: "↓", Backslash: "\\", Comma: ",", Period: ".", Minus: "-", Equal: "=", Backquote: "`", BracketLeft: "[", BracketRight: "]", Semicolon: ";", Quote: "'" }[p] || p.replace(/^Key/, "").replace(/^Digit/, "").replace(/^Numpad/, "Num "))).join(" + ");
-const hkReserved = c => /^(Digit[0-7]|Numpad[0-7]|Escape|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Tab|Space|Backspace)$/.test(c) ? "занято приложением или браузером" : "";
+const hkReserved = c => /^(Digit[0-8]|Numpad[0-8]|Escape|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Tab|Space|Backspace)$/.test(c) ? "занято приложением или браузером" : "";
 const hkReveal = id => { const r = id && document.querySelector('#main .taskrow[data-id="' + id + '"]'); if (r && r.scrollIntoView) r.scrollIntoView({ block: "nearest" }); };
 function hkRun(a) {
   const ids = visIds(), id = selId && S.tasks[selId] ? selId : null, t = id && S.tasks[id];
@@ -1666,7 +1666,7 @@ function hkKey(e) {
     if (e.code === "Escape" && tg && (tg.id === "d-note" || tg.id === "d-title")) { e.preventDefault(); e.stopImmediatePropagation(); tg.blur(); }   // Esc в заметке: просто выйти из ввода, карточка остаётся
     else if (tg && tg.id === "newtask" && !e.ctrlKey && !e.metaKey && !e.isComposing) {   // поле «Добавить задачу»: срок и важность не печатая слов
       const q = ui.dd || (ui.dd = newDD());
-      if (e.altKey && /^Digit[0-7]$/.test(e.code)) { e.preventDefault(); e.stopImmediatePropagation(); const n = +e.code.slice(5); q.due = n === 0 ? null : n === 7 ? nextMonday() : addDays(today, n - 1); render(); }
+      if (e.altKey && /^Digit[0-8]$/.test(e.code)) { e.preventDefault(); e.stopImmediatePropagation(); const n = +e.code.slice(5); q.due = n === 0 ? null : n === 8 ? nextMonday() : addDays(today, n === 7 ? 7 : n - 1); render(); }
       else if (e.altKey && e.code === "KeyS") { e.preventDefault(); e.stopImmediatePropagation(); q.starred = !q.starred; render(); }
       else if (!e.altKey && !e.shiftKey && e.code === "ArrowDown") {   // из поля — к списку
         const ids = visIds(); if (ids.length) { e.preventDefault(); e.stopImmediatePropagation(); tg.blur(); mClear(); selId = ids[0]; render(); hkReveal(selId); }
@@ -1689,7 +1689,7 @@ function hkHTML() {
   return '<label class="swrow" style="margin-top:10px"><input type="checkbox" class="sw" id="s-keyson"' + (on ? " checked" : "") + "> Горячие клавиши включены</label>" +
     '<div style="margin:6px 0 2px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Работают в браузере на компьютере, пока вы не печатаете в поле. Выберите задачу стрелками — справа откроется карточка. Чтобы сменить клавишу, нажмите на неё и нажмите новую; Backspace — снять, ↺ — вернуть стандартную. Буквы привязаны к физической клавише, поэтому работают и в русской раскладке.</div>' +
     HK_GROUPS.map(g => '<div class="lbl">' + g[0] + "</div>" + HK.slice(g[1], g[2]).map(row).join("")).join("") +
-    '<div class="lbl">Всегда (не меняются)</div>' + fix("↑ ↓", "Двигаться по задачам") + fix("1 – 7", "Срок: сегодня, завтра … 7 — понедельник") + fix("0", "Убрать срок") + fix("Esc", "Закрыть окно / снять выделение / выйти из заметки") +
+    '<div class="lbl">Всегда (не меняются)</div>' + fix("↑ ↓", "Двигаться по задачам") + fix("1 – 8", "Срок: сегодня, завтра … 6 — через 5 дней, 7 — через неделю, 8 — понедельник") + fix("0", "Убрать срок") + fix("Esc", "Закрыть окно / снять выделение / выйти из заметки") +
     fix("Ctrl + A", "Выделить все задачи в списке") + fix("Ctrl + Z", "Отменить последнее действие со сроком, удалением") + fix("Ctrl/Shift + клик", "Выбрать несколько задач") +
     '<div style="margin-top:10px"><button class="btn ghost" data-a="hkresetall">↺ Сбросить все клавиши</button></div>';
 }
@@ -1787,8 +1787,8 @@ function desktopInit(app) {
     if (c && (k === "a" || k === "ф")) { const v = visIds(); if (v.length) { e.preventDefault(); v.forEach(id => { ui.multi[id] = 1; }); selId = null; render(); } }
     else if (c && (k === "z" || k === "я")) { e.preventDefault(); mUndo(); }
     else if (e.key === "Escape" && mIds().length && !ui.pop) { e.stopPropagation(); mClear(); render(); }
-    else if (!c && !e.altKey && !ui.pop && /^[0-7]$/.test(e.key) && (mIds().length || (selId && S.tasks[selId]))) {
-      e.preventDefault(); const n = +e.key, ids = mIds().length ? mIds() : [selId], nd = n === 0 ? null : n === 7 ? nextMonday() : addDays(today, n - 1);
+    else if (!c && !e.altKey && !ui.pop && /^[0-8]$/.test(e.key) && (mIds().length || (selId && S.tasks[selId]))) {
+      e.preventDefault(); const n = +e.key, ids = mIds().length ? mIds() : [selId], nd = n === 0 ? null : n === 8 ? nextMonday() : addDays(today, n === 7 ? 7 : n - 1);
       mSnap(ids); ids.forEach(id => setDueKeepRemind(S.tasks[id], nd));
       toast((nd ? "Срок: " + dateLong(parseISO(nd)) : "Срок убран") + (ids.length > 1 ? " · задач: " + ids.length : "") + " (Ctrl+Z — отмена)"); render();
     }
