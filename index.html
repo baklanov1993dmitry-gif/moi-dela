@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "09.10 00:06";
+const BUILD = "09.10 09:10";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -166,6 +166,7 @@ if (!THEMES[TH.theme]) { TH.theme = "classic"; TH.accent = THEMES.classic.acc; T
 const FONTS = { sys: '"Segoe UI",system-ui,-apple-system,Roboto,sans-serif', serif: "Georgia,'Times New Roman',serif", mono: "ui-monospace,'Courier New',Consolas,monospace", round: "'Trebuchet MS','Nunito',system-ui,sans-serif", hum: "Candara,Calibri,'Gill Sans',system-ui,sans-serif", narrow: "'Arial Narrow',Bahnschrift,'Roboto Condensed',Arial,sans-serif", pal: "'Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif" };
 const ZOOMS = { s: .9, n: 1, n2: 1.07, l: 1.15, l2: 1.22, xl: 1.3, xxl: 1.5 };
 const DENS = { compact: ["6px", "13px"], normal: ["10px", "14px"], cozy: ["14px", "15px"] };
+const TCOLORS = ["#111111", "#1e3a8a", "#14532d", "#7c2d12", "#581c87", "#7f1d1d", "#ffffff", "#fef3c7", "#bfdbfe", "#bbf7d0", "#fbcfe8"];
 const ACCENTS = ["#2564cf", "#0063b1", "#038387", "#498205", "#c19c00", "#ca5010", "#d13438", "#e3008c", "#8764b8", "#6366f1", "#69797e"];
 const saveTheme = () => jset(LSK.theme, TH);
 function hexRgb(h) { h = String(h || "").replace("#", ""); if (h.length === 3) h = h.replace(/./g, "$&$&"); const n = parseInt(h, 16); return isNaN(n) ? [37, 100, 207] : [n >> 16 & 255, n >> 8 & 255, n & 255]; }
@@ -187,6 +188,7 @@ function applyTheme() {
     "--ff": FONTS[TH.font] || FONTS.sys, "--pad": dn[0], "--z": ZOOMS[TH.size] || 1, "--fs": "calc(" + dn[1] + " * " + (ZOOMS[TH.size] || 1) + ")"
   };
   Object.keys(v).forEach(k => app.style.setProperty(k, v[k]));
+  const tc = (PR.tc || {})[view], mn = $("main"); if (mn) { if (tc) { mn.style.setProperty("--tx", tc); mn.style.color = tc; } else { mn.style.removeProperty("--tx"); mn.style.color = ""; } }
   if (hasBg) { app.style.backgroundImage = 'url("' + TH.bg.replace(/["\\\n]/g, "") + '")'; app.style.backgroundSize = "cover"; app.style.backgroundPosition = "center"; }
   else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; }
   app.classList.toggle("glass", !!TH.glass); app.classList.toggle("hasbg", hasBg);
@@ -2860,6 +2862,7 @@ function settingsHTML() {
   if (tab === "view") b =
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
     sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (curAccent() === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" + (view.indexOf("list:") === 0 && S.lists[view.slice(5)] && S.lists[view.slice(5)].color ? '<div class="jr-hint" style="margin-top:6px">У списка «' + esc(S.lists[view.slice(5)].name) + '» свой цвет — выбор здесь поменяет и его.</div>' : "")) +
+    sec("Цвет текста — только для «" + esc(viewInfo().name) + "»", '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button data-a="tcolor" data-v="" style="height:30px;padding:0 10px;border-radius:15px;border:3px solid ' + (!(PR.tc || {})[view] ? "var(--tx)" : "var(--ln)") + ';background:transparent;color:var(--tx);font-size:12px">авто</button>' + TCOLORS.map(c => '<button data-a="tcolor" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + ((PR.tc || {})[view] === c ? "var(--acc)" : "rgba(128,128,128,.45)") + '"></button>').join("") + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sub)">свой <input type="color" id="s-tc" value="' + ((PR.tc || {})[view] || "#323130") + '" style="width:34px;height:30px;padding:0;border:0;background:none"></label></div><div class="jr-hint" style="margin-top:6px">Действует на текст в этом списке (у каждого списка и раздела свой). Остальные не меняются.</div>') +
     sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупный"], ["l2", "Ещё крупнее"], ["xl", "Очень крупный"], ["xxl", "Огромный"]])) +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
@@ -3102,6 +3105,7 @@ const acts = {
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
   stab(a) { ui.stab = a.dataset.v; render(); },
   theme(a) { const T = THEMES[a.dataset.v]; TH.theme = a.dataset.v; if (T) { TH.accent = T.acc; TH.font = T.font; } saveTheme(); render(); },
+  tcolor(a) { PR.tc = PR.tc || {}; if (a.dataset.v) PR.tc[view] = a.dataset.v; else delete PR.tc[view]; savePrefs(); render(); },
   accent(a) {
     TH.accent = a.dataset.v; const l = view.indexOf("list:") === 0 && S.lists[view.slice(5)];
     if (l && l.color) { l.color = a.dataset.v; mark("lists", l.id, "u"); toast("Цвет списка «" + l.name + "» тоже сменён: у него был свой"); }   // свой цвет списка перекрывал акцент — казалось, что ничего не меняется
@@ -3924,7 +3928,8 @@ const changes = {
   "s-bkf"(v) { bkSet({ freq: +v }); toast(+v ? "Автокопии: " + (BKF.filter(x => x[0] === +v)[0] || [0, ""])[1].toLowerCase() : "Автокопии выключены"); },
   "s-bkfile"(v) { bkSet({ file: v === "1" }); },
   "d-est"(v) { const x = parseEst(v); if (x !== null && isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч, 2д"); return; } if (selId) { upd(selId, { est_minutes: x || null }); renderSoon(); } },
-  "s-size"(v) { TH.size = v; saveTheme(); render(); }
+  "s-size"(v) { TH.size = v; saveTheme(); render(); },
+  "s-tc"(v) { PR.tc = PR.tc || {}; PR.tc[view] = v; savePrefs(); render(); }
 };
 
 Object.assign(acts, dayActs, dtpActs, uxActs, bkActs, subActs); Object.assign(changes, dayChanges);
