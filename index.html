@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "09.10 09:10";
+const BUILD = "09.10 10:18";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -466,6 +466,7 @@ function addTask(f) {
 const kidsOf = id => Object.values(S.tasks).filter(x => x.parent_id === id);
 function upd(id, patch) {
   const t = S.tasks[id]; if (!t) return;
+  if (ui.fresh && ui.fresh.id === id && "due" in patch) ui.fresh = null;   // «только что добавлено» держится до первой смены срока — иначе задача не уходит из фильтра
   if ("due" in patch && t.due && patch.due && patch.due > t.due && !t.done) { PR.moves = PR.moves || {}; PR.moves[id] = (PR.moves[id] || 0) + 1; savePrefs(); }   // счётчик переносов срока (для «Итогов недели»; хранится на устройстве)
   Object.assign(t, patch); mark("tasks", id, "u");
   if ("list_id" in patch) kidsOf(id).forEach(k => upd(k.id, { list_id: patch.list_id }));   // подзадачи едут в тот же список
