@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "09.10 10:18";
+const BUILD = "09.10 11:41";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -248,6 +248,7 @@ const W = src => new RegExp("\\s(?:" + src + ")(?=[\\s.,!?;:])", "i");
 const WD = { "по": 1, "пн": 1, "вт": 2, "ср": 3, "че": 4, "чт": 4, "пя": 5, "пт": 5, "су": 6, "сб": 6, "во": 0, "вс": 0 };
 function localParse(raw, lists) {
   let s = " " + String(raw).replace(/\s+/g, " ").trim() + " ";
+  const keep = []; s = s.replace(/"([^"]+)"|«([^»]+)»/g, (_, a, b) => { keep.push(a || b); return " \u0001" + (keep.length - 1) + "\u0001 "; });   // "в кавычках" — не разбирать (даты, слова-сроки остаются в названии)
   const td = todayISO();
   const o = { title: "", due: null, category: null, starred: false, est: null, list_id: null, repeat: null, remind: null };
   const eat = (re, fn) => { const m = re.exec(s); if (!m) return; if (fn(m) === false) return; s = s.slice(0, m.index) + " " + s.slice(m.index + m[0].length); };
@@ -266,6 +267,7 @@ function localParse(raw, lists) {
     o.due = o.due || addDays(td, ((t - cur + 7) % 7) || 7);
   });
   eat(W("(\\d{1,2})\\.(\\d{1,2})(?:\\.(\\d{2,4}))?"), m => {
+    if (/^(от|из|за|датир[а-яё]*|№)$/i.test(s.slice(0, m.index).trim().split(" ").pop())) return false;   // «от 09.10.26» — это ссылка на документ/сообщение, а не срок
     const dd = +m[1], mm = +m[2], now = parseISO(td);
     const y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : now.getFullYear();
     let d = new Date(y, mm - 1, dd);
@@ -296,7 +298,7 @@ function localParse(raw, lists) {
     if (!o.due && d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
     o.remind = d.toISOString();
   }
-  let t = s.replace(/\s+/g, " ").trim().replace(/^[,;:\s-]+|[,;:\s-]+$/g, "");
+  let t = s.replace(/\s+/g, " ").trim().replace(/^[,;:\s-]+|[,;:\s-]+$/g, "").replace(/\u0001(\d+)\u0001/g, (_, i) => keep[+i]);
   if (!t) t = String(raw).trim();
   o.title = t.charAt(0).toUpperCase() + t.slice(1);
   return o;
