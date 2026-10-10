@@ -215,6 +215,11 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .chg{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.chg span{display:flex;align-items:center;gap:8px}.chg:first-of-type{border-top:0}
 .chip{white-space:nowrap}.chips .chip{padding:6px 11px;font-size:.82em}
 table.hm td{background-color:transparent}
+.ac{padding:0}.ach{display:flex;align-items:center;gap:8px;width:100%;padding:14px;text-align:left}.ach .ai{font-size:1.15em;flex:none}.ach .at{font-weight:700;flex:none}.ach .as{flex:1;min-width:0;text-align:right;color:var(--sub);font-size:.8em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chv{width:8px;height:8px;border-right:2px solid var(--sub);border-bottom:2px solid var(--sub);transform:rotate(45deg);transition:transform .2s;margin:-3px 4px 0 4px;flex:none}.ac.open .chv{transform:rotate(-135deg);margin-top:3px}.acb{padding:0 14px 14px}
+.brwx{display:flex;align-items:center;gap:4px;border-top:1px solid var(--ln)}.brwx:first-of-type{border-top:0}.brwx .brw{border-top:0;flex:1;min-width:0}.lk{flex:none;width:40px;height:40px;font-size:18px;border-radius:10px;opacity:.55}.lk.on{opacity:1;background:var(--card2)}
+.qnote{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--card2);line-height:1.4}
+.pgw{will-change:transform;backface-visibility:hidden}.nb svg g{filter:none!important}
 #main{touch-action:pan-y}.pgw{position:relative}.pgw>div{overflow-x:clip}.pgw>.nb{position:absolute;top:0;width:100%;pointer-events:none}.pgw>.nb.l{left:-100%}.pgw>.nb.r{left:100%}
 .rs .rn{font-size:11.5px;line-height:1.15;max-width:92px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx);opacity:.92;font-weight:500}.rs .rn.s{font-size:10.5px}.rs .rn.xs{font-size:9.5px}.rs.nm span.pc{font-size:13px;opacity:.85}
 .tg{margin-left:auto;padding:2px 10px;border-radius:12px;background:var(--card2);color:var(--sub);font-size:.85em;font-weight:600}.tg.on{background:var(--acc);color:#08130e}
@@ -435,15 +440,23 @@ function normOf(catId, am) {   // среднее в месяц за послед
 }
 const bmode = () => PR.bm || (PR.normOn === false ? "off" : "norm");
 let _cpk = "", _cp = null;
-function capPlan(am) {   // потолок раскладывается по категориям пропорционально их норме; категории с лимитом остаются при своём лимите
-  const k = [txv, am, PR.normN, PR.cap, cats.map(c => c.lim).join()].join("|"); if (_cpk === k && _cp) return _cp;
-  const ex = cats.filter(c => c.kind === "exp" && !c.archived), plan = {}; let lims = 0, S = 0;
-  ex.forEach(c => { if (+c.lim > 0) lims += +c.lim; else { const n = normOf(c.id, am); if (n && n.avg > 0) { plan[c.id] = { norm: n.avg }; S += n.avg; } } });
-  const rest = Math.max(0, PR.cap - lims), ratio = S ? rest / S : 0; Object.values(plan).forEach(p => { p.v = p.norm * ratio; });
-  _cp = { plan, lims, S, rest, ratio }; _cpk = k; return _cp;
+function capPlan(am) {   // потолок на текущий месяц: уже потраченное не урезается; «фикс»-категории остаются как обычно; остаток режется только на гибких
+  const cur = am === mk(new Date()), dim = daysIn(am), day = cur ? new Date().getDate() : dim, f = cur ? day / dim : 1;
+  const k = [txv, am, PR.normN, PR.cap, cats.map(c => c.lim).join(), JSON.stringify(PR.fix || {}), day].join("|"); if (_cpk === k && _cp) return _cp;
+  const plan = {}, fix = PR.fix || {}; let fixedRem = 0, flexExp = 0, flexN = 0; const spentAll = monTot(monthSums(), am);
+  cats.filter(c => c.kind === "exp" && !c.archived).forEach(c => {
+    const n = normOf(c.id, am), sp = catSpent(c.id, am), lim = +c.lim || 0, nv = n && n.avg > 0 ? n.avg : 0;
+    if (lim > 0) { fixedRem += Math.max(0, lim - sp); return; }
+    if (!nv) return; const rem = nv * (1 - f);
+    if (fix[c.id]) { plan[c.id] = { mode: "fix", norm: nv, sp, v: sp + rem }; fixedRem += rem; } else { plan[c.id] = { mode: "flex", norm: nv, sp, rem }; flexExp += rem; flexN++; }
+  });
+  const R = PR.cap - spentAll - fixedRem, ratio = flexExp > 0 ? Math.max(0, R) / flexExp : (R >= 0 ? 1 : 0);
+  Object.values(plan).forEach(p => { if (p.mode === "flex") p.v = p.sp + p.rem * ratio; });
+  _cp = { plan, cur, dim, day, f, spentAll, fixedRem, flexExp, flexN, R, ratio, left: PR.cap - spentAll, impossible: R < 0 }; _cpk = k; return _cp;
 }
 function budgetOf(c, am) { const lim = +c.lim || 0; if (lim > 0) return { kind: "lim", v: lim }; const md = bmode(); if (md === "off") return null;
-  if (md === "cap" && PR.cap > 0) { const p = capPlan(am).plan[c.id]; if (p) return { kind: "cap", v: p.v, norm: p.norm }; return null; } const n = normOf(c.id, am); return n && n.avg > 0 ? { kind: "norm", v: n.avg, n: n.n } : null; }
+  if (md === "cap" && PR.cap > 0) { const cp = capPlan(am); if (!cp.cur) return null; const p = cp.plan[c.id]; return p ? { kind: "cap", v: p.v, norm: p.norm, mode: p.mode } : null; }
+  const n = normOf(c.id, am); return n && n.avg > 0 ? { kind: "norm", v: n.avg, n: n.n } : null; }
 function budState(spent, b, am) {
   const r = b.v ? spent / b.v : 0, cur = am === mk(new Date()), f = cur ? Math.min(1, new Date().getDate() / daysIn(am)) : 1;
   return { r, f, st: r > 1 ? "over" : r >= .85 ? "warn" : (cur && r > .5 && spent > b.v * f * 1.25 ? "pace" : "ok") };
@@ -461,36 +474,89 @@ function budgetMsg(catId, ts) {
   if (sp > b.v) return { cls: "bad", t: c.name + ": " + fm(sp) + " — выше, чем " + what + " " + fm(b.v) + " (на " + fm(sp - b.v) + ")" };
   return { cls: x.st === "ok" ? "ok" : "warn", t: c.name + ": " + fm(sp) + " из " + fm(b.v) + " (" + Math.round(x.r * 100) + "%) · осталось " + fm(b.v - sp) };
 }
-function budgetHTML() {
-  const am = anchorMonth(), cur = am === mk(new Date()), ms = monthSums(), dim = daysIn(am), day = cur ? new Date().getDate() : dim, f = day / dim, N = PR.normN || 6;
-  const rows = cats.filter(c => c.kind === "exp").map(c => { const sp = catSpent(c.id, am), b = budgetOf(c, am), pm = catSpent(c.id, shiftMonth(am, -1)); return { c, sp, b, pm, st: b ? budState(sp, b, am) : null }; }).filter(r => r.sp > 0 || (r.b && !r.c.archived));
-  let spTot = monTot(ms, am), base = 0;
-  const md = bmode(), capOn = md === "cap" && PR.cap > 0, cp = md === "cap" ? capPlan(am) : null;
-  const ctrl = '<div class="chips" style="margin:0 0 8px">' + [["norm", "по норме"], ["cap", "потолок"], ["off", "выкл."]].map(x => '<button class="chip' + (md === x[0] ? " on" : "") + '" data-a="bmode" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div class="chips" style="margin:0 0 10px"><span class="sub" style="align-self:center;font-size:.8em">норма за</span>' + [3, 6, 12].map(n => '<button class="chip' + (N === n ? " on" : "") + '" data-a="normn" data-v="' + n + '">' + n + " мес.</button>").join("") + "</div>" +
-    (md === "cap" ? '<div class="capin"><input class="in" id="cap-v" inputmode="decimal" placeholder="Потолок трат на месяц, ₽" value="' + (PR.cap || "") + '"><button class="btn" data-a="capset">Задать</button></div>' + (cp && cp.S ? '<div class="chips" style="margin:0 0 8px">' + [0, 10, 20, 30].map(p => '<button class="chip" data-a="capfill" data-v="' + Math.round((cp.S + cp.lims) * (1 - p / 100) / 100) * 100 + '">' + (p ? "−" + p + "% от обычного" : "= обычное " + fmN(cp.S + cp.lims)) + "</button>").join("") + "</div>" : "") : "");
-  base = capOn ? PR.cap : rows.reduce((s, r) => s + (r.b ? r.b.v : 0), 0);
-  let h = '<div class="card"><h3>Бюджет · ' + MONS[+am.slice(5) - 1] + "</h3>" + ctrl;
-  if (md === "cap" && !(PR.cap > 0)) h += '<div class="sub">Введи потолок — и я разложу его по категориям пропорционально тому, сколько ты тратишь на каждую обычно.</div>';
-  else if (!base) h += '<div class="sub">Пока нечего сравнивать: норма появится, когда накопится хотя бы один полный месяц истории. Можно сразу задать лимиты — тапни категорию ниже.</div>';
-  else {
-    const fc = cur && day >= 5 ? spTot / f : spTot, r = spTot / base, left = base - spTot, dl = dim - day, st = r > 1 ? "over" : (cur && fc > base * 1.1 ? "pace" : r >= .85 ? "warn" : "ok");
-    if (capOn && cp.S) { const tot = cp.S + cp.lims, cut = tot - PR.cap; h += '<div class="sub" style="margin-bottom:8px">Обычно уходит ≈ <b>' + fm(tot) + '</b> в месяц. ' + (cut > 0 ? 'Чтобы уложиться в ' + fm(PR.cap) + ', надо сократить на <b>' + fm(cut) + '</b> (−' + Math.round(cut / tot * 100) + '% по каждой категории).' : 'Потолок выше обычных трат — запас ' + fm(-cut) + '.') + '</div>'; }
-    h += '<div class="bt"><b>' + fm(spTot) + '</b><span class="sub"> из ' + fm(base) + " (" + Math.round(r * 100) + '%)</span></div><div class="gb"><i style="width:' + Math.min(100, r * 100).toFixed(1) + "%;background:" + BCOL[st] + '"></i>' + (cur ? '<s style="left:' + (f * 100).toFixed(1) + '%"></s>' : "") + "</div>" +
-      '<div class="sub" style="margin-top:6px">' + (cur ? "Сегодня " + day + " из " + dim + " дней (" + Math.round(f * 100) + "% месяца). " : "") + (r > 1 ? '<span class="exp">' + (capOn ? "Потолок" : "Норма месяца") + ' превышен' + (capOn ? "" : "а") + ' на ' + fm(spTot - base) + ".</span>" : cur && dl > 0 ? "Можно тратить ≈ <b>" + fm(left / dl) + "</b> в день, чтобы уложиться." : "") + (cur && day >= 5 && r <= 1 ? " Прогноз к концу месяца ≈ " + fm(fc) + (fc > base ? ' <span class="exp">(выше ' + (capOn ? "потолка" : "нормы") + ')</span>' : "") + "." : "") + "</div>";
+/* ---- сворачиваемые блоки аналитики ---- */
+const ACC0 = { bud: true };
+const accOpen = id => PR.acs && id in PR.acs ? PR.acs[id] === true : ACC0[id] === true;
+function acc(id, ico, title, sum, body) {
+  const o = accOpen(id);
+  return '<div class="card ac' + (o ? " open" : "") + '"><button class="ach" data-a="accx" data-v="' + id + '"><span class="ai">' + ico + '</span><span class="at">' + title + '</span><span class="as">' + (sum || "") + '</span><i class="chv"></i></button>' + (o ? '<div class="acb">' + body() + "</div>" : "") + "</div>";
+}
+function budRows(am) {
+  const md = bmode(), capOn = md === "cap" && PR.cap > 0, cur = am === mk(new Date());
+  const rows = cats.filter(c => c.kind === "exp").map(c => ({ c, sp: catSpent(c.id, am), b: budgetOf(c, am) })).filter(r => r.sp > 0 || (r.b && !r.c.archived));
+  const ord = rows.slice().sort((a, b) => ((b.b && b.sp > b.b.v) - (a.b && a.sp > a.b.v)) || b.sp - a.sp);
+  return ord.map(r => {
+    const c = r.c, b = r.b, over = b && r.sp > b.v + .5, mxv = Math.max(r.sp, b ? b.v : 0, 1), st = b ? budState(r.sp, b, am) : null;
+    let line;
+    if (!b) line = '<span class="sub">нормы пока нет · тап — задать лимит</span>';
+    else if (b.kind === "lim") line = "лимит " + fm(b.v) + " · " + (over ? '<span class="exp">превышен на ' + fm(r.sp - b.v) + "</span>" : "осталось " + fm(b.v - r.sp));
+    else if (b.kind === "cap") line = (b.mode === "fix" ? "🔒 как обычно · " : "план ") + fmN(b.v) + ' <span class="sub">(обычно ' + fmN(b.norm) + ")</span> · " + (over ? '<span class="exp">превышен на ' + fm(r.sp - b.v) + "</span>" : "можно ещё " + fmN(Math.max(0, b.v - r.sp)));
+    else line = "обычно " + fm(b.v) + " · " + (over ? '<span class="exp">выше на ' + fm(r.sp - b.v) + " (+" + Math.round((r.sp / b.v - 1) * 100) + "%)</span>" : st.st === "pace" ? '<span style="color:#f2b36d">темп выше обычного</span>' : "в норме");
+    const lock = capOn && cur && b && b.kind === "cap" ? '<button class="lk' + (b.mode === "fix" ? " on" : "") + '" data-a="fixtog" data-id="' + c.id + '" title="Нельзя урезать">' + (b.mode === "fix" ? "🔒" : "🔓") + "</button>" : "";
+    return '<div class="brwx"><button class="brw" data-a="limedit" data-id="' + (c.id || "_") + '"><div class="ci">' + ic(c.icon, c.color, 30) + '</div><div class="bm"><div class="l1"><b>' + esc(c.name) + (+c.lim > 0 ? " 🎯" : "") + "</b><span>" + fm(r.sp) + '</span></div><div class="gb sm"><i style="width:' + (r.sp / mxv * 100).toFixed(1) + "%;background:" + (st ? BCOL[st.st] : c.color) + '"></i>' + (b ? '<s style="left:' + Math.min(100, b.v / mxv * 100).toFixed(1) + '%"></s>' : "") + '</div><div class="sub" style="font-size:.8em">' + line + "</div></div></button>" + lock + "</div>";
+  }).join("");
+}
+function budBody() {
+  const am = anchorMonth(), cur = am === mk(new Date()), ms = monthSums(), dim = daysIn(am), day = cur ? new Date().getDate() : dim, f = day / dim, N = PR.normN || 6, md = bmode(), capOn = md === "cap" && PR.cap > 0, cp = md === "cap" ? capPlan(am) : null, sp = monTot(ms, am);
+  const chip = (a, v, l, on) => '<button class="chip' + (on ? " on" : "") + '" data-a="' + a + '" data-v="' + v + '">' + l + "</button>";
+  let h = '<div class="chips" style="margin:0 0 8px">' + [["norm", "по норме"], ["cap", "потолок"], ["off", "выкл."]].map(x => chip("bmode", x[0], x[1], md === x[0])).join("") + "</div>";
+  if (md !== "off") h += '<div class="chips" style="margin:0 0 10px"><span class="sub" style="align-self:center;font-size:.8em">норма = среднее за</span>' + [3, 6, 12].map(n => chip("normn", n, n + " мес.", N === n)).join("") + "</div>";
+  const totNorm = (() => { let t = 0; cats.filter(c => c.kind === "exp" && !c.archived).forEach(c => { const n = normOf(c.id, am); if (n) t += n.avg; }); return t; })();
+  if (md === "cap") {
+    h += '<div class="capin"><input class="in" id="cap-v" inputmode="decimal" placeholder="Потолок трат на месяц, ₽" value="' + (PR.cap || "") + '"><button class="btn" data-a="capset">Задать</button></div>';
+    if (totNorm) h += '<div class="chips" style="margin:0 0 8px">' + [0, 10, 20, 30].map(p => chip("capfill", Math.round(totNorm * (1 - p / 100) / 100) * 100, p ? "−" + p + "% от обычного" : "= обычное " + fmN(totNorm), false)).join("") + "</div>";
+    if (!(PR.cap > 0)) return h + '<div class="sub">Введи потолок — разложу его по категориям. Уже потраченное в этом месяце не урезается, урезается только то, что ещё осталось потратить. Категории, которые нельзя урезать (еда, жильё), закрепи замочком 🔒 — они останутся как обычно.</div>';
   }
-  h += "</div>";
-  const ord = rows.slice().sort((a, b) => ((b.st ? b.st.r : 0) > 1) - ((a.st ? a.st.r : 0) > 1) || b.sp - a.sp);
-  h += '<div class="card"><h3>Категории: факт и норма</h3><div class="sub" style="font-size:.78em;margin:-4px 0 8px">метка на полосе — норма или лимит; тап по строке — задать лимит</div>' + ord.map(r => {
-    const mxv = Math.max(r.sp, r.b ? r.b.v : 0, 1), c = r.c, over = r.b && r.sp > r.b.v, d = r.pm ? Math.round((r.sp - r.pm) / r.pm * 100) : null;
-    const line = !r.b ? '<span class="sub">нормы пока нет · задать лимит</span>' : r.b.kind === "lim" ? 'лимит ' + fm(r.b.v) + " · " + (over ? '<span class="exp">превышен на ' + fm(r.sp - r.b.v) + "</span>" : "осталось " + fm(r.b.v - r.sp)) : r.b.kind === "cap" ? 'план ' + fm(r.b.v) + ' <span class="sub">(' + (r.b.v < r.b.norm ? "−" : "+") + Math.abs(Math.round((r.b.v / r.b.norm - 1) * 100)) + '% к обычному ' + fmN(r.b.norm) + ')</span> · ' + (over ? '<span class="exp">превышен на ' + fm(r.sp - r.b.v) + "</span>" : "осталось " + fm(r.b.v - r.sp)) : "обычно " + fm(r.b.v) + " · " + (over ? '<span class="exp">выше на ' + fm(r.sp - r.b.v) + " (+" + Math.round((r.sp / r.b.v - 1) * 100) + '%)</span>' : r.st.st === "pace" ? '<span style="color:#f2b36d">темп выше обычного</span>' : "в норме");
-    return '<button class="brw" data-a="limedit" data-id="' + (c.id || "_") + '"><div class="ci">' + ic(c.icon, c.color, 30) + '</div><div class="bm"><div class="l1"><b>' + esc(c.name) + (+c.lim > 0 ? " 🎯" : "") + "</b><span>" + fm(r.sp) + '</span></div><div class="gb sm"><i style="width:' + (r.sp / mxv * 100).toFixed(1) + "%;background:" + (r.st ? BCOL[r.st.st] : c.color) + '"></i>' + (r.b ? '<s style="left:' + Math.min(100, r.b.v / mxv * 100).toFixed(1) + '%"></s>' : "") + '</div><div class="l2">' + line + (d != null ? ' <span class="sub">· к пр. мес. ' + (d > 0 ? "+" : "") + d + "%</span>" : "") + "</div></div></button>";
-  }).join("") + "</div>";
-  const av = cats.filter(c => c.kind === "exp").map(c => ({ c, n: normOf(c.id, am) })).filter(x => x.n && x.n.avg > 0).sort((a, b) => b.n.avg - a.n.avg), tn = normOf("*", am);
-  if (av.length) h += '<div class="card"><h3>Среднемесячные траты · ' + tn.n + " мес.</h3>" + av.map(x => '<div class="bar"><div class="n">' + ic(x.c.icon, x.c.color, 22) + " " + esc(x.c.name) + '</div><div class="tr"><i style="width:' + (x.n.avg / av[0].n.avg * 100) + "%;background:" + x.c.color + '"></i></div><div class="v">' + fm(x.n.avg) + '<br><span class="sub" style="font-weight:400;font-size:.85em">' + Math.round(x.n.avg / tn.avg * 100) + "%</span></div></div>").join("") + '<div class="sub" style="margin-top:8px">В среднем за месяц: <b>' + fm(tn.avg) + "</b> (≈ " + fm(tn.avg / 30.4) + " в день). Берутся только полные месяцы до выбранного.</div></div>";
-  const dl = rows.filter(r => r.pm || r.sp).map(r => ({ c: r.c, d: r.sp - r.pm })).filter(x => Math.abs(x.d) >= 1).sort((a, b) => b.d - a.d), up = dl.filter(x => x.d > 0).slice(0, 3), dn = dl.filter(x => x.d < 0).slice(-3).reverse();
-  if (up.length || dn.length) h += '<div class="card"><h3>Что изменилось к прошлому месяцу</h3>' + up.map(x => '<div class="chg"><span>' + ic(x.c.icon, x.c.color, 22) + " " + esc(x.c.name) + '</span><b class="exp">▲ +' + fm(x.d) + "</b></div>").join("") + dn.map(x => '<div class="chg"><span>' + ic(x.c.icon, x.c.color, 22) + " " + esc(x.c.name) + '</span><b class="inc">▼ ' + fm(x.d) + "</b></div>").join("") + "</div>";
+  const base = capOn ? PR.cap : (() => { let t = 0; cats.filter(c => c.kind === "exp").forEach(c => { const b = budgetOf(c, am); if (b) t += b.v; }); return t; })();
+  if (md === "off" || !base) return h + '<div class="sub">' + (md === "off" ? "Контроль выключен. Включи «по норме» или «потолок» — и появятся планы по категориям." : "Нормы пока нет: она появится, когда накопится хотя бы один полный месяц истории. Можно сразу задать лимиты — тапни категорию ниже.") + "</div>" + (md === "off" ? "" : budRows(am));
+  const r = sp / base, left = base - sp, dl = dim - day, fc = cur && day >= 5 ? sp / f : sp, st = r > 1 ? "over" : (cur && fc > base * 1.1 ? "pace" : r >= .85 ? "warn" : "ok");
+  h += '<div class="bt"><b>' + fm(sp) + '</b><span class="sub"> из ' + fm(base) + (capOn ? " (потолок)" : " (норма)") + '</span></div><div class="gb"><i style="width:' + Math.min(100, r * 100).toFixed(1) + "%;background:" + BCOL[st] + '"></i>' + (cur ? '<s style="left:' + (f * 100).toFixed(1) + '%"></s>' : "") + "</div>";
+  let t = cur ? "Сегодня " + day + " из " + dim + " дней. " : "";
+  if (left < 0) t += '<span class="exp">' + (capOn ? "Потолок" : "Норма") + " превышен" + (capOn ? "" : "а") + " на " + fm(-left) + ".</span>";
+  else if (cur && dl > 0) t += "Осталось <b>" + fm(left) + "</b> на " + dl + " дн. — это ≈ <b>" + fm(left / dl) + "</b> в день. ";
+  if (cur && !capOn && fc > base) t += 'Прогноз к концу месяца ≈ ' + fm(fc) + ' <span class="exp">(выше нормы)</span>.';
+  h += '<div class="sub" style="margin-top:6px">' + t + "</div>";
+  if (capOn && cp.cur) {
+    let q;
+    if (cp.impossible) q = '<span class="exp">Уже потрачено больше, чем позволяет потолок вместе с фиксированными тратами. Уложиться можно только если до конца месяца почти ничего не тратить на гибкие категории.</span>';
+    else if (cp.flexExp <= 0) q = "Гибких категорий с нормой нет — закрепи/раскрепи замочки или задай нормы.";
+    else if (cp.ratio >= 1) q = "Потолок выше обычного темпа: запас ≈ " + fmN(cp.R - cp.flexExp) + ". Резать ничего не нужно.";
+    else q = "До конца месяца обычно уходит ещё ≈ <b>" + fmN(cp.flexExp + cp.fixedRem) + "</b> (🔒 фикс.: " + fmN(cp.fixedRem) + ", гибкие: " + fmN(cp.flexExp) + "). Чтобы уложиться, гибкие категории надо ужать на <b>" + Math.round((1 - cp.ratio) * 100) + "%</b> — до " + fmN(cp.flexExp * cp.ratio) + " вместо " + fmN(cp.flexExp) + ".";
+    h += '<div class="sub qnote">' + q + "</div>";
+  } else if (capOn) h += '<div class="sub qnote">План по категориям строится только для текущего месяца.</div>';
+  return h + '<div class="sub" style="font-size:.78em;margin:10px 0 2px">' + (capOn ? "Метка на полосе — плановая граница. 🔒 — категорию нельзя урезать. Тап по названию — личный лимит." : "Метка на полосе — норма или лимит. Тап по строке — задать лимит.") + "</div>" + budRows(am);
+}
+function budSum() {
+  const am = anchorMonth(), md = bmode(); if (md === "off") return "выкл.";
+  const sp = monTot(monthSums(), am);
+  if (md === "cap") { if (!(PR.cap > 0)) return "потолок не задан"; return PR.cap >= sp ? "ост. " + fmN(PR.cap - sp) : "превыш. +" + fmN(sp - PR.cap); }
+  const n = normOf("*", am); return n ? (sp > n.avg ? "превыш. +" + fmN(sp - n.avg) : "ост. " + fmN(n.avg - sp)) : "нормы пока нет";
+}
+
+/* ---- средние траты за период / по годам ---- */
+function avgMonths(spec, am) {
+  const first = firstMonth(), nowm = mk(new Date()), out = [];
+  if (!first) return out;
+  if (spec[0] === "m") { for (let i = 1; i <= +spec.slice(1); i++) { const m = shiftMonth(am, -i); if (m < first) break; out.push(m); } return out; }
+  const y = spec.slice(1); for (let k = 1; k <= 12; k++) { const m = y + "-" + pad(k); if (m >= first && m < nowm) out.push(m); }
+  if (!out.length && nowm.startsWith(y)) out.push(nowm); return out;
+}
+function avgBody() {
+  const am = anchorMonth(), ms = monthSums(), yrs = [...new Set(Object.keys(ms).map(m => m.slice(0, 4)))].sort().reverse().slice(0, 4), spec = PR.avg || "m6";
+  const chip = (v, l) => '<button class="chip' + (spec === v ? " on" : "") + '" data-a="avgset" data-v="' + v + '">' + l + "</button>";
+  let h = '<div class="chips" style="margin:0 0 6px">' + [3, 6, 12].map(n => chip("m" + n, n + " мес.")).join("") + yrs.map(y => chip("y" + y, y)).join("") + "</div>";
+  const mons = avgMonths(spec, am); if (!mons.length) return h + '<div class="sub">Пока нет полных месяцев для сравнения.</div>';
+  const tot = {}; let all = 0; mons.forEach(m => Object.entries(ms[m] || {}).forEach(([c, v]) => { tot[c] = (tot[c] || 0) + v; all += v; }));
+  const rows = Object.entries(tot).map(([c, v]) => ({ c: catOf(c === "_" ? null : c), id: c, a: v / mons.length })).sort((a, b) => b.a - a.a), mx = rows.length ? rows[0].a : 1, curTot = monTot(ms, am);
+  h += '<div class="bt"><b>≈ ' + fm(all / mons.length) + '</b><span class="sub"> в месяц · ' + mons.length + " мес." + (spec[0] === "y" ? " " + spec.slice(1) + " г." : "") + '</span></div><div class="sub" style="margin:4px 0 8px">В выбранном месяце: ' + fm(curTot) + " (" + (curTot >= all / mons.length ? "+" : "−") + fm(Math.abs(curTot - all / mons.length)) + " к среднему)</div>";
+  h += rows.map(r => { const cs = ((ms[am] || {})[r.id]) || 0, d = cs - r.a; return '<div class="bar"><div class="n">' + ic(r.c.icon, r.c.color, 22) + " " + esc(r.c.name) + '</div><div class="tr"><i style="width:' + (r.a / mx * 100).toFixed(1) + "%;background:" + r.c.color + '"></i></div><div class="v">' + fm(r.a) + '<br><span class="sub" style="font-weight:400;font-size:.8em">сейчас ' + fmN(cs) + (cs ? " (" + (d >= 0 ? "+" : "−") + fmN(Math.abs(d)) + ")" : "") + "</span></div></div>"; }).join("");
+  if (yrs.length > 1) {
+    const ys = yrs.slice().reverse(), vals = ys.map(y => { const m = avgMonths("y" + y, am); return m.length ? m.reduce((a, k) => a + monTot(ms, k), 0) / m.length : 0; });
+    h += '<div class="sub" style="margin:14px 0 2px;font-weight:600">Среднемесячные траты по годам</div>' + bars(vals, ys, { hi: ys.indexOf(spec[0] === "y" ? spec.slice(1) : ys[ys.length - 1]) }) + '<div class="sub" style="font-size:.78em">' + ys.map((y, i) => y + ": " + fmN(vals[i])).join(" · ") + "</div>";
+  }
   return h;
 }
+function avgSum() { const m = avgMonths(PR.avg || "m6", anchorMonth()); if (!m.length) return "—"; const ms = monthSums(); return "≈ " + fmN(m.reduce((a, k) => a + monTot(ms, k), 0) / m.length) + " / мес."; }
 
 /* ============ графики (SVG) ============ */
 function donut(items, total, label, sub) {
@@ -574,26 +640,35 @@ function listHTML() {
   return h;
 }
 function statsHTML() {
-  const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), B = rgBounds(ui.rg), t = ui.rg.t;
-  const prevArr = t === "all" || t === "int" ? [] : rgTx(-1), pe = sumBy(prevArr.filter(x => x.kind === "exp"));
+  const arr = rgTx(), B = rgBounds(ui.rg), t = ui.rg.t, ex = arr.filter(x => x.kind === "exp"), exp = sumBy(ex);
   const first = txs.length ? Math.min(...txs.map(x => +new Date(x.ts))) : Date.now(), s0 = Math.max(B[0], first), e0 = Math.min(B[1], Date.now() + 864e5), days = Math.max(1, Math.ceil((e0 - s0) / 864e5));
-  const diff = pe ? Math.round((exp - pe) / pe * 100) : null;
-  let h = topBar(true) + '<div class="kp"><div><small>Расходы</small><b class="exp">' + fm(exp) + "</b>" + (diff != null ? '<small class="' + (diff > 0 ? "exp" : "inc") + '">' + (diff > 0 ? "▲ +" : "▼ ") + diff + "% к прошлому периоду</small>" : "") + "</div><div><small>Доходы</small><b class='inc'>" + fm(inc) + "</b></div><div><small>Баланс</small><b class='" + (inc - exp >= 0 ? "inc" : "exp") + "'>" + fm(inc - exp) + "</b></div><div><small>В день (расходы)</small><b>" + fm(exp / days) + "</b></div></div>";
-  h += budgetHTML();
+  let h = topBar(true) + '<div class="kp"><div><small>Расходы</small><b class="exp">' + fm(exp) + "</b></div><div><small>В день</small><b>" + fm(exp / days) + "</b></div><div><small>Покупок</small><b>" + ex.length + "</b></div><div><small>Средний чек</small><b>" + fm(ex.length ? exp / ex.length : 0) + "</b></div></div>";
+  h += acc("bud", "🎯", "Бюджет месяца", budSum(), budBody);
+  h += acc("avg", "📈", "Средние траты", avgSum(), avgBody);
   if (!arr.length) return h + '<div class="empty">Нет данных за период</div>';
-  const ex = arr.filter(x => x.kind === "exp");
-  h += calHTML();
-  if (days <= 62 && t !== "all") { const v = Array(days).fill(0); ex.forEach(x => { const i = Math.floor((+sod(x.ts) - +sod(s0)) / 864e5); if (i >= 0 && i < days) v[i] += x.amount; }); h += '<div class="card"><h3>Расходы по дням</h3>' + bars(v, v.map((_, i) => new Date(+sod(s0) + i * 864e5).getDate()), { avg: exp / days }) + "</div>"; }
-  const am = anchorMonth(), nm = t === "all" ? 24 : 12, ms = []; for (let i = nm - 1; i >= 0; i--) ms.push(shiftMonth(am, -i));
-  const ev = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "exp"))), iv = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "inc"))), lab = ms.map(m => nm > 12 && +m.slice(5) !== 1 ? "" : (nm > 12 ? m.slice(2, 4) : MONS_S[+m.slice(5) - 1])), nz = ev.filter(Boolean);
-  h += '<div class="card"><h3>Расходы по месяцам</h3>' + bars(ev, lab, { hi: ms.length - 1, avg: nz.length ? sumBy(nz, x => x) / nz.length : 0 }) + '<div class="sub" style="font-size:.78em;margin-top:6px">пунктир — среднее за месяц · ' + nm + " мес.</div></div>";
-  if (iv.some(Boolean)) h += '<div class="card"><h3>Доходы по месяцам</h3>' + bars(iv, lab, { hi: ms.length - 1, col: "var(--inc)" }) + "</div>";
-  const top = ex.slice().sort((a, b) => b.amount - a.amount).slice(0, 5); if (top.length) h += '<div class="card"><h3>Самые крупные траты</h3>' + top.map(txRow).join("") + "</div>";
-  const wd = Array(7).fill(0), wc = Array(7).fill(0), seen = {}; ex.forEach(x => { const d = new Date(x.ts); wd[d.getDay()] += x.amount; seen[dayKey(d)] = 1; }); Object.keys(seen).forEach(k => wc[new Date(k + "T12:00").getDay()]++);
-  const wavg = wd.map((v, i) => wc[i] ? v / wc[i] : 0), ord = [1, 2, 3, 4, 5, 6, 0];
-  h += '<div class="card"><h3>Средняя трата по дням недели</h3>' + bars(ord.map(i => wavg[i]), ord.map(i => WD[i]), { hi: ord.map(i => wavg[i]).indexOf(Math.max(...wavg)) }) + "</div>";
-  const m6 = []; for (let i = 5; i >= 0; i--) m6.push(shiftMonth(am, -i)); const top8 = byCat(txs.filter(x => m6.includes(mk(new Date(x.ts)))), "exp").slice(0, 8);
-  if (top8.length) { const grid = top8.map(x => m6.map(m => sumBy(ofMonth(m).filter(y => y.kind === "exp" && (y.category_id || "_") === (x.cat.id || "_"))))), gm = Math.max(1, ...grid.flat()); h += '<div class="card"><h3>Категории по месяцам (6 мес.)</h3><table class="hm"><tr><th></th>' + m6.map(m => "<th>" + MONS_S[+m.slice(5) - 1] + "</th>").join("") + "</tr>" + top8.map((x, r) => "<tr><th style='text-align:left'>" + ic(x.cat.icon, x.cat.color, 22) + "</th>" + grid[r].map(v => '<td style="background:rgba(var(--hm),' + (v / gm * .85).toFixed(2) + ')">' + (v ? Math.round(v / 100) / 10 + "k" : "") + "</td>").join("") + "</tr>").join("") + '</table><div class="sub" style="font-size:.75em;margin-top:4px">в тысячах рублей</div></div>'; }
+  const am = anchorMonth();
+  h += acc("cal", "📅", "Календарь трат", MONS[+am.slice(5) - 1].toLowerCase(), calHTML);
+  h += acc("dyn", "📊", "Динамика", "по дням и месяцам", () => {
+    let o = ""; const nm = t === "all" ? 24 : 12, ms = []; for (let i = nm - 1; i >= 0; i--) ms.push(shiftMonth(am, -i));
+    if (days <= 62 && t !== "all") { const v = Array(days).fill(0); ex.forEach(x => { const i = Math.floor((+sod(x.ts) - +sod(s0)) / 864e5); if (i >= 0 && i < days) v[i] += x.amount; }); o += '<div class="sub" style="font-weight:600">По дням</div>' + bars(v, v.map((_, i) => new Date(+sod(s0) + i * 864e5).getDate()), { avg: exp / days }); }
+    const ev = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "exp"))), lab = ms.map(m => nm > 12 && +m.slice(5) !== 1 ? "" : (nm > 12 ? m.slice(2, 4) : MONS_S[+m.slice(5) - 1])), nz = ev.filter(Boolean);
+    return o + '<div class="sub" style="font-weight:600;margin-top:10px">По месяцам</div>' + bars(ev, lab, { hi: ms.length - 1, avg: nz.length ? sumBy(nz, x => x) / nz.length : 0 }) + '<div class="sub" style="font-size:.78em;margin-top:6px">пунктир — среднее за месяц · ' + nm + " мес.</div>";
+  });
+  h += acc("wd", "🗓️", "Дни недели", "в какие дни тратишь", () => {
+    const wd = Array(7).fill(0), wc = Array(7).fill(0), seen = {}; ex.forEach(x => { const d = new Date(x.ts); wd[d.getDay()] += x.amount; seen[dayKey(d)] = 1; }); Object.keys(seen).forEach(k => wc[new Date(k + "T12:00").getDay()]++);
+    const wavg = wd.map((v, i) => wc[i] ? v / wc[i] : 0), ord = [1, 2, 3, 4, 5, 6, 0]; return bars(ord.map(i => wavg[i]), ord.map(i => WD[i]), { hi: ord.map(i => wavg[i]).indexOf(Math.max(...wavg)) }) + '<div class="sub" style="font-size:.78em">средняя трата в этот день недели</div>';
+  });
+  h += acc("hm", "🔥", "Категории по месяцам", "6 мес.", () => {
+    const m6 = []; for (let i = 5; i >= 0; i--) m6.push(shiftMonth(am, -i)); const top8 = byCat(txs.filter(x => m6.includes(mk(new Date(x.ts)))), "exp").slice(0, 8); if (!top8.length) return '<div class="sub">Нет данных</div>';
+    const grid = top8.map(x => m6.map(m => sumBy(ofMonth(m).filter(y => y.kind === "exp" && (y.category_id || "_") === (x.cat.id || "_"))))), gm = Math.max(1, ...grid.flat());
+    return '<table class="hm"><tr><th></th>' + m6.map(m => "<th>" + MONS_S[+m.slice(5) - 1] + "</th>").join("") + "</tr>" + top8.map((x, r) => "<tr><th style='text-align:left'>" + ic(x.cat.icon, x.cat.color, 22) + "</th>" + grid[r].map(v => '<td style="background:rgba(var(--hm),' + (v / gm * .85).toFixed(2) + ')">' + (v ? Math.round(v / 100) / 10 + "k" : "") + "</td>").join("") + "</tr>").join("") + '</table><div class="sub" style="font-size:.75em;margin-top:4px">в тысячах рублей</div>';
+  });
+  h += acc("notes", "🔎", "Куда утекают мелочи", "повторяющиеся заметки", () => {
+    const m = {}; ex.forEach(x => { const k = (x.note || "").trim().toLowerCase(); if (!k) return; const o = m[k] || (m[k] = { n: 0, s: 0, l: x.note.trim(), c: x.category_id }); o.n++; o.s += x.amount; });
+    const l = Object.values(m).filter(o => o.n >= 2).sort((a, b) => b.s - a.s).slice(0, 8); if (!l.length) return '<div class="sub">Пока нет повторяющихся заметок. Пиши в заметке «кофе», «такси» — и тут появится, сколько в сумме на это уходит.</div>';
+    return l.map(o => { const c = catOf(o.c); return '<div class="chg"><span>' + ic(c.icon, c.color, 22) + " " + esc(o.l) + ' <span class="sub">· ' + o.n + "×</span></span><b>" + fm(o.s) + "</b></div>"; }).join("");
+  });
+  h += acc("top", "💸", "Самые крупные траты", "топ-5", () => ex.slice().sort((a, b) => b.amount - a.amount).slice(0, 5).map(txRow).join(""));
   return h;
 }
 function moreHTML() {
@@ -606,7 +681,7 @@ function moreHTML() {
     '<button class="set" data-a="setext"><span>⚡</span><span style="flex:1">Шаблоны и повторяющиеся</span><span class="sub">' + (EXT.tpl.length + EXT.rec.length || "") + ' ›</span></button>' +
     '<button class="set" data-a="setcats"><span>🗂️</span><span style="flex:1">Категории</span><span class="sub">›</span></button>' +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Тема</div><div class="themes">' + THEMES.map(t => '<button class="' + (PR.theme === t[0] ? "on" : "") + '" data-a="theme" data-v="' + t[0] + '"><i style="background:' + t[2] + '"><b style="background:' + t[3] + '"></b><u style="background:' + PR.acc + '"></u></i><span>' + t[1] + "</span></button>").join("") + "</div></div>" +
-    '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="acc" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
+    '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="accx" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
     '<label class="set"><span>📥</span><span style="flex:1">Импорт из Monefy (CSV)</span><input type="file" id="csvf" accept=".csv,.txt,text/csv" hidden></label>' +
     '<button class="set" data-a="export"><span>📤</span><span style="flex:1">Экспорт в CSV</span></button>' +
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
@@ -650,13 +725,13 @@ function extHTML() {
 function calHTML() {
   const am = anchorMonth(), y = +am.slice(0, 4), m = +am.slice(5) - 1, dim = new Date(y, m + 1, 0).getDate(), off = (new Date(y, m, 1).getDay() + 6) % 7, td = dayKey(new Date()), v = Array(dim + 1).fill(0);
   ofMonth(am).forEach(t => { if (t.kind === "exp") v[new Date(t.ts).getDate()] += t.amount; });
-  const mx = Math.max(0, ...v); if (!mx) return "";
+  const mx = Math.max(0, ...v); if (!mx) return '<div class="sub">В этом месяце трат нет</div>';
   const pass = Math.min(dim, am === mk(new Date()) ? new Date().getDate() : dim), tot = v.reduce((a, b) => a + b, 0), avg = tot / Math.max(1, pass), best = v.indexOf(mx);
-  let h = '<div class="card"><h3>Календарь трат · ' + MONS[m] + '</h3><div class="cal">' + WDM.map(x => "<u>" + x + "</u>").join("");
+  let h = '<div class="cal">' + WDM.map(x => "<u>" + x + "</u>").join("");
   for (let i = 0; i < off; i++) h += "<i></i>";
   for (let d = 1; d <= dim; d++) { const ds = y + "-" + pad(m + 1) + "-" + pad(d), fut = ds > td; h += '<button class="' + (ds === td ? "td " : "") + (fut ? "fu" : "") + '" data-a="hmday" data-v="' + ds + '" style="background:rgba(var(--hm),' + (v[d] ? (.12 + v[d] / mx * .78).toFixed(2) : 0) + ')">' + d + (v[d] ? "<small>" + (v[d] >= 1000 ? (Math.round(v[d] / 100) / 10) + "k" : Math.round(v[d])) + "</small>" : "") + "</button>"; }
   const hot = v.filter(x => x > avg * 1.5).length;
-  return h + '</div><div class="sub" style="font-size:.85em;margin-top:8px">Самый дорогой день: <b>' + best + " " + MONS_S[m].toLowerCase() + "</b> — " + fm(mx) + ". В среднем ≈ " + fm(avg) + " в день; дней «дороже нормы» (×1,5): " + hot + ". Тап по дню — открыть его.</div></div>";
+  return h + '</div><div class="sub" style="font-size:.85em;margin-top:8px">Самый дорогой день: <b>' + best + " " + MONS_S[m].toLowerCase() + "</b> — " + fm(mx) + ". В среднем ≈ " + fm(avg) + " в день; дней «дороже нормы» (×1,5): " + hot + ". Тап по дню — открыть его.</div>";
 }
 const WDM = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 function budSheetHTML() {
@@ -753,17 +828,16 @@ function carOpen() {
   const m = $("main"); if (!m) return null; const cur = [...m.children].filter(e => !e.matches(".hdr,.fab")); if (!cur.length) return null;
   const wrap = document.createElement("div"); wrap.className = "pgw"; m.insertBefore(wrap, cur[0]);
   const mid = document.createElement("div"); cur.forEach(e => mid.appendChild(e)); wrap.appendChild(mid);
-  const nb = (d, cls) => { const g = document.createElement("div"); g.className = "nb " + cls; pageEls(d).forEach(e => g.appendChild(e)); wrap.appendChild(g); };
-  const fwdOk = rgBounds(ui.rg, 1)[0] <= Date.now(); nb(-1, "l"); if (fwdOk) nb(1, "r");
-  m.style.overflowX = "hidden"; return { wrap, W: m.clientWidth || 360, fwdOk, m };
+  m.style.overflowX = "hidden"; return { wrap, W: m.clientWidth || 360, fwdOk: rgBounds(ui.rg, 1)[0] <= Date.now(), m, nb: {} };
 }
+function carNb(c, d) { if (c.nb[d] || (d > 0 && !c.fwdOk)) return; const g = document.createElement("div"); g.className = "nb " + (d < 0 ? "l" : "r"); pageEls(d).forEach(e => g.appendChild(e)); c.wrap.appendChild(g); c.nb[d] = 1; }
 function carEnd(go, dir, from) {
   const c = car; if (!c) return; const to = go ? -dir * c.W : 0, dur = go ? 170 : 150;
-  c.wrap.style.transform = "translateX(" + from + "px)";
-  const a = c.wrap.animate([{ transform: "translateX(" + from + "px)" }, { transform: "translateX(" + to + "px)" }], { duration: Math.max(90, dur * Math.abs(to - from) / c.W + 50), easing: "cubic-bezier(.22,.7,.3,1)", fill: "forwards" });
+  c.wrap.style.transform = "translate3d(" + from + "px,0,0)";
+  const a = c.wrap.animate([{ transform: "translate3d(" + from + "px,0,0)" }, { transform: "translate3d(" + to + "px,0,0)" }], { duration: Math.max(90, dur * Math.abs(to - from) / c.W + 50), easing: "cubic-bezier(.22,.7,.3,1)", fill: "forwards" });
   a.onfinish = () => { car = null; c.m.style.overflowX = ""; if (go) rgShift(dir); render(); sliding = false; };
 }
-function slide(dir) { if (sliding) return; if (dir > 0 && rgBounds(ui.rg, 1)[0] > Date.now()) return; sliding = true; car = carOpen(); if (!car) { rgShift(dir); render(); sliding = false; return; } carEnd(true, dir, 0); }
+function slide(dir) { if (sliding) return; if (dir > 0 && rgBounds(ui.rg, 1)[0] > Date.now()) return; sliding = true; car = carOpen(); if (!car) { rgShift(dir); render(); sliding = false; return; } carNb(car, dir); requestAnimationFrame(() => carEnd(true, dir, 0)); }
 
 /* ============ кнопка «Назад» ============ */
 let hDepth = 0, hSkip = 0, guarded = false, lastBack = 0;
@@ -898,6 +972,9 @@ const A = {
   catup(a) { const l = cats.filter(c => c.kind === ui.kind).sort((x, y) => x.position - y.position), i = l.findIndex(c => c.id === a.dataset.id); if (i > 0) { const t = l[i].position; l[i].position = l[i - 1].position; l[i - 1].position = t; if (l[i].position === l[i - 1].position) l.forEach((c, k) => c.position = k); upCat(l[i]); upCat(l[i - 1]); render(); } },
   setcats() { ui.set = "cats"; render(); }, setmain() { ui.set = "main"; render(); },
   theme(a) { PR.theme = a.dataset.v; savePR(); applyTheme(); render(); },
+  accx(a) { PR.acs = PR.acs || {}; const id = a.dataset.v; PR.acs[id] = !accOpen(id); savePR(); render(); },
+  avgset(a) { PR.avg = a.dataset.v; savePR(); render(); },
+  fixtog(a) { PR.fix = PR.fix || {}; const id = a.dataset.id; if (PR.fix[id]) delete PR.fix[id]; else PR.fix[id] = true; savePR(); render(); },
   bmode(a) { PR.bm = a.dataset.v; PR.normOn = PR.bm !== "off"; savePR(); render(); },
   capset() { const v = parseFloat((($("cap-v") || {}).value || "").replace(",", ".")); PR.cap = v > 0 ? Math.round(v) : 0; savePR(); render(); },
   capfill(a) { PR.cap = +a.dataset.v; savePR(); render(); },
@@ -936,13 +1013,13 @@ const A = {
 };
 /* свайп влево/вправо — смена периода (как в Monefy) */
 (function () {
-  let sx = 0, sy = 0, st = 0, ok = false, drag = false, dxl = 0;
+  let sx = 0, sy = 0, st = 0, ok = false, drag = false, dxl = 0, raf = 0;
   const can = () => user && !ui.sheet && !ui.menu && ["home", "list", "stats"].includes(ui.tab) && ui.rg.t !== "all" && ui.rg.t !== "int" && !sliding;
   document.addEventListener("touchstart", e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); drag = false; dxl = 0; ok = e.touches.length === 1 && !e.target.closest("input,textarea,.hm,.menu,.sheet,.full,.mov,.tpls"); }, { passive: true });
   document.addEventListener("touchmove", e => {
     if (!ok || !can() && !drag) return; const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (!drag) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.4) { car = carOpen(); if (!car) { ok = false; return; } drag = true; sliding = true; } else return; }
-    dxl = dx; const d = dx < 0 && !car.fwdOk ? dx * .22 : dx; car.wrap.style.transform = "translateX(" + d + "px)";
+    dxl = dx; carNb(car, dx < 0 ? 1 : -1); if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!car || !drag) return; const d = dxl < 0 && !car.fwdOk ? dxl * .22 : dxl; car.wrap.style.transform = "translate3d(" + d + "px,0,0)"; });
   }, { passive: true });
   const fin = e => {
     if (!ok || !drag) return; drag = false; const c = car, dx = dxl, fast = Date.now() - st < 320 && Math.abs(dx) > 35, go = (Math.abs(dx) > c.W * .28 || fast) && !(dx < 0 && !c.fwdOk);
