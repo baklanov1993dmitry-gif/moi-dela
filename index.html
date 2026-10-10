@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 17:20";
+const BUILD = "10.10 17:31";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2761,8 +2761,9 @@ function metaHTML(t, showList, orphan) {
   if (t.parent_id) { if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>"); if (t.note) m.push('<span class="mi">' + ic("note", 13) + "</span>"); return m.length ? '<div class="meta">' + m.join("") + "</div>" : ""; }
   if (showList && l) m.push('<span class="mi">' + (l.icon ? esc(l.icon) : ic("list", 12)) + " " + esc(l.name) + "</span>");
   if (PR.myday && inMyDay(t) && view !== "myday") m.push('<span class="mi">' + ic("sun", 13) + " Мой день</span>");
-  if (di) m.push('<button class="mi dueb ' + di.cls + '" data-a="pop" data-p="due" data-id="' + t.id + '" title="Изменить срок">' + ic("cal", 13) + " " + di.txt + "</button>");
-  if (di && di.cls === "od") m.push('<button class="mi pp" data-a="postp" data-v="tom" data-id="' + t.id + '">Завтра</button>');
+  if (di && isMobile()) m.push('<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>");   // на телефоне срок — просто подпись: тап по любой части строки открывает задачу (срок меняется свайпом влево или в карточке)
+  else if (di) m.push('<button class="mi dueb ' + di.cls + '" data-a="pop" data-p="due" data-id="' + t.id + '" title="Изменить срок">' + ic("cal", 13) + " " + di.txt + "</button>");
+  if (di && di.cls === "od" && !isMobile()) m.push('<button class="mi pp" data-a="postp" data-v="tom" data-id="' + t.id + '">Завтра</button>');
   if (t.repeat_rule) m.push('<span class="mi" title="' + esc(repeatText(t.repeat_rule)) + '">' + ic("repeat", 13) + "</span>");
   if (t.remind_at && !t.done) m.push('<span class="mi' + (new Date(t.remind_at) < new Date() ? " od" : "") + '" title="' + esc(fmtRemind(t.remind_at)) + '">' + ic("bell", 13) + "</span>");
   if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>");
@@ -2832,7 +2833,7 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" : "") +
-    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (ui.vbusy === t.id ? "⏳ Смотрю видео (до 2 мин)…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
+    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
@@ -3525,28 +3526,31 @@ const noteView = t => { const m = vLine(t.note); return m ? String(t.note).slice
 const noteSet = (t, v) => { const m = vLine(t.note); return m ? m[1] + "\n\n" + v : v; };
 const ytUrl = n => { const m = String(n || "").match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
 function videoCatchup() {   // видео в очереди без пересказа догоняем автоматически (не больше 2 попыток на видео)
-  if (!S.user || ui.vbusy || document.hidden) return; PR.vtry = PR.vtry || {};
-  const t = Object.values(S.tasks).find(x => !x.done && !x.parent_id && ytUrl(x.note) && !/Смысл видео ━━/.test(x.note || "") && (PR.vtry[x.id] || 0) < 2);
+  if (!S.user || document.hidden) return; PR.vtry = PR.vtry || {};
+  const t = Object.values(S.tasks).find(x => !x.done && !x.parent_id && !VB[x.id] && ytUrl(x.note) && !/Смысл видео ━━/.test(x.note || "") && (PR.vtry[x.id] || 0) < 2);
   if (t) videoSummary(t.id);
 }
+const VB = {};   // id → true, пока идёт запрос пересказа (у каждого видео свой, кнопки других не блокируются)
 async function videoSummary(id) {
-  const t = S.tasks[id]; if (!t || ui.vbusy) return; const url = ytUrl(t.note); if (!url) return;
-  ui.vbusy = id; render();
+  const t = S.tasks[id]; if (!t) return; const url = ytUrl(t.note); if (!url) return;
+  if (VB[id]) { toast("Пересказ этого видео уже запрашивается…"); return; }
+  VB[id] = true; render();
   try {
     const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("Нет входа");
     let r, j = {};
-    for (let k = 0; k < 4; k++) {   // у бесплатного Gemini бывают перегрузки — пробуем до 4 раз
-      r = await fetch(cfg.url + "/functions/v1/video", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: cfg.key }, body: JSON.stringify({ url }) });
+    for (let k = 0; k < 2; k++) {   // у бесплатного Gemini бывают перегрузки — пробуем до 4 раз
+      const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 150000);
+      try { r = await fetch(cfg.url + "/functions/v1/video", { method: "POST", signal: ac.signal, headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: cfg.key }, body: JSON.stringify({ url }) }); } catch (e) { throw new Error(e && e.name === "AbortError" ? "Gemini не ответил за 2,5 минуты" : e); } finally { clearTimeout(tm); }
       if (r.status === 404) throw new Error("Функция video ещё не создана"); j = {}; try { j = await r.json(); } catch (e) {}
       if (r.ok || !/high demand|overload|unavailable|try again|503|429|quota/i.test(j.error || "")) break;
-      toast("Gemini перегружен, повторяю (" + (k + 1) + "/4)…"); await new Promise(z => setTimeout(z, 4000 + k * 4000));
+      toast("Gemini перегружен, повторяю…"); await new Promise(z => setTimeout(z, 4000 + k * 4000));
     }
     if (!r.ok) throw new Error(j.error || "Ошибка " + r.status);
     let txt = String(j.text || ""); const mm = /^\s*МИНУТ:\s*(\d{1,4})[^\n]*\n?/i.exec(txt); if (mm) txt = txt.slice(mm[0].length).trim();
     const cur = S.tasks[id]; if (cur) { const patch = { note: (cur.note || "").replace(/\n*━━ Смысл видео ━━[\s\S]*$/, "") + "\n\n━━ Смысл видео ━━\n" + txt }; if (mm && +mm[1] > 0) patch.est_minutes = Math.min(+mm[1], 999); upd(id, patch); }
     toast("Готово: пересказ в заметке");
   } catch (e) { PR.vtry = PR.vtry || {}; PR.vtry[id] = (PR.vtry[id] || 0) + 1; savePrefs(); toast("Не вышло: " + ((e && e.message) || e)); }
-  ui.vbusy = null; render();
+  delete VB[id]; render(); setTimeout(videoCatchup, 800);
 }
 async function aiCall(kind, data) {
   const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("Нет входа");
