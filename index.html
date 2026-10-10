@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 16:52";
+const BUILD = "10.10 17:04";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1302,15 +1302,14 @@ function dtpHTML(p, t) {
       '<div class="psep"></div><button type="button" class="dli" data-a="dcal">' + ic("cal", 18) + '<span class="dlx">Выбрать дату</span></button>' +
       (t && t.due ? '<button type="button" class="dli" data-a="dclear" style="color:#d13438">' + ic("x", 18) + '<span class="dlx">Убрать срок</span></button>' : "");
   }
-  let h = '<div class="dtp-t">' + (rem ? "Напомнить" : "Срок выполнения") + "</div>" +
-    '<div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + q("mon", "+ месяц") + "</div>" +
-    calHTML(D.date, D.y, D.m);
+  let h = rem ? '<div class="dtp-t">Напомнить</div><div class="dtp-tl">Через</div><div class="dqrow big"><button type="button" class="dq" data-a="drel" data-v="15">15 мин</button><button type="button" class="dq" data-a="drel" data-v="60">1 час</button><button type="button" class="dq" data-a="drel" data-v="180">3 часа</button></div>' +
+    '<div class="dtp-tl">Или в конкретное время</div><div class="dqrow big">' + q("today", "Сегодня") + q("tom", "Завтра") + '<button type="button" class="dq' + (D.rcal ? " on" : "") + '" data-a="drcal">📅 Дата</button></div>' + (D.rcal ? calHTML(D.date, D.y, D.m) : "") :
+    '<div class="dtp-t">Срок выполнения</div><div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + q("mon", "+ месяц") + "</div>" + calHTML(D.date, D.y, D.m);
   if (rem) {
-    h += '<form id="dtpform" class="dtp-time"><div class="dtp-tl">Время</div><div class="tfld big"><button type="button" class="tb" data-a="dstep" data-d="-60">−1ч</button><button type="button" class="tb" data-a="dstep" data-d="-15">−15</button>' +
-      '<input id="dtp-t" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="чч:мм" value="' + esc(D.time || "") + '"><button type="button" class="tb" data-a="dstep" data-d="15">+15</button><button type="button" class="tb" data-a="dstep" data-d="60">+1ч</button></div>' +
-      '<div class="tchips">' + tchipsList().map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
-      '<div class="dtp-tl">Или через</div><div class="dqrow"><button type="button" class="dq" data-a="drel" data-v="15">15 мин</button><button type="button" class="dq" data-a="drel" data-v="60">1 час</button><button type="button" class="dq" data-a="drel" data-v="180">3 часа</button></div>' +
-      '<div class="dqrow" style="margin-top:8px"><button type="button" class="dq' + ((D.loud != null ? D.loud : (t && /^⏰/.test(t.title))) ? " on" : "") + '" data-a="dloud">⏰ Громко (будильник)</button></div>' +
+    h += '<form id="dtpform" class="dtp-time"><div class="tfld big" style="margin-top:6px"><button type="button" class="tb" data-a="dstep" data-d="-15">−15</button>' +
+      '<input id="dtp-t" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="чч:мм" value="' + esc(D.time || "") + '"><button type="button" class="tb" data-a="dstep" data-d="15">+15</button></div>' +
+      '<div class="tchips">' + (() => { const all = tchipsList(), nw = pad(new Date().getHours()) + ":" + pad(new Date().getMinutes()), fut = D.date === today ? all.filter(c => c > nw) : all; return (fut.length ? fut : all).slice(0, 4); })().map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
+      '<div class="dqrow big" style="margin-top:10px"><button type="button" class="dq' + ((D.loud != null ? D.loud : (t && /^⏰/.test(t.title))) ? " on" : "") + '" data-a="dloud">⏰ Громко (будильник)</button></div>' +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
@@ -1342,6 +1341,7 @@ const dtpActs = {
     if (D.mode === "due") { setDue(dtpId(), iso); return dtpDone(); }
     D.date = iso; const b = parseISO(iso); D.y = b.getFullYear(); D.m = b.getMonth(); keepTime(); render();
   },
+  drcal() { if (ui.dtp) { ui.dtp.rcal = !ui.dtp.rcal; render(); } },
   dloud() { const D = ui.dtp; if (!D) return; const t = S.tasks[dtpId()]; D.loud = !(D.loud != null ? D.loud : (t && /^⏰/.test(t.title))); render(); },
   dtime(a) { if (ui.dtp) { ui.dtp.time = a.dataset.v; render(); } },
   dstep(a) {
@@ -1411,7 +1411,7 @@ const dtpCSS = `
 .tfld.big input{font-size:calc(22px*var(--z,1));font-weight:700;letter-spacing:.5px}
 .tb{min-width:38px;padding:0 6px;border-radius:10px;background:var(--inp);border:1px solid var(--ln);font-size:calc(13px*var(--z,1));color:var(--tx)}
 .tb:active{background:var(--acc);color:#fff}
-.dtp-sum{margin:12px 0 8px;font-weight:600;text-align:center;color:var(--acc)}
+.dqrow.big .dq{padding:14px 8px;font-size:calc(16px*var(--z,1));border-radius:12px}.dtp-time .tb{min-width:52px;font-size:calc(16px*var(--z,1))}.dtp-sum{margin:12px 0 8px;font-weight:600;text-align:center;color:var(--acc)}
 .dtp-btns{display:flex;gap:8px}
 `;
 
@@ -3516,8 +3516,13 @@ async function videoSummary(id) {
   ui.vbusy = id; render();
   try {
     const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("Нет входа");
-    const r = await fetch(cfg.url + "/functions/v1/video", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: cfg.key }, body: JSON.stringify({ url }) });
-    if (r.status === 404) throw new Error("Функция video ещё не создана"); let j = {}; try { j = await r.json(); } catch (e) {}
+    let r, j = {};
+    for (let k = 0; k < 4; k++) {   // у бесплатного Gemini бывают перегрузки — пробуем до 4 раз
+      r = await fetch(cfg.url + "/functions/v1/video", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: cfg.key }, body: JSON.stringify({ url }) });
+      if (r.status === 404) throw new Error("Функция video ещё не создана"); j = {}; try { j = await r.json(); } catch (e) {}
+      if (r.ok || !/high demand|overload|unavailable|try again|503|429|quota/i.test(j.error || "")) break;
+      toast("Gemini перегружен, повторяю (" + (k + 1) + "/4)…"); await new Promise(z => setTimeout(z, 4000 + k * 4000));
+    }
     if (!r.ok) throw new Error(j.error || "Ошибка " + r.status);
     const cur = S.tasks[id]; if (cur) upd(id, { note: (cur.note || "").replace(/\n*━━ Смысл видео ━━[\s\S]*$/, "") + "\n\n━━ Смысл видео ━━\n" + j.text });
     toast("Готово: смысл видео в заметке");
