@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 17:31";
+const BUILD = "10.10 18:05";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1464,16 +1464,20 @@ const uxActs = {
   postp(a, e) { if (e && e.stopPropagation) e.stopPropagation(); postpone(a.dataset.id, a.dataset.v); render(); }
 };
 function swipeInit(app) {
-  let sx = 0, sy = 0, row = null, dx = 0, lock = 0, kids = [];
-  const reset = () => { if (row) { kids.forEach(k => { k.style.transform = ""; k.style.transition = ""; }); row.classList.remove("swr", "swl"); row.style.background = ""; } row = null; dx = 0; lock = 0; };
+  let sx = 0, sy = 0, row = null, dx = 0, lock = 0, kids = [], lpT = 0;
+  const lpClear = () => { if (lpT) { clearTimeout(lpT); lpT = 0; } };
+  const reset = () => { lpClear(); if (row) { kids.forEach(k => { k.style.transform = ""; k.style.transition = ""; }); row.classList.remove("swr", "swl"); row.style.background = ""; } row = null; dx = 0; lock = 0; };
   app.addEventListener("touchstart", e => {
     if (!isMobile() || e.touches.length !== 1) return;
     const r = e.target.closest && e.target.closest(".taskrow"); if (!r || e.target.closest(".rad,.star,.subbtn,[data-a=postp]") || r.classList.contains("sub")) return;
     row = r; sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; lock = 0; kids = Array.prototype.slice.call(r.children);
+    lpClear(); const lx = sx, ly = sy;
+    lpT = setTimeout(() => { lpT = 0; if (!row || lock) return; const rr = row; reset(); window.__lp = Date.now(); try { navigator.vibrate && navigator.vibrate(25); } catch (e) {} ui.pop = { type: "ctx", id: rr.dataset.id, x: Math.min(lx, innerWidth - 220), y: Math.min(ly, innerHeight - 200) }; render(); }, 520);
   }, { passive: true });
   app.addEventListener("touchmove", e => {
     if (!row) return;
     const x = e.touches[0].clientX - sx, y = e.touches[0].clientY - sy;
+    if (Math.abs(x) > 8 || Math.abs(y) > 8) lpClear();
     if (!lock) { if (Math.abs(x) > 12 && Math.abs(x) > Math.abs(y) * 1.5) lock = 1; else if (Math.abs(y) > 12) { reset(); return; } else return; }
     dx = Math.max(-140, Math.min(140, x));
     kids.forEach(k => { k.style.transition = "none"; k.style.transform = "translateX(" + dx + "px)"; });
@@ -1497,7 +1501,7 @@ function swipeInit(app) {
     r.__sw = Date.now();
   });
   app.addEventListener("touchcancel", reset);
-  app.addEventListener("click", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r && r.__sw && Date.now() - r.__sw < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
+  app.addEventListener("click", e => { if (window.__lp && Date.now() - window.__lp < 800) { e.stopPropagation(); e.preventDefault(); return; } const r = e.target.closest && e.target.closest(".taskrow"); if (r && r.__sw && Math.abs(Date.now() - r.__sw) < 700) { e.stopPropagation(); e.preventDefault(); } }, true);
 }
 const uxCSS0 = `
 .mi.cat{color:hsl(var(--ch) 65% var(--catl,36%));background:hsl(var(--ch) 70% 50% / .14);padding:1px 7px;border-radius:10px;font-weight:600}
@@ -1510,6 +1514,7 @@ const uxCSS0 = `
 .rad.on{animation:radpop .25s}
 @keyframes radpop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
 .taskrow{position:relative;touch-action:pan-y}
+@media(max-width:760px){.taskrow{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .taskrow.swr::before,.taskrow.swl::before{position:absolute;top:50%;transform:translateY(-50%);font-weight:600;font-size:calc(13px*var(--z,1));opacity:var(--so,0);pointer-events:none}
 .taskrow.swr::before{content:"✓ Готово";left:14px;color:#107c10;font-size:calc(15px*var(--z,1))!important}
 .taskrow.swl::before{content:"Завтра →";right:14px;color:#c25e00;font-size:calc(15px*var(--z,1))!important}
@@ -3021,7 +3026,7 @@ function shareMaybe() {
   let l = listsArr().find(x => /^видео$/i.test(x.name));
   if (!l) { l = { id: uid(), name: "Видео", icon: "📺", position: listsArr().length, created_at: nowISO(), group_name: null, color: null }; S.lists[l.id] = l; mark("lists", l.id, "u"); }
   const dup = url && Object.values(S.tasks).find(t => !t.done && t.list_id === l.id && (t.note || "").indexOf(url) >= 0);
-  if (dup) toast("Это видео уже в очереди"); else { const nt = addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); toast("Добавлено в «Видео» — делаю пересказ…"); }
+  if (dup) toast("Это видео уже в очереди"); else { const nt = addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); toast("Добавлено в «Видео» — делаю пересказ…"); setTimeout(() => videoSummary(nt.id), 300); }
   goView("list:" + l.id); render();
 }
 function ritualHTML() {
