@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 13:45";
+const BUILD = "10.10 13:59";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -467,8 +467,15 @@ function uRec(id, old, created) {
   if (uBusy) return; const now = Date.now(), g = UST[UST.length - 1];
   const sig = created ? "+" : Object.keys(old || {}).length ? "u" : "";
   if (g && now - g.at < 400) { if (!g.m[id]) g.m[id] = created ? { created: true } : { old: JSON.parse(JSON.stringify(old)) }; g.at = now; return; }
-  const ng = { at: now, m: {} }; ng.m[id] = created ? { created: true } : { old: JSON.parse(JSON.stringify(old)) }; UST.push(ng); if (UST.length > 60) UST.shift();
+  const ng = { at: now, m: {} }; ng.m[id] = created ? { created: true } : { old: JSON.parse(JSON.stringify(old)) }; UST.push(ng); if (UST.length > 60) UST.shift(); uBtn();
 }
+let uTm = null;
+function uBtn() {
+  if (!isMobile() || uBusy) return; let b = document.getElementById("ubtn");
+  if (!b) { b = document.createElement("button"); b.id = "ubtn"; b.textContent = "↶ Отменить"; b.style.cssText = "position:fixed;left:14px;bottom:22px;z-index:95;border:0;border-radius:22px;padding:11px 18px;background:#1f2937;color:#fff;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.35)"; b.onclick = () => { mUndo(); uBtn.hide(); }; document.body.appendChild(b); }
+  b.style.display = "block"; clearTimeout(uTm); uTm = setTimeout(uBtn.hide, 6000);
+}
+uBtn.hide = () => { const b = document.getElementById("ubtn"); if (b) b.style.display = "none"; };
 function addTask(f) {
   const t = Object.assign({ id: uid(), parent_id: null, list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [], plan_start: null }, f);
   S.tasks[t.id] = t; uRec(t.id, null, true); mark("tasks", t.id, "u"); return t;
@@ -1908,6 +1915,7 @@ const jrCSS = `
 .jr-leg{color:var(--sub);font-size:calc(11.5px*var(--z,1));margin-top:6px}.jr-leg i{display:inline-block;width:14px;height:8px;background:var(--acc);border-radius:3px;margin-right:4px}.jr-leg u{display:inline-block;width:14px;height:4px;background:var(--ln);margin:0 4px 0 10px;vertical-align:middle}
 .jr-ul{margin:0;padding-left:18px;font-size:calc(13.5px*var(--z,1));line-height:1.5}
 .jr-czr{display:grid;grid-template-columns:30px 1fr 118px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.jr-czc{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--ln);background:transparent;color:transparent;cursor:pointer;font-size:16px;padding:0}.jr-czc.on{background:var(--acc);border-color:var(--acc);color:#fff}.jr-czt{font-size:calc(13px*var(--z,1));line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.jr-czi{height:34px;font-size:calc(13px*var(--z,1));padding:0 8px;min-width:0}.jr-czb{display:flex;gap:8px;margin-top:10px}.jr-czb .btn{flex:1;height:42px}
+.jr-edd{display:flex;gap:8px;margin:-4px 0 8px;flex-wrap:wrap}
 .jr-ai{border:1px solid var(--acc);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:calc(14px*var(--z,1));line-height:1.55;background:var(--sel)}
 @media(max-width:760px){.jr-sr{font-size:calc(15px*var(--z,1));grid-template-columns:96px 1fr auto}.jr-ul,.jr-ai{font-size:calc(16px*var(--z,1))}.jr-st{font-size:calc(16px*var(--z,1))}.jr-it{font-size:calc(18px*var(--z,1));padding:12px 6px;grid-template-columns:118px 1fr}.jr-w{font-size:calc(18px*var(--z,1))}.jr-d,.jr-c{font-size:calc(15.5px*var(--z,1))}.jr-tot{font-size:calc(16px*var(--z,1))}.jr-hint,.jr-prev{font-size:calc(15px*var(--z,1))}.linkbtn{font-size:calc(16px*var(--z,1));padding:10px 4px}.jr-box .btn,.jr-nudge .btn{height:44px;font-size:calc(16px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(16px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(17px*var(--z,1))}.jr-wc{font-size:30px}.jr-empty{font-size:calc(16px*var(--z,1))}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
 `;
@@ -2289,6 +2297,7 @@ input[type=checkbox]#s-glass:checked::after,input[type=checkbox]#s-myday:checked
 #right .dtitle{padding:8px 8px 8px 12px;gap:14px;align-items:center}
 #right .dtitle .rad{width:28px;height:28px;margin-top:0;border-color:var(--sub)} #right .dtitle .rad.on{border-color:var(--acc)}
 #right .ttlinp{font-size:calc(24px*var(--z,1));font-weight:700;line-height:1.2}
+@media(max-width:760px){#right .ttlinp{font-size:calc(18px*var(--z,1));max-height:5.4em;overflow-y:auto}}
 #right .star svg{width:26px;height:26px}
 #right .drow{position:relative;min-height:52px;padding:0 16px;gap:18px;font-size:calc(17px*var(--z,1));border-bottom:0}
 #right .drow svg{width:24px;height:24px;color:var(--sub);flex-shrink:0} #right .drow.act svg{color:var(--acc)} #right .drow.od svg{color:#e0212a}
@@ -3268,15 +3277,16 @@ function jrLastEnd(day) {
   return best ? hm(minOf(best)) : "";
 }
 function jrPlan() {
-  const J = jrState(), p = jrParse(J.tx), day = J.date || todayISO();
+  const J = jrState(), p = jrParse(J.tx), day = J.date || J.vd || todayISO();   // день записи = тот, что открыт на экране (раньше всегда «сегодня»)
   return { day, st: p.st || (J.st ? J.st : jrLastEnd(day)), en: p.en || J.en || "", tx: p.tx };
 }
 function jrPrevText() {
   const J = jrState(); if (J.mode === "p") return "";
   const q = jrPlan(); if (!q.st && !q.en) return "Начало — из конца прошлой записи, конец — сейчас. Тапни по времени, чтобы поменять.";
-  if (!q.en) return q.st + " – сейчас" + (q.day === todayISO() ? " · " + fmtDurM(jrDM(q.st, nowHM())) : "");
+  const dl = q.day !== todayISO() ? "за " + WDS[parseISO(q.day).getDay()] + " " + parseISO(q.day).getDate() + "." + pad2(parseISO(q.day).getMonth() + 1) + " · " : "";
+  if (!q.en) return dl + q.st + " – сейчас" + (q.day === todayISO() ? " · " + fmtDurM(jrDM(q.st, nowHM())) : "");
   if (!q.st) return "Укажи начало";
-  const dm = jrDM(q.st, q.en); return dm ? q.st + "–" + q.en + " · " + fmtDurM(dm) : "Начало и конец совпадают";
+  const dm = jrDM(q.st, q.en); return dm ? dl + q.st + "–" + q.en + " · " + fmtDurM(dm) : "Начало и конец совпадают";
 }
 function jrList() {
   const J = jrState(), all = Object.values(S.time_log).filter(l => jrDay(l));
@@ -3299,7 +3309,7 @@ function jrEditHTML(l) {
   if (p) top = '<div class="jr-tr">' + dbtn("jr-e-d1", "С даты", e.d1) + '<span>→</span>' + dbtn("jr-e-d2", "По дату", e.d2) + "</div>";
   else {
     const dm = e.st && e.en ? jrDM(e.st, e.en) : 0;
-    top = dbtn("jr-e-date", "Дата", e.date) + '<div class="jr-tr"><button class="jr-tb" data-a="jrwheel" data-k="est"><i>Начало</i>' + (e.st || "—:—") + '</button><span>→</span><button class="jr-tb" data-a="jrwheel" data-k="een"><i>Конец</i>' + (e.en || "—:—") + '</button></div>' + (dm ? '<div class="jr-edur">Длительность: <b>' + fmtDurM(dm) + "</b></div>" : "");
+    top = dbtn("jr-e-date", "Дата", e.date) + '<div class="jr-edd"><button class="jr-chip" data-a="jreday" data-d="-1">← на день раньше</button><button class="jr-chip" data-a="jreday" data-d="1">на день позже →</button></div>' + '<div class="jr-tr"><button class="jr-tb" data-a="jrwheel" data-k="est"><i>Начало</i>' + (e.st || "—:—") + '</button><span>→</span><button class="jr-tb" data-a="jrwheel" data-k="een"><i>Конец</i>' + (e.en || "—:—") + '</button></div>' + (dm ? '<div class="jr-edur">Длительность: <b>' + fmtDurM(dm) + "</b></div>" : "");
   }
   return '<div class="jr-it jr-ed"><div class="jr-et">Редактирование записи</div>' + top +
     '<textarea id="jr-e-tx" class="inp jr-etx" rows="2" autocomplete="off" placeholder="Что делал">' + esc(e.tx || "") + '</textarea>' +
@@ -3446,7 +3456,7 @@ async function jrImport(file) {
 }
 Object.assign(acts, {
   jrmode(a) { const J = jrState(); J.mode = a.dataset.v; J.tx = ""; render(); },
-  jrnow() { const J = jrState(), n = new Date(); J.en = pad2(n.getHours()) + ":" + pad2(n.getMinutes()); if (!J.date) J.date = todayISO(); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
+  jrnow() { const J = jrState(), n = new Date(); J.en = pad2(n.getHours()) + ":" + pad2(n.getMinutes()); if (!J.date) J.date = J.vd || todayISO(); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
   jradd() {
     const J = jrState(); if (!JX) return;
     if (J.mode === "p") {
@@ -3521,8 +3531,9 @@ Object.assign(acts, {
   jrwnow() { const J = jrState(), n = new Date(); J.wh.h = n.getHours(); J.wh.m = n.getMinutes(); const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTo({ top: J.wh.h * 34, behavior: "smooth" }); if (m) m.scrollTo({ top: J.wh.m * 34, behavior: "smooth" }); },
   jrwok() { const J = jrState(), w = J.wh; if (!w) return; const v = pad2(w.h) + ":" + pad2(w.m); if (w.k === "est") J.e.st = v; else if (w.k === "een") J.e.en = v; else if (w.k === "st") J.st = v; else J.en = v; J.wh = null; render(); setTimeout(() => { const x = $("jr-tx"); if (x && !isMobile() && !J.edit) x.focus(); }, 0); },
   jrtoday() { const J = jrState(); J.date = todayISO(); J.st = null; render(); },
-  jrdprev() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), -1); render(); },
-  jrdnext() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), 1); render(); },
+  jreday(a) { const J = jrState(); if (J.e && J.e.date) { J.e.date = addDays(J.e.date, +a.dataset.d); render(); } },
+  jrdprev() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), -1); J.date = null; J.st = null; render(); },
+  jrdnext() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), 1); J.date = null; J.st = null; render(); },
   jrhist() { const J = jrState(); J.hist = !J.hist; render(); },
   jrmore() { jrState().lim += 40; render(); },
   jrfill() { const J = jrState(); J.mode = "p"; J.d1 = addDays(todayISO(), -1); J.d2 = ""; J.tx = ""; render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
