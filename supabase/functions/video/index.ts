@@ -17,14 +17,20 @@ Deno.serve(async (req) => {
     if (!key) return json({ error: "GEMINI_API_KEY не задан" }, 500);
     const { url } = await req.json();
     if (!/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(String(url || ""))) return json({ error: "нужна ссылка на ютуб" }, 400);
-    const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
-    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
-      method: "POST",
-      headers: { "x-goog-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ model, input: [{ type: "text", text: PROMPT }, { type: "video", uri: String(url).split(/\s/)[0] }] }),
-    });
-    const j = await r.json();
-    if (!r.ok) return json({ error: j?.error?.message || "api error " + r.status }, 502);
+    const models = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i) as string[];
+    let j: any = {}, lastErr = "";
+    for (const model of models) {   // перегружена или недоступна модель — пробуем следующую
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: { "x-goog-api-key": key, "content-type": "application/json" },
+        body: JSON.stringify({ model, input: [{ type: "text", text: PROMPT }, { type: "video", uri: String(url).split(/\s/)[0] }] }),
+      });
+      j = await r.json().catch(() => ({}));
+      if (r.ok) { lastErr = ""; break; }
+      lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
+      if (!/demand|overload|unavailable|try again|not found|no longer|quota|rate|503|429|404/i.test(lastErr + r.status)) break;
+    }
+    if (lastErr) return json({ error: lastErr }, 502);
     // схема ответа может меняться: берём текст из шагов model_output, иначе — любой text вне «мыслей»
     const grab = (o: any, out: string[]) => {
       if (!o || typeof o !== "object") return;
