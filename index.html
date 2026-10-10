@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 15:09";
+const BUILD = "10.10 15:15";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2950,13 +2950,16 @@ function ritRow(t, kind) {
   return '<div class="rit-r"><div class="rit-t">' + esc(t.title) + '</div><div class="rit-m">' + (l ? esc(l.name) + " · " : "") + (kind === "stall" ? "без движения " + ag + " дн." : di ? esc(di.txt || di.text || "") : "") + '</div><div class="rit-bs">' +
     (kind === "tod" ? "" : b("today", "Сегодня")) + b("tom", "Завтра") + b("week", "Через неделю") + (t.due ? b("none", "Без срока") : "") + b("done", "✓ Готово") + "</div></div>";
 }
-const TRK = { pts: [], media: [], n: 0, loading: false, err: "" };
+const TRK = { pts: [], media: [], places: [], n: 0, loading: false, err: "" };
+const trkDist = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r * Math.cos((a + c) / 2 * r); return Math.sqrt(x * x + y * y) * R; };
+const trkPlace = p => TRK.places.find(q => trkDist(+p.lat, +p.lon, q.lat, q.lon) <= (q.r || 120));
 async function trkLoad() {
   if (!sb || !S.user) return; TRK.loading = true; TRK.err = ""; render();
   try {
     const t0 = new Date(); t0.setHours(0, 0, 0, 0);
     const a = await sb.from("loc_points").select("ts,lat,lon,vel,acc,batt").order("ts", { ascending: false }).limit(25);
     const c = await sb.from("loc_points").select("ts", { count: "exact", head: true }).gte("ts", t0.toISOString());
+    const pl = await sb.from("places").select("id,name,lat,lon,r"); TRK.places = pl.error ? [] : (pl.data || []);
     const m = await sb.from("media_events").select("ts,app,title,artist,state").order("ts", { ascending: false }).limit(15);
     if (a.error) throw a.error; TRK.pts = a.data || []; TRK.n = c.count || 0; TRK.media = m.error ? [] : (m.data || []);
   } catch (e) { TRK.err = (e && e.message) || "ошибка загрузки"; }
@@ -2970,7 +2973,8 @@ function trkHTML() {
   return '<div class="ovl" data-a="trkovl"><div class="sheet"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">📍 Трекер</div><button class="ibtn" data-a="trkload" title="Обновить">' + ic("repeat", 18) + '</button><button class="ibtn" data-a="trkclose">' + ic("x", 18) + "</button></div>" +
     '<div class="trk-st"><span class="trk-dot" style="background:' + col + '"></span><span>' + (last ? "Последняя точка " + hm(last.ts) + " · " + agoT : "Точек пока нет") + "</span></div>" +
     '<div class="rit-hint">Сегодня точек: <b>' + TRK.n + "</b>" + (TRK.loading ? " · загружаю…" : "") + (TRK.err ? ' · <span style="color:#d13438">' + esc(TRK.err) + "</span>" : "") + "</div>" +
-    '<div class="rit-h">Последние точки</div>' + (TRK.pts.length ? TRK.pts.map(p => '<div class="trk-r"><b>' + hm(p.ts) + "</b><div>" + (+p.lat).toFixed(4) + ", " + (+p.lon).toFixed(4) + "<br><span>" + (p.vel != null ? Math.round(p.vel) + " км/ч · " : "") + (p.acc != null ? "±" + Math.round(p.acc) + " м" : "") + (p.batt != null ? " · 🔋" + p.batt + "%" : "") + "</span></div></div>").join("") : '<div class="jr-empty">Пусто. Нажми «отправить позицию» в OwnTracks.</div>') +
+    (last && !trkPlace(last) ? '<div style="margin:6px 0"><button class="rit-b" data-a="trkname" data-i="0">📍 Назвать это место (где я сейчас)</button></div>' : "") + (TRK.places.length ? '<div class="rit-hint">Мои места: ' + TRK.places.map(q => esc(q.name) + ' <a href="#" data-a="trkdel" data-i="' + q.id + '" style="color:var(--sub)" title="Удалить">×</a>').join(" · ") + "</div>" : "") +
+    '<div class="rit-h">Последние точки</div>' + (TRK.pts.length ? TRK.pts.map(p => '<div class="trk-r"><b>' + hm(p.ts) + "</b><div>" + (trkPlace(p) ? "<b style=\"min-width:0\">" + esc(trkPlace(p).name) + "</b>" : (+p.lat).toFixed(4) + ", " + (+p.lon).toFixed(4) + ' <button class="rit-b" data-a="trkname" data-i="' + TRK.pts.indexOf(p) + '">Назвать</button>') + "<br><span>" + (p.vel != null ? Math.round(p.vel) + " км/ч · " : "") + (p.acc != null ? "±" + Math.round(p.acc) + " м" : "") + (p.batt != null ? " · 🔋" + p.batt + "%" : "") + "</span></div></div>").join("") : '<div class="jr-empty">Пусто. Нажми «отправить позицию» в OwnTracks.</div>') +
     '<div class="rit-h">Что играло</div>' + (TRK.media.length ? TRK.media.map(p => '<div class="trk-r"><b>' + hm(p.ts) + "</b><div>" + esc(p.title || "—") + "<br><span>" + esc((p.app || "") + (p.artist ? " · " + p.artist : "") + " · " + (p.state || "")) + "</span></div></div>").join("") : '<div class="rit-hint">Событий пока нет (ловец музыки ещё не подключён).</div>') +
     "</div></div>";
 }
@@ -3192,6 +3196,11 @@ const acts = {
   trkclose() { ui.trk = false; render(); },
   trkovl(a, e) { if (e.target === a) { ui.trk = false; render(); } },
   trkload() { trkLoad(); },
+  async trkname(a) {
+    const p = TRK.pts[+a.dataset.i]; if (!p) return; const n = (prompt("Как назвать это место? (дом, офис, зал…)") || "").trim().slice(0, 40); if (!n) return;
+    const r = await sb.from("places").insert({ name: n, lat: +p.lat, lon: +p.lon, r: 120 }); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); trkLoad();
+  },
+  async trkdel(a, e) { e.preventDefault && e.preventDefault(); if (!confirm("Удалить место?")) return; await sb.from("places").delete().eq("id", a.dataset.i); trkLoad(); },
   ritclose() { ui.rit = false; render(); },
   ritovl(a, e) { if (e.target === a) { ui.rit = false; render(); } },
   ritok() { PR.ritDone = today; savePrefs(); ui.rit = false; toast("План принят. Хорошего дня!"); render(); },
