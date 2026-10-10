@@ -215,6 +215,13 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .chg{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.chg span{display:flex;align-items:center;gap:8px}.chg:first-of-type{border-top:0}
 .chip{white-space:nowrap}.chips .chip{padding:6px 11px;font-size:.82em}
 table.hm td{background-color:transparent}
+.tpls{display:flex;gap:8px;overflow-x:auto;padding:2px 12px 8px;margin:0 -0px;scrollbar-width:none}.tpls::-webkit-scrollbar{display:none}
+.tpls button{flex:none;display:flex;align-items:center;gap:6px;padding:5px 11px 5px 6px;border-radius:20px;background:var(--card);color:var(--tx);font-size:13px;border:1px solid var(--ln)}
+.tpls button b{font-weight:600;color:var(--sub);font-size:12px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}.cal u{text-decoration:none;text-align:center;font-size:.72em;color:var(--sub)}
+.cal button,.cal i{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-style:normal;font-size:.78em;line-height:1.1;color:var(--tx);background:rgba(var(--hm),0)}
+.cal button small{font-size:.72em;color:var(--sub)}.cal .td{outline:2px solid var(--acc);outline-offset:-2px}.cal .fu{opacity:.35}
+.xrow{display:flex;gap:10px;align-items:center;width:100%;padding:9px 0;border-top:1px solid var(--ln);text-align:left}.xrow:first-of-type{border-top:0}.xrow .xm{flex:1;min-width:0}.xrow .xm div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -545,6 +552,7 @@ function statsHTML() {
   h += budgetHTML();
   if (!arr.length) return h + '<div class="empty">Нет данных за период</div>';
   const ex = arr.filter(x => x.kind === "exp");
+  h += calHTML();
   if (days <= 62 && t !== "all") { const v = Array(days).fill(0); ex.forEach(x => { const i = Math.floor((+sod(x.ts) - +sod(s0)) / 864e5); if (i >= 0 && i < days) v[i] += x.amount; }); h += '<div class="card"><h3>Расходы по дням</h3>' + bars(v, v.map((_, i) => new Date(+sod(s0) + i * 864e5).getDate()), { avg: exp / days }) + "</div>"; }
   const am = anchorMonth(), nm = t === "all" ? 24 : 12, ms = []; for (let i = nm - 1; i >= 0; i--) ms.push(shiftMonth(am, -i));
   const ev = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "exp"))), iv = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "inc"))), lab = ms.map(m => nm > 12 && +m.slice(5) !== 1 ? "" : (nm > 12 ? m.slice(2, 4) : MONS_S[+m.slice(5) - 1])), nz = ev.filter(Boolean);
@@ -560,9 +568,11 @@ function statsHTML() {
 }
 function moreHTML() {
   if (ui.set === "cats") return catsMgrHTML();
+  if (ui.set === "ext") return extHTML();
   const sets = [["line", "Линии"], ["badge", "Значки"], ["emoji", "Эмодзи"]], demo = ["🛒", "🍽️", "💊", "🚌"], dc = ["#ff7a7a", "#ffb04d", "#5fd0a5", "#6aa8ff"];
   return topBar(false) +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Набор иконок</div><div class="iset">' + sets.map(t => '<button class="' + ((PR.iset || "line") === t[0] ? "on" : "") + '" data-a="iset" data-v="' + t[0] + '"><div>' + demo.map((e, i) => ic(e, dc[i], 30, t[0])).join("") + "</div><span>" + t[1] + "</span></button>").join("") + "</div></div>" +
+    '<button class="set" data-a="setext"><span>⚡</span><span style="flex:1">Шаблоны и повторяющиеся</span><span class="sub">' + (EXT.tpl.length + EXT.rec.length || "") + ' ›</span></button>' +
     '<button class="set" data-a="setcats"><span>🗂️</span><span style="flex:1">Категории</span><span class="sub">›</span></button>' +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Тема</div><div class="themes">' + THEMES.map(t => '<button class="' + (PR.theme === t[0] ? "on" : "") + '" data-a="theme" data-v="' + t[0] + '"><i style="background:' + t[2] + '"><b style="background:' + t[3] + '"></b><u style="background:' + PR.acc + '"></u></i><span>' + t[1] + "</span></button>").join("") + "</div></div>" +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="acc" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
@@ -579,6 +589,45 @@ function catsMgrHTML() {
     cats.filter(c => c.kind === K).sort((a, b) => a.position - b.position).map(c => '<div class="row" style="' + (c.archived ? "opacity:.5" : "") + '"><div class="ci">' + ic(c.icon, c.color) + '</div><div class="t"><b>' + esc(c.name) + '</b></div><button class="ib" data-a="catup" data-id="' + c.id + '">↑</button><button class="ib" data-a="catedit" data-id="' + c.id + '">✎</button></div>').join("") +
     '<button class="btn" style="width:100%;margin-top:10px" data-a="catnew">＋ Новая категория</button>';
 }
+
+/* ============ шаблоны и повторяющиеся (локально на устройстве) ============ */
+let EXT = { tpl: [], rec: [] }; try { const x = JSON.parse(localStorage.getItem("fin_ext_v1") || "{}"); EXT = { tpl: x.tpl || [], rec: x.rec || [] }; } catch (e) {}
+const saveExt = () => { try { localStorage.setItem("fin_ext_v1", JSON.stringify(EXT)); } catch (e) {} };
+function runRec() {
+  if (!user || !cats.length) return; let n = 0; const td = dayKey(new Date()), now = new Date();
+  EXT.rec.forEach(r => {
+    if (!cats.some(c => c.id === r.cat)) return; let y = +r.last.slice(0, 4), m = +r.last.slice(5, 7) - 1;
+    for (let i = 0; i < 60; i++) {
+      const dim = new Date(y, m + 1, 0).getDate(), ds = dayKey(new Date(y, m, Math.min(r.day, dim)));
+      if (ds > td) break;
+      if (ds > r.last) { upTx({ id: uid(), ts: new Date(y, m, Math.min(r.day, dim), 9, 0).toISOString(), amount: r.amt, kind: r.kind, category_id: r.cat, note: r.note || "", account: "Основной" }); r.last = ds; n++; }
+      m++; if (m > 11) { m = 0; y++; }
+    }
+  });
+  if (n) { saveExt(); render(); toast("Добавлены повторяющиеся: " + n); }
+}
+function tplRow(kind) {
+  const l = EXT.tpl.filter(t => t.kind === kind && cats.some(c => c.id === t.cat)); if (!l.length) return "";
+  return '<div class="tpls">' + l.map(t => { const c = catOf(t.cat); return '<button data-a="tplgo" data-id="' + t.id + '">' + ic(c.icon, c.color, 24) + "<span>" + esc(t.note || c.name) + "</span><b>" + fmN(t.amt) + "</b></button>"; }).join("") + "</div>";
+}
+function extHTML() {
+  const row = (r, k) => { const c = cats.find(x => x.id === r.cat); if (!c) return ""; return '<button class="xrow" data-a="xedit" data-k="' + k + '" data-id="' + r.id + '"><div class="ci" style="width:34px;height:34px;flex:none">' + ic(c.icon, c.color, 34) + '</div><div class="xm"><div>' + esc(r.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + (k === "rec" ? "каждого " + r.day + "-го · " : "") + esc(c.name) + '</div></div><b class="' + (r.kind === "exp" ? "exp" : "inc") + '">' + fm(r.amt) + "</b></button>"; };
+  return topBar(false, "setmain") +
+    '<div class="card"><h3>⚡ Шаблоны быстрого ввода</h3><div class="sub" style="font-size:.85em;margin-bottom:4px">Появляются сверху на экране «Новый расход» — тап = трата записана.</div>' + (EXT.tpl.map(t => row(t, "tpl")).join("") || '<div class="empty" style="padding:8px">Пока пусто</div>') + '<button class="btn" style="width:100%;margin-top:10px" data-a="xnew" data-k="tpl">＋ Шаблон</button></div>' +
+    '<div class="card"><h3>🔁 Повторяющиеся платежи</h3><div class="sub" style="font-size:.85em;margin-bottom:4px">Сами добавляются в нужный день месяца (в 31-й день — в последний день короткого месяца). Срабатывают при открытии приложения.</div>' + (EXT.rec.map(t => row(t, "rec")).join("") || '<div class="empty" style="padding:8px">Пока пусто</div>') + '<button class="btn" style="width:100%;margin-top:10px" data-a="xnew" data-k="rec">＋ Повторяющийся платёж</button></div>';
+}
+function calHTML() {
+  const am = anchorMonth(), y = +am.slice(0, 4), m = +am.slice(5) - 1, dim = new Date(y, m + 1, 0).getDate(), off = (new Date(y, m, 1).getDay() + 6) % 7, td = dayKey(new Date()), v = Array(dim + 1).fill(0);
+  ofMonth(am).forEach(t => { if (t.kind === "exp") v[new Date(t.ts).getDate()] += t.amount; });
+  const mx = Math.max(0, ...v); if (!mx) return "";
+  const pass = Math.min(dim, am === mk(new Date()) ? new Date().getDate() : dim), tot = v.reduce((a, b) => a + b, 0), avg = tot / Math.max(1, pass), best = v.indexOf(mx);
+  let h = '<div class="card"><h3>Календарь трат · ' + MONS[m] + '</h3><div class="cal">' + WDM.map(x => "<u>" + x + "</u>").join("");
+  for (let i = 0; i < off; i++) h += "<i></i>";
+  for (let d = 1; d <= dim; d++) { const ds = y + "-" + pad(m + 1) + "-" + pad(d), fut = ds > td; h += '<button class="' + (ds === td ? "td " : "") + (fut ? "fu" : "") + '" data-a="hmday" data-v="' + ds + '" style="background:rgba(var(--hm),' + (v[d] ? (.12 + v[d] / mx * .78).toFixed(2) : 0) + ')">' + d + (v[d] ? "<small>" + (v[d] >= 1000 ? (Math.round(v[d] / 100) / 10) + "k" : Math.round(v[d])) + "</small>" : "") + "</button>"; }
+  const hot = v.filter(x => x > avg * 1.5).length;
+  return h + '</div><div class="sub" style="font-size:.85em;margin-top:8px">Самый дорогой день: <b>' + best + " " + MONS_S[m].toLowerCase() + "</b> — " + fm(mx) + ". В среднем ≈ " + fm(avg) + " в день; дней «дороже нормы» (×1,5): " + hot + ". Тап по дню — открыть его.</div></div>";
+}
+const WDM = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
@@ -591,7 +640,7 @@ function sheetHTML() {
       return '<div class="full fcat">' + head + date + amt + '<div class="cgrid">' + cl.map(x => '<button data-a="cpick" data-id="' + x.id + '"' + (x.id === s.cat ? ' class="on"' : "") + ">" + ic(x.icon, x.color, 34) + "<span>" + esc(x.name) + "</span>" + bl(x) + "</button>").join("") + "</div></div>";
     }
     const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
-    return '<div class="full">' + head + date + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
+    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
       (c ? '<button class="cbtn sv" data-a="txsave">Сохранить · ' + esc(c.name) + "</button>" : "") + '<button class="cbtn" data-a="cstep">Выбор категории</button></div>';
   }
   if (s.type === "cat") {
@@ -599,6 +648,14 @@ function sheetHTML() {
       '<div class="pal">' + EMO.map(e => '<i data-a="cic" data-v="' + e + '" class="' + (s.icon === e ? "on" : "") + '" style="width:40px;height:40px;border-radius:12px;background:var(--card);font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px">' + ic(e, "var(--tx)", 28, "line") + "</i>").join("") + "</div>" +
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
+  }
+  if (s.type === "ext") {
+    const isRec = s.k === "rec", cl = catsOf(s.kind).slice().sort((a, b) => a.name.localeCompare(b.name, "ru"));
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (isRec ? "Повторяющийся платёж" : "Шаблон") + '</h2><div class="seg" style="margin:0 0 8px"><button class="' + (s.kind === "exp" ? "on" : "") + '" data-a="xkind" data-v="exp">Расход</button><button class="' + (s.kind === "inc" ? "on" : "") + '" data-a="xkind" data-v="inc">Доход</button></div>' +
+      '<select class="in" id="x-cat">' + cl.map(c => '<option value="' + c.id + '"' + (c.id === s.cat ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") + "</select>" +
+      '<input class="in" id="x-amt" inputmode="decimal" placeholder="Сумма, ₽" value="' + esc(s.amt || "") + '"><input class="in" id="x-note" placeholder="Название / заметка (необязательно)" value="' + esc(s.note || "") + '">' +
+      (isRec ? '<input class="in" id="x-day" inputmode="numeric" placeholder="День месяца (1–31)" value="' + esc(s.day || "") + '">' : "") +
+      '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" data-a="xsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="xdel">Удалить</button>' : "") + "</div></div></div>";
   }
   if (s.type === "lim") {
     const c = catOf(s.id), am = anchorMonth(), n = normOf(c.id, am);
@@ -638,7 +695,7 @@ function render() {
 
 /* ============ кнопка «Назад» ============ */
 let hDepth = 0, hSkip = 0, guarded = false, lastBack = 0;
-const layerCount = () => !user ? 0 : (ui.menu ? 1 : 0) + (ui.sheet ? 1 + (ui.sheet.step === "cat" ? 1 : 0) : 0) + (ui.tab === "more" && ui.set === "cats" ? 1 : 0) + (ui.tab !== "home" ? 1 : 0);
+const layerCount = () => !user ? 0 : (ui.menu ? 1 : 0) + (ui.sheet ? 1 + (ui.sheet.step === "cat" ? 1 : 0) : 0) + (ui.tab === "more" && ui.set !== "main" ? 1 : 0) + (ui.tab !== "home" ? 1 : 0);
 function ensureGuard() {
   try { if (guarded || (navigator.userActivation && !navigator.userActivation.hasBeenActive)) return; history.replaceState({ base: 1 }, ""); history.pushState({ guard: 1 }, ""); guarded = true; } catch (e) {}
 }
@@ -674,6 +731,7 @@ function evalExpr(e) {
   try { const v = Function('"use strict";return (' + x.replace(/^[+*/]+/, "") + ")")(); return isFinite(v) ? v : 0; } catch (err) { return 0; }
 }
 function dateChange(v) { const s = ui.sheet; if (!s || !v) return; s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
+function xread() { const s = ui.sheet; if (!s) return; const g = i => ($(i) || {}).value; if ($("x-cat")) s.cat = g("x-cat"); if ($("x-amt")) s.amt = g("x-amt"); if ($("x-note")) s.note = g("x-note"); if ($("x-day")) s.day = g("x-day"); }
 function openTx(o) { ui.sheet = Object.assign({ type: "tx", step: "kb", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
 function keyPress(v) {
   const s = ui.sheet; if (!s) return; let e = s.expr || "";
@@ -769,6 +827,21 @@ const A = {
   setcats() { ui.set = "cats"; render(); }, setmain() { ui.set = "main"; render(); },
   theme(a) { PR.theme = a.dataset.v; savePR(); applyTheme(); render(); },
   normn(a) { PR.normN = +a.dataset.v; savePR(); render(); }, normon() { PR.normOn = PR.normOn === false; savePR(); render(); },
+  setext() { ui.set = "ext"; render(); },
+  tplgo(a) { const t = EXT.tpl.find(x => x.id === a.dataset.id); if (!t) return; const now = new Date(); upTx({ id: uid(), ts: now.toISOString(), amount: t.amt, kind: t.kind, category_id: t.cat, note: t.note || "", account: "Основной" }); const bm = t.kind === "exp" ? budgetMsg(t.cat, now.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(t.amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200); },
+  hmday(a) { ui.rg = { t: "d", a: +new Date(a.dataset.v + "T12:00") }; ui.tab = "list"; render(); },
+  xnew(a) { const kind = "exp"; ui.sheet = { type: "ext", k: a.dataset.k, id: null, kind, cat: (catsOf(kind)[0] || {}).id, amt: "", note: "", day: a.dataset.k === "rec" ? "1" : "" }; render(); },
+  xedit(a) { const r = EXT[a.dataset.k].find(x => x.id === a.dataset.id); if (!r) return; ui.sheet = { type: "ext", k: a.dataset.k, id: r.id, kind: r.kind, cat: r.cat, amt: r.amt, note: r.note || "", day: r.day || "" }; render(); },
+  xkind(a) { const s = ui.sheet; xread(); s.kind = a.dataset.v; s.cat = (catsOf(s.kind)[0] || {}).id; render(); },
+  xsave() {
+    const s = ui.sheet; xread(); const amt = parseFloat(String(s.amt).replace(",", ".")), day = Math.round(+s.day);
+    if (!s.cat) { toast("Выбери категорию"); return; } if (!(amt > 0)) { toast("Введи сумму"); return; } if (s.k === "rec" && !(day >= 1 && day <= 31)) { toast("День месяца: 1–31"); return; }
+    const list = EXT[s.k], o = s.id ? list.find(x => x.id === s.id) : null, r = o || { id: uid() };
+    Object.assign(r, { kind: s.kind, cat: s.cat, amt: Math.round(amt * 100) / 100, note: (s.note || "").trim() });
+    if (s.k === "rec") { const t = new Date(), dim = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate(); r.day = day; if (!o) { const y = new Date(t); y.setDate(y.getDate() - 1); r.last = Math.min(day, dim) >= t.getDate() ? dayKey(y) : dayKey(t); } }
+    if (!o) list.push(r); saveExt(); ui.sheet = null; render(); if (s.k === "rec") runRec();
+  },
+  xdel() { const s = ui.sheet; EXT[s.k] = EXT[s.k].filter(x => x.id !== s.id); saveExt(); ui.sheet = null; render(); },
   limedit(a) { if (!a.dataset.id || a.dataset.id === "_") return; ui.sheet = { type: "lim", id: a.dataset.id }; render(); },
   limfill(a) { const e = $("l-v"); if (e) e.value = a.dataset.v; },
   limsave() { const c = cats.find(x => x.id === ui.sheet.id); if (c) { const v = parseFloat((($("l-v") || {}).value || "").replace(",", ".")); c.lim = v > 0 ? Math.round(v * 100) / 100 : null; upCat(c); } ui.sheet = null; render(); },
@@ -812,8 +885,8 @@ document.addEventListener("change", async e => {
   sb = window.supabase.createClient(CFG.url, CFG.key, { auth: { storageKey: "mytasks-auth", persistSession: true, autoRefreshToken: true } });
   try { const s = await sb.auth.getSession(); user = s.data.session ? s.data.session.user : null; } catch (e) {}
   render(); if (!user) return;
-  flush(); pull(!txs.length);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { flush(); pull(false); } });
+  runRec(); flush(); pull(!txs.length);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { runRec(); flush(); pull(false); } });
   window.addEventListener("online", () => { flush(); pull(false); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
