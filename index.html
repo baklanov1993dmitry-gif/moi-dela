@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 21:45";
+const BUILD = "10.10 22:05";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3020,7 +3020,7 @@ function trkClean(raw) {   // чистка GPS-мусора: неточные т
   while (i < o.length) {
     const pl = trkPlace(o[i]); let j = i;
     if (pl) {   // в названном месте — все точки сводим в центр места
-      while (j + 1 < o.length) { const q = trkPlace(o[j + 1]); if (q && q.id === pl.id) j++; else break; }
+      while (j + 1 < o.length) { const q = trkPlace(o[j + 1]); if ((q && q.id === pl.id) || trkDist(+o[j + 1].lat, +o[j + 1].lon, pl.lat, pl.lon) <= Math.max(300, (pl.r || 120) * 2.5)) j++; else break; }   // гистерезис: внутри помещения GPS «гуляет» на сотни метров
       const m = { lat: pl.lat, lon: pl.lon, vel: 0, acc: 10, stay: 1 }; out.push(Object.assign({ ts: o[i].ts }, m)); if (j > i) out.push(Object.assign({ ts: o[j].ts }, m)); i = j + 1; continue;
     }
     while (j + 1 < o.length && D(o[i], o[j + 1]) < 70) j++;
@@ -3062,7 +3062,7 @@ function trkHTML() {
   const last = TRK.last, ago = last ? Math.round((Date.now() - new Date(last.ts)) / 60000) : null;
   const col = ago == null ? "#999" : ago < 20 ? "#107c10" : ago < 360 ? "#2b7de9" : "#d13438";
   const agoT = ago == null ? "" : ago < 1 ? "только что" : ago < 60 ? ago + " мин назад" : Math.floor(ago / 60) + " ч " + (ago % 60) + " мин назад";
-  const segs = trkSegs(TRK.day || []).reverse();
+  const segs = trkSegs(trkClean(TRK.day || [])).reverse();
   const row = g => {
     const t = g.start === g.end ? hm(g.start) : hm(g.start) + "–" + hm(g.end), d = dur(new Date(g.end) - new Date(g.start));
     if (g.key === "m") { const v = g.vs.length ? g.vs.reduce((x, y) => x + y, 0) / g.vs.length : 0, how = v < 7 ? "🚶 пешком" : v < 22 ? "🛴 самокат / вело" : "🚌 транспорт"; return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + how + '<span>' + (d ? " · " + d : "") + (v ? " · ~" + Math.round(v) + " км/ч" : "") + "</span></div></div>"; }
