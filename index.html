@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 16:30";
+const BUILD = "10.10 16:37";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2816,7 +2816,7 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" : "") +
-    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(t.note || "") + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span><button data-a="notefull">Открыть</button></div></div></div>' +
+    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(t.note || "") + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (ui.vbusy === t.id ? "⏳ Смотрю видео…" : "🎬 Смысл видео") + '</button>' : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
@@ -3225,6 +3225,7 @@ const acts = {
   trkclose() { ui.trk = false; render(); },
   trkovl(a, e) { if (e.target === a) { ui.trk = false; render(); } },
   trkload() { trkLoad(); },
+  vsum(a) { videoSummary(a.dataset.id); },
   async trkname(a) {
     const p = { lat: +a.dataset.lat, lon: +a.dataset.lon }; if (!isFinite(p.lat)) return; const n = (prompt("Как назвать это место? (дом, офис, зал…)") || "").trim().slice(0, 40); if (!n) return;
     const r = await sb.from("places").insert({ name: n, lat: +p.lat, lon: +p.lon, r: 120 }); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); trkLoad();
@@ -3502,6 +3503,20 @@ function jrWeekData(m0) {
     if (jrKind(l) === "t" && l.end_at) { const m = Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)), c = l.cat || "без категории"; cat[c] = (cat[c] || 0) + m; tot += m; }
   });
   return { cat, tot, days: days.size, n };
+}
+const ytUrl = n => { const m = String(n || "").match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
+async function videoSummary(id) {
+  const t = S.tasks[id]; if (!t || ui.vbusy) return; const url = ytUrl(t.note); if (!url) return;
+  ui.vbusy = id; render();
+  try {
+    const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("Нет входа");
+    const r = await fetch(cfg.url + "/functions/v1/video", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: cfg.key }, body: JSON.stringify({ url }) });
+    if (r.status === 404) throw new Error("Функция video ещё не создана"); let j = {}; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error(j.error || "Ошибка " + r.status);
+    const cur = S.tasks[id]; if (cur) upd(id, { note: (cur.note || "").replace(/\n*━━ Смысл видео ━━[\s\S]*$/, "") + "\n\n━━ Смысл видео ━━\n" + j.text });
+    toast("Готово: смысл видео в заметке");
+  } catch (e) { toast("Не вышло: " + ((e && e.message) || e)); }
+  ui.vbusy = null; render();
 }
 async function aiCall(kind, data) {
   const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("Нет входа");
