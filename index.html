@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 14:06";
+const BUILD = "10.10 15:09";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -201,6 +201,7 @@ const IC = {
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   dl: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
   cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  pin: '<path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
   repeat: '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   note: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
@@ -1917,6 +1918,7 @@ const jrCSS = `
 .jr-czr{display:grid;grid-template-columns:30px 1fr 118px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.jr-czc{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--ln);background:transparent;color:transparent;cursor:pointer;font-size:16px;padding:0}.jr-czc.on{background:var(--acc);border-color:var(--acc);color:#fff}.jr-czt{font-size:calc(13px*var(--z,1));line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.jr-czi{height:34px;font-size:calc(13px*var(--z,1));padding:0 8px;min-width:0}.jr-czb{display:flex;gap:8px;margin-top:10px}.jr-czb .btn{flex:1;height:42px}
 .rit-sum{margin:10px 0 4px;font-size:calc(14px*var(--z,1));line-height:1.45}.rit-h{margin:16px 0 4px;font-weight:700}.rit-h span{opacity:.55;font-weight:500}.rit-hint{font-size:calc(12px*var(--z,1));color:var(--sub);margin-bottom:6px}
 .rit-r{border-top:1px solid var(--ln);padding:9px 0}.rit-t{font-size:calc(15px*var(--z,1));line-height:1.3}.rit-m{font-size:calc(12px*var(--z,1));color:var(--sub);margin:2px 0 6px}.rit-bs{display:flex;gap:6px;flex-wrap:wrap}
+.trk-st{display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:calc(14px*var(--z,1))}.trk-dot{width:11px;height:11px;border-radius:50%;flex:none}.trk-r{display:flex;gap:8px;border-top:1px solid var(--ln);padding:6px 0;font-size:calc(12.5px*var(--z,1));line-height:1.35}.trk-r b{min-width:42px}.trk-r span{color:var(--sub)}
 .rit-b{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 11px;font-size:calc(12.5px*var(--z,1));cursor:pointer}.rit-ft{display:flex;margin-top:16px;position:sticky;bottom:0;padding:8px 0;background:var(--solid)}
 .jr-edd{display:flex;gap:8px;margin:-4px 0 8px;flex-wrap:wrap}
 .jr-ai{border:1px solid var(--acc);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:calc(14px*var(--z,1));line-height:1.55;background:var(--sel)}
@@ -2732,7 +2734,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -2948,6 +2950,30 @@ function ritRow(t, kind) {
   return '<div class="rit-r"><div class="rit-t">' + esc(t.title) + '</div><div class="rit-m">' + (l ? esc(l.name) + " · " : "") + (kind === "stall" ? "без движения " + ag + " дн." : di ? esc(di.txt || di.text || "") : "") + '</div><div class="rit-bs">' +
     (kind === "tod" ? "" : b("today", "Сегодня")) + b("tom", "Завтра") + b("week", "Через неделю") + (t.due ? b("none", "Без срока") : "") + b("done", "✓ Готово") + "</div></div>";
 }
+const TRK = { pts: [], media: [], n: 0, loading: false, err: "" };
+async function trkLoad() {
+  if (!sb || !S.user) return; TRK.loading = true; TRK.err = ""; render();
+  try {
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const a = await sb.from("loc_points").select("ts,lat,lon,vel,acc,batt").order("ts", { ascending: false }).limit(25);
+    const c = await sb.from("loc_points").select("ts", { count: "exact", head: true }).gte("ts", t0.toISOString());
+    const m = await sb.from("media_events").select("ts,app,title,artist,state").order("ts", { ascending: false }).limit(15);
+    if (a.error) throw a.error; TRK.pts = a.data || []; TRK.n = c.count || 0; TRK.media = m.error ? [] : (m.data || []);
+  } catch (e) { TRK.err = (e && e.message) || "ошибка загрузки"; }
+  TRK.loading = false; render();
+}
+function trkHTML() {
+  if (!ui.trk) return ""; const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
+  const last = TRK.pts[0], ago = last ? Math.round((Date.now() - new Date(last.ts)) / 60000) : null;
+  const col = ago == null ? "#999" : ago < 20 ? "#107c10" : ago < 90 ? "#e3680c" : "#d13438";
+  const agoT = ago == null ? "точек пока нет" : ago < 1 ? "только что" : ago < 60 ? ago + " мин назад" : Math.floor(ago / 60) + " ч " + (ago % 60) + " мин назад";
+  return '<div class="ovl" data-a="trkovl"><div class="sheet"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">📍 Трекер</div><button class="ibtn" data-a="trkload" title="Обновить">' + ic("repeat", 18) + '</button><button class="ibtn" data-a="trkclose">' + ic("x", 18) + "</button></div>" +
+    '<div class="trk-st"><span class="trk-dot" style="background:' + col + '"></span><span>' + (last ? "Последняя точка " + hm(last.ts) + " · " + agoT : "Точек пока нет") + "</span></div>" +
+    '<div class="rit-hint">Сегодня точек: <b>' + TRK.n + "</b>" + (TRK.loading ? " · загружаю…" : "") + (TRK.err ? ' · <span style="color:#d13438">' + esc(TRK.err) + "</span>" : "") + "</div>" +
+    '<div class="rit-h">Последние точки</div>' + (TRK.pts.length ? TRK.pts.map(p => '<div class="trk-r"><b>' + hm(p.ts) + "</b><div>" + (+p.lat).toFixed(4) + ", " + (+p.lon).toFixed(4) + "<br><span>" + (p.vel != null ? Math.round(p.vel) + " км/ч · " : "") + (p.acc != null ? "±" + Math.round(p.acc) + " м" : "") + (p.batt != null ? " · 🔋" + p.batt + "%" : "") + "</span></div></div>").join("") : '<div class="jr-empty">Пусто. Нажми «отправить позицию» в OwnTracks.</div>') +
+    '<div class="rit-h">Что играло</div>' + (TRK.media.length ? TRK.media.map(p => '<div class="trk-r"><b>' + hm(p.ts) + "</b><div>" + esc(p.title || "—") + "<br><span>" + esc((p.app || "") + (p.artist ? " · " + p.artist : "") + " · " + (p.state || "")) + "</span></div></div>").join("") : '<div class="rit-hint">Событий пока нет (ловец музыки ещё не подключён).</div>') +
+    "</div></div>";
+}
 function ritualHTML() {
   if (!ui.rit) return ""; const d = ritData(), est = d.tod.reduce((s, t) => s + (t.est_minutes || 30), 0), cap = capacityMin();
   const sec = (title, arr, kind, hint) => arr.length ? '<div class="rit-h">' + title + ' <span>' + arr.length + "</span></div>" + (hint ? '<div class="rit-hint">' + hint + "</div>" : "") + arr.map(t => ritRow(t, kind)).join("") : "";
@@ -2985,7 +3011,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
@@ -3088,7 +3114,7 @@ function exportJson() {
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
 let hDepth = 0, hSkip = 0;
-const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() {
   if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
   if (view === "journal" && ui.jr) return (ui.jr.wh ? 1 : 0) + (ui.jr.hist ? 1 : 0) + (ui.jr.sum ? 1 : 0) + (ui.jr.edit ? 1 : 0) + (ui.jr.mode === "p" ? 1 : 0);
@@ -3111,7 +3137,7 @@ function onBack() {
   if (hSkip > 0) { hSkip--; return; }
   if (hDepth > 0) hDepth--;
   if (innerBack()) { render(); return; }
-  if (ui.rit) ui.rit = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) ui.settings = false;
+  if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) ui.settings = false;
   else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) ui.left = true;
   render();
 }
@@ -3162,6 +3188,10 @@ const acts = {
   settings() { ui.settings = true; ui.msg = ""; closePop(); render(); },
   bgclear() { TH.bg = ""; saveTheme(); render(); },
   ritual() { ui.rit = true; ui.left = false; render(); },
+  trk() { ui.trk = true; ui.left = false; render(); trkLoad(); },
+  trkclose() { ui.trk = false; render(); },
+  trkovl(a, e) { if (e.target === a) { ui.trk = false; render(); } },
+  trkload() { trkLoad(); },
   ritclose() { ui.rit = false; render(); },
   ritovl(a, e) { if (e.target === a) { ui.rit = false; render(); } },
   ritok() { PR.ritDone = today; savePrefs(); ui.rit = false; toast("План принят. Хорошего дня!"); render(); },
