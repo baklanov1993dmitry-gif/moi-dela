@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 13:59";
+const BUILD = "10.10 14:06";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -485,7 +485,7 @@ function upd(id, patch) {
   const t = S.tasks[id]; if (!t) return;
   if (ui.fresh && ui.fresh.id === id && "due" in patch) ui.fresh = null;   // «только что добавлено» держится до первой смены срока — иначе задача не уходит из фильтра
   if ("due" in patch && t.due && patch.due && patch.due > t.due && !t.done) { PR.moves = PR.moves || {}; PR.moves[id] = (PR.moves[id] || 0) + 1; savePrefs(); }   // счётчик переносов срока (для «Итогов недели»; хранится на устройстве)
-  uRec(id, t); Object.assign(t, patch); mark("tasks", id, "u");
+  uRec(id, t); Object.assign(t, patch); t._t = nowISO(); mark("tasks", id, "u");
   if ("list_id" in patch) kidsOf(id).forEach(k => upd(k.id, { list_id: patch.list_id }));   // подзадачи едут в тот же список
 }
 const inMyDay = t => t.my_day_date === today;
@@ -1915,6 +1915,9 @@ const jrCSS = `
 .jr-leg{color:var(--sub);font-size:calc(11.5px*var(--z,1));margin-top:6px}.jr-leg i{display:inline-block;width:14px;height:8px;background:var(--acc);border-radius:3px;margin-right:4px}.jr-leg u{display:inline-block;width:14px;height:4px;background:var(--ln);margin:0 4px 0 10px;vertical-align:middle}
 .jr-ul{margin:0;padding-left:18px;font-size:calc(13.5px*var(--z,1));line-height:1.5}
 .jr-czr{display:grid;grid-template-columns:30px 1fr 118px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.jr-czc{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--ln);background:transparent;color:transparent;cursor:pointer;font-size:16px;padding:0}.jr-czc.on{background:var(--acc);border-color:var(--acc);color:#fff}.jr-czt{font-size:calc(13px*var(--z,1));line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.jr-czi{height:34px;font-size:calc(13px*var(--z,1));padding:0 8px;min-width:0}.jr-czb{display:flex;gap:8px;margin-top:10px}.jr-czb .btn{flex:1;height:42px}
+.rit-sum{margin:10px 0 4px;font-size:calc(14px*var(--z,1));line-height:1.45}.rit-h{margin:16px 0 4px;font-weight:700}.rit-h span{opacity:.55;font-weight:500}.rit-hint{font-size:calc(12px*var(--z,1));color:var(--sub);margin-bottom:6px}
+.rit-r{border-top:1px solid var(--ln);padding:9px 0}.rit-t{font-size:calc(15px*var(--z,1));line-height:1.3}.rit-m{font-size:calc(12px*var(--z,1));color:var(--sub);margin:2px 0 6px}.rit-bs{display:flex;gap:6px;flex-wrap:wrap}
+.rit-b{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 11px;font-size:calc(12.5px*var(--z,1));cursor:pointer}.rit-ft{display:flex;margin-top:16px;position:sticky;bottom:0;padding:8px 0;background:var(--solid)}
 .jr-edd{display:flex;gap:8px;margin:-4px 0 8px;flex-wrap:wrap}
 .jr-ai{border:1px solid var(--acc);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:calc(14px*var(--z,1));line-height:1.55;background:var(--sel)}
 @media(max-width:760px){.jr-sr{font-size:calc(15px*var(--z,1));grid-template-columns:96px 1fr auto}.jr-ul,.jr-ai{font-size:calc(16px*var(--z,1))}.jr-st{font-size:calc(16px*var(--z,1))}.jr-it{font-size:calc(18px*var(--z,1));padding:12px 6px;grid-template-columns:118px 1fr}.jr-w{font-size:calc(18px*var(--z,1))}.jr-d,.jr-c{font-size:calc(15.5px*var(--z,1))}.jr-tot{font-size:calc(16px*var(--z,1))}.jr-hint,.jr-prev{font-size:calc(15px*var(--z,1))}.linkbtn{font-size:calc(16px*var(--z,1));padding:10px 4px}.jr-box .btn,.jr-nudge .btn{height:44px;font-size:calc(16px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(16px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(17px*var(--z,1))}.jr-wc{font-size:30px}.jr-empty{font-size:calc(16px*var(--z,1))}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
@@ -2249,10 +2252,10 @@ const subCSS = `
 .bgprev{margin-top:10px;height:110px;border-radius:8px;background-size:cover;background-position:center;border:1px solid var(--ln)}
 .sacc .av{width:44px;height:44px;border-radius:50%;background:#5b3fc4;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .swrow{display:flex;align-items:center;gap:10px}
-input[type=checkbox]#s-glass,input[type=checkbox]#s-myday{-webkit-appearance:none;appearance:none;width:46px;height:26px;border-radius:13px;background:var(--ln);position:relative;flex-shrink:0;cursor:pointer;transition:background .15s;border:0;margin:0}
-input[type=checkbox]#s-glass::after,input[type=checkbox]#s-myday::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}
-input[type=checkbox]#s-glass:checked,input[type=checkbox]#s-myday:checked{background:var(--acc)}
-input[type=checkbox]#s-glass:checked::after,input[type=checkbox]#s-myday:checked::after{left:23px}
+input[type=checkbox]#s-rit,input[type=checkbox]#s-glass,input[type=checkbox]#s-myday{-webkit-appearance:none;appearance:none;width:46px;height:26px;border-radius:13px;background:var(--ln);position:relative;flex-shrink:0;cursor:pointer;transition:background .15s;border:0;margin:0}
+input[type=checkbox]#s-rit::after,input[type=checkbox]#s-glass::after,input[type=checkbox]#s-myday::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}
+input[type=checkbox]#s-rit:checked,input[type=checkbox]#s-glass:checked,input[type=checkbox]#s-myday:checked{background:var(--acc)}
+input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::after,input[type=checkbox]#s-myday:checked::after{left:23px}
 .dghost{background:var(--solid);box-shadow:0 6px 20px rgba(0,0,0,.35);border-radius:6px;opacity:.96}
 .dragsrc{opacity:.3}
 .chip.dragbef{box-shadow:inset 0 3px 0 var(--acc)} .chip.dragaft{box-shadow:inset 0 -3px 0 var(--acc)} .ghead.dragin{background:var(--sel)}
@@ -2729,7 +2732,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -2892,6 +2895,8 @@ function settingsHTML() {
     '<label class="swrow" style="margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>";
   else if (tab === "work") b =
     sec("Рабочий день (для плана и сетки «День»)", '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">' + sel("s-ds", PR.dayStart, [6,7,8,9,10].map(h => [h, "с " + h + ":00"])) + sel("s-de", PR.dayEnd, [14,15,16,17,18,19,20,21,22].map(h => [h, "до " + h + ":00"])) + sel("s-rs", PR.reserve, [0,10,20,25,30,40].map(p => [p, "резерв " + p + "%"])) + "</div>") +
+    '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-rit"' + (!PR.ritOff ? " checked" : "") + '> Утренний план при первом открытии за день (кнопка «План на сегодня» в меню есть всегда)</label>' +
+    '<div class="lbl" style="margin-top:10px">Напоминать о задачах без движения</div>' + sel("s-stall", PR.stall === 0 ? 0 : (PR.stall || 3), [[0, "Не напоминать"], [2, "через 2 дня"], [3, "через 3 дня"], [5, "через 5 дней"], [7, "через неделю"]]) +
     '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
     '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Мой день» — это список на сегодня, который каждое утро начинается с нуля: вы сами выбираете, что берёте в работу сегодня. Если вам хватает «Запланировано» (по датам), оставьте выключенным.</div>';
   else if (tab === "notif") b =
@@ -2927,6 +2932,39 @@ function setupHTML() {
 }
 function showMsg(text, ok) { ui.msg = text; ui.msgOk = ok; const el = $("msg"); if (el) { el.textContent = text; el.style.color = ok ? "#16a34a" : "#dc2626"; } }
 
+/* ===== утренний план: хвосты, сегодня, зависшие ===== */
+const ritTouch = t => Math.max(Date.parse(t._t || 0) || 0, Date.parse(t._u || 0) || 0, Date.parse(t.created_at || 0) || 0);
+function ritData() {
+  const act = Object.values(S.tasks).filter(t => !t.done && !t.parent_id && t.status !== "someday" && !inArch(t)), N = PR.stall === 0 ? 0 : (PR.stall || 3);
+  const over = act.filter(t => t.due && t.due < today).sort((a, b) => a.due.localeCompare(b.due));
+  const tod = act.filter(t => t.due === today);
+  const lim = Date.now() - N * 864e5, ids = new Set(over.concat(tod).map(t => t.id));
+  const stall = N ? act.filter(t => !ids.has(t.id) && !(t.due && t.due > today && t.due <= addDays(today, 1)) && ritTouch(t) < lim).sort((a, b) => ritTouch(a) - ritTouch(b)).slice(0, 8) : [];
+  return { over, tod, stall, N };
+}
+function ritRow(t, kind) {
+  const di = t.due ? dueInfo(t) : null, ag = Math.max(0, Math.floor((Date.now() - ritTouch(t)) / 864e5)), l = S.lists[t.list_id];
+  const b = (v, lab) => '<button class="rit-b" data-a="ritset" data-id="' + t.id + '" data-v="' + v + '">' + lab + "</button>";
+  return '<div class="rit-r"><div class="rit-t">' + esc(t.title) + '</div><div class="rit-m">' + (l ? esc(l.name) + " · " : "") + (kind === "stall" ? "без движения " + ag + " дн." : di ? esc(di.txt || di.text || "") : "") + '</div><div class="rit-bs">' +
+    (kind === "tod" ? "" : b("today", "Сегодня")) + b("tom", "Завтра") + b("week", "Через неделю") + (t.due ? b("none", "Без срока") : "") + b("done", "✓ Готово") + "</div></div>";
+}
+function ritualHTML() {
+  if (!ui.rit) return ""; const d = ritData(), est = d.tod.reduce((s, t) => s + (t.est_minutes || 30), 0), cap = capacityMin();
+  const sec = (title, arr, kind, hint) => arr.length ? '<div class="rit-h">' + title + ' <span>' + arr.length + "</span></div>" + (hint ? '<div class="rit-hint">' + hint + "</div>" : "") + arr.map(t => ritRow(t, kind)).join("") : "";
+  const empty = !d.over.length && !d.tod.length && !d.stall.length;
+  return '<div class="ovl" data-a="ritovl"><div class="sheet"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">☀️ План на сегодня</div><button class="ibtn" data-a="ritclose">' + ic("x", 18) + "</button></div>" +
+    '<div class="rit-sum">Сегодня задач: <b>' + d.tod.length + "</b> ≈ <b>" + fmtDurM(est) + "</b> из <b>" + fmtDurM(cap) + '</b> рабочего времени' + (est > cap ? ' <b style="color:#d13438">— перебор, что-то перенеси</b>' : "") + "</div>" +
+    sec("Хвосты: просрочено", d.over, "over", "Реши по каждой: на сегодня, на завтра, на неделю или убрать срок.") + sec("На сегодня", d.tod, "tod", "") +
+    sec("Зависли (без движения " + d.N + "+ дн.)", d.stall, "stall", "Давно не трогал. Закрой, назначь срок или оставь как есть.") +
+    (empty ? '<div class="jr-empty">Всё чисто: хвостов и зависших нет 🎉</div>' : "") +
+    '<div class="rit-ft"><button class="btn" data-a="ritok" style="flex:1">Принять план</button></div></div></div>';
+}
+function ritMaybe() {
+  if (!S.user || PR.ritOff || PR.ritDone === today || ui.rit || document.hidden || new Date().getHours() < 5) return;
+  if (ui.settings || ui.qa || ui.pop || ui.dsheet || selId || ui.noteFull || !Object.keys(S.tasks).length) return;
+  const d = ritData(); if (!d.over.length && !d.tod.length && !d.stall.length) { PR.ritDone = today; savePrefs(); return; }
+  ui.rit = true; render();
+}
 function appHTML() {
   if (view.indexOf("list:") === 0 && !S.lists[view.slice(5)]) view = HOME();
   if (view === "myday" && !PR.myday) view = "planned";
@@ -2947,7 +2985,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
@@ -3050,7 +3088,7 @@ function exportJson() {
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
 let hDepth = 0, hSkip = 0;
-const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() {
   if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
   if (view === "journal" && ui.jr) return (ui.jr.wh ? 1 : 0) + (ui.jr.hist ? 1 : 0) + (ui.jr.sum ? 1 : 0) + (ui.jr.edit ? 1 : 0) + (ui.jr.mode === "p" ? 1 : 0);
@@ -3073,7 +3111,7 @@ function onBack() {
   if (hSkip > 0) { hSkip--; return; }
   if (hDepth > 0) hDepth--;
   if (innerBack()) { render(); return; }
-  if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) ui.settings = false;
+  if (ui.rit) ui.rit = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) ui.settings = false;
   else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) ui.left = true;
   render();
 }
@@ -3123,6 +3161,15 @@ const acts = {
   sync() { loadAll(); },
   settings() { ui.settings = true; ui.msg = ""; closePop(); render(); },
   bgclear() { TH.bg = ""; saveTheme(); render(); },
+  ritual() { ui.rit = true; ui.left = false; render(); },
+  ritclose() { ui.rit = false; render(); },
+  ritovl(a, e) { if (e.target === a) { ui.rit = false; render(); } },
+  ritok() { PR.ritDone = today; savePrefs(); ui.rit = false; toast("План принят. Хорошего дня!"); render(); },
+  ritset(a) {
+    const t = S.tasks[a.dataset.id], v = a.dataset.v; if (!t) return;
+    if (v === "done") toggleDone(t.id); else setDueKeepRemind(t, v === "today" ? today : v === "tom" ? addDays(today, 1) : v === "week" ? addDays(today, 7) : null);
+    if (v !== "done" && v !== "none") { /* срок поставлен */ } render();
+  },
   closeSettings() { ui.settings = false; render(); },
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
   stab(a) { ui.stab = a.dataset.v; render(); },
@@ -3952,6 +3999,7 @@ const changes = {
   "s-bkf"(v) { bkSet({ freq: +v }); toast(+v ? "Автокопии: " + (BKF.filter(x => x[0] === +v)[0] || [0, ""])[1].toLowerCase() : "Автокопии выключены"); },
   "s-bkfile"(v) { bkSet({ file: v === "1" }); },
   "d-est"(v) { const x = parseEst(v); if (x !== null && isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч, 2д"); return; } if (selId) { upd(selId, { est_minutes: x || null }); renderSoon(); } },
+  "s-stall"(v) { PR.stall = +v; savePrefs(); render(); },
   "s-size"(v) { TH.size = v; saveTheme(); render(); },
   "s-tc"(v) { PR.tc = PR.tc || {}; PR.tc[view] = v; savePrefs(); render(); }
 };
@@ -3988,6 +4036,7 @@ function init() {
     const id = e.target.id;
     if (id === "jr-per") { jrState().per = e.target.value; jrState().lim = 40; render(); return; }
     if (id === "jr-file") { const f = e.target.files && e.target.files[0]; if (f) jrImport(f); e.target.value = ""; return; }
+    if (id === "s-rit") { PR.ritOff = !e.target.checked; savePrefs(); render(); return; }
     if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView("planned"); render(); return; }
     if (id === "s-bgfile") { const f = e.target.files && e.target.files[0]; if (f) bgFromFile(f); return; }
     if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); render(); return; }
@@ -4049,7 +4098,7 @@ function init() {
   window.addEventListener("resize", () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(renderSoon, 200); });
   setInterval(() => { if (!document.hidden && S.user && Date.now() - lastLoad > 300000) loadAll(); }, 60000);
   setInterval(() => { if (!document.hidden) bkTick(); }, 120000); setTimeout(() => bkTick(), 25000);
-  setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); }, 20000);
+  setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); ritMaybe(); }, 20000); setTimeout(ritMaybe, 4000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
   window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); desktopInit(app); listDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
