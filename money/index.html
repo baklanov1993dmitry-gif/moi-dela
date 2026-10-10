@@ -218,6 +218,9 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .chg{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.chg span{display:flex;align-items:center;gap:8px}.chg:first-of-type{border-top:0}
 .chip{white-space:nowrap}.chips .chip{padding:6px 11px;font-size:.82em}
 table.hm td{background-color:transparent}
+.rrow{padding:8px 0;border-top:1px solid var(--ln)}.rrow:first-of-type{border-top:0}.rrow .r1{display:flex;gap:6px}.rrow .r2{display:flex;gap:6px;margin-top:6px}
+.rrow .in{margin:0;padding:8px 10px;font-size:14px}.rrow .rn{flex:1;min-width:0}.rrow .ra{width:92px;text-align:right;flex:none}.rrow select{flex:1;min-width:0}.rrow .rx{flex:none;width:38px;color:var(--sub);font-size:18px}
+.rcp{max-height:88vh;display:flex;flex-direction:column}.rcp .rl{overflow-y:auto;flex:1;min-height:0;margin:6px -4px;padding:0 4px}.spin{display:inline-block;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 #main.noscr{overflow-y:hidden;overscroll-behavior:none}html,body{overscroll-behavior:none}
 #main .mrow{position:sticky;top:var(--h1,48px);z-index:5;background:var(--bg)}
 #main .brow.stk{position:sticky;top:var(--h2,86px);z-index:4;background:var(--bg);margin:0 -14px;padding:6px 18px 8px}
@@ -763,11 +766,37 @@ function cgridInner(s) {
   const act = all.filter(x => !dorm(x)), rare = all.filter(dorm);
   return act.map(btn).join("") + (rare.length ? (s.rare ? rare.map(btn).join("") : "") + '<button class="crare" data-a="crare">' + (s.rare ? "Скрыть редкие" : "Редкие и разовые (" + rare.length + ") — показать") + "</button>" : "");
 }
+function rsumText(s) { const t = s.items.reduce((a, x) => a + (parseFloat(String(x.amount).replace(",", ".")) || 0), 0), un = s.items.filter(x => !x.cat).length; return "В списке: <b>" + fm(t) + "</b>" + (s.total ? " · на чеке: " + fm(s.total) + (Math.abs(t - s.total) > 1 ? ' <span class="exp">(не сходится — проверь)</span>' : " ✓") : "") + (un ? ' · <span class="exp">без категории: ' + un + "</span>" : ""); }
+function rcpPick() {
+  const i = document.createElement("input"); i.type = "file"; i.accept = "image/*";
+  i.onchange = () => { const f = i.files && i.files[0]; if (f) rcpRun(f); };
+  i.click();
+}
+async function rcpShrink(file) {
+  const bmp = await createImageBitmap(file), k = Math.min(1, 1700 / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k); c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", .85).split(",")[1];
+}
+async function rcpRun(file) {
+  if (!navigator.onLine) { toast("Для распознавания нужен интернет"); return; }
+  ui.sheet = { type: "rcp", busy: true }; render();
+  try {
+    const img = await rcpShrink(file), now = Date.now(), ex = {};
+    txs.forEach(t => { if (t.kind !== "exp" || !t.note || now - new Date(t.ts) > 365 * 864e5) return; const m = ex[t.category_id] || (ex[t.category_id] = {}); const k = t.note.trim().toLowerCase(); m[k] = (m[k] || 0) + 1; });
+    const cl = cats.filter(c => c.kind === "exp" && !c.archived).map(c => ({ id: c.id, name: c.name, ex: Object.entries(ex[c.id] || {}).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]) }));
+    const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("нужно войти заново");
+    const r = await fetch(CFG.url + "/functions/v1/receipt", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: CFG.key }, body: JSON.stringify({ image: img, media: "image/jpeg", cats: cl, today: dayKey(new Date()) }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || "ошибка " + r.status);
+    const ids = new Set(cl.map(c => c.id)), dd = /^\d{4}-\d{2}-\d{2}$/.test(j.date || "") && j.date <= dayKey(new Date()) ? j.date : dayKey(new Date());
+    ui.sheet = { type: "rcp", merchant: j.merchant || "", date: dd, total: +j.total || 0, note: j.note || "", merge: true, items: (j.items || []).map(x => ({ name: String(x.name || "").slice(0, 80), amount: Math.round((+x.amount || 0) * 100) / 100, cat: ids.has(x.cat) ? x.cat : "" })) };
+    render();
+  } catch (e) { ui.sheet = null; render(); toast("Не получилось: " + (e.message || e), "bad", 5000); }
+}
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
     const c = s.cat ? catOf(s.cat) : null, d = new Date((s.date || dayKey(new Date())) + "T12:00"), dl = d.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }), title = s.id ? "Правка" : s.kind === "exp" ? "Новый расход" : "Новый доход";
-    const head = '<div class="hdr"><button class="hb" data-a="txback">' + UI.back + '</button><div class="ttl"><div class="sa" style="color:var(--tx);font-size:1.35em;margin:0">' + title + "</div></div>" + (s.id ? '<button class="hb" data-a="txdel" style="color:var(--expc)">' + UI.trash + "</button>" : "") + "</div>";
+    const head = '<div class="hdr"><button class="hb" data-a="txback">' + UI.back + '</button><div class="ttl"><div class="sa" style="color:var(--tx);font-size:1.35em;margin:0">' + title + "</div></div>" + (s.id ? '<button class="hb" data-a="txdel" style="color:var(--expc)">' + UI.trash + "</button>" : s.kind === "exp" ? '<button class="hb" data-a="rcpbtn" title="Фото чека" style="font-size:22px">📷</button>' : "") + "</div>";
     const date = '<label class="dt">' + UI.cal + "<span>" + esc(dl.charAt(0).toUpperCase() + dl.slice(1)) + '</span><input type="date" id="s-date" value="' + esc(s.date) + '" onchange="dateChange(this.value)"></label>';
     const amt = '<div class="amtbox"><div class="cur">' + UI.cash + "<small>RUB</small></div><div class=\"amt\">" + esc(s.expr || "0") + '</div><button class="bs" data-a="key" data-v="⌫">' + UI.bks + "</button></div>";
     if (s.step === "cat") {
@@ -783,9 +812,15 @@ function sheetHTML() {
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
   }
+  if (s.type === "rcp") {
+    if (s.busy) return '<div class="ov"><div class="sheet" data-a="nop" style="text-align:center;padding:30px 20px"><div class="spin" style="font-size:34px">🧾</div><h2 style="margin:12px 0 4px">Читаю чек…</h2><div class="sub">обычно 5–15 секунд</div></div></div>';
+    const cl = cats.filter(c => c.kind === "exp" && !c.archived).sort((a, b) => a.name.localeCompare(b.name, "ru"));
+    const rows = s.items.map((it, i) => '<div class="rrow"><div class="r1"><input class="in rn" id="r-n-' + i + '" value="' + esc(it.name) + '"><input class="in ra" id="r-a-' + i + '" inputmode="decimal" value="' + esc(it.amount) + '"></div><div class="r2"><select class="in" id="r-c-' + i + '"><option value="">— категория —</option>' + cl.map(c => '<option value="' + c.id + '"' + (c.id === it.cat ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") + '</select><button class="rx" data-a="rdel" data-i="' + i + '">✕</button></div></div>').join("");
+    return '<div class="ov" data-a="shclose"><div class="sheet rcp" data-a="nop"><h2 style="margin:0 0 4px">🧾 ' + esc(s.merchant || "Чек") + '</h2><div class="sub" style="font-size:.85em">Проверь категории и суммы, поправь что нужно.' + (s.note ? " " + esc(s.note) : "") + '</div><input class="in" type="date" id="r-date" value="' + esc(s.date) + '" style="margin:8px 0 0"><div class="rl">' + (rows || '<div class="empty">Позиций не нашлось</div>') + '</div><div class="sub" id="rsum" style="margin:2px 0 6px">' + rsumText(s) + '</div><label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input type="checkbox" id="r-merge"' + (s.merge ? " checked" : "") + '> <span>Объединить по категориям (по одной трате на категорию)</span></label><div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
+  }
   if (s.type === "tplq") {
     const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
-    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="rcpbtn">📷 Сфотографировать чек</button><button class="btn g" style="width:100%;margin-top:8px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
   }
   if (s.type === "bud") return budSheetHTML();
   if (s.type === "ext") {
@@ -894,6 +929,7 @@ function evalExpr(e) {
   try { const v = Function('"use strict";return (' + x.replace(/^[+*/]+/, "") + ")")(); return isFinite(v) ? v : 0; } catch (err) { return 0; }
 }
 function dateChange(v) { const s = ui.sheet; if (!s || !v) return; s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
+function rread() { const s = ui.sheet; if (!s || s.type !== "rcp" || !s.items) return; s.items.forEach((x, i) => { const n = $("r-n-" + i), a = $("r-a-" + i), c = $("r-c-" + i); if (n) x.name = n.value; if (a) x.amount = a.value; if (c) x.cat = c.value; }); if ($("r-date") && $("r-date").value) s.date = $("r-date").value; if ($("r-merge")) s.merge = $("r-merge").checked; }
 function xread() { const s = ui.sheet; if (!s) return; const g = i => ($(i) || {}).value; if ($("x-cat")) s.cat = g("x-cat"); if ($("x-amt")) s.amt = g("x-amt"); if ($("x-note")) s.note = g("x-note"); if ($("x-day")) s.day = g("x-day"); }
 function openTx(o) { ui.sheet = Object.assign({ type: "tx", step: "kb", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
 function keyPress(v) {
@@ -997,6 +1033,17 @@ const A = {
   capset() { const v = parseFloat((($("cap-v") || {}).value || "").replace(",", ".")); PR.cap = v > 0 ? Math.round(v) : 0; savePR(); render(); },
   capfill(a) { PR.cap = +a.dataset.v; savePR(); render(); },
   normn(a) { PR.normN = +a.dataset.v; savePR(); render(); }, normon() { PR.normOn = PR.normOn === false; savePR(); render(); },
+  rcpbtn() { ui.sheet = null; rcpPick(); },
+  rdel(a) { ui.sheet.items.splice(+a.dataset.i, 1); render(); },
+  rsave() {
+    const s = ui.sheet; rread(); const it = s.items.filter(x => parseFloat(String(x.amount).replace(",", ".")) > 0);
+    if (!it.length) { toast("Нечего записывать"); return; } const bad = it.find(x => !x.cat); if (bad) { toast("Выбери категорию: " + bad.name); return; }
+    const d = new Date(s.date + "T12:00"), now = new Date(); if (s.date === dayKey(now)) d.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+    const val = x => Math.round(parseFloat(String(x.amount).replace(",", ".")) * 100) / 100, mer = (s.merchant || "").trim(); let n = 0, sum = 0;
+    if (s.merge) { const g = {}; it.forEach(x => { (g[x.cat] = g[x.cat] || []).push(x); }); Object.entries(g).forEach(([c, l]) => { const a = Math.round(l.reduce((t, x) => t + val(x), 0) * 100) / 100; upTx({ id: uid(), ts: d.toISOString(), amount: a, kind: "exp", category_id: c, note: ((mer ? mer + ": " : "") + l.map(x => x.name).join(", ")).slice(0, 140), account: "Основной" }); n++; sum += a; }); }
+    else it.forEach(x => { upTx({ id: uid(), ts: d.toISOString(), amount: val(x), kind: "exp", category_id: x.cat, note: ((mer ? mer + " · " : "") + x.name).slice(0, 140), account: "Основной" }); n++; sum += val(x); });
+    ui.sheet = null; render(); toast("Записано трат: " + n + " на " + fm(sum));
+  },
   qtpl() { ui.sheet = { type: "tplq" }; render(); }, qbud() { ui.sheet = { type: "bud" }; render(); },
   qtplset() { ui.sheet = null; ui.tab = "more"; ui.set = "ext"; render(); }, qbudgo() { ui.sheet = null; ui.tab = "stats"; render(); },
   rnames() { PR.rn = PR.rn === false; savePR(); render(); },
@@ -1047,8 +1094,9 @@ const A = {
 })();
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
-document.addEventListener("input", e => { if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
+document.addEventListener("input", e => { if (/^r-[nac]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
 document.addEventListener("change", async e => {
+  if ((e.target.id === "r-merge" || e.target.id === "r-date" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; }
   if (e.target.id === "csvf" && e.target.files[0]) {
     try { const p = prepImport(decodeBuf(await e.target.files[0].arrayBuffer())); IMP = p; const ds = p.out.map(x => +x.d), mn = new Date(Math.min(...ds)), mx = new Date(Math.max(...ds)), cn = new Set(p.out.map(x => x.cat)).size;
       ui.sheet = { type: "imp", busy: false, info: "Операций: <b>" + p.out.length + "</b><br>Период: " + dayKey(mn) + " … " + dayKey(mx) + "<br>Категорий: " + cn + "<br>" + (p.neg > 0 ? "Минус = расход, плюс = доход (" + p.neg + " / " + p.pos + ")" : "Все суммы положительные — считаю расходами") + (p.bad ? "<br>Не разобрано строк: " + p.bad : "") + "<br><span class='sub'>Повторный импорт дубли не создаёт.</span>" }; render(); }
