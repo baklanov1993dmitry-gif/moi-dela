@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 16:47";
+const BUILD = "10.10 16:52";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -697,6 +697,10 @@ function fireReminder(t) {
   try { if (!pushOn() && "Notification" in window && Notification.permission === "granted") new Notification("Напоминание", { body: t.title }); } catch (e) {}
   const b = $("bellbadge"); if (b) { b.textContent = ui.alerts.length; b.style.display = "flex"; }
 }
+function applyLoud(id) {   // «⏰» в начале названия = громкое напоминание: MacroDroid ловит его в уведомлении и включает будильник
+  const D = ui.dtp, t = S.tasks[id]; if (!t || !D || D.loud == null) return; const has = /^⏰\s*/.test(t.title);
+  if (D.loud && !has) upd(id, { title: "⏰ " + t.title }); else if (!D.loud && has) upd(id, { title: t.title.replace(/^⏰\s*/, "") });
+}
 function checkReminders() {
   if (!S.user) return;
   const now = Date.now(), N = jget(LSK.notified, {}); let ch = false;
@@ -1306,6 +1310,7 @@ function dtpHTML(p, t) {
       '<input id="dtp-t" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="чч:мм" value="' + esc(D.time || "") + '"><button type="button" class="tb" data-a="dstep" data-d="15">+15</button><button type="button" class="tb" data-a="dstep" data-d="60">+1ч</button></div>' +
       '<div class="tchips">' + tchipsList().map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
       '<div class="dtp-tl">Или через</div><div class="dqrow"><button type="button" class="dq" data-a="drel" data-v="15">15 мин</button><button type="button" class="dq" data-a="drel" data-v="60">1 час</button><button type="button" class="dq" data-a="drel" data-v="180">3 часа</button></div>' +
+      '<div class="dqrow" style="margin-top:8px"><button type="button" class="dq' + ((D.loud != null ? D.loud : (t && /^⏰/.test(t.title))) ? " on" : "") + '" data-a="dloud">⏰ Громко (будильник)</button></div>' +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
@@ -1337,6 +1342,7 @@ const dtpActs = {
     if (D.mode === "due") { setDue(dtpId(), iso); return dtpDone(); }
     D.date = iso; const b = parseISO(iso); D.y = b.getFullYear(); D.m = b.getMonth(); keepTime(); render();
   },
+  dloud() { const D = ui.dtp; if (!D) return; const t = S.tasks[dtpId()]; D.loud = !(D.loud != null ? D.loud : (t && /^⏰/.test(t.title))); render(); },
   dtime(a) { if (ui.dtp) { ui.dtp.time = a.dataset.v; render(); } },
   dstep(a) {
     const D = ui.dtp; if (!D) return; const cur = parseTimeText(($("dtp-t") || {}).value); const base = cur != null ? cur : (parseTimeText(D.time) != null ? parseTimeText(D.time) : 9 * 60);
@@ -1344,7 +1350,7 @@ const dtpActs = {
   },
   drel(a) {
     const x = new Date(Date.now() + (+a.dataset.v) * 60000); x.setSeconds(0, 0);
-    patchTask(dtpId(), { remind_at: x.toISOString() }); askNotify(); dtpDone();
+    patchTask(dtpId(), { remind_at: x.toISOString() }); applyLoud(dtpId()); askNotify(); dtpDone();
   },
   dok() {
     const D = ui.dtp; if (!D) return; keepTime();
@@ -1352,7 +1358,7 @@ const dtpActs = {
     if (parseTimeText(D.time) == null) return toast("Время нужно в виде 18:30 или 1830");
     const iso = dtpIso();
     if (Date.parse(iso) < Date.now() - 60000) return toast("Это время уже прошло — выберите позже");
-    patchTask(dtpId(), { remind_at: iso }); askNotify(); dtpDone();
+    patchTask(dtpId(), { remind_at: iso }); applyLoud(dtpId()); askNotify(); dtpDone();
   },
   dclear() { const D = ui.dtp; if (!D) return; if (D.mode === "due") setDue(dtpId(), null); else patchTask(dtpId(), { remind_at: null }); dtpDone(); },
   dtpclose() { ui.dtp = null; closePop(); render(); },
