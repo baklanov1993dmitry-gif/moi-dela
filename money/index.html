@@ -13,6 +13,9 @@
 :root{--acc:#81c995;--inc:var(--acc);--accd:color-mix(in srgb,var(--acc) 80%,#000);--r:14px;--bg:#424242;--bar:#616161;--card:#4d4d4d;--card2:#5a5a5a;--tx:#f5f5f5;--sub:#bdbdbd;--ln:#5c5c5c;--exp:#ef7f7a;--expc:#e8837e;--key:#444;--keyln:#565656;--keytx:#c9c9c9;--fabbg:#505050;--drbg:#454545;--menubg:#505050;--hm:239,127,122}
 :root[data-t=black]{--bg:#000;--bar:#171717;--card:#141414;--card2:#232323;--ln:#2b2b2b;--key:#0e0e0e;--keyln:#2c2c2c;--keytx:#bbb;--fabbg:#0e0e0e;--drbg:#0a0a0a;--menubg:#1b1b1b}
 :root[data-t=navy]{--bg:#141a2c;--bar:#1f2742;--card:#1c2338;--card2:#283152;--ln:#2e3858;--sub:#a9b2cc;--key:#1a2136;--keyln:#2d3756;--keytx:#c3cbe0;--fabbg:#1c2338;--drbg:#182036;--menubg:#232c48}
+:root[data-t=forest]{--bg:#14201a;--bar:#1d3328;--card:#1b2b22;--card2:#263a2f;--ln:#2c4236;--sub:#a6bcae;--key:#17251d;--keyln:#2b4034;--keytx:#c2d6c9;--fabbg:#1b2b22;--drbg:#172319;--menubg:#223629}
+:root[data-t=plum]{--bg:#1d1626;--bar:#2e2140;--card:#271c35;--card2:#34264a;--ln:#3b2d52;--sub:#b8a9cc;--key:#221830;--keyln:#3a2c52;--keytx:#d0c4e2;--fabbg:#271c35;--drbg:#211729;--menubg:#31244a}
+:root[data-t=sand]{--bg:#f4efe6;--bar:#e6dccb;--card:#fffaf1;--card2:#ece3d2;--tx:#2b2418;--sub:#7a6e58;--ln:#dcd1bb;--exp:#c4573f;--expc:#d97b66;--key:#fffaf1;--keyln:#d8ccb5;--keytx:#4a3f2b;--fabbg:#fffaf1;--drbg:#fffaf1;--menubg:#fffaf1;--hm:196,87,63}
 :root[data-t=light]{--bg:#f2f3f5;--bar:#e3e6ec;--card:#fff;--card2:#e8eaef;--tx:#1d2029;--sub:#6a7080;--ln:#d8dbe2;--exp:#d6534f;--expc:#e57d78;--key:#fff;--keyln:#d3d6dd;--keytx:#3a3f4b;--fabbg:#fff;--drbg:#fff;--menubg:#fff;--hm:214,83,79}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
@@ -215,12 +218,16 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .chg{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.chg span{display:flex;align-items:center;gap:8px}.chg:first-of-type{border-top:0}
 .chip{white-space:nowrap}.chips .chip{padding:6px 11px;font-size:.82em}
 table.hm td{background-color:transparent}
+#main.noscr{overflow-y:hidden;overscroll-behavior:none}html,body{overscroll-behavior:none}
+#main .mrow{position:sticky;top:var(--h1,48px);z-index:5;background:var(--bg)}
+#main .brow.stk{position:sticky;top:var(--h2,86px);z-index:4;background:var(--bg);margin:0 -14px;padding:6px 18px 8px}
+.cs{margin:12px 6px 0;width:calc(100% - 12px);box-sizing:border-box}.cs+.cgrid{padding-top:12px}.crare{grid-column:1/-1;height:auto!important;min-height:38px!important;font-size:13px!important;color:var(--sub)}
 .ac{padding:0}.ach{display:flex;align-items:center;gap:8px;width:100%;padding:14px;text-align:left}.ach .ai{font-size:1.15em;flex:none}.ach .at{font-weight:700;flex:none}.ach .as{flex:1;min-width:0;text-align:right;color:var(--sub);font-size:.8em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chv{width:8px;height:8px;border-right:2px solid var(--sub);border-bottom:2px solid var(--sub);transform:rotate(45deg);transition:transform .2s;margin:-3px 4px 0 4px;flex:none}.ac.open .chv{transform:rotate(-135deg);margin-top:3px}.acb{padding:0 14px 14px}
 .brwx{display:flex;align-items:center;gap:4px;border-top:1px solid var(--ln)}.brwx:first-of-type{border-top:0}.brwx .brw{border-top:0;flex:1;min-width:0}.lk{flex:none;width:40px;height:40px;font-size:18px;border-radius:10px;opacity:.55}.lk.on{opacity:1;background:var(--card2)}
 .qnote{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--card2);line-height:1.4}
 .pgw{will-change:transform;backface-visibility:hidden}.nb svg g{filter:none!important}
-#main{touch-action:pan-y}.pgw{position:relative}.pgw>div{overflow-x:clip}.pgw>.nb{position:absolute;top:0;width:100%;pointer-events:none}.pgw>.nb.l{left:-100%}.pgw>.nb.r{left:100%}
+#main{touch-action:pan-y}.pgw{position:relative}.pgw>div{overflow-x:clip;overflow-clip-margin:14px}.pgw>.nb{position:absolute;top:0;width:100%;pointer-events:none}.pgw>.nb.l{left:-100%}.pgw>.nb.r{left:100%}
 .rs .rn{font-size:11.5px;line-height:1.15;max-width:92px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx);opacity:.92;font-weight:500}.rs .rn.s{font-size:10.5px}.rs .rn.xs{font-size:9.5px}.rs.nm span.pc{font-size:13px;opacity:.85}
 .tg{margin-left:auto;padding:2px 10px;border-radius:12px;background:var(--card2);color:var(--sub);font-size:.85em;font-weight:600}.tg.on{background:var(--acc);color:#08130e}
 .qrow{display:flex;gap:10px;align-items:center;width:100%;padding:10px 0;border-top:1px solid var(--ln);text-align:left}.qrow:first-of-type{border-top:0}
@@ -334,7 +341,7 @@ let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []).map(
 let ui = { tab: "home", kind: "exp", rg: { t: "m", a: Date.now() }, view: "ring", open: {}, sheet: null, status: "", q: "", set: "main" };
 let flushing = false;
 const savePR = () => jset(LS.pref, PR);
-const THEMES = [["gray", "Серая", "#424242", "#616161"], ["black", "Чёрная", "#000000", "#171717"], ["light", "Светлая", "#f2f3f5", "#e3e6ec"], ["navy", "Синяя", "#141a2c", "#1f2742"]], ACCS = ["#81c995", "#6fd1c4", "#6aa8ff", "#a78bfa", "#f2b36d", "#e88fc4", "#b6d96a", "#ff8f6b"];
+const THEMES = [["gray", "Серая", "#424242", "#616161"], ["black", "Чёрная", "#000000", "#171717"], ["light", "Светлая", "#f2f3f5", "#e3e6ec"], ["navy", "Синяя", "#141a2c", "#1f2742"], ["forest", "Лесная", "#14201a", "#1d3328"], ["plum", "Сливовая", "#1d1626", "#2e2140"], ["sand", "Песок", "#f4efe6", "#e6dccb"]], ACCS = ["#81c995", "#6fd1c4", "#6aa8ff", "#a78bfa", "#f2b36d", "#e88fc4", "#b6d96a", "#ff8f6b"];
 function applyTheme() { if (PR.theme === "dark") PR.theme = "gray"; const th = THEMES.find(t => t[0] === PR.theme) || THEMES[0]; document.documentElement.dataset.t = th[0]; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = th[3]; }
 function toast(t, cls, ms) { const e = document.createElement("div"); e.className = "toast " + (cls || ""); e.textContent = t; e.style.whiteSpace = "pre-line"; document.body.appendChild(e); setTimeout(() => e.remove(), ms || 2200); }
 const catOf = id => cats.find(c => c.id === id) || { id: null, name: "Без категории", icon: "❔", color: "#8d99ae", kind: "exp" };
@@ -490,8 +497,8 @@ function budRows(am) {
     let line;
     if (!b) line = '<span class="sub">нормы пока нет · тап — задать лимит</span>';
     else if (b.kind === "lim") line = "лимит " + fm(b.v) + " · " + (over ? '<span class="exp">превышен на ' + fm(r.sp - b.v) + "</span>" : "осталось " + fm(b.v - r.sp));
-    else if (b.kind === "cap") line = (b.mode === "fix" ? "🔒 как обычно · " : "план ") + fmN(b.v) + ' <span class="sub">(обычно ' + fmN(b.norm) + ")</span> · " + (over ? '<span class="exp">превышен на ' + fm(r.sp - b.v) + "</span>" : "можно ещё " + fmN(Math.max(0, b.v - r.sp)));
-    else line = "обычно " + fm(b.v) + " · " + (over ? '<span class="exp">выше на ' + fm(r.sp - b.v) + " (+" + Math.round((r.sp / b.v - 1) * 100) + "%)</span>" : st.st === "pace" ? '<span style="color:#f2b36d">темп выше обычного</span>' : "в норме");
+    else if (b.kind === "cap") line = (b.mode === "fix" ? "🔒 без урезания · ещё ≈ " + fmN(Math.max(0, b.v - r.sp)) : "из плана " + fmN(b.v) + " · ещё можно " + fmN(Math.max(0, b.v - r.sp))) + (over ? ' · <span class="exp">перерасход ' + fmN(r.sp - b.v) + "</span>" : "");
+    else line = "в среднем " + fm(b.v) + " в мес. · " + (over ? '<span class="exp">выше на ' + fm(r.sp - b.v) + " (+" + Math.round((r.sp / b.v - 1) * 100) + "%)</span>" : st.st === "pace" ? '<span style="color:#f2b36d">темп выше обычного</span>' : "в норме");
     const lock = capOn && cur && b && b.kind === "cap" ? '<button class="lk' + (b.mode === "fix" ? " on" : "") + '" data-a="fixtog" data-id="' + c.id + '" title="Нельзя урезать">' + (b.mode === "fix" ? "🔒" : "🔓") + "</button>" : "";
     return '<div class="brwx"><button class="brw" data-a="limedit" data-id="' + (c.id || "_") + '"><div class="ci">' + ic(c.icon, c.color, 30) + '</div><div class="bm"><div class="l1"><b>' + esc(c.name) + (+c.lim > 0 ? " 🎯" : "") + "</b><span>" + fm(r.sp) + '</span></div><div class="gb sm"><i style="width:' + (r.sp / mxv * 100).toFixed(1) + "%;background:" + (st ? BCOL[st.st] : c.color) + '"></i>' + (b ? '<s style="left:' + Math.min(100, b.v / mxv * 100).toFixed(1) + '%"></s>' : "") + '</div><div class="sub" style="font-size:.8em">' + line + "</div></div></button>" + lock + "</div>";
   }).join("");
@@ -500,11 +507,10 @@ function budBody() {
   const am = anchorMonth(), cur = am === mk(new Date()), ms = monthSums(), dim = daysIn(am), day = cur ? new Date().getDate() : dim, f = day / dim, N = PR.normN || 6, md = bmode(), capOn = md === "cap" && PR.cap > 0, cp = md === "cap" ? capPlan(am) : null, sp = monTot(ms, am);
   const chip = (a, v, l, on) => '<button class="chip' + (on ? " on" : "") + '" data-a="' + a + '" data-v="' + v + '">' + l + "</button>";
   let h = '<div class="chips" style="margin:0 0 8px">' + [["norm", "по норме"], ["cap", "потолок"], ["off", "выкл."]].map(x => chip("bmode", x[0], x[1], md === x[0])).join("") + "</div>";
-  if (md !== "off") h += '<div class="chips" style="margin:0 0 10px"><span class="sub" style="align-self:center;font-size:.8em">норма = среднее за</span>' + [3, 6, 12].map(n => chip("normn", n, n + " мес.", N === n)).join("") + "</div>";
+  if (md === "norm") h += '<div class="chips" style="margin:0 0 10px"><span class="sub" style="align-self:center;font-size:.8em">норма — среднее за</span>' + [3, 6, 12].map(n => chip("normn", n, n + " мес.", N === n)).join("") + "</div>";
   const totNorm = (() => { let t = 0; cats.filter(c => c.kind === "exp" && !c.archived).forEach(c => { const n = normOf(c.id, am); if (n) t += n.avg; }); return t; })();
   if (md === "cap") {
     h += '<div class="capin"><input class="in" id="cap-v" inputmode="decimal" placeholder="Потолок трат на месяц, ₽" value="' + (PR.cap || "") + '"><button class="btn" data-a="capset">Задать</button></div>';
-    if (totNorm) h += '<div class="chips" style="margin:0 0 8px">' + [0, 10, 20, 30].map(p => chip("capfill", Math.round(totNorm * (1 - p / 100) / 100) * 100, p ? "−" + p + "% от обычного" : "= обычное " + fmN(totNorm), false)).join("") + "</div>";
     if (!(PR.cap > 0)) return h + '<div class="sub">Введи потолок — разложу его по категориям. Уже потраченное в этом месяце не урезается, урезается только то, что ещё осталось потратить. Категории, которые нельзя урезать (еда, жильё), закрепи замочком 🔒 — они останутся как обычно.</div>';
   }
   const base = capOn ? PR.cap : (() => { let t = 0; cats.filter(c => c.kind === "exp").forEach(c => { const b = budgetOf(c, am); if (b) t += b.v; }); return t; })();
@@ -520,8 +526,8 @@ function budBody() {
     let q;
     if (cp.impossible) q = '<span class="exp">Уже потрачено больше, чем позволяет потолок вместе с фиксированными тратами. Уложиться можно только если до конца месяца почти ничего не тратить на гибкие категории.</span>';
     else if (cp.flexExp <= 0) q = "Гибких категорий с нормой нет — закрепи/раскрепи замочки или задай нормы.";
-    else if (cp.ratio >= 1) q = "Потолок выше обычного темпа: запас ≈ " + fmN(cp.R - cp.flexExp) + ". Резать ничего не нужно.";
-    else q = "До конца месяца обычно уходит ещё ≈ <b>" + fmN(cp.flexExp + cp.fixedRem) + "</b> (🔒 фикс.: " + fmN(cp.fixedRem) + ", гибкие: " + fmN(cp.flexExp) + "). Чтобы уложиться, гибкие категории надо ужать на <b>" + Math.round((1 - cp.ratio) * 100) + "%</b> — до " + fmN(cp.flexExp * cp.ratio) + " вместо " + fmN(cp.flexExp) + ".";
+    else if (cp.ratio >= 1) q = "Потолок с запасом: если тратить как раньше, в конце месяца останется ≈ " + fmN(cp.R - cp.flexExp) + ". Урезать ничего не нужно.";
+    else q = "Чтобы уложиться в потолок, на всё оставшееся в гибких категориях можно потратить не больше <b>" + fmN(cp.flexExp * cp.ratio) + "</b> — это на <b>" + Math.round((1 - cp.ratio) * 100) + "%</b> меньше, чем ты тратишь обычно." + (cp.fixedRem > 0 ? " 🔒 Закреплённые категории: ещё ≈ " + fmN(cp.fixedRem) + " без урезания." : "");
     h += '<div class="sub qnote">' + q + "</div>";
   } else if (capOn) h += '<div class="sub qnote">План по категориям строится только для текущего месяца.</div>';
   return h + '<div class="sub" style="font-size:.78em;margin:10px 0 2px">' + (capOn ? "Метка на полосе — плановая граница. 🔒 — категорию нельзя урезать. Тап по названию — личный лимит." : "Метка на полосе — норма или лимит. Тап по строке — задать лимит.") + "</div>" + budRows(am);
@@ -613,7 +619,7 @@ function ringHTML(items, tot, exp, inc, K) {
 }
 function homeHTML() {
   const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, bal = inc - exp, ring = ui.view === "ring";
-  const pill = '<div class="brow"><button class="lb" data-a="' + (ring ? "qtpl" : "viewtog") + '">' + (ring ? UI.bolt : UI.lines) + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="' + (ring ? "qbud" : "kindtog") + '" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.gauge : UI.tag) + "</button></div>";
+  const pill = '<div class="brow' + (ring ? "" : " stk") + '"><button class="lb" data-a="' + (ring ? "qtpl" : "viewtog") + '">' + (ring ? UI.bolt : UI.lines) + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="' + (ring ? "qbud" : "kindtog") + '" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.gauge : UI.tag) + "</button></div>";
   let body;
   if (ring) body = ringHTML(items, tot, exp, inc, K) + pill;
   else body = pill + (items.map(x => { const id = x.cat.id || "_", op = ui.open[id], bb = K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null, bst = bb ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="a ' + K + '">' + fmH(x.v) + "</span>" + (bb ? '<span class="pbar ' + bb.kind + '"><i style="width:' + Math.min(100, bst.r * 100).toFixed(1) + "%;background:" + BCOL[bst.st] + '"></i></span>' : "") + "</button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>');
@@ -681,7 +687,7 @@ function moreHTML() {
     '<button class="set" data-a="setext"><span>⚡</span><span style="flex:1">Шаблоны и повторяющиеся</span><span class="sub">' + (EXT.tpl.length + EXT.rec.length || "") + ' ›</span></button>' +
     '<button class="set" data-a="setcats"><span>🗂️</span><span style="flex:1">Категории</span><span class="sub">›</span></button>' +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Тема</div><div class="themes">' + THEMES.map(t => '<button class="' + (PR.theme === t[0] ? "on" : "") + '" data-a="theme" data-v="' + t[0] + '"><i style="background:' + t[2] + '"><b style="background:' + t[3] + '"></b><u style="background:' + PR.acc + '"></u></i><span>' + t[1] + "</span></button>").join("") + "</div></div>" +
-    '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="accx" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
+    '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="acc" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
     '<label class="set"><span>📥</span><span style="flex:1">Импорт из Monefy (CSV)</span><input type="file" id="csvf" accept=".csv,.txt,text/csv" hidden></label>' +
     '<button class="set" data-a="export"><span>📤</span><span style="flex:1">Экспорт в CSV</span></button>' +
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
@@ -745,6 +751,18 @@ function budSheetHTML() {
   h += rows.slice(0, 7).map(r => '<div class="qrow" style="padding:7px 0"><div class="ci" style="width:30px;height:30px;flex:none">' + ic(r.c.icon, r.c.color, 30) + '</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span>' + esc(r.c.name) + '</span><span class="' + (r.r > 1 ? "exp" : "sub") + '" style="font-size:.9em">' + (r.r > 1 ? "+" + fmN(r.sp - r.b.v) : "ост. " + fmN(r.b.v - r.sp)) + '</span></div><div class="gb sm"><i style="width:' + Math.min(100, r.r * 100).toFixed(1) + "%;background:" + (r.r > 1 ? "var(--exp)" : r.r >= .85 ? "#f2b36d" : r.c.color) + '"></i></div></div></div>').join("");
   return h + '<button class="btn g" style="width:100%;margin-top:12px" data-a="qbudgo">Подробнее в аналитике</button></div></div>';
 }
+let _cuv = -1, _cu = null;
+function catUse() { if (_cuv === txv && _cu) return _cu; const u = {}, now = Date.now(); txs.forEach(t => { const id = t.category_id; if (!id) return; const o = u[id] || (u[id] = { last: 0, n: 0, n90: 0 }), ts = +new Date(t.ts); if (ts > o.last) o.last = ts; o.n++; if (now - ts < 90 * 864e5) o.n90++; }); _cu = u; _cuv = txv; return u; }
+function cgridInner(s) {
+  const q = (s.cq || "").trim().toLowerCase().replace(/ё/g, "е"), u = catUse(), now = Date.now();
+  const btn = x => '<button data-a="cpick" data-id="' + x.id + '"' + (x.id === s.cat ? ' class="on"' : "") + ">" + ic(x.icon, x.color, 34) + "<span>" + esc(x.name) + "</span>" + bl(x) + "</button>";
+  const sc = x => { const o = u[x.id] || { n: 0, n90: 0 }; return o.n90 * 1000 + o.n; };
+  let all = catsOf(s.kind).slice().sort((a, b) => sc(b) - sc(a) || a.name.localeCompare(b.name, "ru"));
+  if (q) { const r = all.filter(x => x.name.toLowerCase().replace(/ё/g, "е").includes(q)); return r.length ? r.map(btn).join("") : '<div class="empty" style="grid-column:1/-1">Такой категории нет</div>'; }
+  const dorm = x => { const o = u[x.id]; return o && o.last && now - o.last > 365 * 864e5 && x.id !== s.cat; };
+  const act = all.filter(x => !dorm(x)), rare = all.filter(dorm);
+  return act.map(btn).join("") + (rare.length ? (s.rare ? rare.map(btn).join("") : "") + '<button class="crare" data-a="crare">' + (s.rare ? "Скрыть редкие" : "Редкие и разовые (" + rare.length + ") — показать") + "</button>" : "");
+}
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
@@ -753,8 +771,7 @@ function sheetHTML() {
     const date = '<label class="dt">' + UI.cal + "<span>" + esc(dl.charAt(0).toUpperCase() + dl.slice(1)) + '</span><input type="date" id="s-date" value="' + esc(s.date) + '" onchange="dateChange(this.value)"></label>';
     const amt = '<div class="amtbox"><div class="cur">' + UI.cash + "<small>RUB</small></div><div class=\"amt\">" + esc(s.expr || "0") + '</div><button class="bs" data-a="key" data-v="⌫">' + UI.bks + "</button></div>";
     if (s.step === "cat") {
-      const cl = catsOf(s.kind).slice().sort((a, b) => a.name.localeCompare(b.name, "ru"));
-      return '<div class="full fcat">' + head + date + amt + '<div class="cgrid">' + cl.map(x => '<button data-a="cpick" data-id="' + x.id + '"' + (x.id === s.cat ? ' class="on"' : "") + ">" + ic(x.icon, x.color, 34) + "<span>" + esc(x.name) + "</span>" + bl(x) + "</button>").join("") + "</div></div>";
+      return '<div class="full fcat">' + head + date + amt + '<input class="in cs" id="cs" autocomplete="off" placeholder="🔍 Найти категорию" value="' + esc(s.cq || "") + '"><div class="cgrid" id="cg">' + cgridInner(s) + "</div></div>";
     }
     const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
     return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
@@ -811,7 +828,7 @@ function render() {
   const keep = $("main") ? $("main").scrollTop : 0;
   const menu = ui.menu ? '<div class="mov" data-a="menuclose"><div class="menu" data-a="nop">' + [["home", "Главная"], ["list", "Операции"], ["stats", "Аналитика"], ["more", "Категории и настройки"]].map(t => '<button data-a="tab" data-v="' + t[0] + '"' + (ui.tab === t[0] ? ' class="on"' : "") + ">" + t[1] + "</button>").join("") + "</div></div>" : "";
   $("app").innerHTML = '<div id="main">' + scr + "</div>" + sheetHTML() + menu;
-  if ($("main")) $("main").scrollTop = keep;
+  if ($("main")) { const mn = $("main"); mn.scrollTop = keep; mn.classList.toggle("noscr", ui.tab === "home" && ui.view === "ring"); const hd = mn.querySelector(".hdr"), mr = mn.querySelector(".mrow"); if (hd) { mn.style.setProperty("--h1", hd.offsetHeight + "px"); if (mr) mn.style.setProperty("--h2", hd.offsetHeight + mr.offsetHeight + "px"); } }
   syncHistory();
 }
 
@@ -828,7 +845,7 @@ function carOpen() {
   const m = $("main"); if (!m) return null; const cur = [...m.children].filter(e => !e.matches(".hdr,.fab")); if (!cur.length) return null;
   const wrap = document.createElement("div"); wrap.className = "pgw"; m.insertBefore(wrap, cur[0]);
   const mid = document.createElement("div"); cur.forEach(e => mid.appendChild(e)); wrap.appendChild(mid);
-  m.style.overflowX = "hidden"; return { wrap, W: m.clientWidth || 360, fwdOk: rgBounds(ui.rg, 1)[0] <= Date.now(), m, nb: {} };
+  m.style.overflowX = "hidden"; return { wrap, W: wrap.offsetWidth || m.clientWidth || 360, fwdOk: rgBounds(ui.rg, 1)[0] <= Date.now(), m, nb: {} };
 }
 function carNb(c, d) { if (c.nb[d] || (d > 0 && !c.fwdOk)) return; const g = document.createElement("div"); g.className = "nb " + (d < 0 ? "l" : "r"); pageEls(d).forEach(e => g.appendChild(e)); c.wrap.appendChild(g); c.nb[d] = 1; }
 function carEnd(go, dir, from) {
@@ -953,6 +970,7 @@ const A = {
   search() { ui.tab = "list"; ui.q = " "; ui.q = ""; render(); setTimeout(() => { const q = $("q"); if (q) q.focus(); }, 50); },
   pick(a) { openTx({ kind: a.dataset.v, cat: null }); },
   txback() { const s = ui.sheet; if (s && s.step === "cat") { s.step = "kb"; render(); } else { ui.sheet = null; render(); } },
+  crare() { ui.sheet.rare = !ui.sheet.rare; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); },
   cstep() { const s = ui.sheet; s.note = ($("s-note") || {}).value || s.note || ""; s.date = ($("s-date") || {}).value || s.date; s.step = "cat"; render(); },
   cpick(a) { ui.sheet.cat = a.dataset.id; saveTx(); },
   txsave() { saveTx(); },
@@ -1027,8 +1045,9 @@ const A = {
   };
   document.addEventListener("touchend", fin, { passive: true }); document.addEventListener("touchcancel", fin, { passive: true });
 })();
+document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
-document.addEventListener("input", e => { if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
+document.addEventListener("input", e => { if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
 document.addEventListener("change", async e => {
   if (e.target.id === "csvf" && e.target.files[0]) {
     try { const p = prepImport(decodeBuf(await e.target.files[0].arrayBuffer())); IMP = p; const ds = p.out.map(x => +x.d), mn = new Date(Math.min(...ds)), mx = new Date(Math.max(...ds)), cn = new Set(p.out.map(x => x.cat)).size;
