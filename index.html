@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 18:05";
+const BUILD = "10.10 18:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -486,6 +486,7 @@ function upd(id, patch) {
   const t = S.tasks[id]; if (!t) return;
   if (ui.fresh && ui.fresh.id === id && "due" in patch) ui.fresh = null;   // «только что добавлено» держится до первой смены срока — иначе задача не уходит из фильтра
   if ("due" in patch && t.due && patch.due && patch.due > t.due && !t.done) { PR.moves = PR.moves || {}; PR.moves[id] = (PR.moves[id] || 0) + 1; savePrefs(); }   // счётчик переносов срока (для «Итогов недели»; хранится на устройстве)
+  if ("remind_at" in patch && !patch.remind_at && !("title" in patch) && /^⏰/.test(t.title || "")) patch = Object.assign({}, patch, { title: t.title.replace(/^⏰\s*/, "") });   // убрали напоминание — убираем и значок «громко»
   uRec(id, t); Object.assign(t, patch); t._t = nowISO(); mark("tasks", id, "u");
   if ("list_id" in patch) kidsOf(id).forEach(k => upd(k.id, { list_id: patch.list_id }));   // подзадачи едут в тот же список
 }
@@ -3000,7 +3001,7 @@ function trkHTML() {
   if (!ui.trk) return ""; const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
   const dur = ms => { const m = Math.round(ms / 60000); return m < 1 ? "" : m < 60 ? m + " мин" : Math.floor(m / 60) + " ч " + (m % 60 ? m % 60 + " мин" : ""); };
   const last = TRK.last, ago = last ? Math.round((Date.now() - new Date(last.ts)) / 60000) : null;
-  const col = ago == null ? "#999" : ago < 20 ? "#107c10" : ago < 90 ? "#e3680c" : "#d13438";
+  const col = ago == null ? "#999" : ago < 20 ? "#107c10" : ago < 360 ? "#2b7de9" : "#d13438";
   const agoT = ago == null ? "" : ago < 1 ? "только что" : ago < 60 ? ago + " мин назад" : Math.floor(ago / 60) + " ч " + (ago % 60) + " мин назад";
   const segs = trkSegs(TRK.day || []).reverse();
   const row = g => {
@@ -3010,7 +3011,7 @@ function trkHTML() {
   };
   const raw = (TRK.day || []).slice(-30).reverse().map(p => '<div class="trk-r"><b>' + hm(p.ts) + '</b><div>' + (+p.lat).toFixed(4) + ", " + (+p.lon).toFixed(4) + "<span> · " + (p.vel != null ? Math.round(p.vel) + " км/ч · " : "") + (p.acc != null ? "±" + Math.round(p.acc) + " м" : "") + (p.batt != null ? " · 🔋" + p.batt + "%" : "") + "</span></div></div>").join("");
   return '<div class="ovl" data-a="trkovl"><div class="sheet trk"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.3em">📍 Трекер</div><button class="ibtn" data-a="trkload" title="Обновить">' + ic("repeat", 20) + '</button><button class="ibtn" data-a="trkclose">' + ic("x", 20) + "</button></div>" +
-    '<div class="trk-st"><span class="trk-dot" style="background:' + col + '"></span><span>' + (last ? "Последняя точка " + hm(last.ts) + " · " + agoT : "Точек пока нет") + "</span></div>" +
+    '<div class="trk-st"><span class="trk-dot" style="background:' + col + '"></span><span>' + (!last ? "Точек пока нет" : ago < 20 ? "Онлайн · последняя точка " + hm(last.ts) + " (" + agoT + ")" : ago < 360 ? "📍 На месте с " + hm(last.ts) + " (" + agoT.replace(" назад", "") + ") — точки шлются при движении" : "Давно нет точек (с " + hm(last.ts) + ", " + agoT + ") — проверь OwnTracks") + "</span></div>" +
     '<div class="rit-hint">Точек сегодня: <b>' + TRK.n + "</b>" + (TRK.loading ? " · загружаю…" : "") + (TRK.err ? ' · <span style="color:#d13438">' + esc(TRK.err) + "</span>" : "") + "</div>" +
     (last && !trkPlace(last) ? '<div style="margin:8px 0"><button class="rit-b" data-a="trkname" data-lat="' + last.lat + '" data-lon="' + last.lon + '">📍 Назвать место, где я сейчас</button></div>' : "") +
     (TRK.places.length ? '<div class="rit-hint">Мои места: ' + TRK.places.map(q => esc(q.name) + ' <a href="#" data-a="trkdel" data-i="' + q.id + '" style="color:var(--sub)" title="Удалить">×</a>').join(" · ") + "</div>" : "") +
