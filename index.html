@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 21:20";
+const BUILD = "10.10 21:45";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1935,7 +1935,7 @@ const jrCSS = `
 .jr-czr{display:grid;grid-template-columns:30px 1fr 118px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.jr-czc{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--ln);background:transparent;color:transparent;cursor:pointer;font-size:16px;padding:0}.jr-czc.on{background:var(--acc);border-color:var(--acc);color:#fff}.jr-czt{font-size:calc(13px*var(--z,1));line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.jr-czi{height:34px;font-size:calc(13px*var(--z,1));padding:0 8px;min-width:0}.jr-czb{display:flex;gap:8px;margin-top:10px}.jr-czb .btn{flex:1;height:42px}
 .rit-sum{margin:10px 0 4px;font-size:calc(14px*var(--z,1));line-height:1.45}.rit-h{margin:16px 0 4px;font-weight:700}.rit-h span{opacity:.55;font-weight:500}.rit-hint{font-size:calc(12px*var(--z,1));color:var(--sub);margin-bottom:6px}
 .rit-r{border-top:1px solid var(--ln);padding:9px 0}.rit-t{font-size:calc(15px*var(--z,1));line-height:1.3}.rit-m{font-size:calc(12px*var(--z,1));color:var(--sub);margin:2px 0 6px}.rit-bs{display:flex;gap:6px;flex-wrap:wrap}
-.trk{font-size:calc(16px*var(--z,1))}.sheet.trk{width:min(760px,100%)}#trk-map{height:340px;border-radius:12px;margin:8px 0;isolation:isolate;background:#e8e8e8}.trk-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:10px}.trk-nav .ibtn{font-size:1.6em;line-height:1;padding:2px 12px}@media(max-width:760px){#trk-map{height:48vh}}.trk-st{display:flex;align-items:center;gap:10px;margin:12px 0 4px;font-size:1em}.trk-dot{width:13px;height:13px;border-radius:50%;flex:none}.trk-r{display:flex;gap:12px;border-top:1px solid var(--ln);padding:10px 0;font-size:1em;line-height:1.4}.trk-r b{min-width:88px;flex:none}.trk-r span{color:var(--sub);font-size:.88em}.trk-n{font-weight:600}.trk .rit-b{font-size:.95em;padding:7px 13px;margin-top:4px}.trk .rit-hint,.trk summary{font-size:.9em}
+.trk{font-size:calc(16px*var(--z,1))}.sheet.trk{width:min(760px,100%)}#trk-map .trk-pin{background:none;border:0;font-size:22px;line-height:24px}.trk-lbl{font-weight:700;font-size:13px;padding:1px 6px}#trk-map{height:340px;border-radius:12px;margin:8px 0;isolation:isolate;background:#e8e8e8}.trk-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:10px}.trk-nav .ibtn{font-size:1.6em;line-height:1;padding:2px 12px}@media(max-width:760px){#trk-map{height:48vh}}.trk-st{display:flex;align-items:center;gap:10px;margin:12px 0 4px;font-size:1em}.trk-dot{width:13px;height:13px;border-radius:50%;flex:none}.trk-r{display:flex;gap:12px;border-top:1px solid var(--ln);padding:10px 0;font-size:1em;line-height:1.4}.trk-r b{min-width:88px;flex:none}.trk-r span{color:var(--sub);font-size:.88em}.trk-n{font-weight:600}.trk .rit-b{font-size:.95em;padding:7px 13px;margin-top:4px}.trk .rit-hint,.trk summary{font-size:.9em}
 .rit-b{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 11px;font-size:calc(12.5px*var(--z,1));cursor:pointer}.rit-ft{display:flex;margin-top:16px;position:sticky;bottom:0;padding:8px 0;background:var(--solid)}
 .jr-edd{display:flex;gap:8px;margin:-4px 0 8px;flex-wrap:wrap}
 .jr-ai{border:1px solid var(--acc);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:calc(14px*var(--z,1));line-height:1.55;background:var(--sel)}
@@ -3009,9 +3009,32 @@ function trkLeaflet(cb) {
   sc.onload = () => { const q = TRK.lf; TRK.lf = null; q.forEach(f => f()); }; sc.onerror = () => { TRK.lf = null; const e = $("trk-map"); if (e) e.innerHTML = '<div class="jr-empty" style="padding:60px 0;text-align:center">Карта не загрузилась (нет сети?)</div>'; };
   document.head.appendChild(sc);
 }
+function trkClean(raw) {   // чистка GPS-мусора: неточные точки, «прыжки», дрожание на стоянках, лёгкое сглаживание
+  const T = x => Date.parse(x.ts), D = (a, b) => trkDist(+a.lat, +a.lon, +b.lat, +b.lon), p = raw.filter(x => x.acc == null || x.acc <= 80), o = [];
+  for (let i = 0; i < p.length; i++) {
+    const a = o[o.length - 1], b = p[i], c = p[i + 1];
+    if (a && c) { const ab = D(a, b), ac = D(a, c), dt = (T(b) - T(a)) / 1000; if (ab > 60 && ab > 3 * ac + 30) continue; if (dt > 0 && ab / dt * 3.6 > 130) continue; }   // выброс: ушёл и вернулся / нереальная скорость
+    o.push(b);
+  }
+  const out = []; let i = 0;
+  while (i < o.length) {
+    const pl = trkPlace(o[i]); let j = i;
+    if (pl) {   // в названном месте — все точки сводим в центр места
+      while (j + 1 < o.length) { const q = trkPlace(o[j + 1]); if (q && q.id === pl.id) j++; else break; }
+      const m = { lat: pl.lat, lon: pl.lon, vel: 0, acc: 10, stay: 1 }; out.push(Object.assign({ ts: o[i].ts }, m)); if (j > i) out.push(Object.assign({ ts: o[j].ts }, m)); i = j + 1; continue;
+    }
+    while (j + 1 < o.length && D(o[i], o[j + 1]) < 70) j++;
+    if (j > i && T(o[j]) - T(o[i]) >= 4 * 60e3) {   // долгое стояние на месте — одна точка вместо «паука»
+      let sx = 0, sy = 0; for (let k = i; k <= j; k++) { sx += +o[k].lat; sy += +o[k].lon; } const n = j - i + 1, m = { lat: sx / n, lon: sy / n, vel: 0, acc: 15, stay: 1 };
+      out.push(Object.assign({ ts: o[i].ts }, m), Object.assign({ ts: o[j].ts }, m)); i = j + 1; continue;
+    }
+    out.push(o[i]); i++;
+  }
+  return out.map((q, k) => { const a = out[k - 1], c = out[k + 1]; if (q.stay || !a || !c || a.stay || c.stay) return q; return Object.assign({}, q, { lat: (+a.lat + 2 * +q.lat + +c.lat) / 4, lon: (+a.lon + 2 * +q.lon + +c.lon) / 4 }); });
+}
 function trkMapDraw() {
   let el = $("trk-map"); if (!el || !ui.trk) return;
-  const pts = (TRK.day || []).filter(p => p.acc == null || p.acc <= 150);
+  const pts = trkClean(TRK.day || []);
   if (!pts.length) { el.innerHTML = '<div class="jr-empty" style="padding:60px 0;text-align:center">' + (TRK.loading ? "Загружаю…" : "Нет точек за этот день") + "</div>"; return; }
   trkLeaflet(() => {
     el = $("trk-map"); if (!el || !ui.trk || el.__m) return; el.__m = 1;
@@ -3024,6 +3047,7 @@ function trkMapDraw() {
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
     trkSegs(pts).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || m < 5) return; L.circleMarker([g.lat, g.lon], { radius: 9, color: "#444", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip((g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }); });
+    (TRK.places || []).forEach(q => { L.circle([q.lat, q.lon], { radius: q.r || 120, color: "#2b7de9", weight: 1, fillColor: "#2b7de9", fillOpacity: .08 }).addTo(map); L.marker([q.lat, q.lon], { icon: L.divIcon({ className: "trk-pin", html: "📍", iconSize: [24, 24], iconAnchor: [12, 22] }) }).addTo(map).bindTooltip(esc(q.name), { permanent: true, direction: "right", offset: [8, -8], className: "trk-lbl" }); });
     const f = pts[0], e = pts[pts.length - 1];
     L.circleMarker([+f.lat, +f.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#107c10", fillOpacity: 1 }).addTo(map).bindTooltip("старт " + hm(f.ts));
     L.circleMarker([+e.lat, +e.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#d13438", fillOpacity: 1 }).addTo(map).bindTooltip("сейчас/конец " + hm(e.ts));
