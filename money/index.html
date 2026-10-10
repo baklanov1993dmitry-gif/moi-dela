@@ -215,6 +215,10 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .chg{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.chg span{display:flex;align-items:center;gap:8px}.chg:first-of-type{border-top:0}
 .chip{white-space:nowrap}.chips .chip{padding:6px 11px;font-size:.82em}
 table.hm td{background-color:transparent}
+#main{touch-action:pan-y}.pgw{position:relative}.pgw>div{overflow-x:clip}.pgw>.nb{position:absolute;top:0;width:100%;pointer-events:none}.pgw>.nb.l{left:-100%}.pgw>.nb.r{left:100%}
+.rs .rn{font-size:11.5px;line-height:1.15;max-width:92px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx);opacity:.92;font-weight:500}.rs .rn.s{font-size:10.5px}.rs .rn.xs{font-size:9.5px}.rs.nm span.pc{font-size:13px;opacity:.85}
+.tg{margin-left:auto;padding:2px 10px;border-radius:12px;background:var(--card2);color:var(--sub);font-size:.85em;font-weight:600}.tg.on{background:var(--acc);color:#08130e}
+.qrow{display:flex;gap:10px;align-items:center;width:100%;padding:10px 0;border-top:1px solid var(--ln);text-align:left}.qrow:first-of-type{border-top:0}
 .row .t b.sn{font-size:1.18em;font-weight:700;white-space:normal;line-height:1.2}.row .t b.sn+small{font-size:.8em}mark{background:color-mix(in srgb,var(--acc) 38%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .capin{display:flex;gap:8px;margin:0 0 8px}.capin .in{flex:1;margin:0}.capin .btn{width:auto;padding:0 16px}
 .tpls{display:flex;gap:8px;overflow-x:auto;padding:2px 12px 8px;margin:0 -0px;scrollbar-width:none}.tpls::-webkit-scrollbar{display:none}
@@ -303,6 +307,8 @@ const UI = {
   search: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>',
   dots: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
   back: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 5l-7 7 7 7"/></svg>',
+  bolt: '<svg viewBox="0 0 48 30" width="34" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M27 2 14 17h9l-3 11 15-16h-9z"/></svg>',
+  gauge: '<svg viewBox="0 0 48 30" width="36" height="23" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 26a18 18 0 0 1 36 0"/><path d="M24 26l8-11"/><circle cx="24" cy="26" r="1.6"/></svg>',
   lines: '<svg viewBox="0 0 48 24" width="35" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h44M2 12h44M2 19h44"/></svg>',
   tag: '<svg viewBox="0 0 40 28" width="40" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h8l9 8-6 9-11-3z M3 4v8M3 16v6M3 20l3-3M3 20l-3-3" stroke-dasharray="3 3"/><circle cx="24" cy="10" r="1.2"/></svg>',
   swap: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4"/></svg>',
@@ -527,20 +533,21 @@ function ringHTML(items, tot, exp, inc, K) {
     let mp = -1, mc = 1e18; for (let p = n - 1; p < 14; p++) if (dp[n - 1][p] < mc) { mc = dp[n - 1][p]; mp = p; }
     if (mc < bestC) { bestC = mc; const a = Array(n); let p = mp; for (let i = n - 1; i >= 0; i--) { a[i] = (o + p) % 14; p = bk[i][p]; } assign = a; }
   }
-  let arcs = "", lines = "", cells = "", off = 0;
+  const RN = PR.rn !== false; let arcs = "", lines = "", cells = "", off = 0;
   if (tot > 0) seg.forEach((g, i) => {
     const len = g.x.v / tot * C; arcs += '<circle r="' + R + '" cx="' + CX + '" cy="' + CY + '" fill="none" stroke="' + g.x.cat.color + '" stroke-opacity=".92" stroke-width="' + SW + '" stroke-dasharray="' + len.toFixed(2) + " " + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + CX + " " + CY + ')"/>'; off += len;
-    const sl = slots[assign[i]], half = (g.a1 - g.a0) / 2, dd = ((SA[assign[i]] - mids[i] + 540) % 360) - 180, a = (mids[i] + Math.max(-.7 * half, Math.min(.7 * half, dd))) * Math.PI / 180, px = CX + (R + SW / 2) * Math.sin(a), py = CY - (R + SW / 2) * Math.cos(a), dx = px - sl[0], dy = py - sl[1], d = Math.hypot(dx, dy) || 1, s0 = 31;
+    const sl = slots[assign[i]], half = (g.a1 - g.a0) / 2, dd = ((SA[assign[i]] - mids[i] + 540) % 360) - 180, a = (mids[i] + Math.max(-.7 * half, Math.min(.7 * half, dd))) * Math.PI / 180, px = CX + (R + SW / 2) * Math.sin(a), py = CY - (R + SW / 2) * Math.cos(a), dx = px - sl[0], dy = py - sl[1], d = Math.hypot(dx, dy) || 1, s0 = RN ? Math.min(46 / Math.max(.001, Math.abs(dx / d)), 40 / Math.max(.001, Math.abs(dy / d))) + 3 : 31;
     lines += '<line x1="' + (sl[0] + dx / d * s0).toFixed(1) + '" y1="' + (sl[1] + dy / d * s0).toFixed(1) + '" x2="' + px.toFixed(1) + '" y2="' + py.toFixed(1) + '" stroke="' + g.x.cat.color + '" stroke-opacity=".8" stroke-width="1"/>';
     const pc = g.x.v / tot * 100;
     const ob = g.x.cat.id && g.x.cat.kind === "exp" && ui.rg.t === "m" && (() => { const b = budgetOf(g.x.cat, mk(new Date(rgBounds(ui.rg)[0]))); return b && g.x.v > b.v; })();
-    cells += '<button class="rs' + (ob ? " over" : "") + '" style="left:' + (sl[0] / W * 100).toFixed(2) + "%;top:" + (sl[1] / H * 100).toFixed(2) + '%" data-a="' + (g.x.cat.id ? "add" : "none") + '" data-id="' + (g.x.cat.id || "") + '">' + ic(g.x.cat.icon, g.x.cat.color, 44) + "<span>" + (pc < 1 ? "<1" : Math.round(pc)) + "%</span></button>";
+    const nm = g.x.cat.name || "";
+    cells += '<button class="rs' + (RN ? " nm" : "") + (ob ? " over" : "") + '" style="left:' + (sl[0] / W * 100).toFixed(2) + "%;top:" + (sl[1] / H * 100).toFixed(2) + '%" data-a="' + (g.x.cat.id ? "add" : "none") + '" data-id="' + (g.x.cat.id || "") + '">' + ic(g.x.cat.icon, g.x.cat.color, RN ? 38 : 44) + (RN ? '<span class="rn' + (nm.length > 12 ? " xs" : nm.length > 9 ? " s" : "") + '">' + esc(nm) + "</span>" : "") + '<span class="pc">' + (pc < 1 ? "<1" : Math.round(pc)) + "%</span></button>";
   }); else arcs = '<circle r="' + R + '" cx="' + CX + '" cy="' + CY + '" fill="none" stroke="var(--card2)" stroke-width="' + SW + '"/>';
   return '<div class="ring"><svg viewBox="0 0 ' + W + " " + H + '" width="100%" style="display:block"><g style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))">' + arcs + "</g>" + lines + '</svg><div class="rc" style="left:' + CX / W * 100 + "%;top:" + CY / H * 100 + '%"><div class="inc">' + fmH(inc) + '</div><div class="exp">' + fmH(exp) + "</div></div>" + cells + "</div>";
 }
 function homeHTML() {
   const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, bal = inc - exp, ring = ui.view === "ring";
-  const pill = '<div class="brow"><button class="lb" data-a="viewtog">' + UI.lines + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="kindtog" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.lines : UI.tag) + "</button></div>";
+  const pill = '<div class="brow"><button class="lb" data-a="' + (ring ? "qtpl" : "viewtog") + '">' + (ring ? UI.bolt : UI.lines) + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="' + (ring ? "qbud" : "kindtog") + '" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.gauge : UI.tag) + "</button></div>";
   let body;
   if (ring) body = ringHTML(items, tot, exp, inc, K) + pill;
   else body = pill + (items.map(x => { const id = x.cat.id || "_", op = ui.open[id], bb = K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null, bst = bb ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="a ' + K + '">' + fmH(x.v) + "</span>" + (bb ? '<span class="pbar ' + bb.kind + '"><i style="width:' + Math.min(100, bst.r * 100).toFixed(1) + "%;background:" + BCOL[bst.st] + '"></i></span>' : "") + "</button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>');
@@ -595,6 +602,7 @@ function moreHTML() {
   const sets = [["line", "Линии"], ["badge", "Значки"], ["emoji", "Эмодзи"]], demo = ["🛒", "🍽️", "💊", "🚌"], dc = ["#ff7a7a", "#ffb04d", "#5fd0a5", "#6aa8ff"];
   return topBar(false) +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Набор иконок</div><div class="iset">' + sets.map(t => '<button class="' + ((PR.iset || "line") === t[0] ? "on" : "") + '" data-a="iset" data-v="' + t[0] + '"><div>' + demo.map((e, i) => ic(e, dc[i], 30, t[0])).join("") + "</div><span>" + t[1] + "</span></button>").join("") + "</div></div>" +
+    '<button class="set" data-a="rnames"><span>🏷️</span><span style="flex:1">Названия категорий в колесе</span><b class="tg' + (PR.rn !== false ? " on" : "") + '">' + (PR.rn !== false ? "вкл" : "выкл") + '</b></button>' +
     '<button class="set" data-a="setext"><span>⚡</span><span style="flex:1">Шаблоны и повторяющиеся</span><span class="sub">' + (EXT.tpl.length + EXT.rec.length || "") + ' ›</span></button>' +
     '<button class="set" data-a="setcats"><span>🗂️</span><span style="flex:1">Категории</span><span class="sub">›</span></button>' +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Тема</div><div class="themes">' + THEMES.map(t => '<button class="' + (PR.theme === t[0] ? "on" : "") + '" data-a="theme" data-v="' + t[0] + '"><i style="background:' + t[2] + '"><b style="background:' + t[3] + '"></b><u style="background:' + PR.acc + '"></u></i><span>' + t[1] + "</span></button>").join("") + "</div></div>" +
@@ -651,6 +659,17 @@ function calHTML() {
   return h + '</div><div class="sub" style="font-size:.85em;margin-top:8px">Самый дорогой день: <b>' + best + " " + MONS_S[m].toLowerCase() + "</b> — " + fm(mx) + ". В среднем ≈ " + fm(avg) + " в день; дней «дороже нормы» (×1,5): " + hot + ". Тап по дню — открыть его.</div></div>";
 }
 const WDM = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+function budSheetHTML() {
+  const am = anchorMonth(), cur = am === mk(new Date()), dim = daysIn(am), day = cur ? new Date().getDate() : dim, ms = monthSums(), sp = monTot(ms, am), md = bmode(), capOn = md === "cap" && PR.cap > 0;
+  const rows = cats.filter(c => c.kind === "exp" && !c.archived).map(c => ({ c, sp: catSpent(c.id, am), b: budgetOf(c, am) })).filter(r => r.b).map(r => Object.assign(r, { r: r.sp / r.b.v })).sort((a, b) => b.r - a.r);
+  const base = capOn ? PR.cap : rows.reduce((a, r) => a + r.b.v, 0), left = base - sp, dl = dim - day;
+  let h = '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Бюджет · ' + MONS[+am.slice(5) - 1] + "</h2>";
+  if (!rows.length) return h + '<div class="sub" style="margin:8px 0 12px">Пока нет ни нормы, ни лимитов. Задай потолок трат на месяц в аналитике — и тут появится сводка.</div><button class="btn" style="width:100%" data-a="qbudgo">Открыть аналитику</button></div></div>';
+  h += '<div class="bt"><b>' + fm(sp) + '</b><span class="sub"> из ' + fm(base) + " · " + (capOn ? "потолок" : md === "norm" ? "норма" : "лимиты") + '</span></div><div class="gb"><i style="width:' + Math.min(100, sp / base * 100).toFixed(1) + "%;background:" + (sp > base ? "var(--exp)" : "var(--acc)") + '"></i>' + (cur ? '<s style="left:' + (day / dim * 100).toFixed(1) + '%"></s>' : "") + "</div>";
+  h += '<div class="sub" style="margin:6px 0 10px">' + (left < 0 ? '<span class="exp">Превышено на ' + fm(-left) + ".</span>" : cur && dl > 0 ? "Осталось " + fm(left) + " · можно тратить ≈ <b>" + fm(left / dl) + "</b> в день" : "Осталось " + fm(left)) + "</div>";
+  h += rows.slice(0, 7).map(r => '<div class="qrow" style="padding:7px 0"><div class="ci" style="width:30px;height:30px;flex:none">' + ic(r.c.icon, r.c.color, 30) + '</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span>' + esc(r.c.name) + '</span><span class="' + (r.r > 1 ? "exp" : "sub") + '" style="font-size:.9em">' + (r.r > 1 ? "+" + fmN(r.sp - r.b.v) : "ост. " + fmN(r.b.v - r.sp)) + '</span></div><div class="gb sm"><i style="width:' + Math.min(100, r.r * 100).toFixed(1) + "%;background:" + (r.r > 1 ? "var(--exp)" : r.r >= .85 ? "#f2b36d" : r.c.color) + '"></i></div></div></div>').join("");
+  return h + '<button class="btn g" style="width:100%;margin-top:12px" data-a="qbudgo">Подробнее в аналитике</button></div></div>';
+}
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
@@ -672,6 +691,11 @@ function sheetHTML() {
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
   }
+  if (s.type === "tplq") {
+    const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
+  }
+  if (s.type === "bud") return budSheetHTML();
   if (s.type === "ext") {
     const isRec = s.k === "rec", cl = catsOf(s.kind).slice().sort((a, b) => a.name.localeCompare(b.name, "ru"));
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (isRec ? "Повторяющийся платёж" : "Шаблон") + '</h2><div class="seg" style="margin:0 0 8px"><button class="' + (s.kind === "exp" ? "on" : "") + '" data-a="xkind" data-v="exp">Расход</button><button class="' + (s.kind === "inc" ? "on" : "") + '" data-a="xkind" data-v="inc">Доход</button></div>' +
@@ -717,20 +741,29 @@ function render() {
 }
 
 
-/* ============ плавная смена месяца ============ */
-let sliding = false;
-const slideEls = () => [...document.querySelectorAll("#main > *")].filter(e => !e.matches(".hdr,.mrow,.fab"));
-function slide(dir, from) {   // dir: +1 вперёд (контент уезжает влево), -1 назад
-  if (sliding) return; sliding = true; from = from || 0;
-  const out = slideEls().map(e => e.animate([{ transform: "translateX(" + from + "px)", opacity: Math.max(0, 1 - Math.abs(from) / 400) }, { transform: "translateX(" + (-dir * 70) + "px)", opacity: 0 }], { duration: 140, easing: "ease-in", fill: "forwards" }));
-  const lab = document.querySelector(".mrow .mc"); if (lab) lab.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: "forwards" });
-  setTimeout(() => {
-    rgShift(dir); render();
-    slideEls().forEach(e => e.animate([{ transform: "translateX(" + (dir * 70) + "px)", opacity: 0 }, { transform: "translateX(0)", opacity: 1 }], { duration: 260, easing: "cubic-bezier(.2,.8,.25,1)" }));
-    const l2 = document.querySelector(".mrow .mc"); if (l2) l2.animate([{ opacity: 0, transform: "translateX(" + (dir * 24) + "px)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "ease-out" });
-    setTimeout(() => { sliding = false; }, 260);
-  }, 140);
+/* ============ плавная смена месяца: как в Monefy, соседний месяц едет рядом с пальцем ============ */
+let sliding = false, car = null;
+function pageEls(d) {
+  const sv = ui.rg; ui.rg = Object.assign({}, sv); rgShift(d); let h = "";
+  try { h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : statsHTML(); } finally { ui.rg = sv; }
+  const t = document.createElement("div"); t.innerHTML = h; t.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
+  return [...t.children].filter(e => !e.matches(".hdr,.fab"));
 }
+function carOpen() {
+  const m = $("main"); if (!m) return null; const cur = [...m.children].filter(e => !e.matches(".hdr,.fab")); if (!cur.length) return null;
+  const wrap = document.createElement("div"); wrap.className = "pgw"; m.insertBefore(wrap, cur[0]);
+  const mid = document.createElement("div"); cur.forEach(e => mid.appendChild(e)); wrap.appendChild(mid);
+  const nb = (d, cls) => { const g = document.createElement("div"); g.className = "nb " + cls; pageEls(d).forEach(e => g.appendChild(e)); wrap.appendChild(g); };
+  const fwdOk = rgBounds(ui.rg, 1)[0] <= Date.now(); nb(-1, "l"); if (fwdOk) nb(1, "r");
+  m.style.overflowX = "hidden"; return { wrap, W: m.clientWidth || 360, fwdOk, m };
+}
+function carEnd(go, dir, from) {
+  const c = car; if (!c) return; const to = go ? -dir * c.W : 0, dur = go ? 170 : 150;
+  c.wrap.style.transform = "translateX(" + from + "px)";
+  const a = c.wrap.animate([{ transform: "translateX(" + from + "px)" }, { transform: "translateX(" + to + "px)" }], { duration: Math.max(90, dur * Math.abs(to - from) / c.W + 50), easing: "cubic-bezier(.22,.7,.3,1)", fill: "forwards" });
+  a.onfinish = () => { car = null; c.m.style.overflowX = ""; if (go) rgShift(dir); render(); sliding = false; };
+}
+function slide(dir) { if (sliding) return; if (dir > 0 && rgBounds(ui.rg, 1)[0] > Date.now()) return; sliding = true; car = carOpen(); if (!car) { rgShift(dir); render(); sliding = false; return; } carEnd(true, dir, 0); }
 
 /* ============ кнопка «Назад» ============ */
 let hDepth = 0, hSkip = 0, guarded = false, lastBack = 0;
@@ -869,6 +902,9 @@ const A = {
   capset() { const v = parseFloat((($("cap-v") || {}).value || "").replace(",", ".")); PR.cap = v > 0 ? Math.round(v) : 0; savePR(); render(); },
   capfill(a) { PR.cap = +a.dataset.v; savePR(); render(); },
   normn(a) { PR.normN = +a.dataset.v; savePR(); render(); }, normon() { PR.normOn = PR.normOn === false; savePR(); render(); },
+  qtpl() { ui.sheet = { type: "tplq" }; render(); }, qbud() { ui.sheet = { type: "bud" }; render(); },
+  qtplset() { ui.sheet = null; ui.tab = "more"; ui.set = "ext"; render(); }, qbudgo() { ui.sheet = null; ui.tab = "stats"; render(); },
+  rnames() { PR.rn = PR.rn === false; savePR(); render(); },
   setext() { ui.set = "ext"; render(); },
   tplgo(a) { const t = EXT.tpl.find(x => x.id === a.dataset.id); if (!t) return; const now = new Date(); upTx({ id: uid(), ts: now.toISOString(), amount: t.amt, kind: t.kind, category_id: t.cat, note: t.note || "", account: "Основной" }); const bm = t.kind === "exp" ? budgetMsg(t.cat, now.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(t.amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200); },
   hmday(a) { ui.rg = { t: "d", a: +new Date(a.dataset.v + "T12:00") }; ui.tab = "list"; render(); },
@@ -900,22 +936,19 @@ const A = {
 };
 /* свайп влево/вправо — смена периода (как в Monefy) */
 (function () {
-  let sx = 0, sy = 0, st = 0, ok = false, drag = false, els = [];
+  let sx = 0, sy = 0, st = 0, ok = false, drag = false, dxl = 0;
   const can = () => user && !ui.sheet && !ui.menu && ["home", "list", "stats"].includes(ui.tab) && ui.rg.t !== "all" && ui.rg.t !== "int" && !sliding;
-  document.addEventListener("touchstart", e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); drag = false; ok = e.touches.length === 1 && !e.target.closest("input,textarea,.hm,.menu,.sheet,.full,.mov"); }, { passive: true });
+  document.addEventListener("touchstart", e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); drag = false; dxl = 0; ok = e.touches.length === 1 && !e.target.closest("input,textarea,.hm,.menu,.sheet,.full,.mov,.tpls"); }, { passive: true });
   document.addEventListener("touchmove", e => {
-    if (!ok || !can()) return; const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-    if (!drag) { if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.6) { drag = true; els = slideEls(); } else return; }
-    const dd = dx < 0 && rgBounds(ui.rg, 1)[0] > Date.now() ? dx * .2 : dx;
-    els.forEach(el => { el.style.transform = "translateX(" + dd * .8 + "px)"; el.style.opacity = Math.max(.25, 1 - Math.abs(dd) / 420); });
+    if (!ok || !can() && !drag) return; const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (!drag) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.4) { car = carOpen(); if (!car) { ok = false; return; } drag = true; sliding = true; } else return; }
+    dxl = dx; const d = dx < 0 && !car.fwdOk ? dx * .22 : dx; car.wrap.style.transform = "translateX(" + d + "px)";
   }, { passive: true });
-  document.addEventListener("touchend", e => {
-    if (!ok) return; const wasDrag = drag; drag = false; if (!wasDrag || !can()) { els.forEach(el => { el.style.transform = ""; el.style.opacity = ""; }); return; }
-    const t = e.changedTouches[0], dx = t.clientX - sx, fast = Date.now() - st < 350 && Math.abs(dx) > 40, go = Math.abs(dx) > 90 || fast, fwd = dx < 0;
-    els.forEach(el => { el.style.transform = ""; el.style.opacity = ""; });
-    if (go && (!fwd || rgBounds(ui.rg, 1)[0] <= Date.now())) slide(fwd ? 1 : -1, dx * .8);
-    else els.forEach(el => el.animate([{ transform: "translateX(" + dx * .8 + "px)" }, { transform: "none" }], { duration: 180, easing: "ease-out" }));
-  }, { passive: true });
+  const fin = e => {
+    if (!ok || !drag) return; drag = false; const c = car, dx = dxl, fast = Date.now() - st < 320 && Math.abs(dx) > 35, go = (Math.abs(dx) > c.W * .28 || fast) && !(dx < 0 && !c.fwdOk);
+    carEnd(go, dx < 0 ? 1 : -1, dx < 0 && !c.fwdOk ? dx * .22 : dx);
+  };
+  document.addEventListener("touchend", fin, { passive: true }); document.addEventListener("touchcancel", fin, { passive: true });
 })();
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
 document.addEventListener("input", e => { if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });

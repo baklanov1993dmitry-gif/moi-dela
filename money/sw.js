@@ -1,5 +1,5 @@
 // «Траты»: оболочка из кэша мгновенно, свежая версия подтягивается в фоне. Версию поднимай при смене иконок/манифеста.
-const CACHE = "money-shell-v6";
+const CACHE = "money-shell-v7";
 const SHELL = ["./", "./index.html", "./manifest.json", "./supabase-lib.js", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png"];
 self.addEventListener("install", e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {}))))); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
