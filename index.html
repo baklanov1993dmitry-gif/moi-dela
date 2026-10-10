@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 16:22";
+const BUILD = "10.10 16:30";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4173,6 +4173,7 @@ function init() {
   try { const q = new URLSearchParams(location.search); if (q.get("url") || q.get("text") || q.get("title")) { pendingShare = { title: q.get("title") || "", text: q.get("text") || "", url: q.get("url") || "" }; history.replaceState(null, "", location.pathname); } } catch (e) {}
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
   if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } });
+  try { if (isMobile() && !new URLSearchParams(location.search).get("app") && !pendingShare && !pendingOpen) ui.left = true; } catch (e) {}   // обычный запуск с телефона — главное меню, «назад» закрывает приложение, как все
   applyTheme(); boot();
   setTimeout(checkBuild, 1500); setInterval(checkBuild, 300000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkBuild(); });
