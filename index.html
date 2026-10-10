@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 22:05";
+const BUILD = "10.10 22:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3032,6 +3032,39 @@ function trkClean(raw) {   // чистка GPS-мусора: неточные т
   }
   return out.map((q, k) => { const a = out[k - 1], c = out[k + 1]; if (q.stay || !a || !c || a.stay || c.stay) return q; return Object.assign({}, q, { lat: (+a.lat + 2 * +q.lat + +c.lat) / 4, lon: (+a.lon + 2 * +q.lon + +c.lon) / 4 }); });
 }
+function trkDec6(str) {   // polyline с точностью 6 знаков (формат Valhalla)
+  const out = []; let i = 0, la = 0, lo = 0;
+  while (i < str.length) { for (let k = 0; k < 2; k++) { let sh = 0, r = 0, b; do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32); const d = r & 1 ? ~(r >> 1) : r >> 1; if (k) lo += d; else la += d; } out.push([la / 1e6, lo / 1e6]); }
+  return out;
+}
+function trkRuns(pts) {   // участки пути: граница — стоянка, длинная пауза или смена вида движения (пешком / вело / транспорт)
+  const cls = v => v < 7 ? 0 : v < 22 ? 1 : 2, E = [];
+  for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], gap = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000, d = trkDist(+a.lat, +a.lon, +b.lat, +b.lon), v = gap > 90 || b.vel == null ? (gap > 0 ? d / gap * 3.6 : 0) : b.vel; E.push({ d, v, gapBig: gap > 900 && d > 300, still: a.stay && b.stay }); }
+  const c = E.map(e => cls(e.v)), sm = c.map((x, i) => { const w = c.slice(Math.max(0, i - 2), i + 3), n = [0, 0, 0]; w.forEach(y => n[y]++); return n.indexOf(Math.max(...n)); });
+  const runs = []; let cur = null;
+  E.forEach((e, i) => {
+    if (e.still || e.d < 25) { cur = null; return; }
+    if (!cur || cur.gap !== e.gapBig || (!e.gapBig && cur.cls !== sm[i])) { cur = { pts: [pts[i]], cls: sm[i], gap: e.gapBig, vs: [], dist: 0, t: 0 }; runs.push(cur); }
+    cur.pts.push(pts[i + 1]); cur.vs.push(e.v); cur.dist += e.d;
+  });
+  runs.forEach(r => { const v = r.vs.slice().sort((a, b) => a - b); r.v = v.length ? v[Math.floor(v.length / 2)] : 0; });
+  return runs;
+}
+async function trkMatch(r) {   // привязка к дорогам через публичный Valhalla (OSM): на сервер уходят только координаты участка
+  let cache = {}; try { cache = JSON.parse(localStorage.getItem("trk_mm_v1") || "{}"); } catch (e) {}
+  const key = r.pts[0].ts + "|" + r.pts[r.pts.length - 1].ts + "|" + r.pts.length; if (cache[key]) return cache[key].s;
+  if (r.dist < 120) return null;
+  const n = r.pts.length, step = Math.max(1, Math.ceil(n / 110)), sm = r.pts.filter((_, i) => i % step === 0 || i === n - 1);
+  const costing = r.v < 7 ? "pedestrian" : r.v < 22 ? "bicycle" : "auto";
+  try {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 15000);
+    const res = await fetch("https://valhalla1.openstreetmap.de/trace_route", { method: "POST", headers: { "content-type": "application/json" }, signal: ctl.signal, body: JSON.stringify({ shape: sm.map(p => ({ lat: +p.lat, lon: +p.lon })), costing, shape_match: "map_snap", trace_options: { search_radius: 60, gps_accuracy: 25 } }) });
+    clearTimeout(tm); if (!res.ok) return null; const j = await res.json(); if (!j.trip || !j.trip.legs) return null;
+    let sh = []; j.trip.legs.forEach(l => { sh = sh.concat(trkDec6(l.shape)); }); if (sh.length < 2) return null;
+    try { const ks = Object.keys(cache); if (ks.length > 80) delete cache[ks[0]]; cache[key] = { s: sh.map(q => [Math.round(q[0] * 1e5) / 1e5, Math.round(q[1] * 1e5) / 1e5]) }; localStorage.setItem("trk_mm_v1", JSON.stringify(cache)); } catch (e) {}
+    return sh;
+  } catch (e) { return null; }
+}
 function trkMapDraw() {
   let el = $("trk-map"); if (!el || !ui.trk) return;
   const pts = trkClean(TRK.day || []);
@@ -3039,11 +3072,11 @@ function trkMapDraw() {
   trkLeaflet(() => {
     el = $("trk-map"); if (!el || !ui.trk || el.__m) return; el.__m = 1;
     const map = L.map(el, { zoomControl: true }); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
-    const colr = v => v < 4 ? "#8a8a8a" : v < 7 ? "#107c10" : v < 22 ? "#e3680c" : "#2b7de9", ll = [];
-    pts.forEach((b, i) => {
-      ll.push([+b.lat, +b.lon]); if (!i) return; const a = pts[i - 1], gap = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000, d = trkDist(+a.lat, +a.lon, +b.lat, +b.lon);
-      if (d < 25) return; const v = gap > 90 || b.vel == null ? (gap > 0 ? d / gap * 3.6 : 0) : b.vel;
-      L.polyline([[+a.lat, +a.lon], [+b.lat, +b.lon]], { color: colr(v), weight: 5, opacity: .85, dashArray: gap > 900 && d > 300 ? "2 9" : null, lineCap: "round" }).addTo(map);
+    const colr = v => v < 4 ? "#8a8a8a" : v < 7 ? "#107c10" : v < 22 ? "#e3680c" : "#2b7de9", ll = pts.map(b => [+b.lat, +b.lon]);
+    trkRuns(pts).forEach(r => {   // маршрут режем на участки по виду движения; каждый «прилипает» к дорогам
+      const line = L.polyline(r.pts.map(b => [+b.lat, +b.lon]), { color: colr(r.v), weight: 5, opacity: .85, dashArray: r.gap ? "2 9" : null, lineCap: "round" }).addTo(map);
+      if (r.gap || r.pts.length < 3 || r.v < 1) return;
+      trkMatch(r).then(sh => { if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } });
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
     trkSegs(pts).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || m < 5) return; L.circleMarker([g.lat, g.lon], { radius: 9, color: "#444", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip((g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }); });
@@ -3517,6 +3550,35 @@ function jrEditHTML(l) {
     '<div class="jr-ebt"><button class="btn jr-big" data-a="jrsave">Сохранить</button><button class="btn ghost jr-big" data-a="jrcancel">Отмена</button></div>' +
     '<button class="btn ghost jr-edel" data-a="jrdel">' + ic("trash", 18) + " Удалить запись</button></div>";
 }
+const JD = { day: null, items: [], loading: false, err: "", added: {} };
+async function jrDraftLoad(day) {   // «Черновик дня»: стоянки и дорога из трекера → строки журнала
+  if (!sb || !S.user || JD.loading) return; JD.loading = true; JD.day = day; JD.err = ""; JD.items = []; render();
+  try {
+    const t0 = parseISO(day); t0.setHours(0, 0, 0, 0); const t1 = new Date(t0); t1.setDate(t1.getDate() + 1); let all = [];
+    for (let i = 0; i < 8; i++) { const r = await sb.from("loc_points").select("ts,lat,lon,vel,acc").gte("ts", t0.toISOString()).lt("ts", t1.toISOString()).order("ts", { ascending: true }).range(i * 1000, i * 1000 + 999); if (r.error) throw r.error; all = all.concat(r.data || []); if ((r.data || []).length < 1000) break; }
+    const pl = await sb.from("places").select("id,name,lat,lon,r"); TRK.places = pl.error ? [] : (pl.data || []);
+    const segs = trkSegs(trkClean(all)), ms = x => Date.parse(x), it = [];
+    segs.forEach(g => {
+      const m = (ms(g.end) - ms(g.start)) / 60000;
+      if (g.key === "m") { if (m < 4) return; const v = g.vs.length ? g.vs.reduce((a, b) => a + b, 0) / g.vs.length : 0; it.push({ s: g.start, e: g.end, title: v < 7 ? "🚶 Дорога пешком" : v < 22 ? "🛴 Дорога (самокат/вело)" : "🚌 Дорога (транспорт)", m }); }
+      else if (g.name ? m >= 5 : m >= 15) it.push({ s: g.start, e: g.end, title: g.name ? "📍 " + g.name : "📍 Остановка (без названия)", m });
+    });
+    for (let i = 0; i < it.length - 1; i++) { const gap = (ms(it[i + 1].s) - ms(it[i].e)) / 60000; if (gap > 0 && gap <= 25) it[i].e = it[i + 1].s; }   // склеиваем «дыры» между соседними записями
+    it.forEach(x => { x.m = Math.round((ms(x.e) - ms(x.s)) / 60000); }); JD.items = it.filter(x => x.m >= 4);
+  } catch (e) { JD.err = (e && e.message) || "ошибка"; }
+  JD.loading = false; render();
+}
+function jrDraftHTML(J) {
+  if (J.hist || !JX) return ""; if (JD.day !== J.vd && !JD.loading) { setTimeout(() => jrDraftLoad(J.vd), 0); return ""; }
+  if (JD.loading) return '<div class="jr-hint" style="margin:8px 0">🧭 Собираю черновик дня из трекера…</div>';
+  if (JD.err) return '<div class="jr-hint" style="margin:8px 0">Трекер: ' + esc(JD.err) + ' <button class="linkbtn" data-a="jrdref">повторить</button></div>';
+  if (!JD.items.length) return "";
+  const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" }), left = JD.items.filter(x => !JD.added[x.s]).length;
+  return '<div class="jr-box"><div class="jr-f"><b style="flex:1">🧭 Черновик дня из трекера</b><button class="linkbtn" data-a="jrdref" title="Обновить">↻</button></div><div class="jr-hint">Тапни ＋ — запишу в журнал. Время можно потом поправить.</div>' +
+    JD.items.map((x, i) => '<div class="jr-f" style="margin-top:8px;opacity:' + (JD.added[x.s] ? .45 : 1) + '"><span style="min-width:96px;font-weight:600">' + hm(x.s) + "–" + hm(x.e) + '</span><span style="flex:1">' + esc(x.title) + " · " + fmtDurM(x.m) + "</span>" + (JD.added[x.s] ? "<span>✓</span>" : '<button class="btn ghost" data-a="jrdadd" data-i="' + i + '">＋</button>') + "</div>").join("") +
+    (left > 1 ? '<div class="jr-f" style="margin-top:10px"><button class="btn" data-a="jrdall">Записать всё (' + left + ")</button></div>" : "") + "</div>";
+}
+function jrDraftAdd(x) { if (JD.added[x.s]) return; const gc = jrGuessCat(x.title); addLog(Object.assign({ title: x.title.replace(/^\S+\s/, ""), kind: "t", start_at: new Date(x.s).toISOString(), end_at: new Date(x.e).toISOString() }, gc ? { cat: gc } : {})); JD.added[x.s] = 1; }
 function journalMainHTML(vi) {
   const J = jrState(), today0 = todayISO(), yest = addDays(today0, -1), all = Object.values(S.time_log).filter(l => jrDay(l));
   if (!J.vd) J.vd = today0;
@@ -3559,7 +3621,7 @@ function journalMainHTML(vi) {
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button>' + chips + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
+    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : setup + nudge + jrDraftHTML(J) + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button>' + chips + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
@@ -3689,6 +3751,9 @@ async function jrImport(file) {
 Object.assign(acts, {
   jrmode(a) { const J = jrState(); J.mode = a.dataset.v; J.tx = ""; render(); },
   jrnow() { const J = jrState(), n = new Date(); J.en = pad2(n.getHours()) + ":" + pad2(n.getMinutes()); if (!J.date) J.date = J.vd || todayISO(); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
+  jrdref() { JD.day = null; render(); },
+  jrdadd(a) { const x = JD.items[+a.dataset.i]; if (x) { jrDraftAdd(x); toast("Записано"); render(); } },
+  jrdall() { JD.items.forEach(jrDraftAdd); toast("Записано"); render(); },
   jradd() {
     const J = jrState(); if (!JX) return;
     if (J.mode === "p") {
