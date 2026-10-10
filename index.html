@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 17:04";
+const BUILD = "10.10 17:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -429,7 +429,7 @@ async function loadAll() {
     applyServer("lists", ls); applyServer("tasks", ts); if (lg) applyServer("time_log", lg);
     if (nu) for (const t in nu) applyServer(t, nu[t]);
     if (!ls.length && !ts.length && !Object.keys(S.lists).length && !pendCount()) seedLists();
-    lastLoad = Date.now(); persistSoon(); shareMaybe();
+    lastLoad = Date.now(); persistSoon(); shareMaybe(); setTimeout(videoCatchup, 3000);
     setSync(pendCount() ? "err" : "ok", pendCount() ? "есть неотправленное" : "");
     renderSoon(); checkReminders(); if (pushOn()) syncPush();
   } catch (e) { setSync("err", errText(e)); }
@@ -700,6 +700,11 @@ function fireReminder(t) {
 function applyLoud(id) {   // «⏰» в начале названия = громкое напоминание: MacroDroid ловит его в уведомлении и включает будильник
   const D = ui.dtp, t = S.tasks[id]; if (!t || !D || D.loud == null) return; const has = /^⏰\s*/.test(t.title);
   if (D.loud && !has) upd(id, { title: "⏰ " + t.title }); else if (!D.loud && has) upd(id, { title: t.title.replace(/^⏰\s*/, "") });
+}
+function alarmRow(t) {   // настоящий будильник в «Часах» телефона (Android): нажать ссылку один раз
+  if (!/^⏰/.test(t.title || "") || !t.remind_at || t.done) return ""; const d = new Date(t.remind_at), dt = d - Date.now(); if (isNaN(d) || dt < -60000 || dt > 24 * 3600e3) return "";
+  const msg = encodeURIComponent(String(t.title).replace(/^⏰\s*/, "").replace(/[;=#]/g, " ").slice(0, 60));
+  return '<a class="drow act" href="intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=' + d.getHours() + ";i.android.intent.extra.alarm.MINUTES=" + d.getMinutes() + ";S.android.intent.extra.alarm.MESSAGE=" + msg + ';end" style="text-decoration:none;color:var(--acc)">' + ic("bell", 18) + '<span class="dtx">⏰ Поставить будильник в «Часы» на ' + pad(d.getHours()) + ":" + pad(d.getMinutes()) + "</span></a>";
 }
 function checkReminders() {
   if (!S.user) return;
@@ -2185,7 +2190,12 @@ function subDetailHTML(t) {
     '<div class="dcard"><textarea id="d-note" class="notearea" placeholder="Пояснение к подзадаче">' + esc(t.note || "") + "</textarea></div></div>" +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><span class="sp">Подзадача · планирование — на главной задаче</span><button class="ibtn" data-a="delTask" title="Удалить">' + ic("trash", 18) + "</button></div></div>";
 }
+function videoBlock(t) {
+  const u = ytUrl(t.note), id = (u.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{6,})/) || [])[1] || "";
+  return '<div class="dcard"><a class="drow act" href="' + esc(u) + '" target="_blank" rel="noopener" style="text-decoration:none;color:var(--acc)">' + ic("clip", 18) + '<span class="dtx">Открыть видео на YouTube' + (id ? ' <span style="color:var(--sub);font-size:.85em">· ' + esc(id) + "</span>" : "") + "</span></a></div>";
+}
 function subBlock(t) {
+  if (!t.parent_id && ytUrl(t.note)) return videoBlock(t);
   const k = subIdx[t.id] || [];
   return '<div class="dcard"><div class="drow stp sbh" style="cursor:default;color:var(--sub);font-size:calc(13px*var(--z,1))">Подзадачи' + (k.length ? " · " + k.filter(x => x.done).length + " из " + k.length : "") + "</div>" +
     k.map(x => '<div class="drow stp"><div class="rad ' + (x.done ? "on" : "") + '" style="width:18px;height:18px" data-a="tog" data-id="' + x.id + '">' + (x.done ? ic("check", 11) : "") + '</div><span class="dtx" data-a="sel" data-id="' + x.id + '" style="' + (x.done ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(x.title) + "</span></div>").join("") +
@@ -2814,7 +2824,7 @@ function detailHTML(t) {
   return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + '</button><span class="mdl">' + (S.lists[t.list_id] ? esc((S.lists[t.list_id].icon && S.lists[t.list_id].icon !== "🗂️" ? S.lists[t.list_id].icon : "") + S.lists[t.list_id].name) : "") + "</span></div>" : "") + '<div class="dscroll" id="dscroll">' + subCrumb(t) +
     '<div class="dcard dtc"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div></div>" + subBlock(t) +
     '<div class="dcard">' +
-    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
+    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") + alarmRow(t) +
     row("cal", di ? esc(di.txt) : "Срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
     row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") +
     row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") +
@@ -2822,13 +2832,13 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" : "") +
-    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(t.note || "") + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (ui.vbusy === t.id ? "⏳ Смотрю видео…" : "🎬 Смысл видео") + '</button>' : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
+    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (ui.vbusy === t.id ? "⏳ Смотрю видео (до 2 мин)…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
   if (!ui.noteFull || !selId || !S.tasks[selId] || !isMobile()) return "";
   const t = S.tasks[selId];
-  return '<div class="nfull"><div class="nh"><button class="ibtn" data-a="notefullclose">' + ic("arrowl", 22) + "</button><span>" + esc(t.title) + '</span></div><textarea id="d-note" placeholder="Добавить заметку">' + esc(t.note || "") + '</textarea><div class="nb">Создано ' + esc(fmtShort(t.created_at)) + "</div></div>";
+  return '<div class="nfull"><div class="nh"><button class="ibtn" data-a="notefullclose">' + ic("arrowl", 22) + "</button><span>" + esc(t.title) + '</span></div><textarea id="d-note" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nb">Создано ' + esc(fmtShort(t.created_at)) + "</div></div>";
 }
 function popHTML() {
   const p = ui.pop; if (!p) return "";
@@ -3010,7 +3020,7 @@ function shareMaybe() {
   let l = listsArr().find(x => /^видео$/i.test(x.name));
   if (!l) { l = { id: uid(), name: "Видео", icon: "📺", position: listsArr().length, created_at: nowISO(), group_name: null, color: null }; S.lists[l.id] = l; mark("lists", l.id, "u"); }
   const dup = url && Object.values(S.tasks).find(t => !t.done && t.list_id === l.id && (t.note || "").indexOf(url) >= 0);
-  if (dup) toast("Это видео уже в очереди"); else { const nt = addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); toast("Добавлено в «Видео» — делаю пересказ…"); if (ytUrl(url)) setTimeout(() => videoSummary(nt.id), 1500); }
+  if (dup) toast("Это видео уже в очереди"); else { const nt = addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); toast("Добавлено в «Видео» — делаю пересказ…"); }
   goView("list:" + l.id); render();
 }
 function ritualHTML() {
@@ -3510,7 +3520,15 @@ function jrWeekData(m0) {
   });
   return { cat, tot, days: days.size, n };
 }
+const vLine = n => /^(https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+)[ \t]*\n?/i.exec(n || "");
+const noteView = t => { const m = vLine(t.note); return m ? String(t.note).slice(m[0].length).replace(/^\n+/, "") : (t.note || ""); };
+const noteSet = (t, v) => { const m = vLine(t.note); return m ? m[1] + "\n\n" + v : v; };
 const ytUrl = n => { const m = String(n || "").match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
+function videoCatchup() {   // видео в очереди без пересказа догоняем автоматически (не больше 2 попыток на видео)
+  if (!S.user || ui.vbusy || document.hidden) return; PR.vtry = PR.vtry || {};
+  const t = Object.values(S.tasks).find(x => !x.done && !x.parent_id && ytUrl(x.note) && !/Смысл видео ━━/.test(x.note || "") && (PR.vtry[x.id] || 0) < 2);
+  if (t) videoSummary(t.id);
+}
 async function videoSummary(id) {
   const t = S.tasks[id]; if (!t || ui.vbusy) return; const url = ytUrl(t.note); if (!url) return;
   ui.vbusy = id; render();
@@ -3524,9 +3542,10 @@ async function videoSummary(id) {
       toast("Gemini перегружен, повторяю (" + (k + 1) + "/4)…"); await new Promise(z => setTimeout(z, 4000 + k * 4000));
     }
     if (!r.ok) throw new Error(j.error || "Ошибка " + r.status);
-    const cur = S.tasks[id]; if (cur) upd(id, { note: (cur.note || "").replace(/\n*━━ Смысл видео ━━[\s\S]*$/, "") + "\n\n━━ Смысл видео ━━\n" + j.text });
-    toast("Готово: смысл видео в заметке");
-  } catch (e) { toast("Не вышло: " + ((e && e.message) || e)); }
+    let txt = String(j.text || ""); const mm = /^\s*МИНУТ:\s*(\d{1,4})[^\n]*\n?/i.exec(txt); if (mm) txt = txt.slice(mm[0].length).trim();
+    const cur = S.tasks[id]; if (cur) { const patch = { note: (cur.note || "").replace(/\n*━━ Смысл видео ━━[\s\S]*$/, "") + "\n\n━━ Смысл видео ━━\n" + txt }; if (mm && +mm[1] > 0) patch.est_minutes = Math.min(+mm[1], 999); upd(id, patch); }
+    toast("Готово: пересказ в заметке");
+  } catch (e) { PR.vtry = PR.vtry || {}; PR.vtry[id] = (PR.vtry[id] || 0) + 1; savePrefs(); toast("Не вышло: " + ((e && e.message) || e)); }
   ui.vbusy = null; render();
 }
 async function aiCall(kind, data) {
@@ -4084,7 +4103,7 @@ const changes = {
   "d-title"(v) { if (v.trim()) upd(selId, { title: v.trim() }); renderSoon(); },
   "d-cat"(v) { upd(selId, { category: v.trim().replace(/^#/, "") || null }); renderSoon(); },
   "d-list"(v) { upd(selId, { list_id: v || null }); renderSoon(); },
-  "d-note"(v) { upd(selId, { note: v }); renderSoon(); },
+  "d-note"(v) { const t = S.tasks[selId]; if (t) upd(selId, { note: noteSet(t, v) }); renderSoon(); },
   "p-date"(v, el) { setDue(el.dataset.id, v || null); closePop(); render(); if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); } },
   "p-dt"(v, el) { if (!v) return; patchTask(el.dataset.id, { remind_at: new Date(v).toISOString() }); askNotify(); closePop(); render(); if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); } },
   "s-bg"(v) { TH.bg = v.trim(); saveTheme(); render(); },
