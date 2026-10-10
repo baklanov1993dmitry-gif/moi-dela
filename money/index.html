@@ -7,10 +7,10 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#16181d">
+<meta name="theme-color" content="#616161">
 <style>
-:root{--bg:#16181d;--card:#20232b;--card2:#282c36;--tx:#eef0f4;--sub:#9aa1b0;--ln:#323744;--acc:#3ecf8e;--exp:#ff6b6b;--inc:#3ecf8e;--r:16px}
-:root[data-t=light]{--bg:#f3f4f7;--card:#fff;--card2:#eceef3;--tx:#1b1e26;--sub:#6a7182;--ln:#dde0e8;--exp:#e5484d;--inc:#12a36b}
+:root{--bg:#424242;--card:#4d4d4d;--card2:#5a5a5a;--tx:#f5f5f5;--sub:#bdbdbd;--ln:#5c5c5c;--acc:#81c995;--exp:#ef7f7a;--inc:#81c995;--bar:#616161;--r:14px}
+:root[data-t=light]{--bar:#e4e6ec;--bg:#f3f4f7;--card:#fff;--card2:#eceef3;--tx:#1b1e26;--sub:#6a7182;--ln:#dde0e8;--exp:#e5484d;--inc:#12a36b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
@@ -86,11 +86,48 @@ table.hm th{color:var(--sub);font-weight:600;font-size:.9em}
 .fab{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;padding:0 28px;pointer-events:none;z-index:4;max-width:720px;margin:0 auto}
 .fb{pointer-events:auto;width:78px;height:78px;border-radius:50%;font-size:2.4em;font-weight:300;border:4px solid;background:var(--card);box-shadow:0 4px 16px rgba(0,0,0,.35)}.fb.m{border-color:var(--exp);color:var(--exp)}.fb.p{border-color:var(--inc);color:var(--inc)}
 .st{position:fixed;top:calc(4px + env(safe-area-inset-top));right:10px;font-size:.7em;color:var(--sub);z-index:3}
+/* ===== вид Monefy ===== */
+#main{padding:0 14px 30px}
+.hdr{position:sticky;top:0;z-index:6;margin:0 -14px;background:var(--bar);display:flex;align-items:center;gap:2px;padding:calc(6px + env(safe-area-inset-top)) 6px 8px;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.hb{width:46px;height:46px;display:flex;align-items:center;justify-content:center;color:var(--tx);border-radius:50%;flex:none}.hb:active{background:rgba(255,255,255,.12)}
+.ttl{flex:1;padding-left:10px;min-width:0}.logo{font:italic 700 1.55em/1.1 "Segoe Script","Brush Script MT","Snell Roundhand","Lucida Handwriting",cursive;letter-spacing:.5px}.sa{color:var(--sub);font-size:.85em;margin-top:1px}
+.mrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 0 10px;color:var(--inc)}
+.mrow button{color:var(--inc);font-size:1.12em;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:clip}.mrow .l{text-align:left;opacity:.75}.mrow .r{text-align:right;opacity:.75}.mrow .mc{padding:2px 14px}
+.brow{display:flex;align-items:center;gap:12px;margin:2px 0 8px}
+.lb{color:var(--inc);flex:none;width:58px;display:flex;align-items:center;justify-content:center;height:44px}
+.pill{flex:1;border-radius:6px;padding:12px 8px;color:#fff;font-weight:500;font-size:1.12em;box-shadow:0 2px 3px rgba(0,0,0,.35);text-align:center;line-height:1.2;text-shadow:0 1px 1px rgba(0,0,0,.18)}
+small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:inline}
+.pill small{display:inline;margin:0}
+.ci{width:46px;height:46px;display:flex;align-items:center;justify-content:center;border:0;border-radius:0;font-size:22px;flex:none}
+.ci .li{display:block}.em{line-height:1}
+.crow{gap:8px;padding:7px 0}
+.crow .chev{width:30px;color:var(--tx);display:flex;justify-content:center;transition:transform .15s}.crow .chev.up{transform:rotate(180deg)}
+.crow b{display:flex;align-items:center;gap:8px;font-weight:400;font-size:1.12em;min-width:0}
+.crow b .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.crow .bd{background:#7bc493;color:#fff;border-radius:8px;padding:0 7px;font-size:.78em;line-height:1.55;flex:none;font-weight:500}
+.crow .a{font-weight:400;font-size:1.12em;white-space:nowrap}
+.row .ci{width:40px;height:40px;border:0}
+.row,.kp div,.card{border-radius:8px}
+.fab{bottom:calc(14px + env(safe-area-inset-bottom));padding:0 11%;pointer-events:none}
+.fb{position:relative;width:100px;height:100px;border-width:6px;background:var(--card);box-shadow:none;font-size:0}
+.fb::before,.fb::after{content:"";position:absolute;left:50%;top:50%;background:currentColor;border-radius:2px;transform:translate(-50%,-50%);width:34px;height:7px}
+.fb.m::after{display:none}.fb.p::after{width:7px;height:34px}
+.fb.m{color:#ef8a85;border-color:#ef8a85}.fb.p{color:#81c995;border-color:#81c995}
+.fb:active{filter:brightness(1.15)}
+.mov{position:fixed;inset:0;z-index:30}
+.menu{position:absolute;right:8px;top:calc(8px + env(safe-area-inset-top));background:#505050;border-radius:6px;box-shadow:0 6px 22px rgba(0,0,0,.5);min-width:230px;padding:6px 0}
+.menu button{display:block;width:100%;text-align:left;padding:14px 20px;font-size:1.02em}.menu button.on{color:var(--inc)}.menu button:active{background:rgba(255,255,255,.1)}
+.ov.left{justify-content:flex-start;align-items:stretch;background:rgba(0,0,0,.5)}
+.sheet.dr{width:min(64%,330px);max-height:none;height:100%;border-radius:0;padding:calc(18px + env(safe-area-inset-top)) 14px 20px;background:#454545;box-shadow:4px 0 24px rgba(0,0,0,.5)}
+.dr .acc{border:1.5px solid #6fb386;border-radius:6px;padding:12px 14px;margin-bottom:22px;font-size:1.15em;background:#4d4d4d}.dr .acc small{display:block;color:var(--sub);font-size:.85em}
+.db{display:block;width:100%;border:1.5px solid #6fb386;border-radius:6px;padding:20px 8px;margin-bottom:12px;background:#454545;text-align:center;font-size:1.15em}.db.on{background:#626262}
+.dbox{margin:-4px 0 12px}.dbox .in{margin:0 0 8px}
+.top{display:none}
 </style>
 </head>
 <body>
 <div id="app"></div>
-<script src="../supabase-lib.js"></script>
+<script src="supabase-lib.js"></script>
 <script>
 "use strict";
 /* ============ утилиты ============ */
@@ -102,22 +139,80 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx
 const pad = n => String(n).padStart(2, "0");
 const MONS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"], MONS_S = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"], WD = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const fm = n => { n = +n || 0; const neg = n < 0; n = Math.abs(n); const s = (Math.round(n * 100) % 100 === 0 ? Math.round(n) : n.toFixed(2)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " "); return (neg ? "−" : "") + s.replace(".", ",") + " ₽"; };
+const fmH = n => { n = +n || 0; const neg = n < 0; n = Math.abs(n); const c = Math.round(n * 100), w = Math.floor(c / 100), f = c % 100; return (neg ? "−" : "") + String(w).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") + "<small>," + pad(f) + "</small>\u00a0₽"; };
 const mk = d => d.getFullYear() + "-" + pad(d.getMonth() + 1);
 const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
 const nowISO = () => new Date().toISOString();
 const PAL = ["#ff6b6b", "#ff9f43", "#f7c948", "#8fd16a", "#3ecf8e", "#2ec4c4", "#4fa3d9", "#6c8cff", "#a37bff", "#e07bd4", "#ff7aa8", "#b9a48a", "#8d99ae", "#d4876a"];
 const EMO = ["🛒", "🍽️", "☕", "🍺", "🚌", "🚕", "🏠", "💡", "📞", "🌐", "👕", "👟", "💊", "🏥", "🎬", "🎮", "🏋️", "🎁", "🐱", "🧴", "📚", "✈️", "🛠️", "📦", "💼", "💰", "🎓", "🚬", "🧾", "🛵", "🍎", "👶", "🏦", "📈"];
+const ICO = {
+cart:'<path d="M3 4h2.5l2.2 10.5h9.6L19.5 7H6.2"/><circle cx="9" cy="18.5" r="1.4"/><circle cx="16.5" cy="18.5" r="1.4"/>',
+dish:'<path d="M6 3v6a2 2 0 0 0 4 0V3M8 3v18M17 21V3c-2 1.5-3.2 4-3.2 7.5H17"/>',
+coffee:'<path d="M4.5 8h11v6a4 4 0 0 1-4 4h-3a4 4 0 0 1-4-4zM15.5 9H17a2.5 2.5 0 0 1 0 5h-1.5M8 3v2M12 3v2"/>',
+beer:'<path d="M6 7h9v13H6zM15 9.5h2.5a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5H15M6 7c-.5-2 1-3.5 2.5-3.5S10.5 5 12 4.5 15 5 15 7"/>',
+bus:'<rect x="4" y="4" width="16" height="13" rx="2"/><path d="M4 11h16M8 17v2.5M16 17v2.5"/><circle cx="8" cy="14" r=".6"/><circle cx="16" cy="14" r=".6"/>',
+car:'<path d="M4 16v-4l2-5h12l2 5v4zM4 16v2.5M20 16v2.5M4 12h16"/><circle cx="8" cy="14.2" r=".7"/><circle cx="16" cy="14.2" r=".7"/>',
+home:'<path d="M3.5 11 12 4l8.5 7M6 9.5V20h12V9.5M10 20v-6h4v6"/>',
+bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+phone:'<path d="M7 3.5 10 3l1.5 4-2 1.3a11 11 0 0 0 6.2 6.2l1.3-2 4 1.5-.5 3A2.5 2.5 0 0 1 18 18 14.5 14.5 0 0 1 6 6.2 2.5 2.5 0 0 1 7 3.5z"/>',
+globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3.5 3.5 3.5 14.5 0 18M12 3c-3.5 3.5-3.5 14.5 0 18"/>',
+shirt:'<path d="M8 3 3 6l2 4 3-1v12h8V9l3 1 2-4-5-3c-.5 1.5-2 2.3-4 2.300S8.5 4.5 8 3z"/>',
+shoe:'<path d="M3 17v-5l4-1.5 3 2 5 1.500c3 .8 6 1.5 6 4v.5H3zM3 19.500h18"/>',
+pill:'<g transform="rotate(-45 12 12)"><rect x="2.5" y="8" width="19" height="8" rx="4"/><path d="M12 8v8"/></g>',
+thermo:'<path d="M10 14.500V5a2 2 0 0 1 4 0v9.500a4 4 0 1 1-4 0zM12 8v9"/>',
+film:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+game:'<rect x="3" y="8" width="18" height="9" rx="4.5"/><path d="M8 10.500v4M6 12.500h4"/><circle cx="15.5" cy="11.5" r=".7"/><circle cx="17.5" cy="13.5" r=".7"/>',
+gym:'<path d="M6 8v8M3.5 10v4M18 8v8M20.5 10v4M6 12h12"/>',
+gift:'<rect x="4" y="10" width="16" height="10" rx="1"/><path d="M3 7h18v3H3zM12 7v13M12 7c-1-3-5-4-5-1.500S10 7 12 7zm0 0c1-3 5-4 5-1.500S14 7 12 7z"/>',
+cat:'<path d="M5 19c-1-3-1-7 0-10L4 4l4 2c2.7-.7 5.3-.7 8 0l4-2-1 5c1 3 1 7 0 10-4 2-10 2-14 0z"/><circle cx="9.5" cy="12" r=".6"/><circle cx="14.5" cy="12" r=".6"/>',
+tube:'<path d="M9 3h6v4H9zM8 7h8l-1 14H9z"/>',
+book:'<path d="M4 5c3-1.5 6-1.5 8 0 2-1.5 5-1.5 8 0v14c-3-1.5-6-1.5-8 0-2-1.5-5-1.5-8 0zM12 5v14"/>',
+plane:'<path d="M21 4 3 11l6 2.500L11 20l2.5-5 5.5-3zM9 13.5 21 4"/>',
+tools:'<path d="M15 4a4 4 0 0 0-3.5 5.600L4.5 16.500a2 2 0 0 0 3 3l7-7A4 4 0 0 0 20 9l-2.5 2.5-2.5-.5-.5-2.500L17 6a4 4 0 0 0-2-2z"/>',
+box:'<path d="M3 7.5 12 3l9 4.500v9L12 21l-9-4.500zM3 7.5 12 12l9-4.500M12 12v9"/>',
+case:'<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M9 7V5h6v2M3 12h18"/>',
+money:'<circle cx="12" cy="12" r="9"/><path d="M14.5 9.500c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.500M12 6.500V8M12 16v1.5"/>',
+cap:'<path d="M2 9l10-5 10 5-10 5zM6 11.500V16c3 2.5 9 2.5 12 0v-4.500M22 9v6"/>',
+smoke:'<path d="M3 15h14v3H3zM17 15v3M20 15v3M18 11c0-2 2-2 2-4"/>',
+receipt:'<path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.500L6 21zM9 8h6M9 12h6"/>',
+scooter:'<circle cx="6" cy="17" r="2.3"/><circle cx="18" cy="17" r="2.3"/><path d="M8.5 17h5L16 6h3M11 6h5M5 12h5"/>',
+apple:'<path d="M12 7c-2-2-7-1-7 5 0 4 2.5 8 5 8 1 0 1.5-.5 2-.5s1 .5 2 .5c2.5 0 5-4 5-8 0-6-5-7-7-5zM12 7c0-2 1-3 3-4"/>',
+baby:'<circle cx="12" cy="12" r="8.5"/><circle cx="9.5" cy="11" r=".6"/><circle cx="14.5" cy="11" r=".6"/><path d="M9.5 15c1.5 1.2 3.5 1.2 5 0M12 3.500c1 0 2 .7 2 1.5"/>',
+bank:'<path d="M3 9l9-5 9 5zM5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+chart:'<path d="M3 20h18M5 16l5-5 3 3 6-7M15 7h4v4"/>',
+carrot:'<path d="M15 8 4 20c4 0 9-3 11-8M15 8c1-3 4-4 5-4-1 1-1 4-4 5M15 8l1 4"/>',
+candy:'<rect x="7" y="8" width="10" height="8" rx="4"/><path d="M7 12 3 9v6zM17 12l4-3v6z"/>',
+q:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.500a2.5 2.5 0 1 1 3.5 2.300c-.7.4-1 1-1 1.700M12 17h.01"/>',
+hand:'<path d="M3 15l4-2 5 .5 4-2.5 2 1.5-6 4.500H3zM13 7.500a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/>',
+people:'<circle cx="8" cy="8" r="2.5"/><circle cx="16.5" cy="9" r="2"/><path d="M3 19c0-3 2-5 5-5s5 2 5 5M14 19c0-2 1.5-3.5 3.5-3.500S21 17 21 19"/>',
+palm:'<path d="M12 21V11M12 11c-2-3-5-3-8-2 2 0 4 1 5 3M12 11c2-3 5-3 8-2-2 0-4 1-5 3M12 11c0-3-2-5-5-5 2 0 4 1 5 3M12 11c0-3 2-5 5-5-2 0-4 1-5 3M8 21h8"/>'
+};
+const EMO2ICO = {"🛒":"cart","🍽":"dish","☕":"coffee","🍺":"beer","🚌":"bus","🚕":"car","🏠":"home","💡":"bulb","📞":"phone","🌐":"globe","👕":"shirt","👟":"shoe","💊":"pill","🏥":"thermo","🎬":"film","🎮":"game","🏋":"gym","🎁":"gift","🐱":"cat","🧴":"tube","📚":"book","✈":"plane","🛠":"tools","📦":"box","💼":"case","💰":"money","🎓":"cap","🚬":"smoke","🧾":"receipt","🛵":"scooter","🍎":"apple","👶":"baby","🏦":"bank","📈":"chart","🥕":"carrot","🍬":"candy","❔":"q","🌴":"palm","👪":"people","💵":"hand"};
+function ic(icon, color, px) {   // линейная иконка в стиле Monefy; незнакомый эмодзи показываем как есть
+  const k = EMO2ICO[String(icon || "").replace(/️/g, "")];
+  if (!k) return '<span class="em" style="font-size:' + ((px || 32) - 4) + 'px">' + esc(icon) + "</span>";
+  return '<svg class="li" viewBox="0 0 24 24" width="' + (px || 32) + '" height="' + (px || 32) + '" fill="none" stroke="' + (color || "currentColor") + '" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + "</svg>";
+}
+const UI = {
+  filter: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7h18M6 12h12M10 17h4"/></svg>',
+  search: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>',
+  dots: '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  back: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 5l-7 7 7 7"/></svg>',
+  lines: '<svg viewBox="0 0 48 24" width="48" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h44M2 12h44M2 19h44"/></svg>',
+  tag: '<svg viewBox="0 0 40 28" width="46" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h8l9 8-6 9-11-3z M3 4v8M3 16v6M3 20l3-3M3 20l-3-3" stroke-dasharray="3 3"/><circle cx="24" cy="10" r="1.2"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 9 7 7 7-7"/></svg>'
+};
 const DEF_EXP = [["Продукты", "🛒"], ["Кафе и рестораны", "🍽️"], ["Транспорт", "🚌"], ["Дом и ЖКХ", "🏠"], ["Связь", "📞"], ["Одежда", "👕"], ["Здоровье", "💊"], ["Развлечения", "🎬"], ["Спорт", "🏋️"], ["Подарки", "🎁"], ["Прочее", "📦"]];
 const DEF_INC = [["Зарплата", "💼"], ["Подработка", "💰"], ["Прочее", "📈"]];
 
 /* ============ состояние ============ */
 const LS = { cats: "fin_cats_v1", tx: "fin_tx_v1", pend: "fin_pend_v1", pref: "fin_pref_v1", sync: "fin_sync_v1" };
 const CFG = { url: "https://rjiuialimbrnbriqafjl.supabase.co", key: "sb_publishable_Hf5J8zcRXPKBVugh68TyAw_ZXQ6leQX" };
-let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []).map(unpackTx), pend = jget(LS.pend, []), PR = Object.assign({ theme: "dark", acc: "#3ecf8e" }, jget(LS.pref, {}));
+let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []).map(unpackTx), pend = jget(LS.pend, []), PR = Object.assign({ theme: "dark", acc: "#81c995" }, jget(LS.pref, {}));
 let ui = { tab: "home", kind: "exp", rg: { t: "m", a: Date.now() }, view: "list", open: {}, sheet: null, status: "", q: "", set: "main" };
 let flushing = false;
 const savePR = () => jset(LS.pref, PR);
-function applyTheme() { document.documentElement.dataset.t = PR.theme; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = PR.theme === "light" ? "#f3f4f7" : "#16181d"; }
+function applyTheme() { document.documentElement.dataset.t = PR.theme; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = PR.theme === "light" ? "#e4e6ec" : "#616161"; }
 function toast(t) { const e = document.createElement("div"); e.className = "toast"; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2200); }
 const catOf = id => cats.find(c => c.id === id) || { id: null, name: "Без категории", icon: "❔", color: "#8d99ae", kind: "exp" };
 const catsOf = k => cats.filter(c => c.kind === k && !c.archived).sort((a, b) => a.position - b.position);
@@ -193,8 +288,8 @@ function rgBounds(r, k) {   // k — сдвиг на k периодов (для 
 }
 const inR = (t, k) => { const B = rgBounds(ui.rg, k), x = +new Date(t.ts); return x >= B[0] && x < B[1]; };
 const rgTx = k => { const B = rgBounds(ui.rg, k); return txs.filter(t => { const x = +new Date(t.ts); return x >= B[0] && x < B[1]; }); };
-function rgLabel() {
-  const r = ui.rg, B = rgBounds(r), s = new Date(B[0]), e = new Date(B[1] - 1), f = d => d.getDate() + " " + MONS_S[d.getMonth()];
+function rgLabel(r) {
+  r = r || ui.rg; const B = rgBounds(r), s = new Date(B[0]), e = new Date(B[1] - 1), f = d => d.getDate() + " " + MONS_S[d.getMonth()];
   if (r.t === "all") return "Всё время"; if (r.t === "d") return mk(s) === mk(new Date()) && s.getDate() === new Date().getDate() ? "Сегодня" : f(s) + " " + s.getFullYear();
   if (r.t === "w") return f(s) + " – " + f(e); if (r.t === "y") return String(s.getFullYear()); if (r.t === "int") return f(s) + " " + s.getFullYear() + " – " + f(e) + " " + e.getFullYear();
   return MONS[s.getMonth()] + " " + s.getFullYear();
@@ -220,25 +315,29 @@ function bars(vals, labels, opts) {   // вертикальные столбцы
 }
 
 /* ============ экраны ============ */
-function topBar(withRange, extra) {
-  const arrows = withRange && ui.rg.t !== "all" && ui.rg.t !== "int";
-  return '<div class="top"><button class="ib" data-a="' + (arrows ? "mprev" : "pickrange") + '">' + (arrows ? "‹" : "⏱") + '</button><button class="m" data-a="pickrange" style="color:var(--tx)">' + (withRange ? esc(rgLabel()) : "") + ' <span class="sub" style="font-size:.7em">▾</span></button><button class="ib" data-a="' + (arrows ? "mnext" : "none") + '">' + (arrows ? "›" : "") + "</button></div>";
+function topBar(withRange) {
+  const home = ui.tab === "home", ttl = { home: "Траты", list: "Операции", stats: "Аналитика", more: "Ещё" }[ui.tab] || "Траты";
+  const arrows = withRange && ui.rg.t !== "all" && ui.rg.t !== "int", shifted = n => { const B = rgBounds(ui.rg, n); return rgLabel({ t: ui.rg.t, a: B[0] }); };
+  const sm = l => l.replace(/ \d{4}$/, "");
+  const hdr = '<div class="hdr"><button class="hb" data-a="' + (home ? "pickrange" : "tab") + '" data-v="home">' + (home ? UI.filter : UI.back) + '</button><div class="ttl"><div class="logo">' + ttl + '</div><div class="sa">' + "Все счета" + '</div></div><button class="hb" data-a="search">' + UI.search + '</button><button class="hb" data-a="menu">' + UI.dots + "</button></div>";
+  const mrow = withRange ? '<div class="mrow">' + (arrows ? '<button class="mn l" data-a="mprev">' + esc(sm(shifted(-1))) + '</button>' : "<span></span>") + '<button class="mc" data-a="pickrange">' + esc(sm(rgLabel())) + "</button>" + (arrows ? '<button class="mn r" data-a="mnext">' + esc(sm(shifted(1))) + "</button>" : "<span></span>") + "</div>" : "";
+  return hdr + mrow;
 }
 function homeHTML() {
   const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, cl = catsOf(K);
-  const pill = '<div style="display:flex;gap:10px;align-items:center;margin:4px 0 8px"><button class="pill" data-a="kindtog" style="flex:1;background:' + (inc - exp >= 0 ? "var(--inc)" : "var(--exp)") + '">' + (K === "exp" ? "Расходы " + fm(exp) : "Доходы " + fm(inc)) + '<small>баланс ' + fm(inc - exp) + '</small></button><button class="ib" data-a="viewtog" title="Список / кольцо">' + (ui.view === "list" ? "🍩" : "📋") + '</button><button class="ib" data-a="search" title="Поиск">🔍</button></div>';
+  const bal = inc - exp, pill = '<div class="brow"><button class="lb" data-a="viewtog" title="Список / кольцо">' + UI.lines + '</button><button class="pill" data-a="kindtog" style="background:' + (bal >= 0 ? "var(--inc)" : "#ef8a85") + '">' + (K === "exp" ? "Баланс " : "Баланс ") + fmH(bal) + '</button><button class="lb tg" data-a="kindtog" style="color:' + (K === "exp" ? "#ef8a85" : "var(--inc)") + '">' + UI.tag + "</button></div>";
   let body = "";
   if (ui.view === "ring") {
     const per = {}; items.forEach(x => per[x.cat.id] = x.v);
-    body = donut(items, tot, '<span class="' + (K === "exp" ? "exp" : "inc") + '">' + fm(tot) + "</span>", (K === "exp" ? "доходы " + fm(inc) : "расходы " + fm(exp)) + "<br>баланс " + fm(inc - exp)) + '<div class="grid">' + cl.map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + "</div><b>" + esc(c.name) + "</b><span>" + (per[c.id] ? fm(per[c.id]) : "&nbsp;") + "</span></button>").join("") + "</div>";
+    body = donut(items, tot, '<span class="' + (K === "exp" ? "exp" : "inc") + '">' + fm(tot) + "</span>", (K === "exp" ? "доходы " + fm(inc) : "расходы " + fm(exp)) + "<br>баланс " + fm(inc - exp)) + '<div class="grid">' + cl.map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci">' + ic(c.icon, c.color) + "</div><b>" + esc(c.name) + "</b><span>" + (per[c.id] ? fm(per[c.id]) : "&nbsp;") + "</span></button>").join("") + "</div>";
   } else {
-    body = items.map(x => { const id = x.cat.id || "_", op = ui.open[id]; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev">' + (op ? "⌃" : "⌄") + '</span><div class="ci" style="border-color:' + x.cat.color + '">' + esc(x.cat.icon) + '</div><b>' + esc(x.cat.name) + '</b><span class="bd">' + x.n + '</span><span class="a ' + K + '">' + fm(x.v) + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>';
+    body = items.map(x => { const id = x.cat.id || "_", op = ui.open[id]; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="a ' + K + '">' + fmH(x.v) + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>';
   }
-  return topBar(true) + pill + body + '<div style="height:120px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp">−</button><button class="fb p" data-a="pick" data-v="inc">+</button></div>';
+  return topBar(true) + pill + body + '<div style="height:170px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp"></button><button class="fb p" data-a="pick" data-v="inc"></button></div>';
 }
 function txRow(t) {
   const c = catOf(t.category_id), d = new Date(t.ts);
-  return '<button class="row" data-a="edit" data-id="' + t.id + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + '</div><div class="t"><b>' + esc(c.name) + "</b>" + (t.note ? "<small>" + esc(t.note) + "</small>" : "") + '</div><div class="a ' + t.kind + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amount) + "</div></button>";
+  return '<button class="row" data-a="edit" data-id="' + t.id + '"><div class="ci">' + ic(c.icon, c.color) + '</div><div class="t"><b>' + esc(c.name) + "</b>" + (t.note ? "<small>" + esc(t.note) + "</small>" : "") + '</div><div class="a ' + t.kind + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amount) + "</div></button>";
 }
 function listHTML() {
   let arr = ui.q ? txs.slice() : rgTx();
@@ -270,7 +369,7 @@ function statsHTML() {
   const wavg = wd.map((v, i) => wc[i] ? v / wc[i] : 0), ord = [1, 2, 3, 4, 5, 6, 0];
   h += '<div class="card"><h3>Средняя трата по дням недели</h3>' + bars(ord.map(i => wavg[i]), ord.map(i => WD[i]), { hi: ord.map(i => wavg[i]).indexOf(Math.max(...wavg)) }) + "</div>";
   const m6 = []; for (let i = 5; i >= 0; i--) m6.push(shiftMonth(am, -i)); const top8 = byCat(txs.filter(x => m6.includes(mk(new Date(x.ts)))), "exp").slice(0, 8);
-  if (top8.length) { const grid = top8.map(x => m6.map(m => sumBy(ofMonth(m).filter(y => y.kind === "exp" && (y.category_id || "_") === (x.cat.id || "_"))))), gm = Math.max(1, ...grid.flat()); h += '<div class="card"><h3>Категории по месяцам (6 мес.)</h3><table class="hm"><tr><th></th>' + m6.map(m => "<th>" + MONS_S[+m.slice(5) - 1] + "</th>").join("") + "</tr>" + top8.map((x, r) => "<tr><th style='text-align:left'>" + esc(x.cat.icon) + "</th>" + grid[r].map(v => '<td style="background:rgba(255,107,107,' + (v / gm * .85).toFixed(2) + ')">' + (v ? Math.round(v / 100) / 10 + "k" : "") + "</td>").join("") + "</tr>").join("") + '</table><div class="sub" style="font-size:.75em;margin-top:4px">в тысячах рублей</div></div>'; }
+  if (top8.length) { const grid = top8.map(x => m6.map(m => sumBy(ofMonth(m).filter(y => y.kind === "exp" && (y.category_id || "_") === (x.cat.id || "_"))))), gm = Math.max(1, ...grid.flat()); h += '<div class="card"><h3>Категории по месяцам (6 мес.)</h3><table class="hm"><tr><th></th>' + m6.map(m => "<th>" + MONS_S[+m.slice(5) - 1] + "</th>").join("") + "</tr>" + top8.map((x, r) => "<tr><th style='text-align:left'>" + ic(x.cat.icon, x.cat.color, 22) + "</th>" + grid[r].map(v => '<td style="background:rgba(255,107,107,' + (v / gm * .85).toFixed(2) + ')">' + (v ? Math.round(v / 100) / 10 + "k" : "") + "</td>").join("") + "</tr>").join("") + '</table><div class="sub" style="font-size:.75em;margin-top:4px">в тысячах рублей</div></div>'; }
   return h;
 }
 function moreHTML() {
@@ -282,21 +381,21 @@ function moreHTML() {
     '<label class="set"><span>📥</span><span style="flex:1">Импорт из Monefy (CSV)</span><input type="file" id="csvf" accept=".csv,.txt,text/csv" hidden></label>' +
     '<button class="set" data-a="export"><span>📤</span><span style="flex:1">Экспорт в CSV</span></button>' +
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
-    '<a class="set" href="../" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
+    '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
     '<div class="empty" style="font-size:.8em">Операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 function catsMgrHTML() {
   const K = ui.kind;
   return '<div class="top"><button class="ib" data-a="setmain">‹</button><div class="m">Категории</div><span class="ib"></span></div><div class="seg"><button class="' + (K === "exp" ? "on" : "") + '" data-a="kind" data-v="exp">Расходы</button><button class="' + (K === "inc" ? "on" : "") + '" data-a="kind" data-v="inc">Доходы</button></div>' +
-    cats.filter(c => c.kind === K).sort((a, b) => a.position - b.position).map(c => '<div class="row" style="' + (c.archived ? "opacity:.5" : "") + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + '</div><div class="t"><b>' + esc(c.name) + '</b></div><button class="ib" data-a="catup" data-id="' + c.id + '">↑</button><button class="ib" data-a="catedit" data-id="' + c.id + '">✎</button></div>').join("") +
+    cats.filter(c => c.kind === K).sort((a, b) => a.position - b.position).map(c => '<div class="row" style="' + (c.archived ? "opacity:.5" : "") + '"><div class="ci">' + ic(c.icon, c.color) + '</div><div class="t"><b>' + esc(c.name) + '</b></div><button class="ib" data-a="catup" data-id="' + c.id + '">↑</button><button class="ib" data-a="catedit" data-id="' + c.id + '">✎</button></div>').join("") +
     '<button class="btn" style="width:100%;margin-top:10px" data-a="catnew">＋ Новая категория</button>';
 }
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
     const c = catOf(s.cat), cl = catsOf(s.kind);
-    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><div style="display:flex;align-items:center;gap:10px"><div class="ci" style="border-color:' + c.color + ';width:44px;height:44px;font-size:22px">' + esc(c.icon) + '</div><h2 style="flex:1;margin:0">' + esc(c.name) + "</h2>" + (s.id ? '<button class="ib" data-a="txdel" style="color:var(--exp)">🗑</button>' : "") + "</div>" +
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><div style="display:flex;align-items:center;gap:10px"><div class="ci">' + ic(c.icon, c.color) + '</div><h2 style="flex:1;margin:0">' + esc(c.name) + "</h2>" + (s.id ? '<button class="ib" data-a="txdel" style="color:var(--exp)">🗑</button>' : "") + "</div>" +
       '<div class="amt ' + s.kind + '">' + esc(s.expr || "0") + "</div>" +
       '<div class="kb">' + ["7", "8", "9", "⌫", "4", "5", "6", "+", "1", "2", "3", "✓", ",", "0", "−", ""].map((k, i) => k === "✓" ? '<button class="ok" data-a="key" data-v="ok">✓</button>' : k === "" ? "" : k === "−" ? '<button data-a="key" data-v="clr">C</button>' : '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
       '<select class="in" id="s-cat">' + cl.map(x => '<option value="' + x.id + '"' + (x.id === s.cat ? " selected" : "") + ">" + esc(x.icon + " " + x.name) + "</option>").join("") + "</select>" +
@@ -304,17 +403,21 @@ function sheetHTML() {
   }
   if (s.type === "cat") {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (s.id ? "Категория" : "Новая категория") + '</h2><input class="in" id="c-name" placeholder="Название" value="' + esc(s.name) + '">' +
-      '<div class="pal">' + EMO.map(e => '<i data-a="cic" data-v="' + e + '" class="' + (s.icon === e ? "on" : "") + '" style="width:40px;height:40px;border-radius:12px;background:var(--card);font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px">' + e + "</i>").join("") + "</div>" +
+      '<div class="pal">' + EMO.map(e => '<i data-a="cic" data-v="' + e + '" class="' + (s.icon === e ? "on" : "") + '" style="width:40px;height:40px;border-radius:12px;background:var(--card);font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px">' + ic(e, "var(--tx)", 28) + "</i>").join("") + "</div>" +
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
   }
   if (s.type === "pick") {
-    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (s.kind === "exp" ? "Расход: выбери категорию" : "Доход: выбери категорию") + '</h2><div class="grid">' + catsOf(s.kind).map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + "</div><b>" + esc(c.name) + "</b></button>").join("") + "</div></div></div>";
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (s.kind === "exp" ? "Расход: выбери категорию" : "Доход: выбери категорию") + '</h2><div class="grid">' + catsOf(s.kind).map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci">' + ic(c.icon, c.color) + "</div><b>" + esc(c.name) + "</b></button>").join("") + "</div></div></div>";
   }
   if (s.type === "rg") {
-    const B = rgBounds(ui.rg), f = d => dayKey(new Date(d));
-    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Период</h2>' + [["d", "День"], ["w", "Неделя"], ["m", "Месяц"], ["y", "Год"], ["all", "Всё время"]].map(o => '<button class="btn g" style="width:100%;margin-bottom:8px;' + (ui.rg.t === o[0] ? "outline:2px solid var(--acc)" : "") + '" data-a="setrg" data-v="' + o[0] + '">' + o[1] + "</button>").join("") +
-      '<div class="card" style="margin:6px 0"><h3>Интервал / дата</h3><div style="display:flex;gap:8px"><input class="in" type="date" id="rg-a" value="' + f(Math.max(B[0], 0) || Date.now()) + '"><input class="in" type="date" id="rg-b" value="' + f(Math.min(B[1] - 864e5, Date.now())) + '"></div><button class="btn" style="width:100%" data-a="setint">Показать интервал</button></div></div></div>';
+    const B = rgBounds(ui.rg), f = d => dayKey(new Date(d)), mode = s.mode || "";
+    const bt = (t, l) => '<button class="db' + (ui.rg.t === t && !mode ? " on" : "") + '" data-a="setrg" data-v="' + t + '">' + l + "</button>";
+    return '<div class="ov left" data-a="shclose"><div class="sheet dr" data-a="nop"><div class="acc"><div>Все счета</div><small>RUB</small></div>' + bt("d", "День") + bt("w", "Неделя") + bt("m", "Месяц") + bt("y", "Год") + bt("all", "Все") +
+      '<button class="db' + (ui.rg.t === "int" || mode === "int" ? " on" : "") + '" data-a="rgmode" data-v="int">Интервал</button>' +
+      (mode === "int" ? '<div class="dbox"><input class="in" type="date" id="rg-a" value="' + f(Math.max(B[0], 0) || Date.now()) + '"><input class="in" type="date" id="rg-b" value="' + f(Math.min(B[1] - 864e5, Date.now())) + '"><button class="btn" style="width:100%" data-a="setint">Показать</button></div>' : "") +
+      '<button class="db' + (mode === "day" ? " on" : "") + '" data-a="rgmode" data-v="day">📅 Выбор даты</button>' +
+      (mode === "day" ? '<div class="dbox"><input class="in" type="date" id="rg-d" value="' + f(Math.min(Date.now(), Math.max(B[0], 0) || Date.now())) + '"><button class="btn" style="width:100%" data-a="setday">Показать день</button></div>' : "") + "</div></div>";
   }
   if (s.type === "imp") {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Импорт из Monefy</h2><div class="card" style="margin:0 0 10px">' + s.info + '</div><div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="impgo">' + (s.busy ? "Загружаю…" : "Импортировать") + '</button><button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
@@ -328,7 +431,8 @@ function render() {
   if (!user) { login(); return; }
   const scr = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : ui.tab === "stats" ? statsHTML() : moreHTML();
   const keep = $("main") ? $("main").scrollTop : 0;
-  $("app").innerHTML = '<div id="main">' + scr + '</div><div class="nav"><div>' + [["home", "🏠", "Главная"], ["list", "🧾", "Операции"], ["stats", "📊", "Аналитика"], ["more", "⚙️", "Ещё"]].map(t => '<button class="' + (ui.tab === t[0] ? "on" : "") + '" data-a="tab" data-v="' + t[0] + '"><i>' + t[1] + "</i>" + t[2] + "</button>").join("") + "</div></div>" + sheetHTML();
+  const menu = ui.menu ? '<div class="mov" data-a="menuclose"><div class="menu" data-a="nop">' + [["home", "Главная"], ["list", "Операции"], ["stats", "Аналитика"], ["more", "Категории и настройки"]].map(t => '<button data-a="tab" data-v="' + t[0] + '"' + (ui.tab === t[0] ? ' class="on"' : "") + ">" + t[1] + "</button>").join("") + "</div></div>" : "";
+  $("app").innerHTML = '<div id="main">' + scr + "</div>" + sheetHTML() + menu;
   if ($("main")) $("main").scrollTop = keep;
 }
 
@@ -391,7 +495,10 @@ let IMP = null;
 /* ============ события ============ */
 const A = {
   none() {}, nop() {},
-  tab(a) { ui.tab = a.dataset.v; ui.q = ""; ui.set = "main"; render(); },
+  tab(a) { ui.tab = a.dataset.v; ui.q = ""; ui.set = "main"; ui.menu = false; render(); },
+  menu() { ui.menu = !ui.menu; render(); }, menuclose() { ui.menu = false; render(); },
+  rgmode(a) { ui.sheet.mode = ui.sheet.mode === a.dataset.v ? "" : a.dataset.v; render(); },
+  setday() { const v = $("rg-d").value; if (!v) return; ui.rg = { t: "d", a: +new Date(v + "T12:00") }; ui.sheet = null; render(); },
   mprev() { rgShift(-1); render(); }, mnext() { rgShift(1); render(); },
   pickrange() { ui.sheet = { type: "rg" }; render(); },
   setrg(a) { const t = a.dataset.v; ui.rg = { t, a: t === "all" ? Date.now() : ui.rg.a || Date.now() }; ui.sheet = null; render(); },
@@ -448,7 +555,7 @@ document.addEventListener("change", async e => {
   flush(); pull(!txs.length);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { flush(); pull(false); } });
   window.addEventListener("online", () => { flush(); pull(false); });
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>
 </body>
