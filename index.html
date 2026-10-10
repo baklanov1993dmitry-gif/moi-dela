@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "09.10 15:49";
+const BUILD = "10.10 13:45";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1888,6 +1888,7 @@ const jrCSS = `
 .jr-empty{text-align:center;padding:34px 10px;color:var(--sub);font-size:calc(13px*var(--z,1))}
 .jr-wov{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
 .jr-wbox{background:var(--solid,#fff);color:var(--tx);width:100%;max-width:420px;border-radius:18px 18px 0 0;padding:14px 16px 18px;box-shadow:0 -6px 30px rgba(0,0,0,.3)}
+@media(min-width:761px){.jr-wov{align-items:flex-start}.jr-wbox{margin-top:84px;border-radius:18px;box-shadow:0 10px 36px rgba(0,0,0,.35)}}
 .jr-wt{font-weight:600;text-align:center;margin-bottom:6px;font-size:calc(14px*var(--z,1))}
 .jr-wr{position:relative;display:flex;justify-content:center;align-items:center;gap:6px}
 .jr-wr>b{font-size:30px}
