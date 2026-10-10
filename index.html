@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 23:00";
+const BUILD = "10.10 23:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4339,6 +4339,10 @@ async function checkBuild() {
     const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;   // не мешаем вводу
     sessionStorage.setItem("moi_rl", v);
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(g => g.update())); } catch (e) {}
+    try {   // кладём свежую страницу в кэш до перезагрузки — иначе SW отдаст старую
+      const fr = await fetch("index.html?fresh=" + Date.now(), { cache: "no-store" });
+      if (fr.ok) for (const k of await caches.keys()) if (/^moidela-shell/.test(k)) { const c = await caches.open(k); await c.put("./index.html", fr.clone()); await c.put("./", fr.clone()); }
+    } catch (e) {}
     location.reload();
   } catch (e) {}
 }
