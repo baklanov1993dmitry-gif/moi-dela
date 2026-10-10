@@ -123,6 +123,44 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .db{display:block;width:100%;border:1.5px solid #6fb386;border-radius:6px;padding:20px 8px;margin-bottom:12px;background:#454545;text-align:center;font-size:1.15em}.db.on{background:#626262}
 .dbox{margin:-4px 0 12px}.dbox .in{margin:0 0 8px}
 .top{display:none}
+/* ===== размеры и экраны по скринам Monefy ===== */
+.hdr{min-height:73px;padding-top:calc(13px + env(safe-area-inset-top));padding-bottom:12px}
+.mrow{padding:12px 0 8px}.mrow button{font-size:17px}
+.brow{margin:6px -2px 10px;justify-content:space-between;gap:0}
+.lb{width:48px}.lb svg{width:40px}
+.pill{flex:none;width:min(55%,200px);padding:10px 4px;font-size:16px}
+.pill small{font-size:.75em}
+.crow{padding:0 8px 0 6px;gap:4px;min-height:49px}
+.crow .chev{width:36px}
+.crow .ci{width:40px;height:40px}
+.crow b{font-size:17px}
+.crow .bd{font-size:15px;min-width:22px;text-align:center;line-height:20px;padding:0 6px;border-radius:8px}
+.crow .a{font-size:16px}
+.ring{position:relative;margin:0 auto}
+.ring .rc{position:absolute;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.45;pointer-events:none}
+.rs{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:17px}.rs span{font-size:17px}
+.brow+.fab,.ring+.brow{margin-top:4px}
+.fab{display:grid;grid-template-columns:1fr 1fr;justify-items:center;padding:0;bottom:calc(20px + env(safe-area-inset-bottom))}
+.fb{width:102px;height:102px;border-width:5px;background:#505050}
+.fb::before,.fb::after{width:22px;height:5px}.fb.p::after{width:5px;height:22px}
+.bg{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex:none}.bg i{font-style:normal;line-height:1}.bg svg{display:block}.bg.soft{border-radius:30%}
+.iset{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.iset button{background:var(--card);border-radius:10px;padding:8px 4px;border:2px solid transparent}.iset button.on{border-color:var(--acc)}.iset div{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin-bottom:6px}.iset span{font-size:.85em}
+.full{position:fixed;inset:0;z-index:25;background:var(--bg);display:flex;flex-direction:column;max-width:720px;margin:0 auto;overflow-y:auto}
+.full .hdr{margin:0;flex:none}
+.dt{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;padding:22px 0 20px;font-size:19px;flex:none}.dt input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
+.amtbox{--cashbg:#8cc59a;display:flex;align-items:center;background:#8cc59a;margin:8px 14px 0;border-radius:4px;height:68px;color:#fff;box-shadow:0 2px 4px rgba(0,0,0,.3);flex:none}
+.amtbox .cur{width:56px;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1.5px solid rgba(255,255,255,.75);margin:4px 0;color:rgba(255,255,255,.9)}.amtbox .cur svg{width:30px;height:26px}.amtbox .cur small{font-size:13px;opacity:.9;line-height:1}
+.amt{flex:1;text-align:center;font-size:3em;font-weight:300;padding:0;min-height:0;letter-spacing:0;overflow:hidden;white-space:nowrap}
+.bs{width:60px;display:flex;justify-content:center;color:#fff}
+.note{display:flex;align-items:flex-end;gap:10px;margin:26px 14px 0;border-bottom:2px solid #8cc59a;padding-bottom:4px;position:relative;color:#8cc59a;flex:none}
+.note .nl{position:absolute;left:38px;top:-18px;font-size:14px}
+.note input{flex:1;background:none;border:0;outline:0;color:var(--tx);font-size:21px;padding:2px 0;min-width:0}
+.kp4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 4px;flex:none}
+.kp4 button{height:66px;border-radius:7px;background:#444;border:1.5px solid #565656;color:#c9c9c9;font-size:26px;font-weight:300}.kp4 button:active{background:#555}
+.cbtn{margin:8px 4px 14px;height:66px;border-radius:7px;background:#444;border:1.5px solid #565656;color:#cfcfcf;font-size:17px;letter-spacing:.06em;text-transform:uppercase;flex:none;width:calc(100% - 8px)}
+.cbtn.sv{margin:8px 4px 0;background:#6fae82;color:#fff;border-color:#6fae82;text-transform:none;letter-spacing:0;font-weight:600}
+.cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:34px 0 20px;margin-top:6px}
+.cgrid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 4px 10px;min-height:92px;background:#444;border-bottom:2.5px solid #565656;border-right:1.5px solid #4e4e4e;font-size:16px;text-align:center;border-radius:4px;overflow:hidden}.cgrid button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cgrid button.on{background:#555}
 </style>
 </head>
 <body>
@@ -177,21 +215,25 @@ smoke:'<path d="M3 15h14v3H3zM17 15v3M20 15v3M18 11c0-2 2-2 2-4"/>',
 receipt:'<path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.500L6 21zM9 8h6M9 12h6"/>',
 scooter:'<circle cx="6" cy="17" r="2.3"/><circle cx="18" cy="17" r="2.3"/><path d="M8.5 17h5L16 6h3M11 6h5M5 12h5"/>',
 apple:'<path d="M12 7c-2-2-7-1-7 5 0 4 2.5 8 5 8 1 0 1.5-.5 2-.5s1 .5 2 .5c2.5 0 5-4 5-8 0-6-5-7-7-5zM12 7c0-2 1-3 3-4"/>',
-baby:'<circle cx="12" cy="12" r="8.5"/><circle cx="9.5" cy="11" r=".6"/><circle cx="14.5" cy="11" r=".6"/><path d="M9.5 15c1.5 1.2 3.5 1.2 5 0M12 3.500c1 0 2 .7 2 1.5"/>',
+baby:'<circle cx="12" cy="12" r="8.5"/><circle cx="9.5" cy="11" r=".6"/><circle cx="14.5" cy="11" r=".6"/><path d="M9.5 15c1.5 1.2 3.5 1.2 5 0M12 3.5c1 0 2 .7 2 1.5"/>',
 bank:'<path d="M3 9l9-5 9 5zM5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
 chart:'<path d="M3 20h18M5 16l5-5 3 3 6-7M15 7h4v4"/>',
 carrot:'<path d="M15 8 4 20c4 0 9-3 11-8M15 8c1-3 4-4 5-4-1 1-1 4-4 5M15 8l1 4"/>',
 candy:'<rect x="7" y="8" width="10" height="8" rx="4"/><path d="M7 12 3 9v6zM17 12l4-3v6z"/>',
 q:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.500a2.5 2.5 0 1 1 3.5 2.300c-.7.4-1 1-1 1.700M12 17h.01"/>',
 hand:'<path d="M3 15l4-2 5 .5 4-2.5 2 1.5-6 4.500H3zM13 7.500a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/>',
-people:'<circle cx="8" cy="8" r="2.5"/><circle cx="16.5" cy="9" r="2"/><path d="M3 19c0-3 2-5 5-5s5 2 5 5M14 19c0-2 1.5-3.5 3.5-3.500S21 17 21 19"/>',
+people:'<circle cx="8" cy="8" r="2.5"/><circle cx="16.5" cy="9" r="2"/><path d="M3 19c0-3 2-5 5-5s5 2 5 5M14 19c0-2 1.5-3.5 3.5-3.5S21 17 21 19"/>',
 palm:'<path d="M12 21V11M12 11c-2-3-5-3-8-2 2 0 4 1 5 3M12 11c2-3 5-3 8-2-2 0-4 1-5 3M12 11c0-3-2-5-5-5 2 0 4 1 5 3M12 11c0-3 2-5 5-5-2 0-4 1-5 3M8 21h8"/>'
 };
 const EMO2ICO = {"🛒":"cart","🍽":"dish","☕":"coffee","🍺":"beer","🚌":"bus","🚕":"car","🏠":"home","💡":"bulb","📞":"phone","🌐":"globe","👕":"shirt","👟":"shoe","💊":"pill","🏥":"thermo","🎬":"film","🎮":"game","🏋":"gym","🎁":"gift","🐱":"cat","🧴":"tube","📚":"book","✈":"plane","🛠":"tools","📦":"box","💼":"case","💰":"money","🎓":"cap","🚬":"smoke","🧾":"receipt","🛵":"scooter","🍎":"apple","👶":"baby","🏦":"bank","📈":"chart","🥕":"carrot","🍬":"candy","❔":"q","🌴":"palm","👪":"people","💵":"hand"};
-function ic(icon, color, px) {   // линейная иконка в стиле Monefy; незнакомый эмодзи показываем как есть
-  const k = EMO2ICO[String(icon || "").replace(/️/g, "")];
-  if (!k) return '<span class="em" style="font-size:' + ((px || 32) - 4) + 'px">' + esc(icon) + "</span>";
-  return '<svg class="li" viewBox="0 0 24 24" width="' + (px || 32) + '" height="' + (px || 32) + '" fill="none" stroke="' + (color || "currentColor") + '" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + "</svg>";
+function ic(icon, color, px, mode) {   // три набора: line — тонкие линии как в Monefy, badge — яркие значки, emoji — цветные эмодзи
+  mode = mode || PR.iset || "line"; px = px || 32; color = color || "currentColor";
+  const raw = String(icon || ""), k = EMO2ICO[raw.replace(/\uFE0F/g, "")];
+  const svg = (col, w) => '<svg class="li" viewBox="0 0 24 24" width="' + px + '" height="' + px + '" fill="none" stroke="' + col + '" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + "</svg>";
+  if (mode === "badge") return '<span class="bg" style="width:' + px + "px;height:" + px + "px;background:linear-gradient(155deg,rgba(255,255,255,.34),rgba(0,0,0,.16))," + color + '">' + (k ? '<svg viewBox="0 0 24 24" width="' + Math.round(px * .68) + '" height="' + Math.round(px * .68) + '" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + "</svg>" : '<i style="font-size:' + Math.round(px * .55) + 'px">' + esc(raw) + "</i>") + "</span>";
+  if (mode === "emoji") return '<span class="bg soft" style="width:' + px + "px;height:" + px + "px;background:color-mix(in srgb," + color + ' 24%,transparent)"><i style="font-size:' + Math.round(px * .62) + 'px">' + esc(raw) + "</i></span>";
+  if (!k) return '<span class="em" style="font-size:' + (px - 4) + 'px">' + esc(raw) + "</span>";
+  return svg(color, 1.35);
 }
 const UI = {
   filter: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7h18M6 12h12M10 17h4"/></svg>',
@@ -200,6 +242,11 @@ const UI = {
   back: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 5l-7 7 7 7"/></svg>',
   lines: '<svg viewBox="0 0 48 24" width="48" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h44M2 12h44M2 19h44"/></svg>',
   tag: '<svg viewBox="0 0 40 28" width="46" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h8l9 8-6 9-11-3z M3 4v8M3 16v6M3 20l3-3M3 20l-3-3" stroke-dasharray="3 3"/><circle cx="24" cy="10" r="1.2"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><rect x="7" y="12.500" width="4" height="4" fill="currentColor" stroke="none"/></svg>',
+  cash: '<svg viewBox="0 0 40 34" width="40" height="34" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3" y="9" width="30" height="19" rx="2" transform="rotate(-8 18 18)"/><rect x="6" y="7" width="30" height="19" rx="2" fill="var(--cashbg,none)"/><circle cx="21" cy="16.500" r="5"/></svg>',
+  bks: '<svg viewBox="0 0 32 24" width="36" height="28" fill="currentColor"><path d="M10 2h18a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H10L1 12z"/><path d="m15 8 9 8M24 8l-9 8" stroke="var(--cashbg,#8cc59a)" stroke-width="2.200" stroke-linecap="round"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l3-1 11-11-2-2L5 17zM14.500 6.500l2 2M3 21l2-5"/></svg>',
   chev: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 9 7 7 7-7"/></svg>'
 };
 const DEF_EXP = [["Продукты", "🛒"], ["Кафе и рестораны", "🍽️"], ["Транспорт", "🚌"], ["Дом и ЖКХ", "🏠"], ["Связь", "📞"], ["Одежда", "👕"], ["Здоровье", "💊"], ["Развлечения", "🎬"], ["Спорт", "🏋️"], ["Подарки", "🎁"], ["Прочее", "📦"]];
@@ -208,8 +255,8 @@ const DEF_INC = [["Зарплата", "💼"], ["Подработка", "💰"],
 /* ============ состояние ============ */
 const LS = { cats: "fin_cats_v1", tx: "fin_tx_v1", pend: "fin_pend_v1", pref: "fin_pref_v1", sync: "fin_sync_v1" };
 const CFG = { url: "https://rjiuialimbrnbriqafjl.supabase.co", key: "sb_publishable_Hf5J8zcRXPKBVugh68TyAw_ZXQ6leQX" };
-let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []).map(unpackTx), pend = jget(LS.pend, []), PR = Object.assign({ theme: "dark", acc: "#81c995" }, jget(LS.pref, {}));
-let ui = { tab: "home", kind: "exp", rg: { t: "m", a: Date.now() }, view: "list", open: {}, sheet: null, status: "", q: "", set: "main" };
+let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []).map(unpackTx), pend = jget(LS.pend, []), PR = Object.assign({ theme: "dark", acc: "#81c995", iset: "line" }, jget(LS.pref, {}));
+let ui = { tab: "home", kind: "exp", rg: { t: "m", a: Date.now() }, view: "ring", open: {}, sheet: null, status: "", q: "", set: "main" };
 let flushing = false;
 const savePR = () => jset(LS.pref, PR);
 function applyTheme() { document.documentElement.dataset.t = PR.theme; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = PR.theme === "light" ? "#e4e6ec" : "#616161"; }
@@ -315,25 +362,44 @@ function bars(vals, labels, opts) {   // вертикальные столбцы
 }
 
 /* ============ экраны ============ */
-function topBar(withRange) {
+function topBar(withRange, back) {
   const home = ui.tab === "home", ttl = { home: "Траты", list: "Операции", stats: "Аналитика", more: "Ещё" }[ui.tab] || "Траты";
   const arrows = withRange && ui.rg.t !== "all" && ui.rg.t !== "int", shifted = n => { const B = rgBounds(ui.rg, n); return rgLabel({ t: ui.rg.t, a: B[0] }); };
   const sm = l => l.replace(/ \d{4}$/, "");
-  const hdr = '<div class="hdr"><button class="hb" data-a="' + (home ? "pickrange" : "tab") + '" data-v="home">' + (home ? UI.filter : UI.back) + '</button><div class="ttl"><div class="logo">' + ttl + '</div><div class="sa">' + "Все счета" + '</div></div><button class="hb" data-a="search">' + UI.search + '</button><button class="hb" data-a="menu">' + UI.dots + "</button></div>";
+  const hdr = '<div class="hdr"><button class="hb" data-a="' + (back || (home ? "pickrange" : "tab")) + '" data-v="home">' + (home && !back ? UI.filter : UI.back) + '</button><div class="ttl"><div class="logo">' + ttl + '</div><div class="sa">' + "Все счета" + '</div></div><button class="hb" data-a="search">' + UI.search + '</button><button class="hb" data-a="menu">' + UI.dots + "</button></div>";
   const mrow = withRange ? '<div class="mrow">' + (arrows ? '<button class="mn l" data-a="mprev">' + esc(sm(shifted(-1))) + '</button>' : "<span></span>") + '<button class="mc" data-a="pickrange">' + esc(sm(rgLabel())) + "</button>" + (arrows ? '<button class="mn r" data-a="mnext">' + esc(sm(shifted(1))) + "</button>" : "<span></span>") + "</div>" : "";
   return hdr + mrow;
 }
+function ringHTML(items, tot, exp, inc, K) {
+  const W = 360, H = 440, CX = 180, CY = 198, R = 82, SW = 40, C = 2 * Math.PI * R;
+  const cx = [32, 131, 229, 328], ry = [42, 130, 218, 306, 394], slots = [];
+  for (let c = 0; c < 4; c++) slots.push([cx[c], ry[0]]);
+  for (let r = 1; r <= 3; r++) slots.push([cx[3], ry[r]]);
+  for (let c = 3; c >= 0; c--) slots.push([cx[c], ry[4]]);
+  for (let r = 3; r >= 1; r--) slots.push([cx[0], ry[r]]);
+  const ang = (x, y) => (Math.atan2(x - CX, -(y - CY)) * 180 / Math.PI + 360) % 360, dist = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+  let list = items.slice(0, 14);
+  if (items.length > 14) { const rest = items.slice(13), v = sumBy(rest, x => x.v); list = items.slice(0, 13).concat([{ cat: { id: null, name: "Остальные", icon: "📦", color: "#8d99ae" }, v, n: 0 }]); }
+  let acc = 0; const seg = list.map(x => { const a0 = acc / (tot || 1) * 360; acc += x.v; return { x, a0, a1: acc / (tot || 1) * 360 }; });
+  let best = 0, bs = 1e9; const n = seg.length;
+  for (let k = 0; k < 14 && n; k++) { let sc = 0; seg.forEach((g, i) => { const sl = slots[(Math.round(i * 14 / n) + k) % 14]; sc += dist((g.a0 + g.a1) / 2, ang(sl[0], sl[1])); }); if (sc < bs) { bs = sc; best = k; } }
+  let arcs = "", lines = "", cells = "", off = 0;
+  if (tot > 0) seg.forEach((g, i) => {
+    const len = g.x.v / tot * C; arcs += '<circle r="' + R + '" cx="' + CX + '" cy="' + CY + '" fill="none" stroke="' + g.x.cat.color + '" stroke-opacity=".92" stroke-width="' + SW + '" stroke-dasharray="' + len.toFixed(2) + " " + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + CX + " " + CY + ')"/>'; off += len;
+    const sl = slots[(Math.round(i * 14 / n) + best) % 14], a = (g.a0 + g.a1) / 2 * Math.PI / 180, px = CX + (R + SW / 2) * Math.sin(a), py = CY - (R + SW / 2) * Math.cos(a), dx = px - sl[0], dy = py - sl[1], d = Math.hypot(dx, dy) || 1, s0 = 30;
+    lines += '<line x1="' + (sl[0] + dx / d * s0).toFixed(1) + '" y1="' + (sl[1] + dy / d * s0).toFixed(1) + '" x2="' + px.toFixed(1) + '" y2="' + py.toFixed(1) + '" stroke="' + g.x.cat.color + '" stroke-opacity=".75" stroke-width=".8"/>';
+    const pc = g.x.v / tot * 100;
+    cells += '<button class="rs" style="left:' + (sl[0] / W * 100).toFixed(2) + "%;top:" + (sl[1] / H * 100).toFixed(2) + '%" data-a="' + (g.x.cat.id ? "add" : "none") + '" data-id="' + (g.x.cat.id || "") + '">' + ic(g.x.cat.icon, g.x.cat.color, 32) + "<span>" + (pc < 1 ? "<1" : Math.round(pc)) + "%</span></button>";
+  }); else arcs = '<circle r="' + R + '" cx="' + CX + '" cy="' + CY + '" fill="none" stroke="var(--card2)" stroke-width="' + SW + '"/>';
+  return '<div class="ring" style="width:min(100%,calc((100svh - 330px) * .8182));min-width:290px"><svg viewBox="0 0 ' + W + " " + H + '" width="100%" style="display:block"><g style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))">' + arcs + "</g>" + lines + '</svg><div class="rc" style="left:' + CX / W * 100 + "%;top:" + CY / H * 100 + '%"><div class="inc">' + fmH(inc) + '</div><div class="exp">' + fmH(exp) + "</div></div>" + cells + "</div>";
+}
 function homeHTML() {
-  const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, cl = catsOf(K);
-  const bal = inc - exp, pill = '<div class="brow"><button class="lb" data-a="viewtog" title="Список / кольцо">' + UI.lines + '</button><button class="pill" data-a="kindtog" style="background:' + (bal >= 0 ? "var(--inc)" : "#ef8a85") + '">' + (K === "exp" ? "Баланс " : "Баланс ") + fmH(bal) + '</button><button class="lb tg" data-a="kindtog" style="color:' + (K === "exp" ? "#ef8a85" : "var(--inc)") + '">' + UI.tag + "</button></div>";
-  let body = "";
-  if (ui.view === "ring") {
-    const per = {}; items.forEach(x => per[x.cat.id] = x.v);
-    body = donut(items, tot, '<span class="' + (K === "exp" ? "exp" : "inc") + '">' + fm(tot) + "</span>", (K === "exp" ? "доходы " + fm(inc) : "расходы " + fm(exp)) + "<br>баланс " + fm(inc - exp)) + '<div class="grid">' + cl.map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci">' + ic(c.icon, c.color) + "</div><b>" + esc(c.name) + "</b><span>" + (per[c.id] ? fm(per[c.id]) : "&nbsp;") + "</span></button>").join("") + "</div>";
-  } else {
-    body = items.map(x => { const id = x.cat.id || "_", op = ui.open[id]; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="a ' + K + '">' + fmH(x.v) + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>';
-  }
-  return topBar(true) + pill + body + '<div style="height:170px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp"></button><button class="fb p" data-a="pick" data-v="inc"></button></div>';
+  const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, bal = inc - exp, ring = ui.view === "ring";
+  const pill = '<div class="brow"><button class="lb" data-a="viewtog">' + UI.lines + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "#ef8a85") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="kindtog" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "#ef8a85" : "var(--inc)") + '">' + (ring ? UI.lines : UI.tag) + "</button></div>";
+  let body;
+  if (ring) body = ringHTML(items, tot, exp, inc, K) + pill;
+  else body = pill + (items.map(x => { const id = x.cat.id || "_", op = ui.open[id]; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="a ' + K + '">' + fmH(x.v) + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>');
+  return topBar(true) + body + '<div style="height:160px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp"></button><button class="fb p" data-a="pick" data-v="inc"></button></div>';
 }
 function txRow(t) {
   const c = catOf(t.category_id), d = new Date(t.ts);
@@ -374,7 +440,9 @@ function statsHTML() {
 }
 function moreHTML() {
   if (ui.set === "cats") return catsMgrHTML();
-  return '<div class="top"><div class="m" style="text-align:left">Ещё</div></div>' +
+  const sets = [["line", "Линии"], ["badge", "Значки"], ["emoji", "Эмодзи"]], demo = ["🛒", "🍽️", "💊", "🚌"], dc = ["#ff7a7a", "#ffb04d", "#5fd0a5", "#6aa8ff"];
+  return topBar(false) +
+    '<div class="set" style="display:block"><div style="margin-bottom:8px">Набор иконок</div><div class="iset">' + sets.map(t => '<button class="' + ((PR.iset || "line") === t[0] ? "on" : "") + '" data-a="iset" data-v="' + t[0] + '"><div>' + demo.map((e, i) => ic(e, dc[i], 30, t[0])).join("") + "</div><span>" + t[1] + "</span></button>").join("") + "</div></div>" +
     '<button class="set" data-a="setcats"><span>🗂️</span><span style="flex:1">Категории</span><span class="sub">›</span></button>' +
     '<button class="set" data-a="theme"><span>🎨</span><span style="flex:1">Тема: ' + (PR.theme === "dark" ? "тёмная" : "светлая") + '</span></button>' +
     '<div class="set" style="display:block"><div style="margin-bottom:6px">Акцентный цвет</div><div class="pal">' + PAL.map(c => '<i data-a="acc" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
@@ -387,23 +455,28 @@ function moreHTML() {
 }
 function catsMgrHTML() {
   const K = ui.kind;
-  return '<div class="top"><button class="ib" data-a="setmain">‹</button><div class="m">Категории</div><span class="ib"></span></div><div class="seg"><button class="' + (K === "exp" ? "on" : "") + '" data-a="kind" data-v="exp">Расходы</button><button class="' + (K === "inc" ? "on" : "") + '" data-a="kind" data-v="inc">Доходы</button></div>' +
+  return topBar(false, "setmain") + '<div class="seg"><button class="' + (K === "exp" ? "on" : "") + '" data-a="kind" data-v="exp">Расходы</button><button class="' + (K === "inc" ? "on" : "") + '" data-a="kind" data-v="inc">Доходы</button></div>' +
     cats.filter(c => c.kind === K).sort((a, b) => a.position - b.position).map(c => '<div class="row" style="' + (c.archived ? "opacity:.5" : "") + '"><div class="ci">' + ic(c.icon, c.color) + '</div><div class="t"><b>' + esc(c.name) + '</b></div><button class="ib" data-a="catup" data-id="' + c.id + '">↑</button><button class="ib" data-a="catedit" data-id="' + c.id + '">✎</button></div>').join("") +
     '<button class="btn" style="width:100%;margin-top:10px" data-a="catnew">＋ Новая категория</button>';
 }
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
-    const c = catOf(s.cat), cl = catsOf(s.kind);
-    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><div style="display:flex;align-items:center;gap:10px"><div class="ci">' + ic(c.icon, c.color) + '</div><h2 style="flex:1;margin:0">' + esc(c.name) + "</h2>" + (s.id ? '<button class="ib" data-a="txdel" style="color:var(--exp)">🗑</button>' : "") + "</div>" +
-      '<div class="amt ' + s.kind + '">' + esc(s.expr || "0") + "</div>" +
-      '<div class="kb">' + ["7", "8", "9", "⌫", "4", "5", "6", "+", "1", "2", "3", "✓", ",", "0", "−", ""].map((k, i) => k === "✓" ? '<button class="ok" data-a="key" data-v="ok">✓</button>' : k === "" ? "" : k === "−" ? '<button data-a="key" data-v="clr">C</button>' : '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
-      '<select class="in" id="s-cat">' + cl.map(x => '<option value="' + x.id + '"' + (x.id === s.cat ? " selected" : "") + ">" + esc(x.icon + " " + x.name) + "</option>").join("") + "</select>" +
-      '<div style="display:flex;gap:8px"><input class="in" id="s-note" placeholder="Заметка" value="' + esc(s.note || "") + '" style="flex:1"><input class="in" type="date" id="s-date" value="' + esc(s.date) + '" style="flex:0 0 150px"></div></div></div>';
+    const c = s.cat ? catOf(s.cat) : null, d = new Date((s.date || dayKey(new Date())) + "T12:00"), dl = d.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }), title = s.id ? "Правка" : s.kind === "exp" ? "Новый расход" : "Новый доход";
+    const head = '<div class="hdr"><button class="hb" data-a="txback">' + UI.back + '</button><div class="ttl"><div class="sa" style="color:var(--tx);font-size:1.35em;margin:0">' + title + "</div></div>" + (s.id ? '<button class="hb" data-a="txdel" style="color:#ef8a85">' + UI.trash + "</button>" : "") + "</div>";
+    const date = '<label class="dt">' + UI.cal + "<span>" + esc(dl.charAt(0).toUpperCase() + dl.slice(1)) + '</span><input type="date" id="s-date" value="' + esc(s.date) + '" onchange="dateChange(this.value)"></label>';
+    const amt = '<div class="amtbox"><div class="cur">' + UI.cash + "<small>RUB</small></div><div class=\"amt\">" + esc(s.expr || "0") + '</div><button class="bs" data-a="key" data-v="⌫">' + UI.bks + "</button></div>";
+    if (s.step === "cat") {
+      const cl = catsOf(s.kind).slice().sort((a, b) => a.name.localeCompare(b.name, "ru"));
+      return '<div class="full">' + head + date + amt + '<div class="cgrid">' + cl.map(x => '<button data-a="cpick" data-id="' + x.id + '"' + (x.id === s.cat ? ' class="on"' : "") + ">" + ic(x.icon, x.color, 32) + "<span>" + esc(x.name) + "</span></button>").join("") + "</div></div>";
+    }
+    const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
+    return '<div class="full">' + head + date + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
+      (c ? '<button class="cbtn sv" data-a="txsave">Сохранить · ' + esc(c.name) + "</button>" : "") + '<button class="cbtn" data-a="cstep">Выбор категории</button></div>';
   }
   if (s.type === "cat") {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (s.id ? "Категория" : "Новая категория") + '</h2><input class="in" id="c-name" placeholder="Название" value="' + esc(s.name) + '">' +
-      '<div class="pal">' + EMO.map(e => '<i data-a="cic" data-v="' + e + '" class="' + (s.icon === e ? "on" : "") + '" style="width:40px;height:40px;border-radius:12px;background:var(--card);font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px">' + ic(e, "var(--tx)", 28) + "</i>").join("") + "</div>" +
+      '<div class="pal">' + EMO.map(e => '<i data-a="cic" data-v="' + e + '" class="' + (s.icon === e ? "on" : "") + '" style="width:40px;height:40px;border-radius:12px;background:var(--card);font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px">' + ic(e, "var(--tx)", 28, "line") + "</i>").join("") + "</div>" +
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
   }
@@ -437,16 +510,25 @@ function render() {
 }
 
 /* ============ ввод суммы ============ */
-function evalExpr(e) { const parts = String(e || "").replace(/,/g, ".").split("+").map(x => parseFloat(x)).filter(x => !isNaN(x)); return parts.reduce((a, b) => a + b, 0); }
-function openTx(o) { ui.sheet = Object.assign({ type: "tx", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
+function evalExpr(e) {
+  let x = String(e || "").replace(/,/g, ".").replace(/−/g, "-").replace(/×/g, "*").replace(/÷/g, "/").replace(/[+\-*/.]+$/, "");
+  if (!x || !/^[\d.+\-*/]+$/.test(x)) return 0;
+  try { const v = Function('"use strict";return (' + x.replace(/^[+*/]+/, "") + ")")(); return isFinite(v) ? v : 0; } catch (err) { return 0; }
+}
+function dateChange(v) { const s = ui.sheet; if (!s || !v) return; s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
+function openTx(o) { ui.sheet = Object.assign({ type: "tx", step: "kb", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
 function keyPress(v) {
   const s = ui.sheet; if (!s) return; let e = s.expr || "";
-  if (v === "ok") { saveTx(); return; }
-  if (v === "⌫") e = e.slice(0, -1); else if (v === "clr") e = ""; else if (v === "+") { if (/[\d,]$/.test(e)) e += "+"; } else if (v === ",") { const last = e.split("+").pop(); if (!last.includes(",")) e += last ? "," : "0,"; } else { const last = e.split("+").pop(); if (/,\d\d$/.test(last) || e.length > 18) return; e += v; }
-  s.expr = e; const el = document.querySelector(".amt"); if (el) el.textContent = e || "0";
+  const OPS = "+−×÷", last = e.split(/[+−×÷]/).pop();
+  if (v === "⌫") e = e.slice(0, -1);
+  else if (v === "=") { const r = evalExpr(e); if (r) e = String(Math.round(r * 100) / 100); }
+  else if (OPS.includes(v)) { if (!e) return; if (OPS.includes(e.slice(-1))) e = e.slice(0, -1) + v; else if (/\.$/.test(e)) e = e.slice(0, -1) + v; else e += v; }
+  else if (v === ".") { if (last.includes(".")) return; e += last ? "." : (e && !OPS.includes(e.slice(-1)) ? "" : "0."); }
+  else { if (/\.\d\d$/.test(last) || e.length > 18) return; e += v; }
+  s.expr = e; const el = document.querySelector(".amt"); if (el) { el.textContent = e || "0"; el.style.fontSize = e.length > 12 ? "1.9em" : e.length > 8 ? "2.5em" : ""; }
 }
 function saveTx() {
-  const s = ui.sheet; s.note = ($("s-note") || {}).value || ""; s.date = ($("s-date") || {}).value || s.date; s.cat = ($("s-cat") || {}).value || s.cat;
+  const s = ui.sheet; s.note = $("s-note") ? $("s-note").value : (s.note || ""); s.date = ($("s-date") || {}).value || s.date; if (!s.cat) { toast("Выбери категорию"); return; }
   const amt = Math.round(evalExpr(s.expr) * 100) / 100; if (!(amt > 0)) { toast("Введи сумму"); return; }
   const old = s.id ? txs.find(t => t.id === s.id) : null, d = new Date(s.date + "T12:00"), now = new Date();
   if (s.date === dayKey(now) && !old) d.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
@@ -507,10 +589,15 @@ const A = {
   viewtog() { ui.view = ui.view === "list" ? "ring" : "list"; render(); },
   catopen(a) { const id = a.dataset.id; ui.open[id] = !ui.open[id]; render(); },
   search() { ui.tab = "list"; ui.q = " "; ui.q = ""; render(); setTimeout(() => { const q = $("q"); if (q) q.focus(); }, 50); },
-  pick(a) { ui.sheet = { type: "pick", kind: a.dataset.v }; render(); },
+  pick(a) { openTx({ kind: a.dataset.v, cat: null }); },
+  txback() { const s = ui.sheet; if (s && s.step === "cat") { s.step = "kb"; render(); } else { ui.sheet = null; render(); } },
+  cstep() { const s = ui.sheet; s.note = ($("s-note") || {}).value || s.note || ""; s.date = ($("s-date") || {}).value || s.date; s.step = "cat"; render(); },
+  cpick(a) { ui.sheet.cat = a.dataset.id; saveTx(); },
+  txsave() { saveTx(); },
+  iset(a) { PR.iset = a.dataset.v; savePR(); render(); },
   kind(a) { ui.kind = a.dataset.v; render(); },
   add(a) { const c = catOf(a.dataset.id); ui.sheet = null; openTx({ kind: c.kind, cat: c.id }); },
-  edit(a) { const t = txs.find(x => x.id === a.dataset.id); if (!t) return; const e = String(t.amount).replace(".", ","); openTx({ id: t.id, kind: t.kind, cat: t.category_id || (catsOf(t.kind)[0] || {}).id, expr: e, note: t.note, date: dayKey(new Date(t.ts)) }); },
+  edit(a) { const t = txs.find(x => x.id === a.dataset.id); if (!t) return; const e = String(t.amount).replace(".", ","); openTx({ id: t.id, kind: t.kind, cat: t.category_id || (catsOf(t.kind)[0] || {}).id, expr: String(t.amount), note: t.note, date: dayKey(new Date(t.ts)) }); },
   key(a) { keyPress(a.dataset.v); },
   shclose(a, e) { if (e.target === a) { ui.sheet = null; render(); } },
   txdel() { if (ui.sheet && ui.sheet.id && confirm("Удалить операцию?")) { delTx(ui.sheet.id); ui.sheet = null; render(); toast("Удалено"); } },
