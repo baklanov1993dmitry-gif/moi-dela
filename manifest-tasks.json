@@ -5,6 +5,7 @@
   "description": "Личный список дел с облачной синхронизацией",
   "start_url": "./?app=tasks",
   "scope": "./",
+  "share_target": {"action": "./", "method": "GET", "params": {"title": "title", "text": "text", "url": "url"}},
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0f172a",
