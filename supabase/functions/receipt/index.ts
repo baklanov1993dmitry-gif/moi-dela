@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
-        model: Deno.env.get("ANTHROPIC_MODEL_RECEIPT") || Deno.env.get("ANTHROPIC_MODEL") || "claude-sonnet-4-5",
+        model: Deno.env.get("ANTHROPIC_MODEL_RECEIPT") || "claude-haiku-4-5",
         max_tokens: 2500,
         system: SYS,
         tools: [TOOL],
