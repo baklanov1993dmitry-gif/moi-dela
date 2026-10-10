@@ -2,7 +2,8 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" id="vp" content="width=360,viewport-fit=cover">
+<script>try{if(Math.min(screen.width,screen.height)>=600)document.getElementById("vp").content="width=device-width,initial-scale=1,viewport-fit=cover"}catch(e){}</script>
 <title>Траты</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -161,6 +162,41 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .cbtn.sv{margin:8px 4px 0;background:#6fae82;color:#fff;border-color:#6fae82;text-transform:none;letter-spacing:0;font-weight:600}
 .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:34px 0 20px;margin-top:6px}
 .cgrid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 4px 10px;min-height:92px;background:#444;border-bottom:2.5px solid #565656;border-right:1.5px solid #4e4e4e;font-size:16px;text-align:center;border-radius:4px;overflow:hidden}.cgrid button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cgrid button.on{background:#555}
+/* ===== точная подгонка под Monefy (замеры по скринам, 1px = 1dp при ширине 360) ===== */
+.hdr{height:48px;min-height:48px;padding:0 0 0 2px;gap:0;box-shadow:0 2px 3px rgba(0,0,0,.28)}
+.hb{width:43px;height:48px;border-radius:50%}
+.ttl{padding-left:16px}.logo{font-size:22px;line-height:1.05;font-weight:700}.sa{font-size:14px;margin-top:0;line-height:1.1}
+.hdr .sa[style]{font-size:17px!important;line-height:1.2}
+.mrow{position:relative;display:block;height:38px;margin:0 -14px;padding:0;overflow:hidden;text-align:center}
+.mrow button{font-size:14.6px;line-height:20px;padding:0}
+.mrow .mc{position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:0 10px;white-space:nowrap}
+.mrow .mn{position:absolute;top:12px;opacity:.9;white-space:nowrap}.mrow .l{right:91.4%}.mrow .r{left:91.4%}
+.brow{margin:2px 0 9px;padding:0 4px}
+.lb{width:44px;height:38px}
+.pill{width:199px;padding:9px 4px;font-size:15.3px;line-height:1.26;font-weight:400}
+.ring{width:min(calc(100% + 28px),420px);margin:15px calc(-14px) 27px}
+.ring .rc{font-size:14px;line-height:1.36}
+.rs{font-size:15px;gap:2px}.rs span{font-size:15px;line-height:1.1}
+.crow{padding:0 8px 0 0;gap:0;min-height:49px}
+.crow .chev{width:26px;margin-right:9px}.crow .chev svg{width:18px}
+.crow .ci{width:32px;height:32px;margin-right:8px}
+.crow b{font-size:16px}
+.crow .bd{font-size:14px;line-height:19px;min-width:24px;padding:0 5px;border-radius:7px}
+.crow .a{font-size:16px}
+.fab{bottom:calc(11px + env(safe-area-inset-bottom))}
+.full{overflow-y:auto}.full.fcat{overflow:hidden}
+.dt{padding:0;height:46px;font-size:17.4px;gap:6px}
+.amtbox{height:66px;margin:45px 14px 0}
+.amtbox .cur{width:39px;align-items:flex-start;justify-content:space-between;padding:6px 0 4px 4px;margin:4px 0}
+.amtbox .cur svg{width:30px;height:24px}.amtbox .cur small{font-size:13px}
+.amt{font-size:38px}
+.bs svg{width:27px;height:21px}.bs{width:56px}
+.note{margin:40px 14px 0;gap:8px;padding-bottom:3px}
+.note .nl{font-size:12.5px;left:32px;top:-17px}.note input{font-size:17px}
+.kp4{gap:5px;padding:0 4px}.kp4 button{height:66px;font-size:31px}
+.cbtn{margin:5px 4px 4px;height:67px;font-size:15px;letter-spacing:.05em}.cbtn.sv{margin:6px 4px 0}
+.cgrid{flex:1;min-height:0;overflow-y:auto;margin-top:0;padding:68px 0 10px;grid-auto-rows:79px;gap:4px;align-content:start}
+.cgrid button{min-height:0;height:79px;padding:8px 4px 4px;gap:6px;font-size:12px;justify-content:flex-start}
 </style>
 </head>
 <body>
@@ -236,17 +272,18 @@ function ic(icon, color, px, mode) {   // три набора: line — тонк
   return svg(color, 1.35);
 }
 const UI = {
-  filter: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7h18M6 12h12M10 17h4"/></svg>',
-  search: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>',
-  dots: '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
-  back: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 5l-7 7 7 7"/></svg>',
-  lines: '<svg viewBox="0 0 48 24" width="48" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h44M2 12h44M2 19h44"/></svg>',
-  tag: '<svg viewBox="0 0 40 28" width="46" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h8l9 8-6 9-11-3z M3 4v8M3 16v6M3 20l3-3M3 20l-3-3" stroke-dasharray="3 3"/><circle cx="24" cy="10" r="1.2"/></svg>',
-  trash: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
-  cal: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><rect x="7" y="12.500" width="4" height="4" fill="currentColor" stroke="none"/></svg>',
+  filter: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7h18M6 12h12M10 17h4"/></svg>',
+  search: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>',
+  dots: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  back: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 5l-7 7 7 7"/></svg>',
+  lines: '<svg viewBox="0 0 48 24" width="35" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h44M2 12h44M2 19h44"/></svg>',
+  tag: '<svg viewBox="0 0 40 28" width="40" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h8l9 8-6 9-11-3z M3 4v8M3 16v6M3 20l3-3M3 20l-3-3" stroke-dasharray="3 3"/><circle cx="24" cy="10" r="1.2"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><rect x="7" y="12.500" width="4" height="4" fill="currentColor" stroke="none"/></svg>',
   cash: '<svg viewBox="0 0 40 34" width="40" height="34" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3" y="9" width="30" height="19" rx="2" transform="rotate(-8 18 18)"/><rect x="6" y="7" width="30" height="19" rx="2" fill="var(--cashbg,none)"/><circle cx="21" cy="16.500" r="5"/></svg>',
   bks: '<svg viewBox="0 0 32 24" width="36" height="28" fill="currentColor"><path d="M10 2h18a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H10L1 12z"/><path d="m15 8 9 8M24 8l-9 8" stroke="var(--cashbg,#8cc59a)" stroke-width="2.200" stroke-linecap="round"/></svg>',
-  pen: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l3-1 11-11-2-2L5 17zM14.500 6.500l2 2M3 21l2-5"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l3-1 11-11-2-2L5 17zM14.500 6.500l2 2M3 21l2-5"/></svg>',
   chev: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 9 7 7 7-7"/></svg>'
 };
 const DEF_EXP = [["Продукты", "🛒"], ["Кафе и рестораны", "🍽️"], ["Транспорт", "🚌"], ["Дом и ЖКХ", "🏠"], ["Связь", "📞"], ["Одежда", "👕"], ["Здоровье", "💊"], ["Развлечения", "🎬"], ["Спорт", "🏋️"], ["Подарки", "🎁"], ["Прочее", "📦"]];
@@ -365,13 +402,13 @@ function bars(vals, labels, opts) {   // вертикальные столбцы
 function topBar(withRange, back) {
   const home = ui.tab === "home", ttl = { home: "Траты", list: "Операции", stats: "Аналитика", more: "Ещё" }[ui.tab] || "Траты";
   const arrows = withRange && ui.rg.t !== "all" && ui.rg.t !== "int", shifted = n => { const B = rgBounds(ui.rg, n); return rgLabel({ t: ui.rg.t, a: B[0] }); };
-  const sm = l => l.replace(/ \d{4}$/, "");
-  const hdr = '<div class="hdr"><button class="hb" data-a="' + (back || (home ? "pickrange" : "tab")) + '" data-v="home">' + (home && !back ? UI.filter : UI.back) + '</button><div class="ttl"><div class="logo">' + ttl + '</div><div class="sa">' + "Все счета" + '</div></div><button class="hb" data-a="search">' + UI.search + '</button><button class="hb" data-a="menu">' + UI.dots + "</button></div>";
-  const mrow = withRange ? '<div class="mrow">' + (arrows ? '<button class="mn l" data-a="mprev">' + esc(sm(shifted(-1))) + '</button>' : "<span></span>") + '<button class="mc" data-a="pickrange">' + esc(sm(rgLabel())) + "</button>" + (arrows ? '<button class="mn r" data-a="mnext">' + esc(sm(shifted(1))) + "</button>" : "<span></span>") + "</div>" : "";
+  const sm = l => l.replace(/ \d{4}$/, ""), nextOK = arrows && rgBounds(ui.rg, 1)[0] <= Date.now();
+  const hdr = '<div class="hdr"><button class="hb" data-a="' + (back || (home ? "pickrange" : "tab")) + '" data-v="home">' + (home && !back ? UI.filter : UI.back) + '</button><div class="ttl"><div class="logo">' + ttl + '</div><div class="sa">Все счета</div></div><button class="hb" data-a="search">' + UI.search + "</button>" + (home ? '<button class="hb" data-a="kindtog" title="Расходы / доходы">' + UI.swap + "</button>" : "") + '<button class="hb" data-a="menu">' + UI.dots + "</button></div>";
+  const mrow = withRange ? '<div class="mrow">' + (arrows ? '<button class="mn l" data-a="mprev">' + esc(sm(shifted(-1))) + "</button>" : "") + '<button class="mc" data-a="pickrange">' + esc(sm(rgLabel())) + "</button>" + (nextOK ? '<button class="mn r" data-a="mnext">' + esc(sm(shifted(1))) + "</button>" : "") + "</div>" : "";
   return hdr + mrow;
 }
 function ringHTML(items, tot, exp, inc, K) {
-  const W = 360, H = 440, CX = 180, CY = 198, R = 82, SW = 40, C = 2 * Math.PI * R;
+  const W = 360, H = 440, CX = 180, CY = 204, R = 82, SW = 40, C = 2 * Math.PI * R;
   const cx = [32, 131, 229, 328], ry = [42, 130, 218, 306, 394], slots = [];
   for (let c = 0; c < 4; c++) slots.push([cx[c], ry[0]]);
   for (let r = 1; r <= 3; r++) slots.push([cx[3], ry[r]]);
@@ -391,7 +428,7 @@ function ringHTML(items, tot, exp, inc, K) {
     const pc = g.x.v / tot * 100;
     cells += '<button class="rs" style="left:' + (sl[0] / W * 100).toFixed(2) + "%;top:" + (sl[1] / H * 100).toFixed(2) + '%" data-a="' + (g.x.cat.id ? "add" : "none") + '" data-id="' + (g.x.cat.id || "") + '">' + ic(g.x.cat.icon, g.x.cat.color, 32) + "<span>" + (pc < 1 ? "<1" : Math.round(pc)) + "%</span></button>";
   }); else arcs = '<circle r="' + R + '" cx="' + CX + '" cy="' + CY + '" fill="none" stroke="var(--card2)" stroke-width="' + SW + '"/>';
-  return '<div class="ring" style="width:min(100%,calc((100svh - 330px) * .8182));min-width:290px"><svg viewBox="0 0 ' + W + " " + H + '" width="100%" style="display:block"><g style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))">' + arcs + "</g>" + lines + '</svg><div class="rc" style="left:' + CX / W * 100 + "%;top:" + CY / H * 100 + '%"><div class="inc">' + fmH(inc) + '</div><div class="exp">' + fmH(exp) + "</div></div>" + cells + "</div>";
+  return '<div class="ring"><svg viewBox="0 0 ' + W + " " + H + '" width="100%" style="display:block"><g style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))">' + arcs + "</g>" + lines + '</svg><div class="rc" style="left:' + CX / W * 100 + "%;top:" + CY / H * 100 + '%"><div class="inc">' + fmH(inc) + '</div><div class="exp">' + fmH(exp) + "</div></div>" + cells + "</div>";
 }
 function homeHTML() {
   const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, bal = inc - exp, ring = ui.view === "ring";
@@ -468,7 +505,7 @@ function sheetHTML() {
     const amt = '<div class="amtbox"><div class="cur">' + UI.cash + "<small>RUB</small></div><div class=\"amt\">" + esc(s.expr || "0") + '</div><button class="bs" data-a="key" data-v="⌫">' + UI.bks + "</button></div>";
     if (s.step === "cat") {
       const cl = catsOf(s.kind).slice().sort((a, b) => a.name.localeCompare(b.name, "ru"));
-      return '<div class="full">' + head + date + amt + '<div class="cgrid">' + cl.map(x => '<button data-a="cpick" data-id="' + x.id + '"' + (x.id === s.cat ? ' class="on"' : "") + ">" + ic(x.icon, x.color, 32) + "<span>" + esc(x.name) + "</span></button>").join("") + "</div></div>";
+      return '<div class="full fcat">' + head + date + amt + '<div class="cgrid">' + cl.map(x => '<button data-a="cpick" data-id="' + x.id + '"' + (x.id === s.cat ? ' class="on"' : "") + ">" + ic(x.icon, x.color, 32) + "<span>" + esc(x.name) + "</span></button>").join("") + "</div></div>";
     }
     const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
     return '<div class="full">' + head + date + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
@@ -507,7 +544,39 @@ function render() {
   const menu = ui.menu ? '<div class="mov" data-a="menuclose"><div class="menu" data-a="nop">' + [["home", "Главная"], ["list", "Операции"], ["stats", "Аналитика"], ["more", "Категории и настройки"]].map(t => '<button data-a="tab" data-v="' + t[0] + '"' + (ui.tab === t[0] ? ' class="on"' : "") + ">" + t[1] + "</button>").join("") + "</div></div>" : "";
   $("app").innerHTML = '<div id="main">' + scr + "</div>" + sheetHTML() + menu;
   if ($("main")) $("main").scrollTop = keep;
+  syncHistory();
 }
+
+/* ============ кнопка «Назад» ============ */
+let hDepth = 0, hSkip = 0, guarded = false, lastBack = 0;
+const layerCount = () => !user ? 0 : (ui.menu ? 1 : 0) + (ui.sheet ? 1 + (ui.sheet.step === "cat" ? 1 : 0) : 0) + (ui.tab === "more" && ui.set === "cats" ? 1 : 0) + (ui.tab !== "home" ? 1 : 0);
+function ensureGuard() {
+  try { if (guarded || (navigator.userActivation && !navigator.userActivation.hasBeenActive)) return; history.replaceState({ base: 1 }, ""); history.pushState({ guard: 1 }, ""); guarded = true; } catch (e) {}
+}
+function syncHistory() {
+  try {
+    ensureGuard(); if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+    const d = layerCount();
+    if (d > hDepth) { for (let i = hDepth; i < d; i++) history.pushState({ l: i + 1 }, ""); hDepth = d; }
+    else if (d < hDepth) { const n = hDepth - d; hDepth = d; hSkip++; history.go(-n); }
+  } catch (e) {}
+}
+function onBack() {
+  if (hSkip > 0) { hSkip--; return; }
+  if (hDepth > 0) {
+    hDepth--;
+    if (ui.menu) ui.menu = false;
+    else if (ui.sheet) { if (ui.sheet.step === "cat") ui.sheet.step = "kb"; else ui.sheet = null; }
+    else if (ui.tab === "more" && ui.set === "cats") ui.set = "main";
+    else if (ui.tab !== "home") { ui.tab = "home"; ui.q = ""; ui.set = "main"; }
+    render(); return;
+  }
+  // корень: мы провалились на базовую запись — возвращаем «страховку» и просим нажать ещё раз
+  if (Date.now() - lastBack < 2200) { guarded = false; history.back(); return; }
+  lastBack = Date.now(); try { history.pushState({ guard: 1 }, ""); guarded = true; } catch (e) {} toast("Нажми «назад» ещё раз, чтобы выйти");
+}
+window.addEventListener("popstate", onBack);
+document.addEventListener("pointerdown", ensureGuard, { once: false, passive: true });
 
 /* ============ ввод суммы ============ */
 function evalExpr(e) {
