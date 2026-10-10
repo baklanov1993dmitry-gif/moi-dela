@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "10.10 16:37";
+const BUILD = "10.10 16:47";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3004,7 +3004,7 @@ function shareMaybe() {
   let l = listsArr().find(x => /^видео$/i.test(x.name));
   if (!l) { l = { id: uid(), name: "Видео", icon: "📺", position: listsArr().length, created_at: nowISO(), group_name: null, color: null }; S.lists[l.id] = l; mark("lists", l.id, "u"); }
   const dup = url && Object.values(S.tasks).find(t => !t.done && t.list_id === l.id && (t.note || "").indexOf(url) >= 0);
-  if (dup) toast("Это видео уже в очереди"); else { addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); toast("Добавлено в «Видео»"); }
+  if (dup) toast("Это видео уже в очереди"); else { const nt = addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); toast("Добавлено в «Видео» — делаю пересказ…"); if (ytUrl(url)) setTimeout(() => videoSummary(nt.id), 1500); }
   goView("list:" + l.id); render();
 }
 function ritualHTML() {
