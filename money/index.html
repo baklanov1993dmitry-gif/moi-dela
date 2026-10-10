@@ -80,6 +80,11 @@ input,select{font:inherit;color:inherit}
 table.hm{border-collapse:separate;border-spacing:3px;width:100%;font-size:.78em}
 table.hm td{padding:6px 2px;text-align:center;border-radius:6px}
 table.hm th{color:var(--sub);font-weight:600;font-size:.9em}
+.pill{border-radius:14px;padding:11px 14px;color:#fff;font-weight:800;font-size:1.1em;text-align:center;line-height:1.2}.pill small{display:block;font-weight:500;font-size:.68em;opacity:.9}
+.crow{display:flex;align-items:center;gap:10px;width:100%;padding:9px 2px;text-align:left}.crow .chev{width:20px;color:var(--sub);font-size:1.3em}.crow .ci{width:46px;height:46px;font-size:22px;border-width:2px;flex:none}.crow b{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.crow .bd{background:var(--card2);border-radius:10px;padding:1px 8px;font-size:.78em;color:var(--sub)}.crow .a{font-weight:700;white-space:nowrap}
+.sub-r{display:flex;gap:10px;width:100%;padding:7px 8px 7px 32px;text-align:left;font-size:.9em;border-top:1px solid var(--ln)}.sub-r .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fab{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;padding:0 28px;pointer-events:none;z-index:4;max-width:720px;margin:0 auto}
+.fb{pointer-events:auto;width:78px;height:78px;border-radius:50%;font-size:2.4em;font-weight:300;border:4px solid;background:var(--card);box-shadow:0 4px 16px rgba(0,0,0,.35)}.fb.m{border-color:var(--exp);color:var(--exp)}.fb.p{border-color:var(--inc);color:var(--inc)}
 .st{position:fixed;top:calc(4px + env(safe-area-inset-top));right:10px;font-size:.7em;color:var(--sub);z-index:3}
 </style>
 </head>
@@ -108,8 +113,8 @@ const DEF_INC = [["Зарплата", "💼"], ["Подработка", "💰"],
 /* ============ состояние ============ */
 const LS = { cats: "fin_cats_v1", tx: "fin_tx_v1", pend: "fin_pend_v1", pref: "fin_pref_v1", sync: "fin_sync_v1" };
 const CFG = { url: "https://rjiuialimbrnbriqafjl.supabase.co", key: "sb_publishable_Hf5J8zcRXPKBVugh68TyAw_ZXQ6leQX" };
-let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []), pend = jget(LS.pend, []), PR = Object.assign({ theme: "dark", acc: "#3ecf8e" }, jget(LS.pref, {}));
-let ui = { tab: "home", kind: "exp", month: mk(new Date()), per: "m", sheet: null, status: "", q: "", set: "main" };
+let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []).map(unpackTx), pend = jget(LS.pend, []), PR = Object.assign({ theme: "dark", acc: "#3ecf8e" }, jget(LS.pref, {}));
+let ui = { tab: "home", kind: "exp", rg: { t: "m", a: Date.now() }, view: "list", open: {}, sheet: null, status: "", q: "", set: "main" };
 let flushing = false;
 const savePR = () => jset(LS.pref, PR);
 function applyTheme() { document.documentElement.dataset.t = PR.theme; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = PR.theme === "light" ? "#f3f4f7" : "#16181d"; }
@@ -118,7 +123,10 @@ const catOf = id => cats.find(c => c.id === id) || { id: null, name: "Без к�
 const catsOf = k => cats.filter(c => c.kind === k && !c.archived).sort((a, b) => a.position - b.position);
 
 /* ============ синхронизация ============ */
-function saveLocal() { jset(LS.cats, cats); jset(LS.tx, txs); jset(LS.pend, pend); }
+function packTx(t) { return [t.id, t.ts, t.amount, t.kind === "exp" ? 0 : 1, t.category_id, t.note || "", t.account || "", t.updated_at || ""]; }
+const _packOld = t => [t.id, t.ts, t.amount, t.kind === "exp" ? 0 : 1, t.category_id, t.note || "", t.account || "", t.updated_at || ""];
+function unpackTx(a) { return a && !Array.isArray(a) ? a : { id: a[0], ts: a[1], amount: a[2], kind: a[3] ? "inc" : "exp", category_id: a[4], note: a[5], account: a[6] || "Основной", updated_at: a[7] }; }
+function saveLocal() { jset(LS.cats, cats); try { localStorage.setItem(LS.tx, JSON.stringify(txs.map(packTx))); } catch (e) { ui.status = "память телефона переполнена"; } jset(LS.pend, pend); }
 function queue(op) { pend.push(op); saveLocal(); flush(); }
 const upCat = c => { c.updated_at = nowISO(); const i = cats.findIndex(x => x.id === c.id); if (i < 0) cats.push(c); else cats[i] = c; queue({ op: "up", t: "fin_categories", row: dbCat(c) }); };
 const upTx = t => { t.updated_at = nowISO(); const i = txs.findIndex(x => x.id === t.id); if (i < 0) txs.push(t); else txs[i] = t; queue({ op: "up", t: "fin_tx", row: dbTx(t) }); };
@@ -130,6 +138,11 @@ async function flush() {
   try {
     while (pend.length) {
       const op = pend[0];
+      if (op.op === "ups") {   // пачка операций по id (импорт): строки берём из локальных данных
+        const byId = new Map(txs.map(t => [t.id, t]));
+        while (op.ids.length) { const part = op.ids.slice(0, 400), rows = part.map(i => byId.get(i)).filter(Boolean).map(dbTx); if (rows.length) { const r = await sb.from(op.t).upsert(rows); if (r.error) throw r.error; } op.ids = op.ids.slice(400); jset(LS.pend, pend); ui.status = "отправка: осталось " + op.ids.length; paintStatus(); }
+        pend.shift(); jset(LS.pend, pend); continue;
+      }
       const r = op.op === "up" ? await sb.from(op.t).upsert(op.row) : await sb.from(op.t).delete().eq("id", op.id);
       if (r.error) throw r.error; pend.shift(); jset(LS.pend, pend);
     }
@@ -167,12 +180,29 @@ function paintStatus() { let e = $("st"); if (!e) { e = document.createElement("
 
 /* ============ расчёты ============ */
 const ofMonth = m => txs.filter(t => mk(new Date(t.ts)) === m);
-function inPeriod(t) {
-  const d = new Date(t.ts), y = ui.month.slice(0, 4);
-  return ui.per === "all" ? true : ui.per === "y" ? String(d.getFullYear()) === y : mk(d) === ui.month;
+const sod = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+function rgBounds(r, k) {   // k — сдвиг на k периодов (для сравнения с прошлым)
+  r = r || ui.rg; const a = new Date(r.a); let s, e;
+  if (r.t === "all") return [0, Infinity]; if (r.t === "int") return [+sod(r.from || a), +sod(r.to || a) + 864e5];
+  const sh = k || 0;
+  if (r.t === "d") { s = sod(a); s.setDate(s.getDate() + sh); e = new Date(s); e.setDate(e.getDate() + 1); }
+  else if (r.t === "w") { s = sod(a); s.setDate(s.getDate() - ((s.getDay() + 6) % 7) + 7 * sh); e = new Date(s); e.setDate(e.getDate() + 7); }
+  else if (r.t === "y") { s = new Date(a.getFullYear() + sh, 0, 1); e = new Date(a.getFullYear() + sh + 1, 0, 1); }
+  else { s = new Date(a.getFullYear(), a.getMonth() + sh, 1); e = new Date(a.getFullYear(), a.getMonth() + sh + 1, 1); }
+  return [+s, +e];
 }
+const inR = (t, k) => { const B = rgBounds(ui.rg, k), x = +new Date(t.ts); return x >= B[0] && x < B[1]; };
+const rgTx = k => { const B = rgBounds(ui.rg, k); return txs.filter(t => { const x = +new Date(t.ts); return x >= B[0] && x < B[1]; }); };
+function rgLabel() {
+  const r = ui.rg, B = rgBounds(r), s = new Date(B[0]), e = new Date(B[1] - 1), f = d => d.getDate() + " " + MONS_S[d.getMonth()];
+  if (r.t === "all") return "Всё время"; if (r.t === "d") return mk(s) === mk(new Date()) && s.getDate() === new Date().getDate() ? "Сегодня" : f(s) + " " + s.getFullYear();
+  if (r.t === "w") return f(s) + " – " + f(e); if (r.t === "y") return String(s.getFullYear()); if (r.t === "int") return f(s) + " " + s.getFullYear() + " – " + f(e) + " " + e.getFullYear();
+  return MONS[s.getMonth()] + " " + s.getFullYear();
+}
+function rgShift(n) { const r = ui.rg; if (r.t === "all" || r.t === "int") return; const B = rgBounds(r, n); r.a = B[0]; }
+const anchorMonth = () => mk(new Date(Math.min(rgBounds(ui.rg)[1] - 1, Date.now())));
 const sumBy = (arr, f) => arr.reduce((s, t) => s + (f ? f(t) : t.amount), 0);
-function byCat(arr, kind) { const m = {}; arr.filter(t => t.kind === kind).forEach(t => { const k = t.category_id || "_"; m[k] = (m[k] || 0) + t.amount; }); return Object.entries(m).map(([id, v]) => ({ cat: catOf(id === "_" ? null : id), v })).sort((a, b) => b.v - a.v); }
+function byCat(arr, kind) { const m = {}; arr.filter(t => t.kind === kind).forEach(t => { const k = t.category_id || "_"; m[k] = (m[k] || 0) + t.amount; }); return Object.entries(m).map(([id, v]) => ({ cat: catOf(id === "_" ? null : id), v, n: arr.filter(t => t.kind === kind && (t.category_id || "_") === id).length })).sort((a, b) => b.v - a.v); }
 const shiftMonth = (m, d) => { const [y, mo] = m.split("-").map(Number), dt = new Date(y, mo - 1 + d, 1); return mk(dt); };
 const monLabel = m => { const [y, mo] = m.split("-").map(Number); return MONS[mo - 1] + " " + y; };
 
@@ -190,58 +220,57 @@ function bars(vals, labels, opts) {   // вертикальные столбцы
 }
 
 /* ============ экраны ============ */
-function topBar(withMonth) {
-  return '<div class="top"><button class="ib" data-a="' + (withMonth ? "mprev" : "none") + '">' + (withMonth ? "‹" : "") + '</button><div class="m">' + (withMonth ? monLabel(ui.month) : "") + '</div><button class="ib" data-a="' + (withMonth ? "mnext" : "none") + '">' + (withMonth ? "›" : "") + "</button></div>";
+function topBar(withRange, extra) {
+  const arrows = withRange && ui.rg.t !== "all" && ui.rg.t !== "int";
+  return '<div class="top"><button class="ib" data-a="' + (arrows ? "mprev" : "pickrange") + '">' + (arrows ? "‹" : "⏱") + '</button><button class="m" data-a="pickrange" style="color:var(--tx)">' + (withRange ? esc(rgLabel()) : "") + ' <span class="sub" style="font-size:.7em">▾</span></button><button class="ib" data-a="' + (arrows ? "mnext" : "none") + '">' + (arrows ? "›" : "") + "</button></div>";
 }
 function homeHTML() {
-  const arr = ofMonth(ui.month), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, cl = catsOf(K);
-  const per = {}; items.forEach(x => per[x.cat.id] = x.v);
-  const grid = cl.map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + "</div><b>" + esc(c.name) + "</b><span>" + (per[c.id] ? fm(per[c.id]) : "&nbsp;") + "</span></button>").join("") + '<button class="cat" data-a="catnew"><div class="ci" style="border-color:var(--ln);color:var(--sub)">＋</div><b class="sub">Категория</b><span>&nbsp;</span></button>';
-  return topBar(true) + '<div class="seg"><button class="' + (K === "exp" ? "on" : "") + '" data-a="kind" data-v="exp">Расходы</button><button class="' + (K === "inc" ? "on" : "") + '" data-a="kind" data-v="inc">Доходы</button></div>' +
-    donut(items, tot, '<span class="' + (K === "exp" ? "exp" : "inc") + '">' + fm(tot) + "</span>", (K === "exp" ? "доходы " + fm(inc) : "расходы " + fm(exp)) + "<br>баланс " + fm(inc - exp)) + '<div class="grid">' + grid + "</div>";
+  const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, cl = catsOf(K);
+  const pill = '<div style="display:flex;gap:10px;align-items:center;margin:4px 0 8px"><button class="pill" data-a="kindtog" style="flex:1;background:' + (inc - exp >= 0 ? "var(--inc)" : "var(--exp)") + '">' + (K === "exp" ? "Расходы " + fm(exp) : "Доходы " + fm(inc)) + '<small>баланс ' + fm(inc - exp) + '</small></button><button class="ib" data-a="viewtog" title="Список / кольцо">' + (ui.view === "list" ? "🍩" : "📋") + '</button><button class="ib" data-a="search" title="Поиск">🔍</button></div>';
+  let body = "";
+  if (ui.view === "ring") {
+    const per = {}; items.forEach(x => per[x.cat.id] = x.v);
+    body = donut(items, tot, '<span class="' + (K === "exp" ? "exp" : "inc") + '">' + fm(tot) + "</span>", (K === "exp" ? "доходы " + fm(inc) : "расходы " + fm(exp)) + "<br>баланс " + fm(inc - exp)) + '<div class="grid">' + cl.map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + "</div><b>" + esc(c.name) + "</b><span>" + (per[c.id] ? fm(per[c.id]) : "&nbsp;") + "</span></button>").join("") + "</div>";
+  } else {
+    body = items.map(x => { const id = x.cat.id || "_", op = ui.open[id]; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev">' + (op ? "⌃" : "⌄") + '</span><div class="ci" style="border-color:' + x.cat.color + '">' + esc(x.cat.icon) + '</div><b>' + esc(x.cat.name) + '</b><span class="bd">' + x.n + '</span><span class="a ' + K + '">' + fm(x.v) + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>';
+  }
+  return topBar(true) + pill + body + '<div style="height:120px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp">−</button><button class="fb p" data-a="pick" data-v="inc">+</button></div>';
 }
 function txRow(t) {
   const c = catOf(t.category_id), d = new Date(t.ts);
   return '<button class="row" data-a="edit" data-id="' + t.id + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + '</div><div class="t"><b>' + esc(c.name) + "</b>" + (t.note ? "<small>" + esc(t.note) + "</small>" : "") + '</div><div class="a ' + t.kind + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amount) + "</div></button>";
 }
 function listHTML() {
-  let arr = ui.q ? txs.slice() : ofMonth(ui.month);
+  let arr = ui.q ? txs.slice() : rgTx();
   if (ui.q) { const q = ui.q.toLowerCase(); arr = arr.filter(t => (t.note || "").toLowerCase().includes(q) || catOf(t.category_id).name.toLowerCase().includes(q) || String(t.amount).includes(q)); }
   arr.sort((a, b) => b.ts.localeCompare(a.ts)); const lim = ui.q ? 200 : 600, more = arr.length - lim; arr = arr.slice(0, lim);
-  let h = topBar(!ui.q) + '<input class="in" id="q" placeholder="Поиск по заметке, категории, сумме" value="' + esc(ui.q) + '">', cur = "", buf = [];
+  let h = topBar(!ui.q) + '<input class="in" id="q" autocomplete="off" placeholder="Поиск по заметке, категории, сумме" value="' + esc(ui.q) + '">', cur = "", buf = [];
   const groups = []; arr.forEach(t => { const dk = dayKey(new Date(t.ts)); if (dk !== cur) { cur = dk; groups.push({ dk, items: [] }); } groups[groups.length - 1].items.push(t); });
   groups.forEach(g => { const d = new Date(g.dk + "T12:00"), s = sumBy(g.items, t => t.kind === "exp" ? -t.amount : t.amount); h += '<div class="day"><span>' + WD[d.getDay()] + ", " + d.getDate() + " " + MONS_S[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "") + "</span><span>" + fm(s) + "</span></div>" + g.items.map(txRow).join(""); });
   if (!groups.length) h += '<div class="empty">Операций нет</div>'; if (more > 0) h += '<div class="empty">…и ещё ' + more + " (уточни поиск)</div>";
   return h;
 }
-function perRange() { const y = ui.month.slice(0, 4); return ui.per === "all" ? txs : ui.per === "y" ? txs.filter(t => String(new Date(t.ts).getFullYear()) === y) : ofMonth(ui.month); }
 function statsHTML() {
-  const arr = perRange(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), [y, mo] = ui.month.split("-").map(Number);
-  const prevArr = ui.per === "m" ? ofMonth(shiftMonth(ui.month, -1)) : ui.per === "y" ? txs.filter(t => new Date(t.ts).getFullYear() === y - 1) : [], pe = sumBy(prevArr.filter(t => t.kind === "exp"));
-  let days = ui.per === "m" ? (mk(new Date()) === ui.month ? new Date().getDate() : new Date(y, mo, 0).getDate()) : ui.per === "y" ? (y === new Date().getFullYear() ? Math.ceil((Date.now() - new Date(y, 0, 1)) / 864e5) : 365) : Math.max(1, Math.ceil((Date.now() - Math.min(...txs.map(t => +new Date(t.ts)), Date.now())) / 864e5));
+  const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), B = rgBounds(ui.rg), t = ui.rg.t;
+  const prevArr = t === "all" || t === "int" ? [] : rgTx(-1), pe = sumBy(prevArr.filter(x => x.kind === "exp"));
+  const first = txs.length ? Math.min(...txs.map(x => +new Date(x.ts))) : Date.now(), s0 = Math.max(B[0], first), e0 = Math.min(B[1], Date.now() + 864e5), days = Math.max(1, Math.ceil((e0 - s0) / 864e5));
   const diff = pe ? Math.round((exp - pe) / pe * 100) : null;
-  let h = topBar(ui.per !== "all") + '<div class="chips">' + [["m", "Месяц"], ["y", "Год"], ["all", "Всё время"]].map(o => '<button class="chip ' + (ui.per === o[0] ? "on" : "") + '" data-a="per" data-v="' + o[0] + '">' + o[1] + "</button>").join("") + "</div>" +
-    '<div class="kp"><div><small>Расходы</small><b class="exp">' + fm(exp) + "</b>" + (diff != null ? '<small class="' + (diff > 0 ? "exp" : "inc") + '">' + (diff > 0 ? "▲ +" : "▼ ") + diff + "% к прошлому периоду</small>" : "") + "</div><div><small>Доходы</small><b class='inc'>" + fm(inc) + "</b></div><div><small>Баланс</small><b class='" + (inc - exp >= 0 ? "inc" : "exp") + "'>" + fm(inc - exp) + "</b></div><div><small>В день (расходы)</small><b>" + fm(exp / Math.max(1, days)) + "</b></div></div>";
+  let h = topBar(true) + '<div class="kp"><div><small>Расходы</small><b class="exp">' + fm(exp) + "</b>" + (diff != null ? '<small class="' + (diff > 0 ? "exp" : "inc") + '">' + (diff > 0 ? "▲ +" : "▼ ") + diff + "% к прошлому периоду</small>" : "") + "</div><div><small>Доходы</small><b class='inc'>" + fm(inc) + "</b></div><div><small>Баланс</small><b class='" + (inc - exp >= 0 ? "inc" : "exp") + "'>" + fm(inc - exp) + "</b></div><div><small>В день (расходы)</small><b>" + fm(exp / days) + "</b></div></div>";
   if (!arr.length) return h + '<div class="empty">Нет данных за период</div>';
-  // по дням месяца
-  if (ui.per === "m") { const nd = new Date(y, mo, 0).getDate(), v = Array(nd).fill(0); ofMonth(ui.month).filter(t => t.kind === "exp").forEach(t => v[new Date(t.ts).getDate() - 1] += t.amount); h += '<div class="card"><h3>Расходы по дням</h3>' + bars(v, v.map((_, i) => i + 1), { avg: exp / Math.max(1, days) }) + "</div>"; }
-  // 12 месяцев
-  const ms = []; for (let i = 11; i >= 0; i--) ms.push(shiftMonth(ui.month, -i)); const ev = ms.map(m => sumBy(ofMonth(m).filter(t => t.kind === "exp"))), iv = ms.map(m => sumBy(ofMonth(m).filter(t => t.kind === "inc")));
-  h += '<div class="card"><h3>Расходы по месяцам</h3>' + bars(ev, ms.map(m => MONS_S[+m.slice(5) - 1]), { hi: ms.length - 1, avg: ev.filter(Boolean).length ? sumBy(ev.filter(Boolean), x => x) / ev.filter(Boolean).length : 0 }) + '<div class="sub" style="font-size:.78em;margin-top:6px">пунктир — среднее за месяц</div></div>';
-  if (iv.some(Boolean)) h += '<div class="card"><h3>Доходы по месяцам</h3>' + bars(iv, ms.map(m => MONS_S[+m.slice(5) - 1]), { hi: ms.length - 1, col: "var(--inc)" }) + "</div>";
-  // категории
+  const ex = arr.filter(x => x.kind === "exp");
+  if (days <= 62 && t !== "all") { const v = Array(days).fill(0); ex.forEach(x => { const i = Math.floor((+sod(x.ts) - +sod(s0)) / 864e5); if (i >= 0 && i < days) v[i] += x.amount; }); h += '<div class="card"><h3>Расходы по дням</h3>' + bars(v, v.map((_, i) => new Date(+sod(s0) + i * 864e5).getDate()), { avg: exp / days }) + "</div>"; }
+  const am = anchorMonth(), nm = t === "all" ? 24 : 12, ms = []; for (let i = nm - 1; i >= 0; i--) ms.push(shiftMonth(am, -i));
+  const ev = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "exp"))), iv = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "inc"))), lab = ms.map(m => nm > 12 && +m.slice(5) !== 1 ? "" : (nm > 12 ? m.slice(2, 4) : MONS_S[+m.slice(5) - 1])), nz = ev.filter(Boolean);
+  h += '<div class="card"><h3>Расходы по месяцам</h3>' + bars(ev, lab, { hi: ms.length - 1, avg: nz.length ? sumBy(nz, x => x) / nz.length : 0 }) + '<div class="sub" style="font-size:.78em;margin-top:6px">пунктир — среднее за месяц · ' + nm + " мес.</div></div>";
+  if (iv.some(Boolean)) h += '<div class="card"><h3>Доходы по месяцам</h3>' + bars(iv, lab, { hi: ms.length - 1, col: "var(--inc)" }) + "</div>";
   const bc = byCat(arr, "exp"), pbc = {}; byCat(prevArr, "exp").forEach(x => { pbc[x.cat.id] = x.v; }); const mx = bc[0] ? bc[0].v : 1;
   h += '<div class="card"><h3>Куда уходят деньги</h3>' + bc.map(x => { const p = pbc[x.cat.id], dd = p ? Math.round((x.v - p) / p * 100) : null; return '<div class="bar"><div class="n">' + esc(x.cat.icon + " " + x.cat.name) + '</div><div class="tr"><i style="width:' + (x.v / mx * 100) + "%;background:" + x.cat.color + '"></i></div><div class="v">' + fm(x.v) + '<br><span class="sub" style="font-weight:400;font-size:.85em">' + (exp ? Math.round(x.v / exp * 100) : 0) + "%" + (dd != null ? ' · <span class="' + (dd > 0 ? "exp" : "inc") + '">' + (dd > 0 ? "+" : "") + dd + "%</span>" : "") + "</span></div></div>"; }).join("") + "</div>";
-  // топ-5
-  const top = arr.filter(t => t.kind === "exp").sort((a, b) => b.amount - a.amount).slice(0, 5);
-  if (top.length) h += '<div class="card"><h3>Самые крупные траты</h3>' + top.map(txRow).join("") + "</div>";
-  // день недели
-  const wd = Array(7).fill(0), wc = Array(7).fill(0), seen = {}; arr.filter(t => t.kind === "exp").forEach(t => { const d = new Date(t.ts), w = d.getDay(); wd[w] += t.amount; if (!seen[dayKey(d)]) { seen[dayKey(d)] = 1; } }); Object.keys(seen).forEach(k => wc[new Date(k + "T12:00").getDay()]++);
+  const top = ex.slice().sort((a, b) => b.amount - a.amount).slice(0, 5); if (top.length) h += '<div class="card"><h3>Самые крупные траты</h3>' + top.map(txRow).join("") + "</div>";
+  const wd = Array(7).fill(0), wc = Array(7).fill(0), seen = {}; ex.forEach(x => { const d = new Date(x.ts); wd[d.getDay()] += x.amount; seen[dayKey(d)] = 1; }); Object.keys(seen).forEach(k => wc[new Date(k + "T12:00").getDay()]++);
   const wavg = wd.map((v, i) => wc[i] ? v / wc[i] : 0), ord = [1, 2, 3, 4, 5, 6, 0];
   h += '<div class="card"><h3>Средняя трата по дням недели</h3>' + bars(ord.map(i => wavg[i]), ord.map(i => WD[i]), { hi: ord.map(i => wavg[i]).indexOf(Math.max(...wavg)) }) + "</div>";
-  // тепловая таблица
-  const m6 = []; for (let i = 5; i >= 0; i--) m6.push(shiftMonth(ui.month, -i)); const top8 = byCat(txs.filter(t => m6.includes(mk(new Date(t.ts)))), "exp").slice(0, 8);
-  if (top8.length) { const grid = top8.map(x => m6.map(m => sumBy(ofMonth(m).filter(t => t.kind === "exp" && (t.category_id || "_") === (x.cat.id || "_")))));  const gm = Math.max(1, ...grid.flat()); h += '<div class="card"><h3>Категории по месяцам (6 мес.)</h3><table class="hm"><tr><th></th>' + m6.map(m => "<th>" + MONS_S[+m.slice(5) - 1] + "</th>").join("") + "</tr>" + top8.map((x, r) => "<tr><th style='text-align:left'>" + esc(x.cat.icon) + "</th>" + grid[r].map(v => '<td style="background:rgba(255,107,107,' + (v / gm * .85).toFixed(2) + ')">' + (v ? Math.round(v / 100) / 10 + "k" : "") + "</td>").join("") + "</tr>").join("") + '</table><div class="sub" style="font-size:.75em;margin-top:4px">в тысячах рублей</div></div>'; }
+  const m6 = []; for (let i = 5; i >= 0; i--) m6.push(shiftMonth(am, -i)); const top8 = byCat(txs.filter(x => m6.includes(mk(new Date(x.ts)))), "exp").slice(0, 8);
+  if (top8.length) { const grid = top8.map(x => m6.map(m => sumBy(ofMonth(m).filter(y => y.kind === "exp" && (y.category_id || "_") === (x.cat.id || "_"))))), gm = Math.max(1, ...grid.flat()); h += '<div class="card"><h3>Категории по месяцам (6 мес.)</h3><table class="hm"><tr><th></th>' + m6.map(m => "<th>" + MONS_S[+m.slice(5) - 1] + "</th>").join("") + "</tr>" + top8.map((x, r) => "<tr><th style='text-align:left'>" + esc(x.cat.icon) + "</th>" + grid[r].map(v => '<td style="background:rgba(255,107,107,' + (v / gm * .85).toFixed(2) + ')">' + (v ? Math.round(v / 100) / 10 + "k" : "") + "</td>").join("") + "</tr>").join("") + '</table><div class="sub" style="font-size:.75em;margin-top:4px">в тысячах рублей</div></div>'; }
   return h;
 }
 function moreHTML() {
@@ -278,6 +307,14 @@ function sheetHTML() {
       '<div class="pal">' + EMO.map(e => '<i data-a="cic" data-v="' + e + '" class="' + (s.icon === e ? "on" : "") + '" style="width:40px;height:40px;border-radius:12px;background:var(--card);font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px">' + e + "</i>").join("") + "</div>" +
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
+  }
+  if (s.type === "pick") {
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (s.kind === "exp" ? "Расход: выбери категорию" : "Доход: выбери категорию") + '</h2><div class="grid">' + catsOf(s.kind).map(c => '<button class="cat" data-a="add" data-id="' + c.id + '"><div class="ci" style="border-color:' + c.color + '">' + esc(c.icon) + "</div><b>" + esc(c.name) + "</b></button>").join("") + "</div></div></div>";
+  }
+  if (s.type === "rg") {
+    const B = rgBounds(ui.rg), f = d => dayKey(new Date(d));
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Период</h2>' + [["d", "День"], ["w", "Неделя"], ["m", "Месяц"], ["y", "Год"], ["all", "Всё время"]].map(o => '<button class="btn g" style="width:100%;margin-bottom:8px;' + (ui.rg.t === o[0] ? "outline:2px solid var(--acc)" : "") + '" data-a="setrg" data-v="' + o[0] + '">' + o[1] + "</button>").join("") +
+      '<div class="card" style="margin:6px 0"><h3>Интервал / дата</h3><div style="display:flex;gap:8px"><input class="in" type="date" id="rg-a" value="' + f(Math.max(B[0], 0) || Date.now()) + '"><input class="in" type="date" id="rg-b" value="' + f(Math.min(B[1] - 864e5, Date.now())) + '"></div><button class="btn" style="width:100%" data-a="setint">Показать интервал</button></div></div></div>';
   }
   if (s.type === "imp") {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Импорт из Monefy</h2><div class="card" style="margin:0 0 10px">' + s.info + '</div><div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="impgo">' + (s.busy ? "Загружаю…" : "Импортировать") + '</button><button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
@@ -329,24 +366,24 @@ function prepImport(text) {
   const iD = find("date", "дата"), iC = find("category", "категор"), iA = find("amount", "сумма"), iN = find("description", "описан", "note", "замет", "коммент"), iAcc = find("account", "счёт", "счет");
   if (iD < 0 || iC < 0 || iA < 0) throw new Error("Не нашёл колонки date / category / amount. Заголовок: " + rows[0].join(" | "));
   const out = []; let neg = 0, pos = 0, bad = 0;
-  rows.slice(1).forEach(r => { const d = parseDate(r[iD]), a = parseNum(r[iA]); if (!d || isNaN(a) || a === 0) { bad++; return; } if (a < 0) neg++; else pos++; out.push({ d, a, cat: (r[iC] || "").trim() || "Без категории", note: iN >= 0 ? (r[iN] || "").trim() : "" }); });
+  rows.slice(1).forEach(r => { const d = parseDate(r[iD]), a = parseNum(r[iA]); if (!d || isNaN(a) || a === 0) { bad++; return; } if (a < 0) neg++; else pos++; out.push({ d, a, cat: (r[iC] || "").trim() || "Без категории", note: iN >= 0 ? (r[iN] || "").trim() : "", acc: iAcc >= 0 ? (r[iAcc] || "").trim() : "" }); });
   return { out, neg, pos, bad };
 }
 async function doImport(p) {
   const signMode = p.neg > 0;   // есть отрицательные → минус = расход, плюс = доход; иначе всё — расходы
   const kindOf = x => signMode ? (x.a < 0 ? "exp" : "inc") : "exp"; const keyOf = (n, k) => k + "|" + n.toLowerCase();
   const have = new Map(cats.map(c => [keyOf(c.name, c.kind), c])); let np = cats.length, ci = 0;
-  const guess = n => { const l = n.toLowerCase(), M = [[/прод|еда|магаз|супер/, "🛒"], [/кафе|ресторан|обед|кофе/, "🍽️"], [/транс|такси|метро|бензин|авто/, "🚌"], [/дом|жкх|квартир|аренд|коммун/, "🏠"], [/связь|телефон|интернет/, "📞"], [/одежд|обув/, "👕"], [/здоров|аптек|врач|лекарств/, "💊"], [/развлеч|кино|игр/, "🎬"], [/спорт|зал|фитнес/, "🏋️"], [/подар/, "🎁"], [/зарплат/, "💼"], [/питом|кош|собак/, "🐱"], [/красот|космет/, "🧴"]]; for (const [re, e] of M) if (re.test(l)) return e; return "📦"; };
+  const guess = n => { const l = n.toLowerCase(), M = [[/такси/, "🚕"], [/кот\b|кошк/, "🐱"], [/морков/, "🥕"], [/баловств/, "🍬"], [/самокат/, "🛵"], [/стриж|парикм/, "✂️"], [/нг |новый год|нг\b/, "🎄"], [/мам|сестр|родител/, "👪"], [/ремонт|квартир/, "🛠️"], [/выход|свет|театр|кафе/, "🎭"], [/гигиен/, "🧴"], [/отпуск|ташкент|алтай|казан|абхаз|алмат|дубаи|кавказ|хвоя|томск|красноярск|\d\d\.\d\d|20\d\d/, "🌴"], [/разов|проч/, "📦"], [/общественн|автобус|метро/, "🚌"], [/прод|еда|магаз|супер/, "🛒"], [/кафе|ресторан|обед|кофе/, "🍽️"], [/транс|такси|метро|бензин|авто/, "🚌"], [/дом|жкх|квартир|аренд|коммун/, "🏠"], [/связь|телефон|интернет/, "📞"], [/одежд|обув/, "👕"], [/здоров|аптек|врач|лекарств/, "💊"], [/развлеч|кино|игр/, "🎬"], [/спорт|зал|фитнес/, "🏋️"], [/подар/, "🎁"], [/зарплат/, "💼"], [/питом|кош|собак/, "🐱"], [/красот|космет/, "🧴"]]; for (const [re, e] of M) if (re.test(l)) return e; return "📦"; };
   const mkCat = (n, k) => { const c = { id: uid(), name: n, icon: guess(n), color: PAL[ci++ % PAL.length], kind: k, position: np++, archived: false, updated_at: nowISO() }; cats.push(c); have.set(keyOf(n, k), c); pend.push({ op: "up", t: "fin_categories", row: dbCat(c) }); return c; };
-  const exist = new Set(txs.map(t => new Date(t.ts).toISOString().slice(0, 10) + "|" + t.amount + "|" + t.kind + "|" + (t.category_id || "") + "|" + (t.note || "")));
+  const exist = new Map(); txs.forEach(t => { const k = dayKey(new Date(t.ts)) + "|" + t.amount + "|" + t.kind + "|" + (t.category_id || "") + "|" + (t.note || ""); exist.set(k, (exist.get(k) || 0) + 1); });
   let added = 0, skipped = 0; const batch = [];
   p.out.forEach(x => {
-    const k = kindOf(x), c = have.get(keyOf(x.cat, k)) || mkCat(x.cat, k), amt = Math.abs(x.a), key = x.d.toISOString().slice(0, 10) + "|" + amt + "|" + k + "|" + c.id + "|" + x.note;
-    if (exist.has(key)) { skipped++; return; } exist.add(key);
-    const t = { id: uid(), ts: x.d.toISOString(), amount: amt, kind: k, category_id: c.id, note: x.note, account: "Основной", updated_at: nowISO() }; txs.push(t); batch.push(dbTx(t)); added++;
+    const k = kindOf(x), c = have.get(keyOf(x.cat, k)) || mkCat(x.cat, k), amt = Math.abs(x.a), key = dayKey(x.d) + "|" + amt + "|" + k + "|" + c.id + "|" + x.note;
+    if ((exist.get(key) || 0) > 0) { exist.set(key, exist.get(key) - 1); skipped++; return; }   // уже есть такая же запись (с учётом повторов)
+    const t = { id: uid(), ts: x.d.toISOString(), amount: amt, kind: k, category_id: c.id, note: x.note, account: x.acc || "Основной", updated_at: nowISO() }; txs.push(t); batch.push(dbTx(t)); added++;
   });
-  saveLocal(); await flush();   // сначала категории
-  for (let i = 0; i < batch.length; i += 400) { const r = await sb.from("fin_tx").upsert(batch.slice(i, i + 400)); if (r.error) { batch.slice(i).forEach(row => pend.push({ op: "up", t: "fin_tx", row })); saveLocal(); throw r.error; } }
+  if (batch.length) pend.push({ op: "ups", t: "fin_tx", ids: batch.map(r => r.id) });
+  saveLocal(); flush();   // отправка в облако идёт в фоне, порциями
   return { added, skipped };
 }
 let IMP = null;
@@ -355,11 +392,17 @@ let IMP = null;
 const A = {
   none() {}, nop() {},
   tab(a) { ui.tab = a.dataset.v; ui.q = ""; ui.set = "main"; render(); },
-  mprev() { ui.month = shiftMonth(ui.month, ui.per === "y" && ui.tab === "stats" ? -12 : -1); render(); },
-  mnext() { ui.month = shiftMonth(ui.month, ui.per === "y" && ui.tab === "stats" ? 12 : 1); render(); },
+  mprev() { rgShift(-1); render(); }, mnext() { rgShift(1); render(); },
+  pickrange() { ui.sheet = { type: "rg" }; render(); },
+  setrg(a) { const t = a.dataset.v; ui.rg = { t, a: t === "all" ? Date.now() : ui.rg.a || Date.now() }; ui.sheet = null; render(); },
+  setint() { const a = $("rg-a").value, b = $("rg-b").value; if (!a || !b) return; ui.rg = a === b ? { t: "d", a: +new Date(a + "T12:00") } : { t: "int", a: +new Date(a + "T12:00"), from: new Date(a + "T12:00"), to: new Date((b < a ? a : b) + "T12:00") }; if (b < a) ui.rg.from = new Date(b + "T12:00"); ui.sheet = null; render(); },
+  kindtog() { ui.kind = ui.kind === "exp" ? "inc" : "exp"; render(); },
+  viewtog() { ui.view = ui.view === "list" ? "ring" : "list"; render(); },
+  catopen(a) { const id = a.dataset.id; ui.open[id] = !ui.open[id]; render(); },
+  search() { ui.tab = "list"; ui.q = " "; ui.q = ""; render(); setTimeout(() => { const q = $("q"); if (q) q.focus(); }, 50); },
+  pick(a) { ui.sheet = { type: "pick", kind: a.dataset.v }; render(); },
   kind(a) { ui.kind = a.dataset.v; render(); },
-  per(a) { ui.per = a.dataset.v; render(); },
-  add(a) { const c = catOf(a.dataset.id); openTx({ kind: c.kind, cat: c.id }); },
+  add(a) { const c = catOf(a.dataset.id); ui.sheet = null; openTx({ kind: c.kind, cat: c.id }); },
   edit(a) { const t = txs.find(x => x.id === a.dataset.id); if (!t) return; const e = String(t.amount).replace(".", ","); openTx({ id: t.id, kind: t.kind, cat: t.category_id || (catsOf(t.kind)[0] || {}).id, expr: e, note: t.note, date: dayKey(new Date(t.ts)) }); },
   key(a) { keyPress(a.dataset.v); },
   shclose(a, e) { if (e.target === a) { ui.sheet = null; render(); } },
