@@ -378,7 +378,13 @@ async function pushGroup(tbl, op) {
     if (err) { chunk.forEach(id => { if (!P[tbl][id]) P[tbl][id] = op; }); savePending(); throw err; }
   }
 }
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function purgeBadIds() {   // хвосты от старого бага huid: записи с невалидным uuid вечно ломали синхронизацию
+  let n = 0; ["foods", "food_log", "weight_log", "user_settings"].forEach(t => { if (!P[t]) return; Object.keys(P[t]).forEach(id => { if (!UUID_RE.test(id)) { delete P[t][id]; if (S[t]) delete S[t][id]; n++; } }); });
+  if (n) savePending();
+}
 async function flush() {
+  purgeBadIds();
   if (!sb || !S.user || flushing || !pendCount()) return;
   flushing = true; flushSeq++; setSync("sync");
   try {
@@ -3862,7 +3868,7 @@ function huid(s) {                                    // стабильный «
   for (let k = 0; k < 4; k++) {
     let h = (0x811c9dc5 ^ Math.imul(k + 1, 0x9e3779b1)) >>> 0;
     for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-    h ^= h >>> 15; h = Math.imul(h, 2246822507) >>> 0; h ^= h >>> 13; out.push(h.toString(16).padStart(8, "0"));
+    h ^= h >>> 15; h = Math.imul(h, 2246822507) >>> 0; h ^= h >>> 13; h >>>= 0; out.push(h.toString(16).padStart(8, "0"));
   }
   const x = out.join(""); return x.slice(0, 8) + "-" + x.slice(8, 12) + "-" + x.slice(12, 16) + "-" + x.slice(16, 20) + "-" + x.slice(20, 32);
 }
