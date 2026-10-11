@@ -214,7 +214,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .crow{position:relative}
 .crow .ci{width:36px;height:36px;margin-right:6px}.crow .chev{margin-right:6px}.crow .chev svg{width:15px}
 .pbar{position:absolute;left:50px;right:8px;bottom:5px;height:5px;border-radius:2px;background:color-mix(in srgb,var(--tx) 12%,transparent)}.pbar i{display:block;height:100%;border-radius:2px}.pbar.norm{opacity:.6}.pbar.lim{height:6px}
-#main .crow{min-height:64px;padding-bottom:10px}#main .crow+.crow,#main .crow+.sub-r+.crow{margin-top:2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
+#main .crow{min-height:58px;padding-bottom:0}#main .crow .ar{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;flex:none}#main .crow .lm{font-size:11.5px;font-weight:600;color:var(--sub)}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{text-align:right;margin:0 0 2px}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
 .rs.over::after{content:"!";position:absolute;top:-4px;right:-2px;width:15px;height:15px;border-radius:50%;background:var(--exp);color:#fff;font-size:11px;font-weight:700;line-height:15px;text-align:center}
 .cgrid button .bl,.bl{font-style:normal;font-size:10.5px;color:var(--sub);line-height:1}.bl.warn{color:#f2b36d}.bl.bad{color:var(--exp)}
 .cgrid button{gap:3px}
@@ -256,7 +256,6 @@ table.hm td{background-color:transparent}
 </head>
 <body>
 <div id="app"></div>
-<script src="supabase-lib.js"></script>
 <script>
 "use strict";
 /* ============ утилиты ============ */
@@ -502,11 +501,19 @@ function acc(id, ico, title, sum, body) {
   const o = accOpen(id);
   return '<div class="card ac' + (o ? " open" : "") + '"><button class="ach" data-a="accx" data-v="' + id + '"><span class="ai">' + ico + '</span><span class="at">' + title + '</span><span class="as">' + (sum || "") + '</span><i class="chv"></i></button>' + (o ? '<div class="acb">' + body() + "</div>" : "") + "</div>";
 }
+const SRT = [["sumc", "По сумме · закрытые внизу"], ["sum", "По сумме · всё вместе"], ["pinup", "Закреплённые и закрытые сверху"], ["pindn", "Закреплённые и закрытые снизу"], ["pace", "Ближе к лимиту — выше"], ["az", "По алфавиту"], ["cnt", "По числу покупок"], ["pos", "Как в списке категорий"]];
+const srtLabel = () => (SRT.find(x => x[0] === (PR.srt || "sumc")) || SRT[0])[1];
+const srtBtn = () => '<button class="srtb" data-a="srtopen">⇅ ' + srtLabel() + "</button>";
+function catOrder(rows) {   // rows: {c, v, b, n}
+  const m = PR.srt || "sumc", fx = PR.fix || {}, cl = r => !!(r.b && r.b.kind === "closed"), pin = r => cl(r) || !!fx[r.c.id], pct = r => (r.b && r.b.v > 0 && !cl(r) ? r.v / r.b.v : -1), bySum = (a, b) => b.v - a.v;
+  const f = { sumc: (a, b) => (cl(a) - cl(b)) || bySum(a, b), sum: bySum, pinup: (a, b) => (pin(b) - pin(a)) || bySum(a, b), pindn: (a, b) => (pin(a) - pin(b)) || bySum(a, b), pace: (a, b) => (cl(a) - cl(b)) || (pct(b) - pct(a)) || bySum(a, b), az: (a, b) => a.c.name.localeCompare(b.c.name, "ru"), cnt: (a, b) => ((b.n || 0) - (a.n || 0)) || bySum(a, b), pos: (a, b) => (a.c.position || 0) - (b.c.position || 0) }[m] || bySum;
+  return rows.slice().sort(f);
+}
 function budRows(am) {
   const md = bmode(), capOn = md === "cap" && PR.cap > 0, cur = am === mk(new Date());
   const rows = cats.filter(c => c.kind === "exp").map(c => ({ c, sp: catSpent(c.id, am), b: budgetOf(c, am) })).filter(r => r.sp > 0 || (r.b && !r.c.archived));
-  const ord = rows.slice().sort((a, b) => ((b.b && b.sp > b.b.v) - (a.b && a.sp > a.b.v)) || b.sp - a.sp);
-  return ord.map(r => {
+  const ord = catOrder(rows.map(r => ({ c: r.c, v: r.sp, b: r.b, n: 0, src: r }))).map(o => o.src);
+  return srtBtn() + ord.map(r => {
     const c = r.c, b = r.b, over = b && r.sp > b.v + .5, mxv = Math.max(r.sp, b ? b.v : 0, 1), st = b ? budState(r.sp, b, am) : null;
     let line;
     if (b && b.kind === "closed") { const n = normOf(c.id, am), ref = +c.lim > 0 ? +c.lim : n && n.avg > 0 ? n.avg : 0; line = "✔ закрыто на месяц" + (ref > r.sp ? " · освободилось ≈ " + fmN(ref - r.sp) : ""); }
@@ -516,7 +523,7 @@ function budRows(am) {
     else line = "в среднем " + fm(b.v) + " в мес. · " + (over ? '<span class="exp">выше на ' + fm(r.sp - b.v) + " (+" + Math.round((r.sp / b.v - 1) * 100) + "%)</span>" : st.st === "pace" ? '<span style="color:#f2b36d">темп выше обычного</span>' : "в норме");
     const cl = cur && (b || r.sp > 0) && c.id ? '<button class="lk' + (b && b.kind === "closed" ? " on" : "") + '" data-a="cltog" data-id="' + c.id + '" title="Закрыть категорию на месяц: больше тратить не буду">' + (b && b.kind === "closed" ? "✅" : "☑️") + "</button>" : "";
     const lock = cl + (capOn && cur && b && b.kind === "cap" ? '<button class="lk' + (b.mode === "fix" ? " on" : "") + '" data-a="fixtog" data-id="' + c.id + '" title="Нельзя урезать">' + (b.mode === "fix" ? "🔒" : "🔓") + "</button>" : "");
-    return '<div class="brwx"><button class="brw" data-a="limedit" data-id="' + (c.id || "_") + '"><div class="ci">' + ic(c.icon, c.color, 30) + '</div><div class="bm"><div class="l1"><b>' + esc(c.name) + (+c.lim > 0 ? " 🎯" : "") + "</b><span>" + fm(r.sp) + '</span></div><div class="gb sm"><i style="width:' + (r.sp / mxv * 100).toFixed(1) + "%;background:" + (st ? BCOL[st.st] : c.color) + '"></i>' + (b ? '<s style="left:' + Math.min(100, b.v / mxv * 100).toFixed(1) + '%"></s>' : "") + '</div><div class="sub" style="font-size:.8em">' + line + "</div></div></button>" + lock + "</div>";
+    return '<div class="brwx"><button class="brw" data-a="limedit" data-id="' + (c.id || "_") + '"><div class="ci">' + ic(c.icon, c.color, 30) + '</div><div class="bm"><div class="l1"><b>' + esc(c.name) + (+c.lim > 0 ? " 🎯" : "") + "</b><span>" + fm(r.sp) + '</span></div>' + (b && b.kind === "closed" ? "" : '<div class="gb sm"><i style="width:' + (r.sp / mxv * 100).toFixed(1) + "%;background:" + (st ? BCOL[st.st] : c.color) + '"></i>' + (b ? '<s style="left:' + Math.min(100, b.v / mxv * 100).toFixed(1) + '%"></s>' : "") + "</div>") + '<div class="sub" style="font-size:.8em">' + line + "</div></div></button>" + lock + "</div>";
   }).join("");
 }
 function budBody() {
@@ -645,7 +652,7 @@ function homeHTML() {
   const pill = '<div class="brow' + (ring ? "" : " stk") + '"><button class="lb" data-a="' + (ring ? "qtpl" : "viewtog") + '">' + (ring ? UI.bolt : UI.lines) + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="' + (ring ? "qbud" : "kindtog") + '" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.gauge : UI.tag) + "</button></div>";
   let body;
   if (ring) body = ringHTML(items, tot, exp, inc, K) + pill;
-  else body = pill + (K === "exp" && !PR.hb && ui.rg.t === "m" && items.some(x => x.cat.id && budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0])))) ? '<div class="hint" data-a="hintx"><span>Полоска под категорией — сколько уже потрачено от нормы или лимита (на конце — 100%). Цвет: акцентный — в порядке, оранжевый — близко к границе или темп выше обычного, красный — перебор.</span><b>✕</b></div>' : "") + (items.map(x => { const id = x.cat.id || "_", op = ui.open[id], bb = K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null, bst = bb ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null; return '<button class="crow" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="a ' + K + '">' + fmH(x.v) + "</span>" + (bb ? '<span class="pbar ' + bb.kind + '"><i style="width:' + Math.min(100, bst.r * 100).toFixed(1) + "%;background:" + BCOL[bst.st] + '"></i></span>' : "") + "</button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>');
+  else body = pill + (K === "exp" && !PR.hb2 && ui.rg.t === "m" && items.some(x => x.cat.id && budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0])))) ? '<div class="hint" data-a="hintx"><span>Под суммой — лимит или норма категории. Цвет: акцентный — в порядке, оранжевый — близко к границе или темп выше обычного, красный — перебор. Закрытые категории серые и по умолчанию внизу.</span><b>✕</b></div>' : "") + '<div class="srtr">' + srtBtn() + "</div>" + (catOrder(items.map(x => ({ c: x.cat, v: x.v, n: x.n, x, b: K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null }))).map(o => { const x = o.x, id = x.cat.id || "_", op = ui.open[id], bb = o.b, bst = bb && bb.kind !== "closed" ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null, cld = bb && bb.kind === "closed"; return '<button class="crow' + (cld ? " cld" : "") + '" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="ar"><span class="a ' + K + '">' + fmH(x.v) + "</span>" + (cld ? '<small class="lm">✔ закрыто</small>' : bb ? '<small class="lm" style="color:' + BCOL[bst.st] + '">' + (bb.kind === "lim" ? "лимит " : bb.kind === "cap" ? "план " : "норма ") + fmN(bb.v) + "</small>" : "") + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>');
   return topBar(true) + body + '<div style="height:160px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp"></button><button class="fb p" data-a="pick" data-v="inc"></button></div>';
 }
 const hl = (txt, q) => { txt = String(txt || ""); if (!q) return esc(txt); const lo = txt.toLowerCase(); let o = "", p = 0, i; while ((i = lo.indexOf(q, p)) >= 0 && q) { o += esc(txt.slice(p, i)) + "<mark>" + esc(txt.slice(i, i + q.length)) + "</mark>"; p = i + q.length; } return o + esc(txt.slice(p)); };
@@ -869,6 +876,7 @@ function sheetHTML() {
     const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="rcpbtn">📷 Сфотографировать чек</button><button class="btn g" style="width:100%;margin-top:8px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
   }
+  if (s.type === "srt") return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Порядок категорий</h2>' + SRT.map(x => '<button class="qrow" data-a="srtset" data-v="' + x[0] + '" style="width:100%;justify-content:space-between"><span>' + x[1] + "</span>" + ((PR.srt || "sumc") === x[0] ? "<b>✓</b>" : "") + "</button>").join("") + '<div class="sub" style="font-size:.8em;margin-top:8px">Действует и в списке, и в аналитике.</div></div></div>';
   if (s.type === "cmp") return cmpSheetHTML();
   if (s.type === "bud") return budSheetHTML();
   if (s.type === "ext") {
@@ -942,7 +950,7 @@ function slide(dir) { if (sliding) return; if (dir > 0 && rgBounds(ui.rg, 1)[0] 
 
 /* ============ кнопка «Назад» ============ */
 let hDepth = 0, hSkip = 0, guarded = false, lastBack = 0;
-const layerCount = () => !user ? 0 : (ui.menu ? 1 : 0) + (ui.sheet ? 1 + (ui.sheet.step === "cat" ? 1 : 0) : 0) + (ui.tab === "more" && ui.set !== "main" ? 1 : 0) + (ui.tab !== "home" ? 1 : 0);
+const layerCount = () => !user ? 0 : (ui.menu ? 1 : 0) + (ui.sheet ? 1 + (ui.sheet.step === "cat" ? 1 : 0) : 0) + (ui.tab === "more" && ui.set !== "main" ? 1 : 0) + (ui.tab !== "home" || ui.view === "list" ? 1 : 0);
 function ensureGuard() {
   try { if (guarded || (navigator.userActivation && !navigator.userActivation.hasBeenActive)) return; history.replaceState({ base: 1 }, ""); history.pushState({ guard: 1 }, ""); guarded = true; } catch (e) {}
 }
@@ -962,6 +970,7 @@ function onBack() {
     else if (ui.sheet) { if (ui.sheet.step === "cat") ui.sheet.step = "kb"; else ui.sheet = null; }
     else if (ui.tab === "more" && ui.set === "cats") ui.set = "main";
     else if (ui.tab !== "home") { ui.tab = "home"; ui.q = ""; ui.set = "main"; }
+    else if (ui.view === "list") ui.view = "ring";
     render(); return;
   }
   // корень: мы провалились на базовую запись — возвращаем «страховку» и просим нажать ещё раз
@@ -1076,7 +1085,8 @@ const A = {
   setcats() { ui.set = "cats"; render(); }, setmain() { ui.set = "main"; render(); },
   theme(a) { PR.theme = a.dataset.v; savePR(); applyTheme(); render(); },
   accx(a) { PR.acs = PR.acs || {}; const id = a.dataset.v; PR.acs[id] = !accOpen(id); savePR(); render(); },
-  hintx() { PR.hb = 1; savePR(); render(); },
+  srtopen() { ui.sheet = { type: "srt" }; render(); }, srtset(a) { PR.srt = a.dataset.v; savePR(); ui.sheet = null; render(); },
+  hintx() { PR.hb2 = 1; savePR(); render(); },
   hmset(a) { PR.hmN = a.dataset.v; savePR(); render(); }, topset(a) { PR.topN = a.dataset.v; savePR(); render(); },
   avgset(a) { PR.avg = a.dataset.v; savePR(); render(); },
   cltog(a) { const am = anchorMonth(), id = a.dataset.id; PR.cl = PR.cl || {}; PR.cl[am] = PR.cl[am] || {}; if (PR.cl[am][id]) delete PR.cl[am][id]; else PR.cl[am][id] = true; savePR(); render(); toast(PR.cl[am][id] ? "Закрыто: остаток освобождён для других категорий" : "Категория снова открыта"); },
@@ -1162,10 +1172,12 @@ document.addEventListener("change", async e => {
 /* ============ старт ============ */
 (async function boot() {
   applyTheme();
-  if (!window.supabase) { $("app").textContent = "Не загрузилась библиотека Supabase"; return; }
+  let early = false; try { const raw = JSON.parse(localStorage.getItem("mytasks-auth") || "null"); if (raw && raw.user && raw.user.id) { user = raw.user; early = true; render(); } } catch (e) {}   // мгновенный первый кадр из локальных данных, не дожидаясь сети и библиотеки
+  await new Promise(res => { const sc = document.createElement("script"); sc.src = "supabase-lib.js"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc); });
+  if (!window.supabase) { if (!early) $("app").textContent = "Не загрузилась библиотека Supabase"; return; }
   sb = window.supabase.createClient(CFG.url, CFG.key, { auth: { storageKey: "mytasks-auth", persistSession: true, autoRefreshToken: true } });
   try { const s = await sb.auth.getSession(); user = s.data.session ? s.data.session.user : null; } catch (e) {}
-  render(); if (!user) return;
+  if (!early || !user) render(); if (!user) return;
   runRec(); flush(); pull(!txs.length);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { runRec(); flush(); pull(false); } });
   window.addEventListener("online", () => { flush(); pull(false); });
