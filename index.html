@@ -3598,6 +3598,7 @@ function jrEditHTML(l) {
     '<button class="btn ghost jr-edel" data-a="jrdel">' + ic("trash", 18) + " Удалить запись</button></div>";
 }
 function journalMainHTML(vi) {
+  if (!JV && sb && S.user && !window.__jvProbed) { window.__jvProbed = true; sb.from("time_log").select("val").limit(1).then(r => { if (!r.error) { jvSet(true); loadAll(); render(); } }, () => { window.__jvProbed = false; }); }
   const J = jrState(), today0 = todayISO(), yest = addDays(today0, -1), all = Object.values(S.time_log).filter(l => jrDay(l));
   if (!J.vd) J.vd = today0;
   const items = J.hist ? jrList() : all.filter(l => jrDay(l) === J.vd), byDay = {}; items.forEach(l => { (byDay[jrDay(l)] = byDay[jrDay(l)] || []).push(l); });
