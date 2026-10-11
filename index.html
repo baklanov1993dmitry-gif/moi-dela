@@ -1889,13 +1889,13 @@ const jrCSS = `
 .jr-nudge{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--acc);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:calc(12.2px*var(--z,1))}
 .jr-day{display:flex;justify-content:space-between;gap:8px;padding:14px 6px 4px;font-weight:600;font-size:calc(12.2px*var(--z,1));border-bottom:1px solid var(--ln)}
 .jr-sum{font-weight:400;color:var(--sub)}
-.jr-it{display:grid;grid-template-columns:112px 64px 1fr;gap:10px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:baseline;font-size:calc(12.2px*var(--z,1))}
+.jr-it{display:grid;grid-template-columns:84px 44px 16px 190px minmax(0,1fr);gap:6px 8px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:start;font-size:calc(12.2px*var(--z,1))}
 .jr-it:hover{background:var(--hov)}
 .jr-ed{display:block;cursor:default;background:var(--sel)}
 .jr-w{color:var(--acc);font-weight:600;white-space:nowrap}
 .jr-d{color:var(--sub);font-size:calc(11.3px*var(--z,1));white-space:nowrap}
 .jr-t{min-width:0;overflow-wrap:anywhere}
-.jr-c{font-style:normal;font-size:calc(10.4px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:0 6px;margin-left:4px}
+.jr-c{font-style:normal;font-size:calc(10.8px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:1px 6px;margin:0;display:inline-flex;align-items:center;gap:3px;line-height:1.3}
 .jr-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px}
 .jr-chip{border:1px solid var(--ln);background:var(--solid,transparent);color:inherit;border-radius:16px;padding:5px 12px;cursor:pointer;font-size:calc(12.2px*var(--z,1))}
 .jr-chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -1930,14 +1930,19 @@ const jrCSS = `
 .jr-wsel{position:absolute;left:0;right:0;top:68px;height:34px;border-top:2px solid var(--acc);border-bottom:2px solid var(--acc);pointer-events:none;opacity:.7}
 .jr-wb{display:flex;gap:8px;margin-top:14px;align-items:center}
 .jr-bot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:14px}
-.jr-c{cursor:pointer;background:transparent;color:var(--sub);font:inherit;font-size:calc(10.8px*var(--z,1));vertical-align:middle}
-.jr-c.none{opacity:.45;border-style:dashed}.jr-c:hover,.jr-c.on{opacity:1;border-color:#8764b8;color:#8764b8}
-.jr-qp{margin:0 6px 8px;padding:10px;border:1px solid var(--ln);border-radius:12px;background:var(--solid,#fff);cursor:default}
+.jr-tg{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:20px}
+.jr-cadd{cursor:pointer;background:transparent;font-family:inherit;opacity:.5;border-style:dashed}.jr-cadd:hover{opacity:1;border-color:#8764b8;color:#8764b8}
+.jr-cx{border:0;background:transparent;color:inherit;cursor:pointer;padding:0 0 0 2px;font-size:1.1em;line-height:1;opacity:.5}.jr-cx:hover{opacity:1;color:#d9534f}
+.jr-qe{position:relative;display:inline-block}
+.jr-qi{width:92px;border:1px solid #8764b8;border-radius:9px;padding:1px 7px;font:inherit;font-size:calc(11.5px*var(--z,1));outline:0;background:#fff;color:inherit}
+.jr-dd{position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:170px;max-width:260px;max-height:280px;overflow:auto;background:#fff;border:1px solid var(--ln);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px}
+.jr-ddi{display:block;width:100%;text-align:left;border:0;background:transparent;color:inherit;font:inherit;padding:7px 9px;border-radius:7px;cursor:pointer}.jr-ddi:hover{background:var(--hov,#f0f0f0)}.jr-ddi.new{color:#8764b8;font-weight:600}
+.jr-ddn{padding:8px 10px;opacity:.6;font-size:.95em}
 .jr-vrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .jr-vb{flex:1;min-width:96px;border:1px solid var(--ln);background:var(--solid,transparent);color:inherit;border-radius:12px;padding:9px 8px;cursor:pointer;font-size:calc(13px*var(--z,1))}
 .jr-vb.big{padding:16px 8px;font-size:calc(15px*var(--z,1))}
 .jr-vb.jr-vu.on,.jr-vb.jr-vu:hover{background:#e3f4ea;border-color:#3aa76d}.jr-vb.jr-vn.on,.jr-vb.jr-vn:hover{background:#eceef1;border-color:#9aa0a6}.jr-vb.jr-vx.on,.jr-vb.jr-vx:hover{background:#fbe5e3;border-color:#d9534f}
-.jr-dot{position:relative;width:12px;height:12px;border-radius:50%;border:2px solid #b5bac1;background:transparent;display:inline-block;margin-right:7px;padding:0;cursor:pointer;vertical-align:middle}
+.jr-dot{position:relative;width:12px;height:12px;border-radius:50%;border:2px solid #b5bac1;background:transparent;display:inline-block;margin:3px 0 0;padding:0;cursor:pointer;vertical-align:middle}
 .jr-dot::before{content:"";position:absolute;inset:-9px}
 .jr-dot.u{background:#3aa76d;border-color:#3aa76d}.jr-dot.n{background:#9aa0a6;border-color:#9aa0a6}.jr-dot.x{background:#d9534f;border-color:#d9534f}
 .jr-tagb{display:flex;margin-top:8px}.jr-tchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
@@ -1959,7 +1964,7 @@ const jrCSS = `
 .rit-b{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 11px;font-size:calc(12.5px*var(--z,1));cursor:pointer}.rit-ft{display:flex;margin-top:16px;position:sticky;bottom:0;padding:8px 0;background:var(--solid)}
 .jr-edd{display:flex;gap:8px;margin:-4px 0 8px;flex-wrap:wrap}
 .jr-ai{border:1px solid var(--acc);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:calc(14px*var(--z,1));line-height:1.55;background:var(--sel)}
-@media(max-width:760px){.jr-sr{font-size:calc(15px*var(--z,1));grid-template-columns:96px 1fr auto}.jr-ul,.jr-ai{font-size:calc(16px*var(--z,1))}.jr-st{font-size:calc(16px*var(--z,1))}.jr-it{font-size:calc(18px*var(--z,1));padding:12px 6px;grid-template-columns:118px 1fr}.jr-w{font-size:calc(18px*var(--z,1))}.jr-d,.jr-c{font-size:calc(15.5px*var(--z,1))}.jr-tot{font-size:calc(16px*var(--z,1))}.jr-hint,.jr-prev{font-size:calc(15px*var(--z,1))}.linkbtn{font-size:calc(16px*var(--z,1));padding:10px 4px}.jr-box .btn,.jr-nudge .btn{height:44px;font-size:calc(16px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(16px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(17px*var(--z,1))}.jr-wc{font-size:30px}.jr-empty{font-size:calc(16px*var(--z,1))}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:96px 1fr}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
+@media(max-width:760px){.jr-sr{font-size:calc(15px*var(--z,1));grid-template-columns:96px 1fr auto}.jr-ul,.jr-ai{font-size:calc(16px*var(--z,1))}.jr-st{font-size:calc(16px*var(--z,1))}.jr-it{font-size:calc(18px*var(--z,1));padding:12px 6px;grid-template-columns:auto auto 18px minmax(0,1fr)}.jr-it .jr-t{grid-column:1/-1}.jr-w{font-size:calc(18px*var(--z,1))}.jr-d,.jr-c{font-size:calc(15.5px*var(--z,1))}.jr-tot{font-size:calc(16px*var(--z,1))}.jr-hint,.jr-prev{font-size:calc(15px*var(--z,1))}.linkbtn{font-size:calc(16px*var(--z,1));padding:10px 4px}.jr-box .btn,.jr-nudge .btn{height:44px;font-size:calc(16px*var(--z,1))}.jr-big{font-size:19px!important}.jr-chip{font-size:calc(16px*var(--z,1))}.jr-tb{font-size:calc(26px*var(--z,1))}.jr-nl{font-size:calc(17px*var(--z,1))}.jr-day{font-size:calc(17px*var(--z,1))}.jr-wc{font-size:30px}.jr-empty{font-size:calc(16px*var(--z,1))}#jr-tx{flex:1 1 100%!important}.jr-it{grid-template-columns:auto auto 18px minmax(0,1fr)}.jr-it .jr-t{grid-column:1/-1}.jr-d{grid-column:1;grid-row:2}.jr-t{grid-column:2;grid-row:1/3}.jr-f .inp[type=date]{flex:1}}
 `;
 const nuCSS = `
 .nu-wrap{max-width:760px;margin:0 auto;padding:0 2px}
@@ -3563,21 +3568,30 @@ function jrItem(l) {
   const p = jrKind(l) === "p"; let when, dur = "";
   if (p) when = '<span class="jr-per">' + (l.d2 && l.d2 !== l.d1 ? jrShort(l.d1) + " – " + jrShort(l.d2) : "за день") + "</span>";
   else { when = hm(minOf(l.start_at)) + "–" + (l.end_at ? hm(minOf(l.end_at)) : "…"); if (l.end_at) dur = fmtDurM(Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000))); }
-  return '<div class="jr-it" data-a="jredit" data-id="' + l.id + '"><span class="jr-w">' + when + '</span><span class="jr-d">' + dur + '</span><span class="jr-t">' + (JV ? '<button class="jr-dot ' + (l.val || "") + '" data-a="jrcyc" data-id="' + l.id + '" title="Оценка: тап — сменить"></button>' : "") + esc(l.title) + ' <button class="jr-c' + (l.cat ? "" : " none") + (J.qt === l.id ? " on" : "") + '" data-a="jrqt" data-id="' + l.id + '" title="Тема и оценка">' + (l.cat ? esc(l.cat) : "＋ тема") + "</button></span></div>" + (J.qt === l.id ? jrQuickHTML(l) : "");
+  return '<div class="jr-it" data-a="jredit" data-id="' + l.id + '"><span class="jr-w">' + when + '</span><span class="jr-d">' + dur + '</span>' + (JV ? '<button class="jr-dot ' + (l.val || "") + '" data-a="jrcyc" data-id="' + l.id + '" title="Оценка: тап — сменить"></button>' : '<span></span>') + jrTagCell(l) + '<span class="jr-t">' + esc(l.title) + "</span></div>";
 }
 const JV_OPTS = [["u", "🟢", "Полезное"], ["n", "⚪", "Нейтральное"], ["x", "🔴", "Бесполезное"]];
-function jrQuickHTML(l) {
-  const J = jrState(), top = jrTagsTop().slice(0, 14);
-  return '<div class="jr-qp" data-a="jrnop"><div class="jr-tchips" style="margin:0">' + top.map(t => '<button class="jr-chip' + (nrm(l.cat) === nrm(t) ? " on" : "") + '" data-a="jrqpick" data-id="' + l.id + '" data-t="' + esc(t) + '">' + esc(t) + "</button>").join("") + "</div>" +
-    '<div class="jr-tagb" style="gap:6px"><input id="jr-qi" class="inp" style="flex:1;min-width:0" placeholder="новая тема…" autocomplete="off" value="' + esc(J.qi || "") + '"><button class="btn" data-a="jrqok" data-id="' + l.id + '">OK</button>' + (l.cat ? '<button class="btn ghost" data-a="jrqpick" data-id="' + l.id + '" data-t="">Снять тему</button>' : "") + '<button class="btn ghost" data-a="jrqt" data-id="' + l.id + '">✕</button></div>' +
-    (JV ? '<div class="jr-vrow" style="margin-top:8px">' + JV_OPTS.map(o => '<button class="jr-vb jr-v' + o[0] + (l.val === o[0] ? " on" : "") + '" data-a="jrqval" data-id="' + l.id + '" data-v="' + o[0] + '">' + o[1] + " " + o[2] + "</button>").join("") + "</div>" : "") + "</div>";
+function jrDDHTML(l) {
+  const J = jrState(), q = nrm(J.qi || ""), have = jrTagsOf(l.cat), all = jrTagsTop().filter(t => !have.some(h => nrm(h) === nrm(t)) && (!q || nrm(t).indexOf(q) >= 0)).slice(0, 9);
+  const nw = (J.qi || "").trim() && !jrTagsTop().some(t => nrm(t) === q) ? '<button class="jr-ddi new" data-a="jrqok" data-id="' + l.id + '">＋ создать «' + esc(J.qi.trim()) + "»</button>" : "";
+  return all.map(t => '<button class="jr-ddi" data-a="jrqpick" data-id="' + l.id + '" data-t="' + esc(t) + '">' + esc(t) + "</button>").join("") + nw || '<div class="jr-ddn">Тем пока нет — впиши первую</div>';
+}
+function jrTagCell(l) {
+  const J = jrState(), a = jrTagsOf(l.cat), ed = J.qt === l.id;
+  let h = a.map(t => '<span class="jr-c">' + esc(t) + '<button class="jr-cx" data-a="jrqdel" data-id="' + l.id + '" data-t="' + esc(t) + '" title="Убрать тему">×</button></span>').join("");
+  if (a.length < 3) h += ed ? '<span class="jr-qe"><input id="jr-qi" class="jr-qi" list="" autocomplete="off" placeholder="тема" value="' + esc(J.qi || "") + '"><div class="jr-dd" id="jr-dd">' + jrDDHTML(l) + "</div></span>" : '<button class="jr-c jr-cadd' + (a.length ? "" : " none") + '" data-a="jrqt" data-id="' + l.id + '" title="Добавить тему">＋' + (a.length ? "" : " тема") + "</button>";
+  return '<span class="jr-tg">' + h + "</span>";
 }
 const jrValBtns = (cur, act, big) => '<div class="jr-vrow">' + JV_OPTS.map(o => '<button class="jr-vb jr-v' + o[0] + (cur === o[0] ? " on" : "") + (big ? " big" : "") + '" data-a="' + act + '" data-v="' + o[0] + '">' + o[1] + " " + o[2] + "</button>").join("") + "</div>";
 const jrTagsTop = () => { const c = jrCatCount(); return Object.keys(c).sort((a, b) => c[b] - c[a]); };
-const jrTagBox = (id, val, ctx) => '<div class="jr-tagb"><input id="' + id + '" class="inp" list="jr-tl" style="flex:1;min-width:0" placeholder="Тема (тег): работа, зал, дорога…" autocomplete="off" value="' + esc(val || "") + '"></div>' +
-  '<div class="jr-tchips">' + jrTagsTop().slice(0, 8).map(t => '<button class="jr-chip' + (nrm(val) === nrm(t) ? " on" : "") + '" data-a="jrtag" data-ctx="' + ctx + '" data-t="' + esc(t) + '">' + esc(t) + "</button>").join("") + "</div>";
+const jrTagBox = (id, val, ctx) => '<div class="jr-tagb"><input id="' + id + '" class="inp" list="jr-tl" style="flex:1;min-width:0" placeholder="Темы через запятую, до 3: работа, зал…" autocomplete="off" value="' + esc(val || "") + '"></div>' +
+  '<div class="jr-tchips">' + jrTagsTop().slice(0, 8).map(t => '<button class="jr-chip' + (jrHasTag(val, t) ? " on" : "") + '" data-a="jrtag" data-ctx="' + ctx + '" data-t="' + esc(t) + '">' + esc(t) + "</button>").join("") + "</div>";
 const jrTagList = () => '<datalist id="jr-tl">' + jrTagsTop().map(x => '<option value="' + esc(x) + '">').join("") + "</datalist>";
-const jrCleanTag = v => String(v || "").trim().replace(/^#/, "").slice(0, 40);
+const jrTagsOf = c => { const o = [], seen = {}; String(c || "").split(",").forEach(x => { x = x.trim().replace(/^#/, "").slice(0, 40); const k = nrm(x); if (x && !seen[k]) { seen[k] = 1; o.push(x); } }); return o.slice(0, 3); };
+const jrCleanTag = v => jrTagsOf(v).join(", ");
+const jrHasTag = (c, t) => jrTagsOf(c).some(x => nrm(x) === nrm(t));
+const jrTagToggle = (c, t) => { const a = jrTagsOf(c), i = a.findIndex(x => nrm(x) === nrm(t)); if (i >= 0) a.splice(i, 1); else if (a.length < 3) a.push(t); else { toast("Не больше 3 тем"); } return a.join(", "); };
+const jrCanon = t => { const k = nrm(t), f = jrTagsTop().find(x => nrm(x) === k); return f || t; };
 const jrValSetup = () => '<div class="jr-box"><b>Один раз: колонка для оценки</b><div class="jr-hint">Скопируй SQL → Supabase → SQL Editor → Run, потом «Проверить». Без этого оценка 🟢⚪🔴 не сохранится.</div><pre class="jr-sql">' + esc(JV_SQL) + '</pre><div class="jr-f"><button class="btn" data-a="jrcopyv">Скопировать SQL</button><button class="btn ghost" data-a="jrcheckv">Проверить</button></div></div>';
 const jrUnval = () => Object.values(S.time_log).filter(l => !l.val && l.title && !l.deleted && jrDay(l)).sort((a, b) => (jrDay(b) + (b.start_at || "")).localeCompare(jrDay(a) + (a.start_at || "")));
 function jrMarkHTML() {
@@ -3658,7 +3672,9 @@ function jrWheelHTML() {
   return '<div class="jr-wov" data-a="jrwcancel"><div class="jr-wbox" data-a="jrnop"><div class="jr-wt">' + (w.k === "st" || w.k === "est" ? "Начало" : "Конец") + '</div><div class="jr-wl"><span id="jr-wl-h">часы</span><span id="jr-wl-m">минуты</span></div><div class="jr-wr">' + col("jr-wh-h", 24) + '<b>:</b>' + col("jr-wh-m", 60) + '<div class="jr-wsel"></div></div><div class="jr-wb"><button class="btn ghost" data-a="jrwnow">Сейчас</button><span style="flex:1"></span><button class="btn ghost" data-a="jrwcancel">Отмена</button><button class="btn" data-a="jrwok">Готово</button></div></div></div>';
 }
 function jrInput(el) {
-  const J = jrState(), cz = /^jr-cz-(\d+)$/.exec(el.id); if (cz) { const it = J.cz && J.cz.items && J.cz.items[+cz[1]]; if (it) { it.cat = el.value; it.on = !!el.value.trim(); } return; }
+  const J = jrState();
+  if (el.id === "jr-qi") { J.qi = el.value; const l = S.time_log[J.qt], dd = $("jr-dd"); if (l && dd) dd.innerHTML = jrDDHTML(l); return; }
+  const cz = /^jr-cz-(\d+)$/.exec(el.id); if (cz) { const it = J.cz && J.cz.items && J.cz.items[+cz[1]]; if (it) { it.cat = el.value; it.on = !!el.value.trim(); } return; }
   const m = /^jr-(e-)?(\w+)$/.exec(el.id); if (!m) return;
   if (m[1]) { J.e[m[2]] = el.value; if (/^(date|d1|d2)$/.test(m[2])) render(); return; }
   J[m[2]] = el.value; if (m[2] === "date") J.st = null; if (m[2] === "vd") { if (!el.value) return; render(); return; }
@@ -3676,7 +3692,7 @@ function jrWeekData(m0) {
   const end = addDays(m0, 7), cat = {}, days = new Set(), val = { u: 0, n: 0, x: 0, none: 0 }, catx = {}; let tot = 0, n = 0;
   Object.values(S.time_log).forEach(l => {
     const d = jrDay(l); if (!d || d < m0 || d >= end) return; days.add(d); n++;
-    if (jrKind(l) === "t" && l.end_at) { const m = Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)), c = l.cat || "без категории"; cat[c] = (cat[c] || 0) + m; tot += m; const vk = l.val || "none"; val[vk] = (val[vk] || 0) + m; if (l.val === "x") catx[c] = (catx[c] || 0) + m; }
+    if (jrKind(l) === "t" && l.end_at) { const m = Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)), tg = jrTagsOf(l.cat); tot += m; const vk = l.val || "none"; val[vk] = (val[vk] || 0) + m; (tg.length ? tg : ["без категории"]).forEach(c => { cat[c] = (cat[c] || 0) + m; if (l.val === "x") catx[c] = (catx[c] || 0) + m; }); }
   });
   return { cat, tot, days: days.size, n, val, catx };
 }
@@ -3761,7 +3777,7 @@ function jrCzHTML() {
     c.items.map((it, i) => '<div class="jr-czr"><button class="jr-czc' + (it.on ? " on" : "") + '" data-a="jrczt" data-i="' + i + '">✓</button><div class="jr-czt">' + esc(it.title) + '</div><input class="inp jr-czi" id="jr-cz-' + i + '" list="jr-czl" value="' + esc(it.cat) + '"></div>').join("") +
     '<datalist id="jr-czl">' + cats.map(x => '<option value="' + esc(x) + '">').join("") + '</datalist><div class="jr-czb"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcza">Применить (' + n + ')</button></div></div>';
 }
-function jrCatCount() { const o = {}; Object.values(S.time_log).forEach(l => { if (l.cat) o[l.cat] = (o[l.cat] || 0) + 1; }); return o; }
+function jrCatCount() { const o = {}; Object.values(S.time_log).forEach(l => { jrTagsOf(l.cat).forEach(t => { o[t] = (o[t] || 0) + 1; }); }); return o; }
 const jrValName = l => ({ u: "Полезное", n: "Нейтральное", x: "Бесполезное" })[l.val] || "";
 function jrXlsx() {
   const all = Object.values(S.time_log).filter(l => jrDay(l)).sort((a, b) => (jrDay(a) + " " + (a.start_at || "")).localeCompare(jrDay(b) + " " + (b.start_at || "")));
@@ -3876,15 +3892,15 @@ Object.assign(acts, {
   jrxl() { jrXlsx(); },
   jrimp() { const f = $("jr-file"); if (f) f.click(); },
   jrcopy() { try { navigator.clipboard.writeText(JX_SQL).then(() => toast("SQL скопирован"), () => toast("Не удалось скопировать — выдели текст вручную")); } catch (e) { toast("Выдели текст и скопируй вручную"); } },
-  jrqt(a) { const J = jrState(), id = a.dataset.id; J.qt = J.qt === id ? null : id; J.qi = ""; render(); if (J.qt) setTimeout(() => { const x = $("jr-qi"); if (x) x.focus(); }, 0); },
-  jrqpick(a) { const l = S.time_log[a.dataset.id]; if (!l) return; const t = a.dataset.t; updLog(l.id, { cat: !t || nrm(l.cat) === nrm(t) ? null : t }); jrState().qt = null; render(); },
-  jrqok(a) { const J = jrState(), l = S.time_log[a.dataset.id], t = jrCleanTag(J.qi); if (!l) return; if (t) updLog(l.id, { cat: t }); J.qt = null; J.qi = ""; render(); },
-  jrqval(a) { const l = S.time_log[a.dataset.id]; if (!l) return; updLog(l.id, { val: l.val === a.dataset.v ? null : a.dataset.v }); render(); },
+  jrqt(a) { const J = jrState(), id = a.dataset.id; J.qt = id; J.qi = ""; render(); setTimeout(() => { const x = $("jr-qi"); if (x) x.focus(); }, 0); },
+  jrqpick(a) { const l = S.time_log[a.dataset.id]; if (!l) return; const t = a.dataset.t; if (t) updLog(l.id, { cat: jrCleanTag(jrTagsOf(l.cat).concat([t]).join(",")) || null }); const J = jrState(); J.qt = null; J.qi = ""; render(); },
+  jrqok(a) { const J = jrState(), l = S.time_log[a.dataset.id], t = (J.qi || "").trim(); if (!l) return; if (t) updLog(l.id, { cat: jrCleanTag(jrTagsOf(l.cat).concat([jrCanon(t)]).join(",")) || null }); J.qt = null; J.qi = ""; render(); },
+  jrqdel(a, ev) { if (ev) ev.stopPropagation(); const l = S.time_log[a.dataset.id]; if (!l) return; const k = nrm(a.dataset.t); updLog(l.id, { cat: jrTagsOf(l.cat).filter(x => nrm(x) !== k).join(", ") || null }); render(); },
   jrv(a) { const J = jrState(); J.val = J.val === a.dataset.v ? "" : a.dataset.v; render(); },
   jrev(a) { const e = jrState().e; e.val = e.val === a.dataset.v ? "" : a.dataset.v; render(); },
   jrtag(a) {
     const J = jrState(), t = a.dataset.t, c = a.dataset.ctx;
-    if (c === "e") J.e.cat = nrm(J.e.cat) === nrm(t) ? "" : t; else if (c === "mk") J.mcat = nrm(J.mcat) === nrm(t) ? "" : t; else J.cat = nrm(J.cat) === nrm(t) ? "" : t; render();
+    if (c === "e") J.e.cat = jrTagToggle(J.e.cat, t); else if (c === "mk") J.mcat = jrTagToggle(J.mcat, t); else J.cat = jrTagToggle(J.cat, t); render();
   },
   jrcyc(a, ev) { if (ev) ev.stopPropagation(); const l = S.time_log[a.dataset.id]; if (!l) return; const o = ["", "u", "n", "x"], nx = o[(o.indexOf(l.val || "") + 1) % 4]; updLog(l.id, { val: nx || null }); render(); },
   jrmk() { const J = jrState(); J.mk = true; J.sum = false; J.mskip = {}; J.mfront = null; J.mcur = null; render(); },
@@ -4323,6 +4339,7 @@ function init() {
   app.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"), was = ui.pop;
     if (ui.pop && !e.target.closest("#pop")) { ui.pop = null; if (!a) render(); }
+    if (ui.jr && ui.jr.qt && !e.target.closest(".jr-qe") && !(a && /^jrq(pick|ok)$/.test(a.dataset.a))) { ui.jr.qt = null; ui.jr.qi = ""; if (!a || a.dataset.a !== "jrqt") render(); }
     if (!a) return;
     e._was = was; const f = acts[a.dataset.a]; if (f) f(a, e);
   });
@@ -4377,7 +4394,7 @@ function init() {
     if (e.key === "Enter" && !e.isComposing) {
       if (id === "d-title") { e.preventDefault(); e.target.blur(); }
       if (id && /^jr-(tx|st|en|date|d1|d2|cat)$/.test(id)) { e.preventDefault(); acts.jradd(); return; }
-      if (id === "jr-qi") { e.preventDefault(); if (ui.jr && ui.jr.qt) acts.jrqok({ dataset: { id: ui.jr.qt } }); return; }
+      if (id === "jr-qi") { e.preventDefault(); if (ui.jr && ui.jr.qt) { if (!(ui.jr.qi || "").trim()) { ui.jr.qt = null; render(); } else acts.jrqok({ dataset: { id: ui.jr.qt } }); } return; }
       if (id && id.indexOf("jr-e-") === 0) { e.preventDefault(); acts.jrsave(); return; }
       if (id === "nu-g") { e.preventDefault(); (ui.nu && ui.nu.sheet === "edit" ? acts.nuesave : acts.nuok)(); return; }
       if (id === "nu-wx") { e.preventDefault(); acts.nuwxok(); return; }
