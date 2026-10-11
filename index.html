@@ -1951,6 +1951,12 @@ const jrCSS = `
 .jr-dot.u{background:#3aa76d;border-color:#3aa76d}.jr-dot.n{background:#9aa0a6;border-color:#9aa0a6}.jr-dot.x{background:#d9534f;border-color:#d9534f}
 .jr-tagb{display:flex;margin-top:8px}.jr-tchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .jr-vbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:#eee;margin:8px 0 4px}.jr-vbar i{display:block;height:100%}
+.jr-mo{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:14px 0 4px;padding:7px 10px;border-radius:8px;background:var(--acc);color:#fff;font-weight:700;text-transform:capitalize;font-size:calc(14px*var(--z,1))}.jr-mo span{font-weight:400;font-size:calc(12px*var(--z,1));text-transform:none;opacity:.92}
+.jr-wk{display:flex;justify-content:space-between;gap:8px;margin:8px 0 0;padding:3px 8px;border-left:3px solid var(--acc);font-size:calc(12.3px*var(--z,1));opacity:.85}.jr-wk span{opacity:.8}
+.jr-mch{overflow-x:auto;flex-wrap:nowrap!important;padding-bottom:6px}.jr-mch .jr-chip{white-space:nowrap;flex:none}.jr-chip small{opacity:.7}.jr-jmp{position:relative;overflow:hidden}.jr-jmp input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+.jr-kps{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:8px 0 12px}.jr-kp{border:1px solid var(--ln);border-radius:12px;padding:10px 12px;background:var(--solid,transparent)}.jr-kp b{display:block;font-size:calc(22px*var(--z,1))}.jr-kp span{font-size:calc(12.5px*var(--z,1));opacity:.85}.jr-kp em{display:block;font-style:normal;font-size:calc(11px*var(--z,1));opacity:.6;margin-top:2px}
+.jr-ah{font-weight:700;margin-bottom:6px}.jr-ar{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;margin:4px 0;font-size:calc(12.5px*var(--z,1))}.jr-al.wide{width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jr-ar:has(.wide){grid-template-columns:110px 1fr auto}.jr-abar{display:flex;height:12px;background:transparent}.jr-abar i{display:block;height:100%}.jr-av{white-space:nowrap;opacity:.85}
+.jr-hcw{display:flex;gap:2px;align-items:flex-end;height:96px}.jr-hc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;font-size:10px}.jr-hcs{flex:1;width:100%;display:flex;flex-direction:column-reverse;justify-content:flex-start}.jr-hcs i{display:block;width:100%}.jr-hc span{height:12px;opacity:.7}
 .jr-vleg{font-size:calc(12.5px*var(--z,1));opacity:.85;margin-bottom:6px}
 .jr-mkw{font-size:calc(12.5px*var(--z,1));opacity:.7;margin-top:6px}.jr-mkt{font-size:calc(19px*var(--z,1));margin:6px 0 4px;line-height:1.3;word-break:break-word}
 .jr-sbox{border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--solid,transparent)}
@@ -3296,12 +3302,12 @@ let hDepth = 0, hSkip = 0;
 const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() {
   if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
-  if (view === "journal" && ui.jr) return (ui.jr.wh ? 1 : 0) + (ui.jr.hist ? 1 : 0) + (ui.jr.sum ? 1 : 0) + (ui.jr.edit ? 1 : 0) + (ui.jr.mode === "p" ? 1 : 0);
+  if (view === "journal" && ui.jr) return (ui.jr.wh ? 1 : 0) + (ui.jr.hist ? 1 : 0) + (ui.jr.sum ? 1 : 0) + (ui.jr.an ? 1 : 0) + (ui.jr.edit ? 1 : 0) + (ui.jr.mode === "p" ? 1 : 0);
   return 0;
 }
 function innerBack() {
   if (view === "food" && ui.nu && ui.nu.sheet) { const N = ui.nu; if (["grams", "custom", "scan", "quick"].indexOf(N.sheet) >= 0) { nuScanStop(); N.sheet = "pick"; N.f = {}; } else nuClose(); return true; }
-  if (view === "journal" && ui.jr) { const J = ui.jr; if (J.wh) J.wh = null; else if (J.sum) J.sum = false; else if (J.edit) J.edit = null; else if (J.mode === "p") J.mode = "t"; else if (J.hist) J.hist = false; else return false; return true; }
+  if (view === "journal" && ui.jr) { const J = ui.jr; if (J.wh) J.wh = null; else if (J.sum) J.sum = false; else if (J.an) J.an = false; else if (J.edit) J.edit = null; else if (J.mode === "p") J.mode = "t"; else if (J.hist) J.hist = false; else return false; return true; }
   return false;
 }
 function syncHistory() {
@@ -3498,7 +3504,7 @@ function jrApplyCols() { COLS.time_log = GC.concat(JX ? JX_COLS : [], JV ? ["val
 jrApplyCols();
 function jvSet(ok) { if (ok === JV) return; JV = ok; jrApplyCols(); try { localStorage.setItem("mytasks_jv", ok ? "1" : "0"); } catch (e) {} }
 function jxSet(ok) { if (ok === JX) return; JX = ok; jrApplyCols(); try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
-const jrState = () => ui.jr || (ui.jr = { per: "r", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", hist: false, vd: null, wh: null, sum: false, sw: null, ai: null, d1: null, d2: "", edit: null, e: {}, cz: null, nudgeOff: false });
+const jrState = () => ui.jr || (ui.jr = { per: "r", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", hist: false, hm: null, an: false, anp: "30", vd: null, wh: null, sum: false, sw: null, ai: null, d1: null, d2: "", edit: null, e: {}, cz: null, nudgeOff: false });
 // колесо времени: шаг ровно 1 (колесо мыши и стрелки)
 function jrWStep(col, d, abs) {
   const J = ui.jr; if (!J || !J.wh) return; const mx = col === "h" ? 23 : 59, k = col === "h" ? "h" : "m", el = $("jr-wh-" + k);
@@ -3565,7 +3571,7 @@ function jrList() {
   const J = jrState(), all = Object.values(S.time_log).filter(l => jrDay(l));
   if (J.per === "r") { const keep = new Set(Array.from(new Set(all.map(jrDay))).sort().reverse().slice(0, 7)); return all.filter(l => keep.has(jrDay(l))); }   // последние 7 дней, в которые есть записи
   const lim = J.per === "all" ? null : addDays(todayISO(), -((+J.per || 7) - 1));
-  return all.filter(l => !lim || jrDay(l) >= lim);
+  return all.filter(l => (!lim || jrDay(l) >= lim) && (!J.hm || jrDay(l).slice(0, 7) === J.hm));
 }
 function jrItem(l) {
   const J = jrState(); if (J.edit === l.id) return jrEditHTML(l);
@@ -3629,7 +3635,7 @@ function journalMainHTML(vi) {
   const J = jrState(), today0 = todayISO(), yest = addDays(today0, -1), all = Object.values(S.time_log).filter(l => jrDay(l));
   if (!J.vd) J.vd = today0;
   const items = J.hist ? jrList() : all.filter(l => jrDay(l) === J.vd), byDay = {}; items.forEach(l => { (byDay[jrDay(l)] = byDay[jrDay(l)] || []).push(l); });
-  const days = J.hist ? Object.keys(byDay).sort().reverse() : [J.vd], shown = days.slice(0, J.lim);
+  const days = J.hist ? Object.keys(byDay).sort().reverse() : [J.vd], shown = J.hm ? days : days.slice(0, J.lim);
   let setup = "";
   if (!JX) setup = '<div class="jr-box"><b>Одноразовая настройка базы</b><div class="jr-hint">Скопируй SQL → Supabase → SQL Editor → Run, потом «Проверить». До этого запись в журнал отключена.</div><pre class="jr-sql">' + esc(JX_SQL) + '</pre><div class="jr-f"><button class="btn" data-a="jrcopy">Скопировать SQL</button><button class="btn ghost" data-a="jrcheck">Проверить</button></div></div>';
   let add = "";
@@ -3651,12 +3657,16 @@ function journalMainHTML(vi) {
   let nudge = "";
   if (JX && !J.nudgeOff && all.length && !all.some(l => { const d = jrDay(l); return d === yest || (jrKind(l) === "p" && l.d2 && d <= yest && l.d2 >= yest) || (jrKind(l) === "t" && l.end_at && dayOf(l.end_at) === yest); }))
     nudge = '<div class="jr-nudge">Вчера (' + WDS[parseISO(yest).getDay()] + ", " + jrShort(yest) + ') пусто. Добить одной строкой?<span style="flex:1"></span><button class="btn" data-a="jrfill">Добить</button><button class="btn ghost" data-a="jrnudgeoff">Не сегодня</button></div>';
-  let body = "";
+  let body = "", lastMo = "", lastWk = "";
+  const mAgg = {}; if (J.hist) all.forEach(l => { const d = jrDay(l), m = d.slice(0, 7), o = mAgg[m] || (mAgg[m] = { n: 0, t: 0 }); o.n++; o.t += jrMinOf(l); });
   shown.forEach(d => {
     const arr = (byDay[d] || []).sort((a, b) => ((b.start_at || "") + b.id).localeCompare((a.start_at || "") + a.id));   // свежие записи — сверху
     const sum = arr.reduce((s, l) => s + (jrKind(l) === "t" && l.end_at ? Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)) : 0), 0);
     const dd = parseISO(d), rel = d === today0 ? "Сегодня, " : d === yest ? "Вчера, " : "";
     if (!J.hist) { body += '<div class="jr-tot">' + (arr.length ? "Записей: " + arr.length + (sum ? " · записано " + fmtDurM(sum) : "") : "") + "</div>" + arr.map(jrItem).join(""); return; }
+    const mo = d.slice(0, 7), wkS = jrMon(d);
+    if (mo !== lastMo) { lastMo = mo; lastWk = ""; const ma = mAgg[mo] || { n: 0, t: 0 }; body += '<div class="jr-mo">' + MFULL[+mo.slice(5) - 1] + " " + mo.slice(0, 4) + "<span>" + ma.n + " зап." + (ma.t ? " · " + fmtDurM(ma.t) : "") + "</span></div>"; }
+    if (wkS !== lastWk) { lastWk = wkS; const wd = jrWeekData(wkS), vt = wd.val.u + wd.val.n + wd.val.x; body += '<div class="jr-wk">Неделя ' + jrShort(wkS) + "–" + jrShort(addDays(wkS, 6)) + "<span>" + (wd.tot ? fmtDurM(wd.tot) : "") + (JV && vt ? " · 🟢 " + pc(wd.val.u, wd.tot) + "% · 🔴 " + pc(wd.val.x, wd.tot) + "%" : "") + "</span></div>"; }
     body += '<div class="jr-day"><span>' + rel + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + (dd.getFullYear() !== new Date().getFullYear() ? " " + dd.getFullYear() : "") + '</span><span class="jr-sum">' + (sum ? "записано " + fmtDurM(sum) : "") + (JX ? ' <button class="linkbtn" data-a="jrday" data-d="' + d + '" title="Дописать в этот день">＋ дописать</button>' : "") + "</span></div>" + arr.map(jrItem).join("");
   });
   if (days.length > shown.length) body += '<div style="text-align:center;padding:10px"><button class="btn ghost" data-a="jrmore">Показать ещё (' + (days.length - shown.length) + " дн.)</button></div>";
@@ -3665,10 +3675,11 @@ function journalMainHTML(vi) {
   const vdd = parseISO(J.vd), vrel = J.vd === today0 ? "Сегодня" : J.vd === yest ? "Вчера" : J.vd === addDays(today0, 1) ? "Завтра" : WDS[vdd.getDay()];
   const nav = '<div class="jr-nav"><button class="ibtn" data-a="jrdprev" title="Раньше">' + ic("arrowl", 22) + '</button><label class="jr-nl">' + (vrel === WDS[vdd.getDay()] ? vrel : vrel + ", " + WDS[vdd.getDay()]) + " " + vdd.getDate() + " " + MONS[vdd.getMonth()] + '<input type="date" id="jr-vd" value="' + J.vd + '"></label><button class="ibtn jr-nr" data-a="jrdnext" title="Позже">' + ic("arrowl", 22) + '</button></div>';
   const wheel = J.wh ? jrWheelHTML() : "";
+  function jrMonthChips(all) { const m = {}; all.forEach(l => { const k = jrDay(l).slice(0, 7); m[k] = (m[k] || 0) + 1; }); const ks = Object.keys(m).sort().reverse(); let y = ""; return '<button class="jr-chip' + (!J.hm ? " on" : "") + '" data-a="jrmo" data-v="">Все</button>' + ks.map(k => { const yy = k.slice(0, 4), lab = MSH[+k.slice(5) - 1] + (yy !== new Date().getFullYear() + "" ? " " + yy.slice(2) : ""); return '<button class="jr-chip' + (J.hm === k ? " on" : "") + '" data-a="jrmo" data-v="' + k + '">' + lab + ' <small>' + m[k] + "</small></button>"; }).join(""); }
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button>' + chips + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
+    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jran">📈 Аналитика</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
@@ -3744,6 +3755,81 @@ function jrValBar(w) {
   if (!JV) return ""; if (!w.tot) return "";
   const v = w.val, seg = (k, c) => v[k] ? '<i style="width:' + (v[k] / w.tot * 100) + '%;background:' + c + '" title="' + fmtDurM(v[k]) + '"></i>' : "";
   return '<div class="jr-vbar">' + seg("u", "#3aa76d") + seg("n", "#9aa0a6") + seg("x", "#d9534f") + seg("none", "#e4e6ea") + '</div><div class="jr-vleg">🟢 ' + fmtDurM(v.u) + " · ⚪ " + fmtDurM(v.n) + " · 🔴 " + fmtDurM(v.x) + " · не оценено " + fmtDurM(v.none) + "</div>";
+}
+
+const MFULL = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"], MSH = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+const jrMinOf = l => jrKind(l) === "t" && l.end_at && l.start_at ? Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)) : 0;
+const pc = (a, b) => b ? Math.round(a / b * 100) : 0;
+function jrAnData(p) {
+  const today = todayISO(), lim = p === "all" ? null : addDays(today, -(+p - 1));
+  const A = { tot: 0, val: { u: 0, n: 0, x: 0, none: 0 }, days: {}, cat: {}, catu: {}, catx: {}, hu: Array(24).fill(0), hx: Array(24).fill(0), ht: Array(24).fill(0), wu: Array(7).fill(0), wt: Array(7).fill(0), wk: {}, n: 0, nt: 0, short: 0, lens: [], first: null, dayU: {} };
+  Object.values(S.time_log).forEach(l => {
+    const d = jrDay(l); if (!d || (lim && d < lim) || d > today) return; A.n++; if (!A.first || d < A.first) A.first = d;
+    const m = jrMinOf(l); if (!m) return;
+    A.nt++; A.tot += m; A.lens.push(m); if (m < 15) A.short++;
+    const vk = l.val || "none"; A.val[vk] += m; A.days[d] = (A.days[d] || 0) + m;
+    const tg = jrTagsOf(l.cat), sh = tg.length || 1; (tg.length ? tg : ["без темы"]).forEach(c => { A.cat[c] = (A.cat[c] || 0) + m / sh; if (l.val === "u") A.catu[c] = (A.catu[c] || 0) + m / sh; if (l.val === "x") A.catx[c] = (A.catx[c] || 0) + m / sh; });
+    const dw = parseISO(d).getDay(); A.wt[dw] += m; if (l.val === "u") { A.wu[dw] += m; A.dayU[d] = (A.dayU[d] || 0) + m; }
+    const mk = jrMon(d), w = A.wk[mk] || (A.wk[mk] = { u: 0, n: 0, x: 0, none: 0 }); w[vk] += m;
+    for (let t = minOf(l.start_at), e = t + m; t < e;) { const h = Math.floor(t / 60) % 24, nx = Math.min(e, (Math.floor(t / 60) + 1) * 60), g = nx - t; A.ht[h] += g; if (l.val === "u") A.hu[h] += g; if (l.val === "x") A.hx[h] += g; t = nx; }
+  });
+  return A;
+}
+function jrSlope(ys) { const n = ys.length; if (n < 3) return null; const mx = (n - 1) / 2, my = ys.reduce((a, b) => a + b, 0) / n; let nu = 0, de = 0; ys.forEach((y, i) => { nu += (i - mx) * (y - my); de += (i - mx) * (i - mx); }); return nu / de; }
+function jrWin(arr, w) { let b = -1, bi = 0; for (let i = 0; i + w <= 24; i++) { let s2 = 0; for (let k = 0; k < w; k++) s2 += arr[i + k]; if (s2 > b) { b = s2; bi = i; } } return b > 0 ? [bi, bi + w, b] : null; }
+function jrAnalyticsHTML() {
+  const J = jrState(), A = jrAnData(J.anp), v = A.val, rated = v.u + v.n + v.x, today = todayISO();
+  const dk = Object.keys(A.days).sort(), dN = dk.length;
+  const chips = [["30", "30 дней"], ["90", "90 дней"], ["365", "Год"], ["all", "Всё время"]].map(o => '<button class="jr-chip' + (J.anp === o[0] ? " on" : "") + '" data-a="jranp" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
+  const head = '<div class="jr-chips"><button class="jr-chip" data-a="jran">← К дню</button>' + chips + "</div>";
+  if (!A.tot) return head + '<div class="jr-empty">За этот период нет записей со временем</div>';
+  const pd = J.anp === "all" ? Math.max(1, Math.round((parseISO(today) - parseISO(A.first)) / 864e5) + 1) : +J.anp;
+  const idx = rated ? Math.round((v.u - v.x) / rated * 100) : null, ins = [];
+  // недельная динамика
+  const wks = Object.keys(A.wk).sort().slice(-12), wmax = Math.max.apply(null, wks.map(k => { const w = A.wk[k]; return w.u + w.n + w.x + w.none; }).concat([1]));
+  const wsh = wks.map(k => { const w = A.wk[k], t = w.u + w.n + w.x + w.none; return { k, t, u: w.u, x: w.x, su: t >= 120 ? w.u / t * 100 : null, sx: t >= 120 ? w.x / t * 100 : null }; });
+  const wrows = wsh.map(w => { const a = A.wk[w.k], seg = (q, c) => a[q] ? '<i style="width:' + (a[q] / wmax * 100) + '%;background:' + c + '"></i>' : ""; return '<div class="jr-ar"><span class="jr-al">' + jrShort(w.k) + '</span><div class="jr-abar">' + seg("u", "#3aa76d") + seg("n", "#9aa0a6") + seg("x", "#d9534f") + seg("none", "#e4e6ea") + '</div><span class="jr-av">' + fmtDurM(w.t) + "</span></div>"; }).join("");
+  const su = wsh.filter(w => w.su !== null).map(w => w.su), sx = wsh.filter(w => w.sx !== null).map(w => w.sx), slu = jrSlope(su), slx = jrSlope(sx);
+  if (slu !== null && rated) ins.push("Доля 🟢 по неделям " + (Math.abs(slu) < 0.5 ? "почти не меняется" : slu > 0 ? "растёт: +" + slu.toFixed(1) + " п.п. в неделю" : "падает: " + slu.toFixed(1) + " п.п. в неделю") + " (по " + su.length + " нед.).");
+  if (slx !== null && Math.abs(slx) >= 0.5) ins.push("Доля 🔴 " + (slx > 0 ? "растёт на +" : "снижается на ") + Math.abs(slx).toFixed(1) + " п.п. в неделю.");
+  // темы
+  const cats = Object.keys(A.cat).sort((a, b) => A.cat[b] - A.cat[a]), cmx = A.cat[cats[0]] || 1;
+  const crows = cats.slice(0, 10).map(c => { const t = A.cat[c], u = A.catu[c] || 0, x = A.catx[c] || 0, o = Math.max(0, t - u - x); return '<div class="jr-ar"><span class="jr-al wide">' + esc(c) + '</span><div class="jr-abar">' + (u ? '<i style="width:' + (u / cmx * 100) + '%;background:#3aa76d"></i>' : "") + (o ? '<i style="width:' + (o / cmx * 100) + '%;background:#9aa0a6"></i>' : "") + (x ? '<i style="width:' + (x / cmx * 100) + '%;background:#d9534f"></i>' : "") + '</div><span class="jr-av">' + fmtDurM(Math.round(t)) + " · " + pc(t, A.tot) + "%</span></div>"; }).join("");
+  const leak = Object.keys(A.catx).sort((a, b) => A.catx[b] - A.catx[a])[0], best = Object.keys(A.catu).sort((a, b) => A.catu[b] - A.catu[a])[0];
+  if (leak) ins.push("Главная утечка — «" + leak + "»: " + fmtDurM(Math.round(A.catx[leak])) + " 🔴 (" + pc(A.catx[leak], v.x) + "% всего 🔴-времени).");
+  if (best) ins.push("Больше всего пользы даёт «" + best + "»: " + fmtDurM(Math.round(A.catu[best])) + " 🟢.");
+  let acc = 0, k80 = 0; for (const c of cats) { acc += A.cat[c]; k80++; if (acc >= A.tot * 0.8) break; } ins.push("80% времени укладывается в " + k80 + " " + (k80 === 1 ? "тему" : k80 < 5 ? "темы" : "тем") + " из " + cats.length + ".");
+  // часы суток
+  const hmx = Math.max.apply(null, A.ht.concat([1]));
+  const hcols = A.ht.map((t, h) => { const u = A.hu[h], x = A.hx[h], o = Math.max(0, t - u - x), hp = z => (z / hmx * 100) + "%"; return '<div class="jr-hc" title="' + pad2(h) + ':00 — ' + fmtDurM(Math.round(t)) + '"><div class="jr-hcs"><i style="height:' + hp(x) + ';background:#d9534f"></i><i style="height:' + hp(o) + ';background:#9aa0a6"></i><i style="height:' + hp(u) + ';background:#3aa76d"></i></div><span>' + (h % 3 === 0 ? h : "") + "</span></div>"; }).join("");
+  const bu = jrWin(A.hu, 3), bx = jrWin(A.hx, 3);
+  if (bu) ins.push("Золотое окно для полезного: " + pad2(bu[0]) + ":00–" + pad2(bu[1]) + ":00 (" + fmtDurM(bu[2]) + " 🟢 за период). Самое важное лучше ставить сюда.");
+  if (bx && bx[2] >= 60) ins.push("Красная зона: " + pad2(bx[0]) + ":00–" + pad2(bx[1]) + ":00 — там копится 🔴 (" + fmtDurM(bx[2]) + ").");
+  // дни недели
+  const wdn = Array(7).fill(0).map(() => 0); dk.forEach(d => { wdn[parseISO(d).getDay()]++; });
+  const order = [1, 2, 3, 4, 5, 6, 0], wavg = order.map(i => wdn[i] ? A.wu[i] / wdn[i] : 0), wavgT = order.map(i => wdn[i] ? A.wt[i] / wdn[i] : 0), wm = Math.max.apply(null, wavgT.concat([1]));
+  const wdrows = order.map((i, j) => '<div class="jr-ar"><span class="jr-al">' + WDS[i] + '</span><div class="jr-abar"><i style="width:' + (wavg[j] / wm * 100) + '%;background:#3aa76d"></i><i style="width:' + (Math.max(0, wavgT[j] - wavg[j]) / wm * 100) + '%;background:#d5d8dd"></i></div><span class="jr-av">' + fmtDurM(Math.round(wavg[j])) + " 🟢 / " + fmtDurM(Math.round(wavgT[j])) + "</span></div>").join("");
+  const okd = order.map((i, j) => [i, wavg[j]]).filter(x => wdn[x[0]] >= 2); if (okd.length >= 3) { okd.sort((a, b) => b[1] - a[1]); ins.push("Самый продуктивный день недели — " + WDS[okd[0][0]] + " (в среднем " + fmtDurM(Math.round(okd[0][1])) + " 🟢), самый слабый — " + WDS[okd[okd.length - 1][0]] + " (" + fmtDurM(Math.round(okd[okd.length - 1][1])) + ").");}
+  // дробность, серии, рекорды
+  const srt = A.lens.slice().sort((a, b) => a - b), med = srt[Math.floor(srt.length / 2)] || 0, perDay = A.nt / Math.max(1, dN);
+  if (pc(A.short, A.nt) >= 25) ins.push("Каждая 4-я запись короче 15 минут (" + pc(A.short, A.nt) + "%) — день сильно дроблёный, много переключений.");
+  let cur = 0, mxs = 0, run = 0, prev = null; dk.forEach(d => { run = prev && addDays(prev, 1) === d ? run + 1 : 1; if (run > mxs) mxs = run; prev = d; });
+  let cd = A.days[today] ? today : addDays(today, -1); while (A.days[cd]) { cur++; cd = addDays(cd, -1); }
+  const bd = Object.keys(A.dayU).sort((a, b) => A.dayU[b] - A.dayU[a])[0];
+  if (cur >= 3) ins.push("Серия записей: " + cur + " дн. подряд (рекорд периода — " + mxs + ").");
+  if (pc(dN, pd) < 70) ins.push("Охват " + pc(dN, pd) + "%: записи есть в " + dN + " из " + pd + " дней — часть периода пустая, цифры занижены.");
+  if (rated && pc(rated, A.tot) < 85) ins.push("Не оценено " + pc(A.tot - rated, A.tot) + "% времени — оцени записи в «🏷 Разметке», и выводы станут точнее.");
+  const kp = (a, b, c) => '<div class="jr-kp"><b>' + a + "</b><span>" + b + "</span>" + (c ? "<em>" + c + "</em>" : "") + "</div>";
+  const kpis = '<div class="jr-kps">' + kp(fmtDurM(A.tot), "записано", "в среднем " + fmtDurM(Math.round(A.tot / Math.max(1, dN))) + " в день") + kp(pc(dN, pd) + "%", "охват дней", dN + " из " + pd) + kp(pc(v.u, A.tot) + "%", "🟢 полезное", "🔴 " + pc(v.x, A.tot) + "% · ⚪ " + pc(v.n, A.tot) + "%") + kp(idx === null ? "—" : (idx > 0 ? "+" : "") + idx, "индекс пользы", "(🟢−🔴)/оценённое, от −100 до +100") + "</div>";
+  const lg = '<div class="jr-vleg">🟢 полезно · ⚪ нейтрально · 🔴 вредно · серое — не оценено</div>';
+  const box = (t, h, n) => '<div class="jr-sbox"><div class="jr-ah">' + t + "</div>" + (n ? '<div class="jr-hint">' + n + "</div>" : "") + h + "</div>";
+  return head + kpis + (ins.length ? box("Что видно из цифр", '<ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul>") : "") +
+    box("Структура времени", jrValBar({ val: v, tot: A.tot })) +
+    box("Динамика по неделям", lg + wrows, "последние " + wks.length + " нед.; длина полосы — сколько всего записано") +
+    box("Темы: куда уходит время", crows, "зелёное — полезная часть, красное — вредная; время записи делится поровну между её темами") +
+    box("Часы суток", '<div class="jr-hcw">' + hcols + "</div>" + lg, "когда ты делаешь полезное, а когда уходишь в 🔴") +
+    box("Дни недели", wdrows, "среднее за день, в который были записи") +
+    box("Дробность и рекорды", '<div class="jr-ul" style="list-style:none;padding:0">Записей в день: <b>' + perDay.toFixed(1) + "</b> · медианная длина: <b>" + fmtDurM(med) + "</b> · короче 15 мин: <b>" + pc(A.short, A.nt) + "%</b><br>Самая длинная серия дней подряд: <b>" + mxs + "</b>" + (bd ? "<br>Самый полезный день: <b>" + jrShort(bd) + "</b> — " + fmtDurM(A.dayU[bd]) + " 🟢" : "") + "</div>");
 }
 function jrSummaryHTML() {
   const J = jrState(); if (!J.sw) J.sw = jrMon(todayISO());
@@ -3890,7 +3976,10 @@ Object.assign(acts, {
   jreday(a) { const J = jrState(); if (J.e && J.e.date) { J.e.date = addDays(J.e.date, +a.dataset.d); render(); } },
   jrdprev() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), -1); J.date = null; J.st = null; render(); },
   jrdnext() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), 1); J.date = null; J.st = null; render(); },
-  jrhist() { const J = jrState(); J.hist = !J.hist; render(); },
+  jrhist() { const J = jrState(); J.hist = !J.hist; if (J.hist) { J.per = "all"; J.hm = null; J.lim = 60; J.an = false; } render(); },
+  jrmo(a) { const J = jrState(); J.hm = a.dataset.v || null; J.lim = 60; render(); const l = $("list"); if (l) l.scrollTop = 0; },
+  jran() { const J = jrState(); J.an = !J.an; J.sum = false; render(); },
+  jranp(a) { jrState().anp = a.dataset.v; render(); },
   jrmore() { jrState().lim += 40; render(); },
   jrfill() { const J = jrState(); J.mode = "p"; J.d1 = addDays(todayISO(), -1); J.d2 = ""; J.tx = ""; render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0); },
   jrnudgeoff() { jrState().nudgeOff = true; render(); },
@@ -4368,6 +4457,7 @@ function init() {
   });
   app.addEventListener("change", e => {
     const id = e.target.id;
+    if (id === "jr-jump") { const v = e.target.value; if (v) { const J = jrState(); J.vd = v; J.hist = false; J.an = false; render(); } return; }
     if (id === "jr-per") { jrState().per = e.target.value; jrState().lim = 40; render(); return; }
     if (id === "jr-file") { const f = e.target.files && e.target.files[0]; if (f) jrImport(f); e.target.value = ""; return; }
     if (id === "s-rit") { PR.ritOff = !e.target.checked; savePrefs(); render(); return; }
