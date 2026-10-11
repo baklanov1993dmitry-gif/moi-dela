@@ -214,7 +214,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .crow{position:relative}
 .crow .ci{width:36px;height:36px;margin-right:6px}.crow .chev{margin-right:6px}.crow .chev svg{width:15px}
 .pbar{position:absolute;left:50px;right:8px;bottom:5px;height:5px;border-radius:2px;background:color-mix(in srgb,var(--tx) 12%,transparent)}.pbar i{display:block;height:100%;border-radius:2px}.pbar.norm{opacity:.6}.pbar.lim{height:6px}
-#main .crow{min-height:58px;padding-bottom:0}#main .crow .ar{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;flex:none}#main .crow .lm{font-size:11.5px;font-weight:600;color:var(--sub)}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{text-align:right;margin:0 0 2px}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
+#main .crow{min-height:56px;padding-bottom:0}#main .crow.cmp{min-height:46px}#main .crow .ar{display:flex;align-items:baseline;gap:2px;flex:none;white-space:nowrap}#main .crow .pl{font-size:13px;font-weight:600;color:var(--sub)}#main .crow .lkm{font-size:12px;margin-left:2px}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px}.infob{font-size:17px;color:var(--sub);padding:2px 6px 2px 2px}.ln1{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acb .sub,.acb .qnote{font-size:12.5px;line-height:1.35}.acb .qnote{padding:7px 10px;margin-top:6px}.acb .bt b{font-size:1.05em}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
 .rs.over::after{content:"!";position:absolute;top:-4px;right:-2px;width:15px;height:15px;border-radius:50%;background:var(--exp);color:#fff;font-size:11px;font-weight:700;line-height:15px;text-align:center}
 .cgrid button .bl,.bl{font-style:normal;font-size:10.5px;color:var(--sub);line-height:1}.bl.warn{color:#f2b36d}.bl.bad{color:var(--exp)}
 .cgrid button{gap:3px}
@@ -387,6 +387,8 @@ async function flush() {
   } catch (e) { ui.status = "нет связи · изменения сохранены на телефоне"; }
   flushing = false; paintStatus();
 }
+let touching = 0;
+function softRender() { if (touching || sliding) { setTimeout(softRender, 250); return; } render(); }
 async function pull(full) {
   if (!sb || !user) return; ui.status = "синхронизация…"; paintStatus();
   try {
@@ -406,7 +408,7 @@ async function pull(full) {
     jset(LS.sync, t0); saveLocal(); ui.status = "";
     if (!cats.length) await seedCats();
   } catch (e) { ui.status = "нет связи"; }
-  paintStatus(); render();
+  paintStatus(); softRender();
 }
 async function seedCats() {
   let p = 0; DEF_EXP.forEach(([n, ic], i) => cats.push({ id: uid(), name: n, icon: ic, color: PAL[i % PAL.length], kind: "exp", position: p++, archived: false, updated_at: nowISO() }));
@@ -416,7 +418,9 @@ async function seedCats() {
 function paintStatus() { let e = $("st"); if (!e) { e = document.createElement("div"); e.id = "st"; e.className = "st"; document.body.appendChild(e); } e.textContent = ui.status; }
 
 /* ============ расчёты ============ */
-const ofMonth = m => txs.filter(t => mk(new Date(t.ts)) === m);
+let _miv = -1, _mi = null;
+const mIdx = () => { if (_miv === txv && _mi) return _mi; const o = {}; txs.forEach(t => { const k = mk(new Date(t.ts)); (o[k] || (o[k] = [])).push(t); }); _mi = o; _miv = txv; return o; };
+const ofMonth = m => mIdx()[m] || [];
 const sod = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 function rgBounds(r, k) {   // k — сдвиг на k периодов (для сравнения с прошлым)
   r = r || ui.rg; const a = new Date(r.a); let s, e;
@@ -454,6 +458,7 @@ function normOf(catId, am) {   // среднее в месяц за послед
   for (let i = 1; i <= N; i++) { const m = shiftMonth(am, -i); if (!first || m < first) break; mon.push(m); }
   if (!mon.length) return null;
   const total = mon.reduce((s, m) => s + (catId === "*" ? monTot(ms, m) : ((ms[m] || {})[catId] || 0)), 0);
+  if (catId !== "*" && mon.filter(m => ((ms[m] || {})[catId] || 0) > 0).length < Math.min(2, mon.length)) return null;   // разовая категория (напр. «хвоя» раз в год) — нормы нет
   return { avg: total / mon.length, n: mon.length };
 }
 const isCl = (id, am) => !!((PR.cl || {})[am] || {})[id];
@@ -501,29 +506,32 @@ function acc(id, ico, title, sum, body) {
   const o = accOpen(id);
   return '<div class="card ac' + (o ? " open" : "") + '"><button class="ach" data-a="accx" data-v="' + id + '"><span class="ai">' + ico + '</span><span class="at">' + title + '</span><span class="as">' + (sum || "") + '</span><i class="chv"></i></button>' + (o ? '<div class="acb">' + body() + "</div>" : "") + "</div>";
 }
-const SRT = [["sumc", "По сумме · закрытые внизу"], ["sum", "По сумме · всё вместе"], ["pinup", "Закреплённые и закрытые сверху"], ["pindn", "Закреплённые и закрытые снизу"], ["pace", "Ближе к лимиту — выше"], ["az", "По алфавиту"], ["cnt", "По числу покупок"], ["pos", "Как в списке категорий"]];
+const SRT = [["sumc", "По сумме · закрытые внизу"], ["sum", "По сумме · всё вместе"], ["pinup", "Сверху закреплённые, затем закрытые"], ["pindn", "Внизу закреплённые, затем закрытые"], ["pace", "Ближе к лимиту — выше"], ["az", "По алфавиту"], ["cnt", "По числу покупок"], ["pos", "Как в списке категорий"]];
 const srtLabel = () => (SRT.find(x => x[0] === (PR.srt || "sumc")) || SRT[0])[1];
 const srtBtn = () => '<button class="srtb" data-a="srtopen">⇅ ' + srtLabel() + "</button>";
+const srtRow = k => '<div class="srtr"><span><button class="infob" data-a="infoopen" data-v="' + k + '">ⓘ</button><span class="sub" style="font-size:12px"> факт / план</span></span>' + srtBtn() + "</div>";
+const INFO = { list: "<b>Справа:</b> сколько потрачено / лимит, норма или план на месяц (в режиме «потолок»). Число плана цветное: акцентный — всё в порядке, оранжевый — близко к границе или темп выше обычного, красный — перебор.<br><br><b>🔒</b> — категорию нельзя урезать (закрепляется в аналитике). <b>✔ закрыто</b> — на этот месяц больше не трачу: серые, по умолчанию внизу, остаток плана перераспределяется.<br><br>Порядок категорий меняется кнопкой «⇅».", bud: "<b>Метка на полосе</b> — плановая граница. <b>🔒</b> — категорию нельзя урезать. <b>☑️</b> — закрыть категорию на месяц (оплатил и больше не потрачу): остаток уйдёт в другие категории.<br><br><b>Норма</b> — среднее за последние N месяцев (только по категориям, где были траты минимум в двух месяцах — разовые не считаются). <b>Лимит</b> — личный, задаётся тапом по названию.<br><br>Порядок категорий меняется кнопкой «⇅»." };
 function catOrder(rows) {   // rows: {c, v, b, n}
-  const m = PR.srt || "sumc", fx = PR.fix || {}, cl = r => !!(r.b && r.b.kind === "closed"), pin = r => cl(r) || !!fx[r.c.id], pct = r => (r.b && r.b.v > 0 && !cl(r) ? r.v / r.b.v : -1), bySum = (a, b) => b.v - a.v;
-  const f = { sumc: (a, b) => (cl(a) - cl(b)) || bySum(a, b), sum: bySum, pinup: (a, b) => (pin(b) - pin(a)) || bySum(a, b), pindn: (a, b) => (pin(a) - pin(b)) || bySum(a, b), pace: (a, b) => (cl(a) - cl(b)) || (pct(b) - pct(a)) || bySum(a, b), az: (a, b) => a.c.name.localeCompare(b.c.name, "ru"), cnt: (a, b) => ((b.n || 0) - (a.n || 0)) || bySum(a, b), pos: (a, b) => (a.c.position || 0) - (b.c.position || 0) }[m] || bySum;
+  const m = PR.srt || "sumc", fx = PR.fix || {}, cl = r => !!(r.b && r.b.kind === "closed"), rk = r => (cl(r) ? 2 : fx[r.c.id] ? 1 : 0), pct = r => (r.b && r.b.v > 0 && !cl(r) ? r.v / r.b.v : -1), bySum = (a, b) => b.v - a.v;
+  const f = { sumc: (a, b) => (rk(a) - rk(b)) || bySum(a, b), sum: bySum, pinup: (a, b) => (rk(b) - rk(a)) || bySum(a, b), pindn: (a, b) => (rk(a) - rk(b)) || bySum(a, b), pace: (a, b) => (rk(a) - rk(b)) || (pct(b) - pct(a)) || bySum(a, b), az: (a, b) => a.c.name.localeCompare(b.c.name, "ru"), cnt: (a, b) => ((b.n || 0) - (a.n || 0)) || bySum(a, b), pos: (a, b) => (a.c.position || 0) - (b.c.position || 0) }[m] || bySum;
   return rows.slice().sort(f);
 }
 function budRows(am) {
   const md = bmode(), capOn = md === "cap" && PR.cap > 0, cur = am === mk(new Date());
   const rows = cats.filter(c => c.kind === "exp").map(c => ({ c, sp: catSpent(c.id, am), b: budgetOf(c, am) })).filter(r => r.sp > 0 || (r.b && !r.c.archived));
   const ord = catOrder(rows.map(r => ({ c: r.c, v: r.sp, b: r.b, n: 0, src: r }))).map(o => o.src);
-  return srtBtn() + ord.map(r => {
+  return srtRow("bud") + ord.map(r => {
     const c = r.c, b = r.b, over = b && r.sp > b.v + .5, mxv = Math.max(r.sp, b ? b.v : 0, 1), st = b ? budState(r.sp, b, am) : null;
     let line;
-    if (b && b.kind === "closed") { const n = normOf(c.id, am), ref = +c.lim > 0 ? +c.lim : n && n.avg > 0 ? n.avg : 0; line = "✔ закрыто на месяц" + (ref > r.sp ? " · освободилось ≈ " + fmN(ref - r.sp) : ""); }
-    else if (!b) line = '<span class="sub">нормы пока нет · тап — задать лимит</span>';
-    else if (b.kind === "lim") line = "лимит " + fm(b.v) + " · " + (over ? '<span class="exp">превышен на ' + fm(r.sp - b.v) + "</span>" : "осталось " + fm(b.v - r.sp));
-    else if (b.kind === "cap") line = (b.mode === "fix" ? "🔒 без урезания · ещё ≈ " + fmN(Math.max(0, b.v - r.sp)) : "из плана " + fmN(b.v) + " · ещё можно " + fmN(Math.max(0, b.v - r.sp))) + (over ? ' · <span class="exp">перерасход ' + fmN(r.sp - b.v) + "</span>" : "");
-    else line = "в среднем " + fm(b.v) + " в мес. · " + (over ? '<span class="exp">выше на ' + fm(r.sp - b.v) + " (+" + Math.round((r.sp / b.v - 1) * 100) + "%)</span>" : st.st === "pace" ? '<span style="color:#f2b36d">темп выше обычного</span>' : "в норме");
+    const ex = (v) => fmN(Math.max(0, v));
+    if (b && b.kind === "closed") { const n = normOf(c.id, am), ref = +c.lim > 0 ? +c.lim : n && n.avg > 0 ? n.avg : 0; line = "✔ закрыто" + (ref > r.sp ? " · освободилось " + fmN(ref - r.sp) : ""); }
+    else if (!b) line = "нормы нет · тап — задать лимит";
+    else if (b.kind === "lim") line = "лимит " + fmN(b.v) + " · " + (over ? '<span class="exp">+' + fmN(r.sp - b.v) + "</span>" : "ещё " + fmN(b.v - r.sp));
+    else if (b.kind === "cap") line = (b.mode === "fix" ? "🔒 ещё ≈ " + ex(b.v - r.sp) : "план " + fmN(b.v) + " · ещё " + ex(b.v - r.sp)) + (over ? ' · <span class="exp">+' + fmN(r.sp - b.v) + "</span>" : "");
+    else line = "норма " + fmN(b.v) + " · " + (over ? '<span class="exp">+' + fmN(r.sp - b.v) + " (+" + Math.round((r.sp / b.v - 1) * 100) + "%)</span>" : st.st === "pace" ? '<span style="color:#f2b36d">темп выше</span>' : "в норме");
     const cl = cur && (b || r.sp > 0) && c.id ? '<button class="lk' + (b && b.kind === "closed" ? " on" : "") + '" data-a="cltog" data-id="' + c.id + '" title="Закрыть категорию на месяц: больше тратить не буду">' + (b && b.kind === "closed" ? "✅" : "☑️") + "</button>" : "";
     const lock = cl + (capOn && cur && b && b.kind === "cap" ? '<button class="lk' + (b.mode === "fix" ? " on" : "") + '" data-a="fixtog" data-id="' + c.id + '" title="Нельзя урезать">' + (b.mode === "fix" ? "🔒" : "🔓") + "</button>" : "");
-    return '<div class="brwx"><button class="brw" data-a="limedit" data-id="' + (c.id || "_") + '"><div class="ci">' + ic(c.icon, c.color, 30) + '</div><div class="bm"><div class="l1"><b>' + esc(c.name) + (+c.lim > 0 ? " 🎯" : "") + "</b><span>" + fm(r.sp) + '</span></div>' + (b && b.kind === "closed" ? "" : '<div class="gb sm"><i style="width:' + (r.sp / mxv * 100).toFixed(1) + "%;background:" + (st ? BCOL[st.st] : c.color) + '"></i>' + (b ? '<s style="left:' + Math.min(100, b.v / mxv * 100).toFixed(1) + '%"></s>' : "") + "</div>") + '<div class="sub" style="font-size:.8em">' + line + "</div></div></button>" + lock + "</div>";
+    return '<div class="brwx"><button class="brw" data-a="limedit" data-id="' + (c.id || "_") + '"><div class="ci">' + ic(c.icon, c.color, 30) + '</div><div class="bm"><div class="l1"><b>' + esc(c.name) + (+c.lim > 0 ? " 🎯" : "") + "</b><span>" + fm(r.sp) + '</span></div>' + (b && b.kind === "closed" ? "" : '<div class="gb sm"><i style="width:' + (r.sp / mxv * 100).toFixed(1) + "%;background:" + (st ? BCOL[st.st] : c.color) + '"></i>' + (b ? '<s style="left:' + Math.min(100, b.v / mxv * 100).toFixed(1) + '%"></s>' : "") + "</div>") + '<div class="sub ln1">' + line + "</div></div></button>" + lock + "</div>";
   }).join("");
 }
 function budBody() {
@@ -555,7 +563,7 @@ function budBody() {
     else q = "Чтобы уложиться в потолок, на всё оставшееся в гибких категориях можно потратить не больше <b>" + fmN(cp.flexExp * cp.ratio) + "</b> — это на <b>" + Math.round((1 - cp.ratio) * 100) + "%</b> меньше, чем ты тратишь обычно." + (cp.fixedRem > 0 ? " 🔒 Закреплённые категории: ещё ≈ " + fmN(cp.fixedRem) + " без урезания." : "");
     h += '<div class="sub qnote">' + q + "</div>";
   } else if (capOn) h += '<div class="sub qnote">План по категориям строится только для текущего месяца.</div>';
-  return h + '<div class="sub" style="font-size:.78em;margin:10px 0 2px">' + (capOn ? "Метка на полосе — плановая граница. 🔒 — категорию нельзя урезать. Тап по названию — личный лимит. ☑️ — закрыть категорию на месяц (оплатил и больше не потрачу): остаток уйдёт в другие." : "Метка на полосе — норма или лимит. Тап по строке — задать лимит.") + "</div>" + budRows(am);
+  return h + budRows(am);
 }
 function budSum() {
   const am = anchorMonth(), md = bmode(); if (md === "off") return "выкл.";
@@ -648,11 +656,12 @@ function ringHTML(items, tot, exp, inc, K) {
   return '<div class="ring"><svg viewBox="0 0 ' + W + " " + H + '" width="100%" style="display:block"><g opacity=".92">' + arcs + "</g>" + lines + '</svg><div class="rc" style="left:' + CX / W * 100 + "%;top:" + CY / H * 100 + '%"><div class="inc">' + fmH(inc) + '</div><div class="exp">' + fmH(exp) + "</div></div>" + cells + "</div>";
 }
 function homeHTML() {
+  const isCur = ui.rg.t === "m" && mk(new Date(rgBounds(ui.rg)[0])) === mk(new Date());
   const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, bal = inc - exp, ring = ui.view === "ring";
   const pill = '<div class="brow' + (ring ? "" : " stk") + '"><button class="lb" data-a="' + (ring ? "qtpl" : "viewtog") + '">' + (ring ? UI.bolt : UI.lines) + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="' + (ring ? "qbud" : "kindtog") + '" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.gauge : UI.tag) + "</button></div>";
   let body;
   if (ring) body = ringHTML(items, tot, exp, inc, K) + pill;
-  else body = pill + (K === "exp" && !PR.hb2 && ui.rg.t === "m" && items.some(x => x.cat.id && budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0])))) ? '<div class="hint" data-a="hintx"><span>Под суммой — лимит или норма категории. Цвет: акцентный — в порядке, оранжевый — близко к границе или темп выше обычного, красный — перебор. Закрытые категории серые и по умолчанию внизу.</span><b>✕</b></div>' : "") + '<div class="srtr">' + srtBtn() + "</div>" + (catOrder(items.map(x => ({ c: x.cat, v: x.v, n: x.n, x, b: K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null }))).map(o => { const x = o.x, id = x.cat.id || "_", op = ui.open[id], bb = o.b, bst = bb && bb.kind !== "closed" ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null, cld = bb && bb.kind === "closed"; return '<button class="crow' + (cld ? " cld" : "") + '" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="ar"><span class="a ' + K + '">' + fmH(x.v) + "</span>" + (cld ? '<small class="lm">✔ закрыто</small>' : bb ? '<small class="lm" style="color:' + BCOL[bst.st] + '">' + (bb.kind === "lim" ? "лимит " : bb.kind === "cap" ? "план " : "норма ") + fmN(bb.v) + "</small>" : "") + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>');
+  else body = pill + ('' + srtRow("list") + (catOrder(items.map(x => ({ c: x.cat, v: x.v, n: x.n, x, b: K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null }))).map(o => { const x = o.x, id = x.cat.id || "_", op = ui.open[id], bb = o.b, bst = bb && bb.kind !== "closed" ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null, cld = bb && bb.kind === "closed"; return '<button class="crow' + (cld ? " cld" : "") + (isCur ? "" : " cmp") + '" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + '</div><b><span class="tn">' + esc(x.cat.name) + "</span>" + (K === "exp" && (PR.fix || {})[x.cat.id] ? '<span class="lkm">🔒</span>' : "") + '<span class="bd">' + x.n + '</span></b><span class="ar"><span class="a ' + K + '">' + (bb ? fmN(x.v) : fmH(x.v)) + "</span>" + (cld ? '<span class="pl">✔</span>' : bb ? '<span class="pl" style="color:' + BCOL[bst.st] + '"> / ' + fmN(bb.v) + "</span>" : "") + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>'));
   return topBar(true) + body + '<div style="height:160px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp"></button><button class="fb p" data-a="pick" data-v="inc"></button></div>';
 }
 const hl = (txt, q) => { txt = String(txt || ""); if (!q) return esc(txt); const lo = txt.toLowerCase(); let o = "", p = 0, i; while ((i = lo.indexOf(q, p)) >= 0 && q) { o += esc(txt.slice(p, i)) + "<mark>" + esc(txt.slice(i, i + q.length)) + "</mark>"; p = i + q.length; } return o + esc(txt.slice(p)); };
@@ -683,15 +692,15 @@ function pMonths(k, am) {
 const pChips = (act, cur, list) => '<div class="chips" style="margin:0 0 8px;flex-wrap:wrap">' + list.map(x => '<button class="chip' + (cur === x[0] ? " on" : "") + '" data-a="' + act + '" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>";
 function hmBody(am) {
   const k = PR.hmN || "m6", ms = pMonths(k, am), set = {}; ms.forEach(m => set[m] = 1);
-  const top = byCat(txs.filter(x => set[mk(new Date(x.ts))]), "exp").slice(0, 12), ch = pChips("hmset", k, PSEL);
+  const top = byCat([].concat(...ms.map(ofMonth)), "exp").slice(0, 12), ch = pChips("hmset", k, PSEL);
   if (!top.length) return ch + '<div class="sub">За этот промежуток трат нет</div>';
-  const grid = top.map(x => ms.map(m => sumBy(ofMonth(m).filter(y => y.kind === "exp" && (y.category_id || "_") === (x.cat.id || "_"))))), gm = Math.max(1, ...grid.flat()), tot = ms.map((m, i) => grid.reduce((a, r) => a + r[i], 0));
+  const MS = monthSums(), grid = top.map(x => ms.map(m => (MS[m] || {})[x.cat.id || "_"] || 0)), gm = Math.max(1, ...grid.flat()), tot = ms.map((m, i) => grid.reduce((a, r) => a + r[i], 0));
   const lab = m => MONS_S[+m.slice(5) - 1] + (k[0] === "m" && ms.length > 6 ? " " + m.slice(2, 4) : "");
   return ch + '<div class="hmw"><table class="hm2"><tr><th class="hn"></th>' + ms.map(m => "<th>" + lab(m) + "</th>").join("") + "<th>Σ</th></tr>" + top.map((x, r) => '<tr><th class="hn"><span>' + ic(x.cat.icon, x.cat.color, 30) + "<em>" + esc(x.cat.name) + "</em></span></th>" + grid[r].map(v => '<td style="background:rgba(var(--hm),' + (v / gm * .8).toFixed(2) + ')">' + (v ? fmN(v) : "") + "</td>").join("") + "<td class=\"tt\">" + fmN(x.v) + "</td></tr>").join("") + '<tr class="sm"><th class="hn"><span><em>Итого</em></span></th>' + tot.map(v => "<td>" + (v ? fmN(v) : "") + "</td>").join("") + '<td class="tt">' + fmN(sumBy(tot, x => x)) + "</td></tr></table></div>" + '<div class="sub" style="font-size:.78em;margin-top:6px">В рублях. Чем темнее клетка, тем больше потрачено. ' + (ms.length > 6 ? "Таблицу можно листать вбок." : "") + "</div>";
 }
 function topBody(am) {
   const k = PR.topN || "m", ms = k === "m" ? [am] : k === "q" ? pMonths("m3", am) : k === "y" ? pMonths("y0", am) : null, set = {}; if (ms) ms.forEach(m => set[m] = 1);
-  const list = txs.filter(x => x.kind === "exp" && (!ms || set[mk(new Date(x.ts))])).sort((a, b) => b.amount - a.amount).slice(0, 10), lbl = k === "m" ? MONS[+am.slice(5) - 1] + " " + am.slice(0, 4) : k === "q" ? "последние 3 месяца" : k === "y" ? am.slice(0, 4) + " год" : "всё время";
+  const list = (ms ? [].concat(...ms.map(ofMonth)) : txs).filter(x => x.kind === "exp").sort((a, b) => b.amount - a.amount).slice(0, 10), lbl = k === "m" ? MONS[+am.slice(5) - 1] + " " + am.slice(0, 4) : k === "q" ? "последние 3 месяца" : k === "y" ? am.slice(0, 4) + " год" : "всё время";
   return pChips("topset", k, [["m", "Месяц"], ["q", "3 мес."], ["y", "Год"], ["a", "Всё время"]]) + '<div class="sub" style="font-size:.8em;margin-bottom:4px">Топ-10 отдельных покупок за период: ' + lbl + "</div>" + (list.length ? list.map(txRow).join("") : '<div class="sub">Нет трат</div>');
 }
 function statsHTML() {
@@ -706,7 +715,7 @@ function statsHTML() {
   h += acc("dyn", "📊", "Динамика", "по дням и месяцам", () => {
     let o = ""; const nm = t === "all" ? 24 : 12, ms = []; for (let i = nm - 1; i >= 0; i--) ms.push(shiftMonth(am, -i));
     if (days <= 62 && t !== "all") { const v = Array(days).fill(0); ex.forEach(x => { const i = Math.floor((+sod(x.ts) - +sod(s0)) / 864e5); if (i >= 0 && i < days) v[i] += x.amount; }); o += '<div class="sub" style="font-weight:600">По дням</div>' + bars(v, v.map((_, i) => new Date(+sod(s0) + i * 864e5).getDate()), { avg: exp / days }); }
-    const ev = ms.map(m => sumBy(ofMonth(m).filter(x => x.kind === "exp"))), lab = ms.map(m => nm > 12 && +m.slice(5) !== 1 ? "" : (nm > 12 ? m.slice(2, 4) : MONS_S[+m.slice(5) - 1])), nz = ev.filter(Boolean);
+    const MS2 = monthSums(), ev = ms.map(m => monTot(MS2, m)), lab = ms.map(m => nm > 12 && +m.slice(5) !== 1 ? "" : (nm > 12 ? m.slice(2, 4) : MONS_S[+m.slice(5) - 1])), nz = ev.filter(Boolean);
     return o + '<div class="sub" style="font-weight:600;margin-top:10px">По месяцам</div>' + bars(ev, lab, { hi: ms.length - 1, avg: nz.length ? sumBy(nz, x => x) / nz.length : 0 }) + '<div class="sub" style="font-size:.78em;margin-top:6px">пунктир — среднее за месяц · ' + nm + " мес.</div>";
   });
   h += acc("wd", "🗓️", "Дни недели", "в какие дни тратишь", () => {
@@ -715,11 +724,6 @@ function statsHTML() {
     return ord.map(i => '<div class="wrow"><span class="wn">' + WD[i] + '</span><div class="tr"><i style="width:' + (wavg[i] / mx * 100).toFixed(1) + "%;background:" + (i === best ? "var(--exp)" : "var(--acc)") + '"></i></div><span class="wv"><b>' + fmN(wavg[i]) + "</b> ₽/день<small> · всего " + fmN(wd[i]) + "</small></span></div>").join("") + '<div class="sub" style="font-size:.8em;margin-top:6px">Полоска — сколько в среднем уходит в такой день недели, справа — и сумма за весь период. Зачем это: видно, на какие дни приходится пик (у тебя — ' + WD[best] + "), и можно переносить крупные покупки и развлечения на «дешёвые» дни или закладывать в пик запас.</div>";
   });
   h += acc("hm", "🔥", "Категории по месяцам", (PSEL.find(x => x[0] === (PR.hmN || "m6")) || PSEL[1])[1], () => hmBody(am));
-  h += acc("notes", "🔎", "Куда утекают мелочи", "повторяющиеся заметки", () => {
-    const m = {}; ex.forEach(x => { const k = (x.note || "").trim().toLowerCase(); if (!k) return; const o = m[k] || (m[k] = { n: 0, s: 0, l: x.note.trim(), c: x.category_id }); o.n++; o.s += x.amount; });
-    const l = Object.values(m).filter(o => o.n >= 2).sort((a, b) => b.s - a.s).slice(0, 8); if (!l.length) return '<div class="sub">Пока нет повторяющихся заметок. Пиши в заметке «кофе», «такси» — и тут появится, сколько в сумме на это уходит.</div>';
-    return l.map(o => { const c = catOf(o.c); return '<div class="chg"><span>' + ic(c.icon, c.color, 22) + " " + esc(o.l) + ' <span class="sub">· ' + o.n + "×</span></span><b>" + fm(o.s) + "</b></div>"; }).join("");
-  });
   h += acc("top", "💸", "Самые крупные траты", { m: "месяц", q: "3 мес.", y: "год", a: "всё время" }[PR.topN || "m"], () => topBody(am));
   return h;
 }
@@ -876,6 +880,7 @@ function sheetHTML() {
     const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="rcpbtn">📷 Сфотографировать чек</button><button class="btn g" style="width:100%;margin-top:8px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
   }
+  if (s.type === "info") return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>ⓘ Как читать</h2><div style="line-height:1.5">' + INFO[s.k] + "</div></div></div>";
   if (s.type === "srt") return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Порядок категорий</h2>' + SRT.map(x => '<button class="qrow" data-a="srtset" data-v="' + x[0] + '" style="width:100%;justify-content:space-between"><span>' + x[1] + "</span>" + ((PR.srt || "sumc") === x[0] ? "<b>✓</b>" : "") + "</button>").join("") + '<div class="sub" style="font-size:.8em;margin-top:8px">Действует и в списке, и в аналитике.</div></div></div>';
   if (s.type === "cmp") return cmpSheetHTML();
   if (s.type === "bud") return budSheetHTML();
@@ -915,21 +920,36 @@ function login() {
 }
 function render() {
   if (!user) { login(); return; }
-  const scr = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : ui.tab === "stats" ? statsHTML() : moreHTML();
+  const scr = ui.tab === "more" ? moreHTML() : pageHTML(0);
   const keep = $("main") && ui._lt === ui.tab ? $("main").scrollTop : 0; ui._lt = ui.tab;
   const menu = ui.menu ? '<div class="mov" data-a="menuclose"><div class="menu" data-a="nop">' + [["home", "Главная"], ["list", "Операции"], ["stats", "Аналитика"], ["more", "Категории и настройки"]].map(t => '<button data-a="tab" data-v="' + t[0] + '"' + (ui.tab === t[0] ? ' class="on"' : "") + ">" + t[1] + "</button>").join("") + "</div></div>" : "";
   $("app").innerHTML = '<div id="main">' + scr + "</div>" + sheetHTML() + menu;
   if ($("main")) { const mn = $("main"); mn.scrollTop = ui.tab === "home" && ui.view === "ring" ? 0 : keep; mn.classList.toggle("noscr", ui.tab === "home" && ui.view === "ring"); const hd = mn.querySelector(".hdr"), mr = mn.querySelector(".mrow"); if (hd) { mn.style.setProperty("--h1", hd.offsetHeight + "px"); if (mr) mn.style.setProperty("--h2", hd.offsetHeight + mr.offsetHeight + "px"); } }
   document.querySelectorAll(".hmw").forEach(e => { e.scrollLeft = e.scrollWidth; });
-  syncHistory();
+  syncHistory(); prefetch();
 }
 
 
 /* ============ плавная смена месяца: как в Monefy, соседний месяц едет рядом с пальцем ============ */
 let sliding = false, car = null;
+const PC = new Map();
+function pageHTML(d) {   // HTML страницы (с кэшем): соседние месяцы строятся заранее в простое
+  const sv = ui.rg; if (d) { ui.rg = Object.assign({}, sv); rgShift(d); }
+  try {
+    const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
+    let h = PC.get(key); if (h != null) return h;
+    h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : statsHTML();
+    PC.set(key, h); if (PC.size > 14) PC.delete(PC.keys().next().value); return h;
+  } finally { ui.rg = sv; }
+}
+let _pf = 0;
+function prefetch() {
+  if (_pf || !user || !["home", "list", "stats"].includes(ui.tab) || ui.rg.t === "all" || ui.rg.t === "int") return;
+  const ric = window.requestIdleCallback || (f => setTimeout(f, 120));
+  _pf = 1; ric(() => { try { pageHTML(-1); } catch (e) {} ric(() => { try { if (rgBounds(ui.rg, 1)[0] <= Date.now()) pageHTML(1); } catch (e) {} _pf = 0; }, { timeout: 1500 }); }, { timeout: 1500 });
+}
 function pageEls(d) {
-  const sv = ui.rg; ui.rg = Object.assign({}, sv); rgShift(d); let h = "";
-  try { h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : statsHTML(); } finally { ui.rg = sv; }
+  let h = ""; h = pageHTML(d);
   const t = document.createElement("div"); t.innerHTML = h; t.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
   return [...t.children].filter(e => !e.matches(".hdr,.fab"));
 }
@@ -941,9 +961,9 @@ function carOpen() {
 }
 function carNb(c, d) { if (c.nb[d] || (d > 0 && !c.fwdOk)) return; const g = document.createElement("div"); g.className = "nb " + (d < 0 ? "l" : "r"); pageEls(d).forEach(e => g.appendChild(e)); c.wrap.appendChild(g); c.nb[d] = 1; }
 function carEnd(go, dir, from) {
-  const c = car; if (!c) return; const to = go ? -dir * c.W : 0, dur = go ? 170 : 150;
+  const c = car; if (!c) return; const to = go ? -dir * c.W : 0, dur = go ? 135 : 130;
   c.wrap.style.transform = "translate3d(" + from + "px,0,0)";
-  const a = c.wrap.animate([{ transform: "translate3d(" + from + "px,0,0)" }, { transform: "translate3d(" + to + "px,0,0)" }], { duration: Math.max(90, dur * Math.abs(to - from) / c.W + 50), easing: "cubic-bezier(.22,.7,.3,1)", fill: "forwards" });
+  const a = c.wrap.animate([{ transform: "translate3d(" + from + "px,0,0)" }, { transform: "translate3d(" + to + "px,0,0)" }], { duration: Math.max(70, dur * Math.abs(to - from) / c.W + 35), easing: "cubic-bezier(.22,.7,.3,1)", fill: "forwards" });
   a.onfinish = () => { car = null; c.m.style.overflowX = ""; if (go) rgShift(dir); render(); sliding = false; };
 }
 function slide(dir) { if (sliding) return; if (dir > 0 && rgBounds(ui.rg, 1)[0] > Date.now()) return; sliding = true; car = carOpen(); if (!car) { rgShift(dir); render(); sliding = false; return; } carNb(car, dir); requestAnimationFrame(() => carEnd(true, dir, 0)); }
@@ -1085,6 +1105,7 @@ const A = {
   setcats() { ui.set = "cats"; render(); }, setmain() { ui.set = "main"; render(); },
   theme(a) { PR.theme = a.dataset.v; savePR(); applyTheme(); render(); },
   accx(a) { PR.acs = PR.acs || {}; const id = a.dataset.v; PR.acs[id] = !accOpen(id); savePR(); render(); },
+  infoopen(a) { ui.sheet = { type: "info", k: a.dataset.v }; render(); },
   srtopen() { ui.sheet = { type: "srt" }; render(); }, srtset(a) { PR.srt = a.dataset.v; savePR(); ui.sheet = null; render(); },
   hintx() { PR.hb2 = 1; savePR(); render(); },
   hmset(a) { PR.hmN = a.dataset.v; savePR(); render(); }, topset(a) { PR.topN = a.dataset.v; savePR(); render(); },
@@ -1143,17 +1164,17 @@ const A = {
 (function () {
   let sx = 0, sy = 0, st = 0, ok = false, drag = false, dxl = 0, raf = 0;
   const can = () => user && !ui.sheet && !ui.menu && ["home", "list", "stats"].includes(ui.tab) && ui.rg.t !== "all" && ui.rg.t !== "int" && !sliding;
-  document.addEventListener("touchstart", e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); drag = false; dxl = 0; ok = e.touches.length === 1 && !e.target.closest("input,textarea,.hm,.menu,.sheet,.full,.mov,.tpls"); }, { passive: true });
+  document.addEventListener("touchstart", e => { touching = 1; const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); drag = false; dxl = 0; ok = e.touches.length === 1 && !e.target.closest("input,textarea,.hm,.hmw,.menu,.sheet,.full,.mov,.tpls"); }, { passive: true });
   document.addEventListener("touchmove", e => {
     if (!ok || !can() && !drag) return; const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (!drag) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.4) { car = carOpen(); if (!car) { ok = false; return; } drag = true; sliding = true; } else return; }
     dxl = dx; carNb(car, dx < 0 ? 1 : -1); if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!car || !drag) return; const d = dxl < 0 && !car.fwdOk ? dxl * .22 : dxl; car.wrap.style.transform = "translate3d(" + d + "px,0,0)"; });
   }, { passive: true });
   const fin = e => {
-    if (!ok || !drag) return; drag = false; const c = car, dx = dxl, fast = Date.now() - st < 320 && Math.abs(dx) > 35, go = (Math.abs(dx) > c.W * .28 || fast) && !(dx < 0 && !c.fwdOk);
+    if (!ok || !drag) return; drag = false; const c = car, dx = dxl, fast = Date.now() - st < 300 && Math.abs(dx) > 24, go = (Math.abs(dx) > c.W * .2 || fast) && !(dx < 0 && !c.fwdOk);
     carEnd(go, dx < 0 ? 1 : -1, dx < 0 && !c.fwdOk ? dx * .22 : dx);
   };
-  document.addEventListener("touchend", fin, { passive: true }); document.addEventListener("touchcancel", fin, { passive: true });
+  document.addEventListener("touchend", e => { fin(e); setTimeout(() => { touching = 0; }, 60); }, { passive: true }); document.addEventListener("touchcancel", e => { fin(e); touching = 0; }, { passive: true });
 })();
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
