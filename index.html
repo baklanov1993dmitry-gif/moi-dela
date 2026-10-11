@@ -1889,7 +1889,7 @@ const jrCSS = `
 .jr-nudge{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--acc);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:calc(12.2px*var(--z,1))}
 .jr-day{display:flex;justify-content:space-between;gap:8px;padding:14px 6px 4px;font-weight:600;font-size:calc(12.2px*var(--z,1));border-bottom:1px solid var(--ln)}
 .jr-sum{font-weight:400;color:var(--sub)}
-.jr-it{display:grid;grid-template-columns:84px 44px 16px 190px minmax(0,1fr);gap:6px 8px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:start;font-size:calc(12.2px*var(--z,1))}
+.jr-it{display:grid;grid-template-columns:84px 44px 16px 200px minmax(0,1fr);gap:6px 8px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:start;font-size:calc(12.2px*var(--z,1))}
 .jr-it:hover{background:var(--hov)}
 .jr-ed{display:block;cursor:default;background:var(--sel)}
 .jr-w{color:var(--acc);font-weight:600;white-space:nowrap}
@@ -1930,7 +1930,7 @@ const jrCSS = `
 .jr-wsel{position:absolute;left:0;right:0;top:68px;height:34px;border-top:2px solid var(--acc);border-bottom:2px solid var(--acc);pointer-events:none;opacity:.7}
 .jr-wb{display:flex;gap:8px;margin-top:14px;align-items:center}
 .jr-bot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:14px}
-.jr-tg{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:20px}
+.jr-tg{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;min-height:20px;min-width:0}.jr-tg .jr-c{min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .jr-cadd{cursor:pointer;background:transparent;font-family:inherit;opacity:.5;border-style:dashed}.jr-cadd:hover{opacity:1;border-color:#8764b8;color:#8764b8}
 .jr-cx{border:0;background:transparent;color:inherit;cursor:pointer;padding:0 0 0 2px;font-size:1.1em;line-height:1;opacity:.5}.jr-cx:hover{opacity:1;color:#d9534f}
 .jr-qe{position:relative;display:inline-block}
@@ -3579,18 +3579,18 @@ function jrDDHTML(l) {
 function jrTagCell(l) {
   const J = jrState(), a = jrTagsOf(l.cat), ed = J.qt === l.id;
   let h = a.map(t => '<span class="jr-c">' + esc(t) + '<button class="jr-cx" data-a="jrqdel" data-id="' + l.id + '" data-t="' + esc(t) + '" title="Убрать тему">×</button></span>').join("");
-  if (a.length < 3) h += ed ? '<span class="jr-qe"><input id="jr-qi" class="jr-qi" list="" autocomplete="off" placeholder="тема" value="' + esc(J.qi || "") + '"><div class="jr-dd" id="jr-dd">' + jrDDHTML(l) + "</div></span>" : '<button class="jr-c jr-cadd' + (a.length ? "" : " none") + '" data-a="jrqt" data-id="' + l.id + '" title="Добавить тему">＋' + (a.length ? "" : " тема") + "</button>";
+  if (a.length < 2) h += ed ? '<span class="jr-qe"><input id="jr-qi" class="jr-qi" list="" autocomplete="off" placeholder="тема" value="' + esc(J.qi || "") + '"><div class="jr-dd" id="jr-dd">' + jrDDHTML(l) + "</div></span>" : '<button class="jr-c jr-cadd' + (a.length ? "" : " none") + '" data-a="jrqt" data-id="' + l.id + '" title="Добавить тему">＋' + (a.length ? "" : " тема") + "</button>";
   return '<span class="jr-tg">' + h + "</span>";
 }
 const jrValBtns = (cur, act, big) => '<div class="jr-vrow">' + JV_OPTS.map(o => '<button class="jr-vb jr-v' + o[0] + (cur === o[0] ? " on" : "") + (big ? " big" : "") + '" data-a="' + act + '" data-v="' + o[0] + '">' + o[1] + " " + o[2] + "</button>").join("") + "</div>";
 const jrTagsTop = () => { const c = jrCatCount(); return Object.keys(c).sort((a, b) => c[b] - c[a]); };
-const jrTagBox = (id, val, ctx) => '<div class="jr-tagb"><input id="' + id + '" class="inp" list="jr-tl" style="flex:1;min-width:0" placeholder="Темы через запятую, до 3: работа, зал…" autocomplete="off" value="' + esc(val || "") + '"></div>' +
+const jrTagBox = (id, val, ctx) => '<div class="jr-tagb"><input id="' + id + '" class="inp" list="jr-tl" style="flex:1;min-width:0" placeholder="Темы через запятую, до 2: работа, зал…" autocomplete="off" value="' + esc(val || "") + '"></div>' +
   '<div class="jr-tchips">' + jrTagsTop().slice(0, 8).map(t => '<button class="jr-chip' + (jrHasTag(val, t) ? " on" : "") + '" data-a="jrtag" data-ctx="' + ctx + '" data-t="' + esc(t) + '">' + esc(t) + "</button>").join("") + "</div>";
 const jrTagList = () => '<datalist id="jr-tl">' + jrTagsTop().map(x => '<option value="' + esc(x) + '">').join("") + "</datalist>";
-const jrTagsOf = c => { const o = [], seen = {}; String(c || "").split(",").forEach(x => { x = x.trim().replace(/^#/, "").slice(0, 40); const k = nrm(x); if (x && !seen[k]) { seen[k] = 1; o.push(x); } }); return o.slice(0, 3); };
+const jrTagsOf = c => { const o = [], seen = {}; String(c || "").split(",").forEach(x => { x = x.trim().replace(/^#/, "").slice(0, 40); const k = nrm(x); if (x && !seen[k]) { seen[k] = 1; o.push(x); } }); return o.slice(0, 2); };
 const jrCleanTag = v => jrTagsOf(v).join(", ");
 const jrHasTag = (c, t) => jrTagsOf(c).some(x => nrm(x) === nrm(t));
-const jrTagToggle = (c, t) => { const a = jrTagsOf(c), i = a.findIndex(x => nrm(x) === nrm(t)); if (i >= 0) a.splice(i, 1); else if (a.length < 3) a.push(t); else { toast("Не больше 3 тем"); } return a.join(", "); };
+const jrTagToggle = (c, t) => { const a = jrTagsOf(c), i = a.findIndex(x => nrm(x) === nrm(t)); if (i >= 0) a.splice(i, 1); else if (a.length < 2) a.push(t); else { toast("Не больше 2 тем"); } return a.join(", "); };
 const jrCanon = t => { const k = nrm(t), f = jrTagsTop().find(x => nrm(x) === k); return f || t; };
 const jrValSetup = () => '<div class="jr-box"><b>Один раз: колонка для оценки</b><div class="jr-hint">Скопируй SQL → Supabase → SQL Editor → Run, потом «Проверить». Без этого оценка 🟢⚪🔴 не сохранится.</div><pre class="jr-sql">' + esc(JV_SQL) + '</pre><div class="jr-f"><button class="btn" data-a="jrcopyv">Скопировать SQL</button><button class="btn ghost" data-a="jrcheckv">Проверить</button></div></div>';
 const jrUnval = () => Object.values(S.time_log).filter(l => !l.val && l.title && !l.deleted && jrDay(l)).sort((a, b) => (jrDay(b) + (b.start_at || "")).localeCompare(jrDay(a) + (a.start_at || "")));
