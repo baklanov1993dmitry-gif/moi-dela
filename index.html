@@ -1930,6 +1930,17 @@ const jrCSS = `
 .jr-wsel{position:absolute;left:0;right:0;top:68px;height:34px;border-top:2px solid var(--acc);border-bottom:2px solid var(--acc);pointer-events:none;opacity:.7}
 .jr-wb{display:flex;gap:8px;margin-top:14px;align-items:center}
 .jr-bot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:14px}
+.jr-vrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.jr-vb{flex:1;min-width:96px;border:1px solid var(--ln);background:var(--solid,transparent);color:inherit;border-radius:12px;padding:9px 8px;cursor:pointer;font-size:calc(13px*var(--z,1))}
+.jr-vb.big{padding:16px 8px;font-size:calc(15px*var(--z,1))}
+.jr-vb.jr-vu.on,.jr-vb.jr-vu:hover{background:#e3f4ea;border-color:#3aa76d}.jr-vb.jr-vn.on,.jr-vb.jr-vn:hover{background:#eceef1;border-color:#9aa0a6}.jr-vb.jr-vx.on,.jr-vb.jr-vx:hover{background:#fbe5e3;border-color:#d9534f}
+.jr-dot{position:relative;width:12px;height:12px;border-radius:50%;border:2px solid #b5bac1;background:transparent;display:inline-block;margin-right:7px;padding:0;cursor:pointer;vertical-align:middle}
+.jr-dot::before{content:"";position:absolute;inset:-9px}
+.jr-dot.u{background:#3aa76d;border-color:#3aa76d}.jr-dot.n{background:#9aa0a6;border-color:#9aa0a6}.jr-dot.x{background:#d9534f;border-color:#d9534f}
+.jr-tagb{display:flex;margin-top:8px}.jr-tchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.jr-vbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:#eee;margin:8px 0 4px}.jr-vbar i{display:block;height:100%}
+.jr-vleg{font-size:calc(12.5px*var(--z,1));opacity:.85;margin-bottom:6px}
+.jr-mkw{font-size:calc(12.5px*var(--z,1));opacity:.7;margin-top:6px}.jr-mkt{font-size:calc(19px*var(--z,1));margin:6px 0 4px;line-height:1.3;word-break:break-word}
 .jr-sbox{border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--solid,transparent)}
 .jr-st{font-weight:600;margin-bottom:8px;font-size:calc(14px*var(--z,1))}
 .jr-sr{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:center;padding:5px 0;font-size:calc(13px*var(--z,1))}
@@ -3469,8 +3480,12 @@ const acts = {
 const JX_COLS = ["cat", "kind", "d1", "d2"];
 const JX_SQL = "alter table public.time_log\n  add column if not exists cat  text,\n  add column if not exists kind text not null default 't',\n  add column if not exists d1   date,\n  add column if not exists d2   date;";
 let JX = (() => { try { return localStorage.getItem("mytasks_jx") === "1"; } catch (e) { return false; } })();
-if (JX) COLS.time_log = GC.concat(JX_COLS);
-function jxSet(ok) { if (ok === JX) return; JX = ok; COLS.time_log = ok ? GC.concat(JX_COLS) : GC; try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
+const JV_SQL = "alter table public.time_log add column if not exists val text;";
+let JV = (() => { try { return localStorage.getItem("mytasks_jv") === "1"; } catch (e) { return false; } })();
+function jrApplyCols() { COLS.time_log = GC.concat(JX ? JX_COLS : [], JV ? ["val"] : []); }
+jrApplyCols();
+function jvSet(ok) { if (ok === JV) return; JV = ok; jrApplyCols(); try { localStorage.setItem("mytasks_jv", ok ? "1" : "0"); } catch (e) {} }
+function jxSet(ok) { if (ok === JX) return; JX = ok; jrApplyCols(); try { localStorage.setItem("mytasks_jx", ok ? "1" : "0"); } catch (e) {} }
 const jrState = () => ui.jr || (ui.jr = { per: "r", lim: 40, mode: "t", date: null, st: null, en: "", tx: "", hist: false, vd: null, wh: null, sum: false, sw: null, ai: null, d1: null, d2: "", edit: null, e: {}, cz: null, nudgeOff: false });
 // колесо времени: шаг ровно 1 (колесо мыши и стрелки)
 function jrWStep(col, d, abs) {
@@ -3545,7 +3560,27 @@ function jrItem(l) {
   const p = jrKind(l) === "p"; let when, dur = "";
   if (p) when = '<span class="jr-per">' + (l.d2 && l.d2 !== l.d1 ? jrShort(l.d1) + " – " + jrShort(l.d2) : "за день") + "</span>";
   else { when = hm(minOf(l.start_at)) + "–" + (l.end_at ? hm(minOf(l.end_at)) : "…"); if (l.end_at) dur = fmtDurM(Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000))); }
-  return '<div class="jr-it" data-a="jredit" data-id="' + l.id + '"><span class="jr-w">' + when + '</span><span class="jr-d">' + dur + '</span><span class="jr-t">' + esc(l.title) + (l.cat ? ' <i class="jr-c">' + esc(l.cat) + "</i>" : "") + "</span></div>";
+  return '<div class="jr-it" data-a="jredit" data-id="' + l.id + '"><span class="jr-w">' + when + '</span><span class="jr-d">' + dur + '</span><span class="jr-t">' + (JV ? '<button class="jr-dot ' + (l.val || "") + '" data-a="jrcyc" data-id="' + l.id + '" title="Оценка: тап — сменить"></button>' : "") + esc(l.title) + (l.cat ? ' <i class="jr-c">' + esc(l.cat) + "</i>" : "") + "</span></div>";
+}
+const JV_OPTS = [["u", "🟢", "Полезное"], ["n", "⚪", "Нейтральное"], ["x", "🔴", "Бесполезное"]];
+const jrValBtns = (cur, act, big) => '<div class="jr-vrow">' + JV_OPTS.map(o => '<button class="jr-vb jr-v' + o[0] + (cur === o[0] ? " on" : "") + (big ? " big" : "") + '" data-a="' + act + '" data-v="' + o[0] + '">' + o[1] + " " + o[2] + "</button>").join("") + "</div>";
+const jrTagsTop = () => { const c = jrCatCount(); return Object.keys(c).sort((a, b) => c[b] - c[a]); };
+const jrTagBox = (id, val, ctx) => '<div class="jr-tagb"><input id="' + id + '" class="inp" list="jr-tl" style="flex:1;min-width:0" placeholder="Тема (тег): работа, зал, дорога…" autocomplete="off" value="' + esc(val || "") + '"></div>' +
+  '<div class="jr-tchips">' + jrTagsTop().slice(0, 8).map(t => '<button class="jr-chip' + (nrm(val) === nrm(t) ? " on" : "") + '" data-a="jrtag" data-ctx="' + ctx + '" data-t="' + esc(t) + '">' + esc(t) + "</button>").join("") + "</div>";
+const jrTagList = () => '<datalist id="jr-tl">' + jrTagsTop().map(x => '<option value="' + esc(x) + '">').join("") + "</datalist>";
+const jrCleanTag = v => String(v || "").trim().replace(/^#/, "").slice(0, 40);
+const jrValSetup = () => '<div class="jr-box"><b>Один раз: колонка для оценки</b><div class="jr-hint">Скопируй SQL → Supabase → SQL Editor → Run, потом «Проверить». Без этого оценка 🟢⚪🔴 не сохранится.</div><pre class="jr-sql">' + esc(JV_SQL) + '</pre><div class="jr-f"><button class="btn" data-a="jrcopyv">Скопировать SQL</button><button class="btn ghost" data-a="jrcheckv">Проверить</button></div></div>';
+const jrUnval = () => Object.values(S.time_log).filter(l => !l.val && l.title && !l.deleted && jrDay(l)).sort((a, b) => (jrDay(b) + (b.start_at || "")).localeCompare(jrDay(a) + (a.start_at || "")));
+function jrMarkHTML() {
+  const J = jrState(), back = '<div class="jr-chips"><button class="jr-chip" data-a="jrmx">← К журналу</button></div>';
+  if (!JV) return back + jrValSetup();
+  const list = jrUnval().filter(l => !(J.mskip || {})[l.id]), fr = J.mfront && S.time_log[J.mfront] && !S.time_log[J.mfront].val ? S.time_log[J.mfront] : null, l = fr || list[0], total = jrUnval().length;
+  if (!l) return back + '<div class="jr-sbox"><div class="jr-st">Всё размечено 🎉</div><div style="opacity:.8;font-size:13px">' + (total ? "Пропущено записей: " + total + '. <button class="linkbtn" data-a="jrmreset">Вернуть пропущенные</button>' : "Теперь в итогах недели есть настоящая картина.") + "</div></div>";
+  if (J.mcur !== l.id) { J.mcur = l.id; J.mcat = l.cat || ""; }
+  const d = jrDay(l), when = jrKind(l) === "p" ? "за день / период" : hm(minOf(l.start_at)) + "–" + (l.end_at ? hm(minOf(l.end_at)) : "…") + (l.end_at ? " · " + fmtDurM(Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000))) : "");
+  return back + '<div class="jr-sbox"><div class="jr-st">Разметка · осталось <b>' + total + '</b></div><div class="jr-mkw">' + esc(jrShort(d)) + " · " + when + '</div><div class="jr-mkt">' + esc(l.title) + "</div>" +
+    jrTagBox("jr-mcat", J.mcat, "mk") + jrTagList() + jrValBtns("", "jrmv", true) +
+    '<div class="jr-czb"><button class="btn ghost" data-a="jrmundo">↶ Назад</button><button class="btn ghost" data-a="jrmskip">Пропустить</button></div></div>';
 }
 function jrEditHTML(l) {
   const e = jrState().e, p = jrKind(l) === "p";
@@ -3558,7 +3593,7 @@ function jrEditHTML(l) {
     top = dbtn("jr-e-date", "Дата", e.date) + '<div class="jr-edd"><button class="jr-chip" data-a="jreday" data-d="-1">← на день раньше</button><button class="jr-chip" data-a="jreday" data-d="1">на день позже →</button></div>' + '<div class="jr-tr"><button class="jr-tb" data-a="jrwheel" data-k="est"><i>Начало</i>' + (e.st || "—:—") + '</button><span>→</span><button class="jr-tb" data-a="jrwheel" data-k="een"><i>Конец</i>' + (e.en || "—:—") + '</button></div>' + (dm ? '<div class="jr-edur">Длительность: <b>' + fmtDurM(dm) + "</b></div>" : "");
   }
   return '<div class="jr-it jr-ed"><div class="jr-et">Редактирование записи</div>' + top +
-    '<textarea id="jr-e-tx" class="inp jr-etx" rows="2" autocomplete="off" placeholder="Что делал">' + esc(e.tx || "") + '</textarea>' +
+    '<textarea id="jr-e-tx" class="inp jr-etx" rows="2" autocomplete="off" placeholder="Что делал">' + esc(e.tx || "") + '</textarea>' + jrTagBox("jr-e-cat", e.cat, "e") + jrTagList() + (JV ? jrValBtns(e.val, "jrev") : jrValSetup()) +
     '<div class="jr-ebt"><button class="btn jr-big" data-a="jrsave">Сохранить</button><button class="btn ghost jr-big" data-a="jrcancel">Отмена</button></div>' +
     '<button class="btn ghost jr-edel" data-a="jrdel">' + ic("trash", 18) + " Удалить запись</button></div>";
 }
@@ -3573,13 +3608,14 @@ function journalMainHTML(vi) {
   if (JX) {
     const df = J.date || today0;
     if (J.mode === "p") add = '<div class="jr-box"><div class="jr-f"><input type="date" id="jr-d1" class="inp" value="' + (J.d1 || yest) + '"><span>–</span><input type="date" id="jr-d2" class="inp" value="' + esc(J.d2 || "") + '" title="Конец периода (необязательно)"></div>' +
-      '<div class="jr-f" style="margin-top:8px"><input id="jr-tx" class="inp" style="flex:1;min-width:0" placeholder="Коротко за день или период" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"><button class="btn" data-a="jradd">Добавить</button></div>' +
+      '<div class="jr-f" style="margin-top:8px"><input id="jr-tx" class="inp" style="flex:1;min-width:0" placeholder="Коротко за день или период" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"><button class="btn" data-a="jradd">Добавить</button></div>' + jrTagBox("jr-cat", J.cat, "add") + jrTagList() + (JV ? jrValBtns(J.val, "jrv") : "") +
       '<div class="jr-f" style="margin-top:6px"><button class="linkbtn" data-a="jrmode" data-v="t">← Обычная запись со временем</button></div></div>';
     else {
       const q = jrPlan();
       add = '<div class="jr-box"><div class="jr-tr"><button class="jr-tb" data-a="jrwheel" data-k="st"><i>Начало</i>' + (q.st || "—:—") + '</button><span>→</span><button class="jr-tb" data-a="jrwheel" data-k="en"><i>Конец</i>' + (q.en || "сейчас") + '</button></div>' +
         (df !== today0 ? '<div class="jr-hint">Дата записи: ' + jrShort(df) + ' <button class="linkbtn" data-a="jrtoday">на сегодня</button></div>' : "") +
         '<div class="jr-f" style="margin-top:10px"><input id="jr-tx" class="inp jr-big" style="flex:1 1 100%;min-width:0" placeholder="Что делал?" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"></div>' +
+        jrTagBox("jr-cat", J.cat, "add") + jrTagList() + (JV ? jrValBtns(J.val, "jrv") : jrValSetup()) +
         '<button class="btn jr-go" data-a="jradd">Записать</button>' +
         '<div class="jr-prev" id="jr-prev">' + esc(jrPrevText()) + '</div><div class="jr-f"><button class="linkbtn" data-a="jrmode" data-v="p">За день / период без времени</button></div></div>';
     }
@@ -3604,7 +3640,7 @@ function journalMainHTML(vi) {
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button>' + chips + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
+    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button>' + chips + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
@@ -3627,12 +3663,12 @@ function jrGuessCat(tx) {
   return best && cn[best] >= 2 && cn[best] / tot >= 0.6 ? best : null;
 }
 function jrWeekData(m0) {
-  const end = addDays(m0, 7), cat = {}, days = new Set(); let tot = 0, n = 0;
+  const end = addDays(m0, 7), cat = {}, days = new Set(), val = { u: 0, n: 0, x: 0, none: 0 }, catx = {}; let tot = 0, n = 0;
   Object.values(S.time_log).forEach(l => {
     const d = jrDay(l); if (!d || d < m0 || d >= end) return; days.add(d); n++;
-    if (jrKind(l) === "t" && l.end_at) { const m = Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)), c = l.cat || "без категории"; cat[c] = (cat[c] || 0) + m; tot += m; }
+    if (jrKind(l) === "t" && l.end_at) { const m = Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)), c = l.cat || "без категории"; cat[c] = (cat[c] || 0) + m; tot += m; const vk = l.val || "none"; val[vk] = (val[vk] || 0) + m; if (l.val === "x") catx[c] = (catx[c] || 0) + m; }
   });
-  return { cat, tot, days: days.size, n };
+  return { cat, tot, days: days.size, n, val, catx };
 }
 const vLine = n => /^(https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+)[ \t]*\n?/i.exec(n || "");
 const noteView = t => { const m = vLine(t.note); return m ? String(t.note).slice(m[0].length).replace(/^\n+/, "") : (t.note || ""); };
@@ -3673,6 +3709,11 @@ async function aiCall(kind, data) {
   if (!r.ok) throw new Error(j.error || "Ошибка " + r.status); return j.text || "";
 }
 const aiBox = a => !a ? "" : a.busy ? '<div class="jr-ai">Думаю над твоими записями…</div>' : a.err === "setup" ? '<div class="jr-ai">ИИ-разбор ещё не подключён. Нужна одноразовая настройка (файл <b>AI_SETUP.md</b> в проекте, 5 минут). Остальные итоги работают и без неё.</div>' : a.err ? '<div class="jr-ai">Не получилось: ' + esc(a.err) + "</div>" : '<div class="jr-ai">' + esc(a.text).replace(/\n/g, "<br>") + "</div>";
+function jrValBar(w) {
+  if (!JV) return ""; if (!w.tot) return "";
+  const v = w.val, seg = (k, c) => v[k] ? '<i style="width:' + (v[k] / w.tot * 100) + '%;background:' + c + '" title="' + fmtDurM(v[k]) + '"></i>' : "";
+  return '<div class="jr-vbar">' + seg("u", "#3aa76d") + seg("n", "#9aa0a6") + seg("x", "#d9534f") + seg("none", "#e4e6ea") + '</div><div class="jr-vleg">🟢 ' + fmtDurM(v.u) + " · ⚪ " + fmtDurM(v.n) + " · 🔴 " + fmtDurM(v.x) + " · не оценено " + fmtDurM(v.none) + "</div>";
+}
 function jrSummaryHTML() {
   const J = jrState(); if (!J.sw) J.sw = jrMon(todayISO());
   const cur = jrWeekData(J.sw), prev = jrWeekData(addDays(J.sw, -7)), lab = jrShort(J.sw) + " – " + jrShort(addDays(J.sw, 6)) + (J.sw === jrMon(todayISO()) ? " (эта неделя)" : "");
@@ -3686,12 +3727,18 @@ function jrSummaryHTML() {
     let up = null, dn = null; cats.forEach(c => { const d = (cur.cat[c] || 0) - (prev.cat[c] || 0); if (prev.tot && d > 30 && (!up || d > up[1])) up = [c, d]; if (prev.tot && d < -30 && (!dn || d < dn[1])) dn = [c, d]; });
     if (up) ins.push("Выросло: «" + up[0] + "» (+" + fmtDurM(up[1]) + ")."); if (dn) ins.push("Просело: «" + dn[0] + "» (−" + fmtDurM(-dn[1]) + ").");
     const avg = cur.tot / Math.max(1, cur.days); ins.push("Записи есть в " + cur.days + " из " + el + " дней, в среднем " + fmtDurM(Math.round(avg)) + " в день" + (avg < 600 ? " — значит, часть дня не записана." : "."));
+    if (JV) {
+      const v = cur.val, pc = k => Math.round(v[k] / cur.tot * 100);
+      if (v.u + v.n + v.x) { ins.push("Полезное " + pc("u") + "% (" + fmtDurM(v.u) + "), нейтральное " + pc("n") + "%, бесполезное " + pc("x") + "% (" + fmtDurM(v.x) + ")."); }
+      const tx = Object.keys(cur.catx).sort((a, b) => cur.catx[b] - cur.catx[a]).slice(0, 3).filter(c => cur.catx[c] >= 15); if (tx.length) ins.push("Больше всего бесполезного: " + tx.map(c => "«" + c + "» " + fmtDurM(cur.catx[c])).join(", ") + ".");
+      if (v.none / cur.tot > 0.2) ins.push("Без оценки " + Math.round(v.none / cur.tot * 100) + "% времени — открой «🏷 Разметка», это пара минут.");
+    }
     const nc = cur.cat["без категории"] || 0; if (nc / cur.tot > 0.3) ins.push("Без категории " + Math.round(nc / cur.tot * 100) + "% времени — выводы будут точнее, если проставить категории.");
   } else ins.push("За эту неделю записей со временем пока нет.");
   return '<div class="jr-nav"><button class="ibtn" data-a="jrswp">' + ic("arrowl", 22) + '</button><div class="jr-nl" style="cursor:default">' + lab + '</div><button class="ibtn jr-nr" data-a="jrswn">' + ic("arrowl", 22) + "</button></div>" +
-    '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> эта неделя <u></u> прошлая</div></div>' +
+    '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> эта неделя <u></u> прошлая</div></div>' +
     '<div class="jr-sbox"><div class="jr-st">Выводы</div><ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul></div>" +
-    '<button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' + aiBox(J.ai) + jrCzHTML();
+    '<button class="btn jr-go" data-a="jrmk">🏷 Разметка записей</button><button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' + aiBox(J.ai) + jrCzHTML();
 }
 const jrNoCat = () => Object.values(S.time_log).filter(l => !l.cat && l.title && !l.deleted).sort((a, b) => String(b.start_at || b.d1 || "").localeCompare(String(a.start_at || a.d1 || "")));
 function jrCzHTML() {
@@ -3705,15 +3752,16 @@ function jrCzHTML() {
     '<datalist id="jr-czl">' + cats.map(x => '<option value="' + esc(x) + '">').join("") + '</datalist><div class="jr-czb"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcza">Применить (' + n + ')</button></div></div>';
 }
 function jrCatCount() { const o = {}; Object.values(S.time_log).forEach(l => { if (l.cat) o[l.cat] = (o[l.cat] || 0) + 1; }); return o; }
+const jrValName = l => ({ u: "Полезное", n: "Нейтральное", x: "Бесполезное" })[l.val] || "";
 function jrXlsx() {
   const all = Object.values(S.time_log).filter(l => jrDay(l)).sort((a, b) => (jrDay(a) + " " + (a.start_at || "")).localeCompare(jrDay(b) + " " + (b.start_at || "")));
   const ds = iso => iso.slice(8) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4);
   const rows = all.map(l => {
-    if (jrKind(l) === "p") return [l.d2 && l.d2 !== l.d1 ? ds(l.d1) + " - " + ds(l.d2) : ds(l.d1), "", "", "", l.cat || "", l.title || ""];
+    if (jrKind(l) === "p") return [l.d2 && l.d2 !== l.d1 ? ds(l.d1) + " - " + ds(l.d2) : ds(l.d1), "", "", "", l.cat || "", jrValName(l), l.title || ""];
     const dm = l.end_at ? Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)) : 0;
-    return [ds(dayOf(l.start_at)), hm(minOf(l.start_at)), l.end_at ? hm(minOf(l.end_at)) : "", l.end_at ? jrDur(dm) : "", l.cat || "", l.title || ""];
+    return [ds(dayOf(l.start_at)), hm(minOf(l.start_at)), l.end_at ? hm(minOf(l.end_at)) : "", l.end_at ? jrDur(dm) : "", l.cat || "", jrValName(l), l.title || ""];
   });
-  bkDownload("dnevnik-" + todayISO() + ".xlsx", new Blob([xlsxBook([{ name: "Журнал", heads: ["Дата", "Начало", "Конец", "Длит-ть", "Категория", "Подробное описание"], widths: [22, 9, 9, 9, 18, 80], rows }])], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+  bkDownload("dnevnik-" + todayISO() + ".xlsx", new Blob([xlsxBook([{ name: "Журнал", heads: ["Дата", "Начало", "Конец", "Длит-ть", "Категория", "Ценность", "Подробное описание"], widths: [22, 9, 9, 9, 18, 13, 80], rows }])], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   toast("Выгружено записей: " + rows.length);
 }
 async function jrImport(file) {
@@ -3739,8 +3787,8 @@ Object.assign(acts, {
     if (J.mode === "p") {
       const d1 = J.d1 || addDays(todayISO(), -1), tx = (J.tx || "").trim();
       if (!tx) { toast("Напиши, что было"); return; }
-      addLog({ title: tx, kind: "p", d1, d2: J.d2 && J.d2 > d1 ? J.d2 : null, start_at: null, end_at: null });
-      J.tx = ""; { const x0 = $("jr-tx"); if (x0) x0.value = ""; } J.mode = "t"; J.d1 = null; J.d2 = ""; J.date = d1; toast("Записано"); render(); return;
+      addLog(Object.assign({ title: tx, kind: "p", d1, d2: J.d2 && J.d2 > d1 ? J.d2 : null, start_at: null, end_at: null }, jrCleanTag(J.cat) ? { cat: jrCleanTag(J.cat) } : {}, JV && J.val ? { val: J.val } : {}));
+      J.cat = ""; J.val = ""; J.tx = ""; { const x0 = $("jr-tx"); if (x0) x0.value = ""; } J.mode = "t"; J.d1 = null; J.d2 = ""; J.date = d1; toast("Записано"); render(); return;
     }
     const q = jrPlan();
     if (!q.tx) { toast("Напиши, что делал"); return; }
@@ -3748,24 +3796,24 @@ Object.assign(acts, {
     if (!q.en) { if (q.day === todayISO()) q.en = nowHM(); else { toast("Укажи конец записи"); return; } }
     const dm = jrDM(q.st, q.en); if (!dm) { toast("Начало и конец совпадают"); return; }
     const s = jrDate(q.day, q.st), e = new Date(s.getTime() + dm * 60000);
-    const gc = jrGuessCat(q.tx); addLog(Object.assign({ title: q.tx, kind: "t", start_at: s.toISOString(), end_at: e.toISOString() }, gc ? { cat: gc } : {}));
-    J.tx = ""; { const x0 = $("jr-tx"); if (x0) x0.value = ""; } J.en = ""; J.vd = q.day; J.date = q.day; J.st = isoLocal(e) === q.day ? hm(e.getHours() * 60 + e.getMinutes()) : null;
+    const gc = jrGuessCat(q.tx); const ct = jrCleanTag(J.cat) || gc; addLog(Object.assign({ title: q.tx, kind: "t", start_at: s.toISOString(), end_at: e.toISOString() }, ct ? { cat: ct } : {}, JV && J.val ? { val: J.val } : {}));
+    J.cat = ""; J.val = ""; J.tx = ""; { const x0 = $("jr-tx"); if (x0) x0.value = ""; } J.en = ""; J.vd = q.day; J.date = q.day; J.st = isoLocal(e) === q.day ? hm(e.getHours() * 60 + e.getMinutes()) : null;
     toast(q.st + "–" + q.en + " · " + fmtDurM(dm)); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0);
   },
   jredit(a) {
     const l = S.time_log[a.dataset.id]; if (!l) return; const J = jrState(); J.edit = l.id;
-    J.e = jrKind(l) === "p" ? { d1: l.d1, d2: l.d2 || "", tx: l.title } : { date: dayOf(l.start_at), st: hm(minOf(l.start_at)), en: l.end_at ? hm(minOf(l.end_at)) : "", tx: l.title };
+    J.e = jrKind(l) === "p" ? { d1: l.d1, d2: l.d2 || "", tx: l.title, cat: l.cat || "", val: l.val || "" } : { date: dayOf(l.start_at), st: hm(minOf(l.start_at)), en: l.end_at ? hm(minOf(l.end_at)) : "", tx: l.title, cat: l.cat || "", val: l.val || "" };
     render(); setTimeout(() => { const x = $("jr-e-tx"); if (x) x.focus(); }, 0);
   },
   jrcancel() { jrState().edit = null; render(); },
   jrsave() {
     const J = jrState(), l = S.time_log[J.edit], e = J.e; if (!l) { J.edit = null; render(); return; }
     const tx = (e.tx || "").trim(); if (!tx) { toast("Описание пустое"); return; }
-    if (jrKind(l) === "p") { if (!e.d1) { toast("Укажи дату"); return; } updLog(l.id, { title: tx, d1: e.d1, d2: e.d2 && e.d2 > e.d1 ? e.d2 : null }); }
+    if (jrKind(l) === "p") { if (!e.d1) { toast("Укажи дату"); return; } updLog(l.id, Object.assign({ title: tx, d1: e.d1, d2: e.d2 && e.d2 > e.d1 ? e.d2 : null, cat: jrCleanTag(e.cat) || null }, JV ? { val: e.val || null } : {})); }
     else {
       if (!e.date || !e.st || !e.en) { toast("Нужны дата, начало и конец"); return; }
       const dm = jrDM(e.st, e.en); if (!dm) { toast("Начало и конец совпадают"); return; }
-      const s = jrDate(e.date, e.st); updLog(l.id, { title: tx, start_at: s.toISOString(), end_at: new Date(s.getTime() + dm * 60000).toISOString() });
+      const s = jrDate(e.date, e.st); updLog(l.id, Object.assign({ title: tx, start_at: s.toISOString(), end_at: new Date(s.getTime() + dm * 60000).toISOString(), cat: jrCleanTag(e.cat) || null }, JV ? { val: e.val || null } : {}));
     }
     J.edit = null; toast("Сохранено"); render();
   },
@@ -3818,6 +3866,26 @@ Object.assign(acts, {
   jrxl() { jrXlsx(); },
   jrimp() { const f = $("jr-file"); if (f) f.click(); },
   jrcopy() { try { navigator.clipboard.writeText(JX_SQL).then(() => toast("SQL скопирован"), () => toast("Не удалось скопировать — выдели текст вручную")); } catch (e) { toast("Выдели текст и скопируй вручную"); } },
+  jrv(a) { const J = jrState(); J.val = J.val === a.dataset.v ? "" : a.dataset.v; render(); },
+  jrev(a) { const e = jrState().e; e.val = e.val === a.dataset.v ? "" : a.dataset.v; render(); },
+  jrtag(a) {
+    const J = jrState(), t = a.dataset.t, c = a.dataset.ctx;
+    if (c === "e") J.e.cat = nrm(J.e.cat) === nrm(t) ? "" : t; else if (c === "mk") J.mcat = nrm(J.mcat) === nrm(t) ? "" : t; else J.cat = nrm(J.cat) === nrm(t) ? "" : t; render();
+  },
+  jrcyc(a, ev) { if (ev) ev.stopPropagation(); const l = S.time_log[a.dataset.id]; if (!l) return; const o = ["", "u", "n", "x"], nx = o[(o.indexOf(l.val || "") + 1) % 4]; updLog(l.id, { val: nx || null }); render(); },
+  jrmk() { const J = jrState(); J.mk = true; J.sum = false; J.mskip = {}; J.mfront = null; J.mcur = null; render(); },
+  jrmx() { const J = jrState(); J.mk = false; render(); },
+  jrmv(a) {
+    const J = jrState(), list = jrUnval().filter(l => !(J.mskip || {})[l.id]), fr = J.mfront && S.time_log[J.mfront] && !S.time_log[J.mfront].val ? S.time_log[J.mfront] : null, l = fr || list[0]; if (!l) return;
+    const tg = jrCleanTag(J.mcat) || l.cat || null; updLog(l.id, { val: a.dataset.v, cat: tg }); J.mlast = l.id; J.mfront = null; J.mcur = null; render();
+  },
+  jrmskip() { const J = jrState(), list = jrUnval().filter(l => !(J.mskip || {})[l.id]), l = J.mfront && S.time_log[J.mfront] && !S.time_log[J.mfront].val ? S.time_log[J.mfront] : list[0]; if (!l) return; (J.mskip = J.mskip || {})[l.id] = true; J.mfront = null; J.mcur = null; render(); },
+  jrmundo() { const J = jrState(); if (!J.mlast || !S.time_log[J.mlast]) { toast("Нечего отменять"); return; } updLog(J.mlast, { val: null }); J.mfront = J.mlast; J.mlast = null; J.mcur = null; render(); },
+  jrmreset() { const J = jrState(); J.mskip = {}; J.mcur = null; render(); },
+  jrcopyv() { try { navigator.clipboard.writeText(JV_SQL).then(() => toast("SQL скопирован"), () => toast("Не удалось скопировать — выдели вручную")); } catch (e) { toast("Не удалось скопировать — выдели вручную"); } },
+  async jrcheckv() {
+    if (!sb) return; try { const r = await sb.from("time_log").select("val").limit(1); jvSet(!r.error); toast(r.error ? "Колонки ещё нет — SQL не выполнен" : "Готово, оценка включена"); if (!r.error) loadAll(); } catch (e) { toast("Нет связи"); } render();
+  },
   async jrcheck() {
     if (!sb) return; try { const r = await sb.from("time_log").select("kind").limit(1); jxSet(!r.error); toast(r.error ? "Колонок ещё нет — SQL не выполнен" : "Готово, журнал включён"); if (!r.error) loadAll(); } catch (e) { toast("Нет связи"); } render();
   }
