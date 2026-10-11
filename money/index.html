@@ -214,7 +214,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .crow{position:relative}
 .crow .ci{width:36px;height:36px;margin-right:6px}.crow .chev{margin-right:6px}.crow .chev svg{width:15px}
 .pbar{position:absolute;left:50px;right:8px;bottom:5px;height:5px;border-radius:2px;background:color-mix(in srgb,var(--tx) 12%,transparent)}.pbar i{display:block;height:100%;border-radius:2px}.pbar.norm{opacity:.6}.pbar.lim{height:6px}
-#main .crow{min-height:56px;padding-bottom:0}#main .crow.cmp{min-height:46px}#main .crow .ar{display:flex;align-items:baseline;gap:2px;flex:none;white-space:nowrap}#main .crow .pl{font-size:13px;font-weight:600;color:var(--sub)}#main .crow .lkm{font-size:12px;margin-left:2px}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px}.infob{font-size:17px;color:var(--sub);padding:2px 6px 2px 2px}.ln1{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acb .sub,.acb .qnote{font-size:12.5px;line-height:1.35}.acb .qnote{padding:7px 10px;margin-top:6px}.acb .bt b{font-size:1.05em}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
+#main .crow{min-height:46px;padding-bottom:0}#main .crow.cur{margin:0 -8px;width:calc(100% + 16px)}#main .crow.cur .chev{width:22px;margin-right:3px}#main .crow .ci{position:relative}#main .crow .lkb{position:absolute;right:-5px;bottom:-4px;font-size:11px;line-height:1;filter:drop-shadow(0 0 2px var(--bg))}#main .crow .fr{font-size:14.5px;font-weight:500;color:var(--tx);padding:2px 8px;border-radius:9px;white-space:nowrap}#main .crow .ck{color:var(--sub);margin-left:5px}.grpend{height:12px}.pr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:14.5px}.pr:last-child{border-bottom:0}.pr b{font-weight:600;white-space:nowrap}#main .crow .ar{display:flex;align-items:baseline;gap:2px;flex:none;white-space:nowrap}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px}.infob{font-size:17px;color:var(--sub);padding:2px 6px 2px 2px}.ln1{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acb .sub,.acb .qnote{font-size:12.5px;line-height:1.35}.acb .qnote{padding:7px 10px;margin-top:6px}.acb .bt b{font-size:1.05em}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
 .rs.over::after{content:"!";position:absolute;top:-4px;right:-2px;width:15px;height:15px;border-radius:50%;background:var(--exp);color:#fff;font-size:11px;font-weight:700;line-height:15px;text-align:center}
 .cgrid button .bl,.bl{font-style:normal;font-size:10.5px;color:var(--sub);line-height:1}.bl.warn{color:#f2b36d}.bl.bad{color:var(--exp)}
 .cgrid button{gap:3px}
@@ -461,13 +461,14 @@ function normOf(catId, am) {   // среднее в месяц за послед
   if (catId !== "*" && mon.filter(m => ((ms[m] || {})[catId] || 0) > 0).length < Math.min(2, mon.length)) return null;   // разовая категория (напр. «хвоя» раз в год) — нормы нет
   return { avg: total / mon.length, n: mon.length };
 }
+const fixM = am => { if (PR.fix && !PR.fixm) { PR.fixm = {}; PR.fixm[mk(new Date())] = PR.fix; delete PR.fix; try { savePR(); } catch (e) {} } return (PR.fixm || {})[am] || {}; };
 const isCl = (id, am) => !!((PR.cl || {})[am] || {})[id];
 const bmode = () => PR.bm || (PR.normOn === false ? "off" : "norm");
 let _cpk = "", _cp = null;
 function capPlan(am) {   // потолок на текущий месяц: уже потраченное не урезается; «фикс»-категории остаются как обычно; остаток режется только на гибких
   const cur = am === mk(new Date()), dim = daysIn(am), day = cur ? new Date().getDate() : dim, f = cur ? day / dim : 1;
-  const k = [txv, am, PR.normN, PR.cap, cats.map(c => c.lim).join(), JSON.stringify(PR.fix || {}), JSON.stringify((PR.cl || {})[am] || {}), day].join("|"); if (_cpk === k && _cp) return _cp;
-  const plan = {}, fix = PR.fix || {}; let fixedRem = 0, flexExp = 0, flexN = 0; const spentAll = monTot(monthSums(), am);
+  const k = [txv, am, PR.normN, PR.cap, cats.map(c => c.lim).join(), JSON.stringify(fixM(am)), JSON.stringify((PR.cl || {})[am] || {}), day].join("|"); if (_cpk === k && _cp) return _cp;
+  const plan = {}, fix = fixM(am); let fixedRem = 0, flexExp = 0, flexN = 0; const spentAll = monTot(monthSums(), am);
   cats.filter(c => c.kind === "exp" && !c.archived).forEach(c => {
     const n = normOf(c.id, am), sp = catSpent(c.id, am), lim = +c.lim || 0, nv = n && n.avg > 0 ? n.avg : 0;
     if (cur && isCl(c.id, am)) { plan[c.id] = { mode: "closed", norm: nv, sp, v: sp }; return; }
@@ -511,15 +512,15 @@ const srtLabel = () => (SRT.find(x => x[0] === (PR.srt || "sumc")) || SRT[0])[1]
 const srtBtn = () => '<button class="srtb" data-a="srtopen">⇅ ' + srtLabel() + "</button>";
 const srtRow = k => '<div class="srtr"><span><button class="infob" data-a="infoopen" data-v="' + k + '">ⓘ</button><span class="sub" style="font-size:12px"> факт / план</span></span>' + srtBtn() + "</div>";
 const INFO = { list: "<b>Справа:</b> сколько потрачено / лимит, норма или план на месяц (в режиме «потолок»). Число плана цветное: акцентный — всё в порядке, оранжевый — близко к границе или темп выше обычного, красный — перебор.<br><br><b>🔒</b> — категорию нельзя урезать (закрепляется в аналитике). <b>✔ закрыто</b> — на этот месяц больше не трачу: серые, по умолчанию внизу, остаток плана перераспределяется.<br><br>Порядок категорий меняется кнопкой «⇅».", bud: "<b>Метка на полосе</b> — плановая граница. <b>🔒</b> — категорию нельзя урезать. <b>☑️</b> — закрыть категорию на месяц (оплатил и больше не потрачу): остаток уйдёт в другие категории.<br><br><b>Норма</b> — среднее за последние N месяцев (только по категориям, где были траты минимум в двух месяцах — разовые не считаются). <b>Лимит</b> — личный, задаётся тапом по названию.<br><br>Порядок категорий меняется кнопкой «⇅»." };
-function catOrder(rows) {   // rows: {c, v, b, n}
-  const m = PR.srt || "sumc", fx = PR.fix || {}, cl = r => !!(r.b && r.b.kind === "closed"), rk = r => (cl(r) ? 2 : fx[r.c.id] ? 1 : 0), pct = r => (r.b && r.b.v > 0 && !cl(r) ? r.v / r.b.v : -1), bySum = (a, b) => b.v - a.v;
+function catOrder(rows, am) {   // rows: {c, v, b, n}
+  const m = PR.srt || "sumc", fx = fixM(am), cl = r => !!(r.b && r.b.kind === "closed"), rk = r => (cl(r) ? 2 : fx[r.c.id] ? 1 : 0), pct = r => (r.b && r.b.v > 0 && !cl(r) ? r.v / r.b.v : -1), bySum = (a, b) => b.v - a.v;
   const f = { sumc: (a, b) => (rk(a) - rk(b)) || bySum(a, b), sum: bySum, pinup: (a, b) => (rk(b) - rk(a)) || bySum(a, b), pindn: (a, b) => (rk(a) - rk(b)) || bySum(a, b), pace: (a, b) => (rk(a) - rk(b)) || (pct(b) - pct(a)) || bySum(a, b), az: (a, b) => a.c.name.localeCompare(b.c.name, "ru"), cnt: (a, b) => ((b.n || 0) - (a.n || 0)) || bySum(a, b), pos: (a, b) => (a.c.position || 0) - (b.c.position || 0) }[m] || bySum;
   return rows.slice().sort(f);
 }
 function budRows(am) {
   const md = bmode(), capOn = md === "cap" && PR.cap > 0, cur = am === mk(new Date());
   const rows = cats.filter(c => c.kind === "exp").map(c => ({ c, sp: catSpent(c.id, am), b: budgetOf(c, am) })).filter(r => r.sp > 0 || (r.b && !r.c.archived));
-  const ord = catOrder(rows.map(r => ({ c: r.c, v: r.sp, b: r.b, n: 0, src: r }))).map(o => o.src);
+  const ord = catOrder(rows.map(r => ({ c: r.c, v: r.sp, b: r.b, n: 0, src: r })), am).map(o => o.src);
   return srtRow("bud") + ord.map(r => {
     const c = r.c, b = r.b, over = b && r.sp > b.v + .5, mxv = Math.max(r.sp, b ? b.v : 0, 1), st = b ? budState(r.sp, b, am) : null;
     let line;
@@ -655,13 +656,14 @@ function ringHTML(items, tot, exp, inc, K) {
   }); else arcs = '<circle r="' + R + '" cx="' + CX + '" cy="' + CY + '" fill="none" stroke="var(--card2)" stroke-width="' + SW + '"/>';
   return '<div class="ring"><svg viewBox="0 0 ' + W + " " + H + '" width="100%" style="display:block"><g opacity=".92">' + arcs + "</g>" + lines + '</svg><div class="rc" style="left:' + CX / W * 100 + "%;top:" + CY / H * 100 + '%"><div class="inc">' + fmH(inc) + '</div><div class="exp">' + fmH(exp) + "</div></div>" + cells + "</div>";
 }
+const frStyle = r => { const h = r <= .5 ? 135 : Math.max(0, 135 * (1.05 - r) / .55); return "background:hsl(" + h.toFixed(0) + " 62% 50% / .26);box-shadow:inset 0 0 0 1px hsl(" + h.toFixed(0) + " 62% 50% / .5)"; };
 function homeHTML() {
-  const isCur = ui.rg.t === "m" && mk(new Date(rgBounds(ui.rg)[0])) === mk(new Date());
+  const mkey = mk(new Date(rgBounds(ui.rg)[0])), isCur = ui.rg.t === "m" && mkey === mk(new Date());
   const arr = rgTx(), exp = sumBy(arr.filter(t => t.kind === "exp")), inc = sumBy(arr.filter(t => t.kind === "inc")), K = ui.kind, items = byCat(arr, K), tot = K === "exp" ? exp : inc, bal = inc - exp, ring = ui.view === "ring";
   const pill = '<div class="brow' + (ring ? "" : " stk") + '"><button class="lb" data-a="' + (ring ? "qtpl" : "viewtog") + '">' + (ring ? UI.bolt : UI.lines) + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="' + (ring ? "qbud" : "kindtog") + '" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.gauge : UI.tag) + "</button></div>";
   let body;
   if (ring) body = ringHTML(items, tot, exp, inc, K) + pill;
-  else body = pill + ('' + srtRow("list") + (catOrder(items.map(x => ({ c: x.cat, v: x.v, n: x.n, x, b: K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null }))).map(o => { const x = o.x, id = x.cat.id || "_", op = ui.open[id], bb = o.b, bst = bb && bb.kind !== "closed" ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null, cld = bb && bb.kind === "closed"; return '<button class="crow' + (cld ? " cld" : "") + (isCur ? "" : " cmp") + '" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + '</div><b><span class="tn">' + esc(x.cat.name) + "</span>" + (K === "exp" && (PR.fix || {})[x.cat.id] ? '<span class="lkm">🔒</span>' : "") + '<span class="bd">' + x.n + '</span></b><span class="ar"><span class="a ' + K + '">' + (bb ? fmN(x.v) : fmH(x.v)) + "</span>" + (cld ? '<span class="pl">✔</span>' : bb ? '<span class="pl" style="color:' + BCOL[bst.st] + '"> / ' + fmN(bb.v) + "</span>" : "") + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") : ""); }).join("") || '<div class="empty">За период операций нет</div>'));
+  else body = pill + ('' + srtRow("list") + (catOrder(items.map(x => ({ c: x.cat, v: x.v, n: x.n, x, b: K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null })), mkey).map(o => { const x = o.x, id = x.cat.id || "_", op = ui.open[id], bb = o.b, bst = bb && bb.kind !== "closed" ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null, cld = bb && bb.kind === "closed"; return '<button class="crow' + (cld ? " cld" : "") + (isCur ? " cur" : " cmp") + '" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + (K === "exp" && fixM(mkey)[x.cat.id] ? '<span class="lkb">🔒</span>' : "") + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="ar">' + (cld ? '<span class="a ' + K + '">' + fmN(x.v) + '</span><span class="ck">✔</span>' : bb ? '<span class="fr" style="' + frStyle(x.v / (bb.v || 1)) + '">' + fmN(x.v) + " / " + fmN(bb.v) + "</span>" : '<span class="a ' + K + '">' + fmH(x.v) + "</span>") + "</span></button>" + (op ? arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") + '<div class="grpend"></div>' : ""); }).join("") || '<div class="empty">За период операций нет</div>'));
   return topBar(true) + body + '<div style="height:160px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp"></button><button class="fb p" data-a="pick" data-v="inc"></button></div>';
 }
 const hl = (txt, q) => { txt = String(txt || ""); if (!q) return esc(txt); const lo = txt.toLowerCase(); let o = "", p = 0, i; while ((i = lo.indexOf(q, p)) >= 0 && q) { o += esc(txt.slice(p, i)) + "<mark>" + esc(txt.slice(i, i + q.length)) + "</mark>"; p = i + q.length; } return o + esc(txt.slice(p)); };
@@ -790,6 +792,25 @@ function calHTML() {
   return h + '</div><div class="sub" style="font-size:.85em;margin-top:8px">Самый дорогой день: <b>' + best + " " + MONS_S[m].toLowerCase() + "</b> — " + fm(mx) + ". В среднем ≈ " + fm(avg) + " в день; дней «дороже нормы» (×1,5): " + hot + ". Тап по дню — открыть его.</div>";
 }
 const WDM = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+function pulseHTML() {
+  const now = new Date(), cm = mk(now), td = dayKey(now), dim = daysIn(cm), day = now.getDate(), ms = monthSums(), spent = monTot(ms, cm), dl = dim - day, md = bmode(), capOn = md === "cap" && PR.cap > 0;
+  const dsum = k => sumBy(ofMonth(k.slice(0, 7)).filter(t => t.kind === "exp" && dayKey(new Date(t.ts)) === k), t => t.amount), kd = i => dayKey(new Date(+now - i * 864e5));
+  const today = dsum(td), yest = dsum(kd(1)); let w0 = 0, w1 = 0; for (let i = 0; i < 7; i++) { w0 += dsum(kd(i)); w1 += dsum(kd(i + 7)); }
+  const nrm = normOf("*", cm), base = capOn ? PR.cap : nrm ? nrm.avg : 0, allow = base ? Math.max(0, (base - (spent - today)) / (dl + 1)) : 0, fc = day >= 3 ? spent / day * dim : null;
+  const row = (l, v, c) => '<div class="pr"><span>' + l + "</span><b" + (c ? ' style="color:' + c + '"' : "") + ">" + v + "</b></div>", pctS = (a, b) => (b > 0 ? " (" + (a >= b ? "+" : "") + Math.round((a / b - 1) * 100) + "%)" : "");
+  let h = '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>📍 Сводка · сегодня</h2>';
+  h += row("Сегодня потрачено", fm(today)) + (base ? row("Можно сегодня ≈", fm(allow), today > allow ? "var(--exp)" : "var(--inc)") : "") + row("Вчера", fm(yest));
+  h += row("Последние 7 дней", fm(w0) + pctS(w0, w1), w1 > 0 && w0 > w1 * 1.15 ? "var(--exp)" : "") + '<div class="sub" style="font-size:.78em;margin:-2px 0 4px">к предыдущим 7 дням: ' + fm(w1) + "</div>";
+  if (fc != null) { h += row("Прогноз на конец месяца", "≈ " + fmN(fc) + " ₽", base && fc > base ? "var(--exp)" : ""); if (base) h += '<div class="sub" style="font-size:.78em;margin:-2px 0 4px">' + (capOn ? "потолок " : "норма ") + fmN(base) + " · " + (fc > base ? "перебор ≈ " + fmN(fc - base) : "запас ≈ " + fmN(base - fc)) + "</div>"; }
+  const pm = shiftMonth(cm, -1), pc = {}; ofMonth(pm).forEach(t => { if (t.kind === "exp" && new Date(t.ts).getDate() <= day) pc[t.category_id || "_"] = (pc[t.category_id || "_"] || 0) + t.amount; });
+  const cc = ms[cm] || {}, mv = [...new Set([...Object.keys(cc), ...Object.keys(pc)])].map(id => ({ id, d: (cc[id] || 0) - (pc[id] || 0) })).filter(x => Math.abs(x.d) >= 1).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3);
+  if (mv.length) h += '<h3 style="margin:12px 0 4px;font-size:.95em">К этому же дню прошлого месяца</h3>' + mv.map(x => { const c = catOf(x.id === "_" ? null : x.id); return '<div class="pr"><span style="display:flex;align-items:center;gap:8px">' + ic(c.icon, c.color, 22) + esc(c.name) + '</span><b style="color:' + (x.d > 0 ? "var(--exp)" : "var(--inc)") + '">' + (x.d > 0 ? "+" : "−") + fmN(Math.abs(x.d)) + "</b></div>"; }).join("");
+  const up = []; EXT.rec.forEach(r => { if (r.kind !== "exp" || !cats.some(c => c.id === r.cat)) return; let y = +r.last.slice(0, 4), m = +r.last.slice(5, 7); if (m > 11) { m = 0; y++; } const dd = new Date(y, m, Math.min(r.day, new Date(y, m + 1, 0).getDate())), df = Math.round((dd - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5); if (df >= 0 && df <= 10) up.push({ r, df }); });
+  if (up.length) h += '<h3 style="margin:12px 0 4px;font-size:.95em">Скоро спишется</h3>' + up.sort((a, b) => a.df - b.df).map(u => '<div class="pr"><span>' + (u.df === 0 ? "сегодня" : u.df === 1 ? "завтра" : "через " + u.df + " дн.") + " · " + esc(u.r.note || catOf(u.r.cat).name) + "</span><b>" + fmN(u.r.amt) + "</b></div>").join("");
+  const last = txs.slice().sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 4);
+  if (last.length) h += '<h3 style="margin:12px 0 4px;font-size:.95em">Последние траты</h3>' + last.map(t => { const c = catOf(t.category_id); return '<button class="pr" data-a="edit" data-id="' + t.id + '" style="width:100%;text-align:left"><span style="display:flex;align-items:center;gap:8px">' + ic(c.icon, c.color, 22) + esc(t.note || c.name) + '</span><b class="' + t.kind + '">' + fmN(t.amount) + "</b></button>"; }).join("");
+  return h + '<button class="btn g" style="width:100%;margin-top:12px" data-a="qbudgo">Вся аналитика</button></div></div>';
+}
 function cmpSheetHTML() {
   const K = ui.kind, cur = byCat(rgTx(), K), prv = byCat(rgTx(-1), K), pm = {}, cm = {}; prv.forEach(x => pm[x.cat.id || "_"] = x.v); cur.forEach(x => cm[x.cat.id || "_"] = x.v);
   const ids = [...new Set([...Object.keys(pm), ...Object.keys(cm)])], tc = sumBy(cur, x => x.v), tp = sumBy(prv, x => x.v), bad = d => (K === "exp" ? d > 0 : d < 0);
@@ -880,6 +901,7 @@ function sheetHTML() {
     const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="rcpbtn">📷 Сфотографировать чек</button><button class="btn g" style="width:100%;margin-top:8px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
   }
+  if (s.type === "pulse") return pulseHTML();
   if (s.type === "info") return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>ⓘ Как читать</h2><div style="line-height:1.5">' + INFO[s.k] + "</div></div></div>";
   if (s.type === "srt") return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>Порядок категорий</h2>' + SRT.map(x => '<button class="qrow" data-a="srtset" data-v="' + x[0] + '" style="width:100%;justify-content:space-between"><span>' + x[1] + "</span>" + ((PR.srt || "sumc") === x[0] ? "<b>✓</b>" : "") + "</button>").join("") + '<div class="sub" style="font-size:.8em;margin-top:8px">Действует и в списке, и в аналитике.</div></div></div>';
   if (s.type === "cmp") return cmpSheetHTML();
@@ -1111,7 +1133,7 @@ const A = {
   hmset(a) { PR.hmN = a.dataset.v; savePR(); render(); }, topset(a) { PR.topN = a.dataset.v; savePR(); render(); },
   avgset(a) { PR.avg = a.dataset.v; savePR(); render(); },
   cltog(a) { const am = anchorMonth(), id = a.dataset.id; PR.cl = PR.cl || {}; PR.cl[am] = PR.cl[am] || {}; if (PR.cl[am][id]) delete PR.cl[am][id]; else PR.cl[am][id] = true; savePR(); render(); toast(PR.cl[am][id] ? "Закрыто: остаток освобождён для других категорий" : "Категория снова открыта"); },
-  fixtog(a) { PR.fix = PR.fix || {}; const id = a.dataset.id; if (PR.fix[id]) delete PR.fix[id]; else PR.fix[id] = true; savePR(); render(); },
+  fixtog(a) { const am = anchorMonth(), id = a.dataset.id; PR.fixm = PR.fixm || {}; const f = PR.fixm[am] = Object.assign({}, fixM(am)); if (f[id]) delete f[id]; else f[id] = true; savePR(); render(); },
   bmode(a) { PR.bm = a.dataset.v; PR.normOn = PR.bm !== "off"; savePR(); render(); },
   capset() { const v = parseFloat((($("cap-v") || {}).value || "").replace(",", ".")); PR.cap = v > 0 ? Math.round(v) : 0; savePR(); render(); },
   capfill(a) { PR.cap = +a.dataset.v; savePR(); render(); },
@@ -1128,7 +1150,7 @@ const A = {
     ui.sheet = null; render(); toast("Записано трат: " + n + " на " + fm(sum));
   },
   cmp() { if (ui.rg.t === "all" || ui.rg.t === "int") { toast("Для этого периода сравнивать не с чем — выбери месяц, неделю или год"); return; } ui.sheet = { type: "cmp" }; render(); }, cmpk(a) { ui.kind = a.dataset.v; render(); },
-  qtpl() { ui.sheet = { type: "tplq" }; render(); }, qbud() { ui.sheet = { type: "bud" }; render(); },
+  qtpl() { ui.sheet = { type: "tplq" }; render(); }, qbud() { ui.sheet = { type: "pulse" }; render(); },
   qtplset() { ui.sheet = null; ui.tab = "more"; ui.set = "ext"; render(); }, qbudgo() { ui.sheet = null; ui.tab = "stats"; render(); },
   rnames() { PR.rn = PR.rn === false; savePR(); render(); },
   setext() { ui.set = "ext"; render(); },
