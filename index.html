@@ -591,7 +591,8 @@ const GROUPS = { none: "Не группировать", due: "Срок выпо�
 function getSort(v) { const s = PR.sort[v]; if (s && SORTS[s.by]) return s; return v === "planned" ? { by: "dueimp", dir: 1, auto: true } : { by: "created", dir: -1, auto: true }; }
 function getGroup(v) { return PR.group[v] || (v === "planned" ? "due" : "none"); }
 function sortItems(arr) {
-  const s = getSort(view), c = SORTS[s.by].cmp;
+  let s = getSort(view); if (s.auto && arr.some(t => t.ord != null && !t.parent_id)) s = { by: "queue", dir: 1, auto: true };   // есть номера очереди и сортировку вручную не выбирали — идём по очереди на любом устройстве
+  const c = SORTS[s.by].cmp;
   return arr.sort((a, b) => (c(a, b) * s.dir) || String(b.created_at).localeCompare(String(a.created_at)));
 }
 function groupItems(items) {
@@ -1524,7 +1525,7 @@ const uxCSS0 = `
 .taskrow.fin{opacity:0;transform:translateX(24px)}
 .rad.on{animation:radpop .25s}
 @keyframes radpop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
-.taskrow{position:relative;touch-action:pan-y}.ordb{flex:none;min-width:26px;height:26px;border-radius:13px;border:0;background:var(--acc);color:#fff;font-weight:700;font-size:calc(13px*var(--z,1));cursor:pointer;margin:0 4px;padding:0 6px}.ordb.ghost{background:transparent;color:var(--sub);border:1.5px dashed var(--ln)}.taskrow.dropb{box-shadow:0 -3px 0 var(--acc)}
+.taskrow{position:relative;touch-action:pan-y}.ordb{flex:none;min-width:26px;height:26px;border-radius:13px;border:0;background:var(--acc);color:#fff;font-weight:700;font-size:calc(13px*var(--z,1));cursor:pointer;margin:0 4px;padding:0 6px}.ordb.ghost{display:none;background:transparent;color:var(--sub);border:1.5px dashed var(--ln)}.taskrow.sel .ordb.ghost{display:inline-block}@media(max-width:760px),(hover:none){.ordb{min-width:36px;height:36px;border-radius:18px;font-size:calc(15px*var(--z,1));margin:0 6px}.ordb.ghost{display:inline-block;opacity:.75}}.taskrow.dropb{box-shadow:0 -3px 0 var(--acc)}
 @media(max-width:760px){.taskrow{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .taskrow.swr::before,.taskrow.swl::before{position:absolute;top:50%;transform:translateY(-50%);font-weight:600;font-size:calc(13px*var(--z,1));opacity:var(--so,0);pointer-events:none}
 .taskrow.swr::before{content:"✓ Готово";left:14px;color:#107c10;font-size:calc(15px*var(--z,1))!important}
@@ -2848,7 +2849,7 @@ function rowBase(t, showList, depth) {
   return '<div class="taskrow ' + (depth ? "sub " : "") + (selId === t.id ? "sel " : "") + (ui.multi && ui.multi[t.id] ? "msel " : "") + (t.done ? "done" : "") + '" data-a="sel" data-id="' + t.id + '" draggable="true">' +
     '<div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + t.id + '">' + (t.done ? ic("check", 13) : "") + "</div>" +
     '<div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + metaHTML(t, showList, depth === 0 && !!t.parent_id) + "</div>" +
-    subBtn(t) + (!t.parent_id && !t.done ? (ORK[t.id] ? '<button class="ordb" data-a="ordtog" data-id="' + t.id + '" title="Очередь выполнения. Клик или Пробел — снять; Alt+↑↓ — сдвинуть">' + ORK[t.id] + "</button>" : selId === t.id ? '<button class="ordb ghost" data-a="ordtog" data-id="' + t.id + '" title="В очередь (Пробел)">№</button>' : "") : "") + '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
+    subBtn(t) + (!t.parent_id && !t.done ? (ORK[t.id] ? '<button class="ordb" data-a="ordtog" data-id="' + t.id + '" title="Очередь выполнения. Клик или Пробел — снять; Alt+↑↓ — сдвинуть">' + ORK[t.id] + "</button>" : '<button class="ordb ghost" data-a="ordtog" data-id="' + t.id + '" title="В очередь (Пробел)">№</button>') : "") + '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
 }
 function mainHTML(items, done, vi) {
   ordBuild(items);
