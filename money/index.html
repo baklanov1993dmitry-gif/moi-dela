@@ -241,6 +241,8 @@ table.hm td{background-color:transparent}
 .rn2{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--tx);font:inherit;font-size:13px;line-height:1.2;resize:none;padding:0;field-sizing:content;max-height:2.45em;overflow:hidden}
 .ra2{width:74px;flex:none;text-align:right;background:transparent;border:0;border-bottom:1px dashed var(--ln);outline:0;color:var(--tx);font:inherit;font-weight:700;font-variant-numeric:tabular-nums;padding:6px 2px}
 .rr .rx{flex:none;width:30px;height:30px;color:var(--sub);font-size:16px}
+.inbb{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(214px + env(safe-area-inset-bottom));z-index:6;padding:9px 16px;white-space:nowrap;font-size:.92em;border-radius:999px;background:var(--acc);color:#08130e;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.35)}.inbb b{font-weight:800}
+.crow{display:flex;align-items:center;gap:12px;width:100%;padding:10px 6px;border-radius:12px;text-align:left}.crow:active{background:var(--card2)}
 .rmg{display:flex;align-items:center;gap:12px;padding:10px 4px 12px}.rmg input{width:20px;height:20px;flex:none}.rmg span{display:flex;flex-direction:column}.rmg small{color:var(--sub);font-size:.78em}.spin{display:inline-block;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 #main.noscr{overflow-y:hidden;overscroll-behavior:none}html,body{overscroll-behavior:none}
 #main .mrow{position:sticky;top:var(--h1,48px);z-index:5;background:var(--bg)}
@@ -869,10 +871,9 @@ function rcpPick() {
 }
 /* ---- чек из письма: разбор без нейронки (rcparse.js) + категории по истории трат ---- */
 function rcpSeen() { try { return JSON.parse(localStorage.getItem("fin_rcs_v1") || "[]"); } catch (e) { return []; } }
-function rcpText(text, meta) {
-  if (!window.RCP) { toast("Парсер не загрузился, обнови приложение"); return; }
-  const r = RCP.parse(String(text || ""), meta || {});
-  if (!r.items.length) { ui.sheet = { type: "rcpt", text: String(text || ""), err: "Позиций чека не нашёл (получено символов: " + String(text || "").length + "). Нужен текст чека с названиями и суммами. Если это он, скинь его разработчику." }; render(); toast("Не нашёл позиций чека", "bad", 3000); return; }
+function rcpFromParsed(r, text, extra) {
+  extra = extra || {};
+  if (!r.items.length) { ui.sheet = { type: "rcpt", text: String(text || ""), inbox: extra.inbox || null, err: "Позиций чека не нашёл (получено символов: " + String(text || "").length + "). Нужен текст чека с названиями и суммами." + (extra.inbox ? " Если это не чек, нажми «Не чек»." : " Если это он, скинь его разработчику.") }; render(); toast("Не нашёл позиций чека", "bad", 3000); return; }
   const cl = cats.filter(c => c.kind === "exp" && !c.archived), ids = new Set(cl.map(c => c.id)), L = RCP.learn(txs, ids);
   const items = r.items.map(x => ({ name: x.name, amount: x.amount, cat: (() => { const c = RCP.suggest(L, x.name, r.merchant); return ids.has(c) ? c : ""; })() }));
   const dup = r.key && rcpSeen().includes(r.key), dd = /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date <= dayKey(new Date()) ? r.date : dayKey(new Date());
@@ -880,8 +881,38 @@ function rcpText(text, meta) {
   if (dup) notes.push("⚠️ Похоже, этот чек уже записывали.");
   if (r.refund) notes.push("⚠️ Это возврат, а не покупка.");
   if (!r.ok) notes.push("Сумма позиций не сошлась с итогом чека, сверь.");
-  ui.sheet = { type: "rcp", merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: true, key: r.key, items };
+  ui.sheet = { type: "rcp", merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: true, key: r.key, items, inbox: extra.inbox || null };
   render();
+}
+function rcpText(text, meta) {
+  if (!window.RCP) { toast("Парсер не загрузился, обнови приложение"); return; }
+  rcpFromParsed(RCP.parse(String(text || ""), meta || {}), text);
+}
+/* ---- автоматический приём чеков из почты: Apps Script кладёт письма в fin_inbox, тут разбираем и подтверждаем одним тапом ---- */
+let INB = [];
+async function inboxPull() {
+  if (!sb || !user || !navigator.onLine) return;
+  try {
+    const r = await sb.from("fin_inbox").select("id,subject,sender,received,plain,html").eq("status", "new").order("received", { ascending: true }).limit(30);
+    if (r.error) return; const was = INB.length; INB = r.data || [];
+    if (INB.length !== was && !ui.sheet) render();
+  } catch (e) {}
+}
+async function inboxMark(id, st) { INB = INB.filter(x => x.id !== id); try { await sb.from("fin_inbox").update({ status: st }).eq("id", id); } catch (e) {} }
+function inboxOpen(r) {
+  if (!window.RCP) { toast("Парсер не загрузился, обнови приложение"); return; }
+  const m = { from: r.sender, subject: r.subject, date: r.received }, a = RCP.parse(r.html || "", m), b = RCP.parse(r.plain || "", m);
+  const best = (b.ok && !a.ok) || (b.ok === a.ok && b.items.length > a.items.length) ? b : a;
+  rcpFromParsed(best, r.plain || RCP.htmlToText(r.html || ""), { inbox: r.id });
+}
+function inbBanner() { return INB.length && !ui.sheet ? '<button class="inbb" data-a="inbopen">✉️ Чеки из почты: <b>' + INB.length + "</b></button>" : ""; }
+
+/* ---- выбор категории с поиском для позиции чека ---- */
+function rcpcList(q) {
+  q = (q || "").trim().toLowerCase().replace(/ё/g, "е"); const u = catUse(), sc = x => { const o = u[x.id] || { n: 0, n90: 0 }; return o.n90 * 1000 + o.n; };
+  let l = cats.filter(c => c.kind === "exp" && !c.archived).sort((a, b) => sc(b) - sc(a) || a.name.localeCompare(b.name, "ru"));
+  if (q) l = l.filter(c => c.name.toLowerCase().replace(/ё/g, "е").includes(q));
+  return l.length ? l.map(c => '<button class="crow" data-a="rcpick" data-id="' + c.id + '">' + ic(c.icon, c.color, 30) + "<span>" + esc(c.name) + "</span></button>").join("") : '<div class="empty">Такой категории нет</div>';
 }
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
@@ -903,8 +934,11 @@ function sheetHTML() {
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
   }
+  if (s.type === "rcpc") {
+    return '<div class="ov" data-a="rcpcback"><div class="sheet rcp" data-a="nop"><h2 style="margin:0 0 8px">' + (s.all ? "Категория для всех без категории" : "Категория") + '</h2><input class="in" id="rc-q" autocomplete="off" placeholder="🔍 Найти категорию по слову" value="' + esc(s.q || "") + '"><div class="rl" id="rc-l" style="margin-top:6px">' + rcpcList(s.q) + '</div><div style="display:flex;gap:8px;margin-top:6px">' + (s.all ? "" : '<button class="btn g" style="flex:1" data-a="rcpick" data-id="">Без категории</button>') + '<button class="btn g" style="flex:1" data-a="rcpcback">Назад</button></div></div></div>';
+  }
   if (s.type === "rcpt") {
-    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">✉️ Чек из письма</h2><div class="sub" style="font-size:.85em">Открой письмо с чеком, выдели текст и скопируй. Потом нажми «Из буфера» или вставь сюда. Можно и сразу «Поделиться» письмом в «Траты».</div>' + (s.err ? '<div class="sub exp" style="margin:6px 0">' + esc(s.err) + "</div>" : "") + '<textarea class="in" id="rt-t" rows="6" placeholder="Текст письма с чеком" style="width:100%;margin:8px 0;resize:vertical">' + esc(s.text || "") + '</textarea><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="rcpclip">📋 Из буфера</button><button class="btn" data-a="rcpgo" style="flex:1">Разобрать</button></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn g" data-a="rcpfile" style="flex:1">📎 Файл письма (.eml)</button><button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">✉️ Чек из письма</h2><div class="sub" style="font-size:.85em">Открой письмо с чеком, выдели текст и скопируй. Потом нажми «Из буфера» или вставь сюда. Можно и сразу «Поделиться» письмом в «Траты».</div>' + (s.err ? '<div class="sub exp" style="margin:6px 0">' + esc(s.err) + "</div>" : "") + '<textarea class="in" id="rt-t" rows="6" placeholder="Текст письма с чеком" style="width:100%;margin:8px 0;resize:vertical">' + esc(s.text || "") + '</textarea><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="rcpclip">📋 Из буфера</button><button class="btn" data-a="rcpgo" style="flex:1">Разобрать</button></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn g" data-a="rcpfile" style="flex:1">📎 Файл письма (.eml)</button>' + (s.inbox ? '<button class="btn g" data-a="inbskip">Не чек</button>' : "") + '<button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
   }
   if (s.type === "rcp") {
     const cl = cats.filter(c => c.kind === "exp" && !c.archived).sort((a, b) => a.name.localeCompare(b.name, "ru"));
@@ -913,18 +947,18 @@ function sheetHTML() {
     const g = {}; s.items.forEach((it, i) => { (g[it.cat || ""] = g[it.cat || ""] || []).push(i); });
     const gsum = k => g[k].reduce((t, i) => t + val(s.items[i]), 0);
     const keys = Object.keys(g).sort((a, b) => a === "" ? -1 : b === "" ? 1 : gsum(b) - gsum(a));
-    const row = i => { const it = s.items[i], c = it.cat ? catOf(it.cat) : null; return '<div class="rr"><label class="rb' + (c ? "" : " no") + '">' + (c ? ic(c.icon, c.color, 26) : "<span>?</span>") + '<select id="r-c-' + i + '">' + opts(it.cat) + '</select></label><textarea class="rn2" id="r-n-' + i + '" rows="2" spellcheck="false">' + esc(it.name) + '</textarea><input class="ra2" id="r-a-' + i + '" inputmode="decimal" value="' + esc((+String(it.amount).replace(",", ".")).toFixed(2)) + '"><button class="rx" data-a="rdel" data-i="' + i + '">✕</button></div>'; };
-    const gh = k => { const c = k ? catOf(k) : null; return '<div class="rgh' + (k ? "" : " no") + '">' + (c ? ic(c.icon, c.color, 22) + "<b>" + esc(c.name) + "</b>" : "<b>⚠ Выбери категорию</b>") + '<span class="gc">' + g[k].length + '</span>' + (k ? '<span class="gs">' + fm(gsum(k)) + "</span>" : '<select id="r-all" class="rall"><option value="">Всем…</option>' + cl.map(c => '<option value="' + c.id + '">' + esc(c.name) + "</option>").join("") + "</select>") + "</div>"; };
+    const row = i => { const it = s.items[i], c = it.cat ? catOf(it.cat) : null; return '<div class="rr"><button class="rb' + (c ? "" : " no") + '" data-a="rcat" data-i="' + i + '">' + (c ? ic(c.icon, c.color, 26) : "<span>?</span>") + '</button><textarea class="rn2" id="r-n-' + i + '" rows="2" spellcheck="false">' + esc(it.name) + '</textarea><input class="ra2" id="r-a-' + i + '" inputmode="decimal" value="' + esc((+String(it.amount).replace(",", ".")).toFixed(2)) + '"><button class="rx" data-a="rdel" data-i="' + i + '">✕</button></div>'; };
+    const gh = k => { const c = k ? catOf(k) : null; return '<div class="rgh' + (k ? "" : " no") + '">' + (c ? ic(c.icon, c.color, 22) + "<b>" + esc(c.name) + "</b>" : "<b>⚠ Выбери категорию</b>") + '<span class="gc">' + g[k].length + '</span>' + (k ? '<span class="gs">' + fm(gsum(k)) + "</span>" : '<button class="rall" data-a="rcat" data-i="all">Всем…</button>') + "</div>"; };
     const dl = new Date((s.date || dayKey(new Date())) + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
     return '<div class="ov" data-a="shclose"><div class="sheet rcp" data-a="nop"><div class="rhd"><div class="rm">🧾 ' + esc(s.merchant || "Чек") + '</div><label class="rdt">📅 <span>' + esc(dl) + '</span><input type="date" id="r-date" value="' + esc(s.date) + '"></label></div>' +
       '<div class="rtot" id="rsum">' + rsumText(s) + "</div>" + (s.note ? '<div class="rnote">' + esc(s.note) + "</div>" : "") +
       '<div class="rl">' + (keys.length ? keys.map(k => gh(k) + g[k].map(row).join("")).join("") : '<div class="empty">Позиций не осталось</div>') + "</div>" +
       '<label class="rmg"><input type="checkbox" id="r-merge"' + (s.merge ? " checked" : "") + '><span><b>Одной тратой на категорию</b><small>выключи — каждая позиция запишется отдельно</small></span></label>' +
-      '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
+      '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div>' + (s.inbox ? '<button class="btn g" style="width:100%;margin-top:8px" data-a="inbskip">Не чек — пропустить</button>' : "") + "</div></div>";
   }
   if (s.type === "tplq") {
     const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
-    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="rcpbtn">📷 Сфотографировать чек</button><button class="btn g" style="width:100%;margin-top:8px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>⚡ Быстрый ввод</h2>' + (l.length ? l.map(t => { const c = cats.find(x => x.id === t.cat); return '<button class="qrow" data-a="tplgo" data-id="' + t.id + '"><div class="ci" style="width:36px;height:36px;flex:none">' + ic(c.icon, c.color, 36) + '</div><div style="flex:1;min-width:0"><div>' + esc(t.note || c.name) + '</div><div class="sub" style="font-size:.8em">' + esc(c.name) + '</div></div><b class="' + (t.kind === "exp" ? "exp" : "inc") + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amt) + "</b></button>"; }).join("") : '<div class="sub" style="margin:8px 0 12px">Здесь будут привычные траты — один тап и запись готова. Создай первый шаблон.</div>') + '<button class="btn" style="width:100%;margin-top:12px" data-a="rcptxt">✉️ Загрузить чек из письма</button><button class="btn g" style="width:100%;margin-top:8px" data-a="qtplset">' + (l.length ? "Управлять шаблонами" : "＋ Создать шаблон") + "</button></div></div>";
   }
   if (s.type === "pulse") return pulseHTML();
   if (s.type === "info") return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>ⓘ Как читать</h2><div style="line-height:1.5">' + INFO[s.k] + "</div></div></div>";
@@ -970,7 +1004,7 @@ function render() {
   const scr = ui.tab === "more" ? moreHTML() : pageHTML(0);
   const keep = $("main") && ui._lt === ui.tab ? $("main").scrollTop : 0; ui._lt = ui.tab;
   const menu = ui.menu ? '<div class="mov" data-a="menuclose"><div class="menu" data-a="nop">' + [["home", "Главная"], ["list", "Операции"], ["stats", "Аналитика"], ["more", "Категории и настройки"]].map(t => '<button data-a="tab" data-v="' + t[0] + '"' + (ui.tab === t[0] ? ' class="on"' : "") + ">" + t[1] + "</button>").join("") + "</div></div>" : "";
-  $("app").innerHTML = '<div id="main">' + scr + "</div>" + sheetHTML() + menu;
+  $("app").innerHTML = '<div id="main">' + scr + "</div>" + sheetHTML() + menu + inbBanner();
   if ($("main")) { const mn = $("main"); mn.scrollTop = ui.tab === "home" && ui.view === "ring" ? 0 : keep; mn.classList.toggle("noscr", ui.tab === "home" && ui.view === "ring"); const hd = mn.querySelector(".hdr"), mr = mn.querySelector(".mrow"); if (hd) { mn.style.setProperty("--h1", hd.offsetHeight + "px"); if (mr) mn.style.setProperty("--h2", hd.offsetHeight + mr.offsetHeight + "px"); } }
   document.querySelectorAll(".hmw").forEach(e => { e.scrollLeft = e.scrollWidth; });
   syncHistory(); prefetch();
@@ -1167,6 +1201,11 @@ const A = {
   async rcpclip() { try { const t = await navigator.clipboard.readText(); if (t && t.trim()) { rcpText(t, {}); return; } toast("В буфере пусто"); } catch (e) { toast("Нет доступа к буферу: вставь текст вручную в поле"); } },
   rcpgo() { const el = $("rt-t"), t = el ? el.value : ""; if (!t.trim()) { toast("Сначала вставь текст письма"); return; } rcpText(t, {}); },
   rcpfile() { ui.sheet = null; rcpPick(); },
+  rcat(a) { const b = ui.sheet; rread(); const l = document.querySelector(".rcp .rl"); b.sy = l ? l.scrollTop : 0; ui.sheet = { type: "rcpc", all: a.dataset.i === "all", i: +a.dataset.i, q: "", back: b }; render(); setTimeout(() => { const e = $("rc-q"); if (e) e.focus(); }, 60); },
+  rcpick(a) { const s = ui.sheet, b = s.back, id = a.dataset.id || ""; if (s.all) b.items.forEach(x => { if (!x.cat) x.cat = id; }); else if (b.items[s.i]) b.items[s.i].cat = id; ui.sheet = b; render(); const l = document.querySelector(".rcp .rl"); if (l) l.scrollTop = b.sy || 0; },
+  rcpcback() { const b = ui.sheet.back; ui.sheet = b; render(); const l = document.querySelector(".rcp .rl"); if (l) l.scrollTop = b.sy || 0; },
+  inbopen() { if (INB[0]) inboxOpen(INB[0]); },
+  inbskip() { const s = ui.sheet; if (s && s.inbox) inboxMark(s.inbox, "skip"); ui.sheet = null; render(); toast("Пропустил"); },
   rdel(a) { ui.sheet.items.splice(+a.dataset.i, 1); render(); },
   rsave() {
     const s = ui.sheet; rread(); const it = s.items.filter(x => parseFloat(String(x.amount).replace(",", ".")) > 0);
@@ -1175,6 +1214,7 @@ const A = {
     const val = x => Math.round(parseFloat(String(x.amount).replace(",", ".")) * 100) / 100, mer = (s.merchant || "").trim(); let n = 0, sum = 0;
     if (s.merge) { const g = {}; it.forEach(x => { (g[x.cat] = g[x.cat] || []).push(x); }); Object.entries(g).forEach(([c, l]) => { const a = Math.round(l.reduce((t, x) => t + val(x), 0) * 100) / 100; upTx({ id: uid(), ts: d.toISOString(), amount: a, kind: "exp", category_id: c, note: ((mer ? mer + ": " : "") + l.map(x => x.name).join(", ")).slice(0, 140), account: "Основной" }); n++; sum += a; }); }
     else it.forEach(x => { upTx({ id: uid(), ts: d.toISOString(), amount: val(x), kind: "exp", category_id: x.cat, note: ((mer ? mer + " · " : "") + x.name).slice(0, 140), account: "Основной" }); n++; sum += val(x); });
+    if (s.inbox) inboxMark(s.inbox, "done");
     if (s.key) { try { const k = rcpSeen(); k.push(s.key); localStorage.setItem("fin_rcs_v1", JSON.stringify(k.slice(-300))); } catch (e) {} }
     ui.sheet = null; render(); toast("Записано трат: " + n + " на " + fm(sum));
   },
@@ -1229,7 +1269,7 @@ const A = {
 })();
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
-document.addEventListener("input", e => { if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
+document.addEventListener("input", e => { if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
     rread(); const sh = ui.sheet;
@@ -1266,8 +1306,8 @@ async function rcpShared() {
   try { const s = await sb.auth.getSession(); user = s.data.session ? s.data.session.user : null; } catch (e) {}
   if (!early || !user) render(); if (!user) return;
   runRec(); flush(); pull(!txs.length);
-  rcpShared();
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { runRec(); flush(); pull(false); } });
+  rcpShared(); inboxPull(); setInterval(inboxPull, 120000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { runRec(); flush(); pull(false); inboxPull(); } });
   window.addEventListener("online", () => { flush(); pull(false); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
