@@ -327,7 +327,9 @@ function nextDue(t) {
 const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files", "plan_start", "parent_id"];
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
-const COLS = { tasks: TC, lists: LC, time_log: GC, foods: ["id", "name", "kcal", "p", "f", "c", "portions", "barcode", "created_at"], food_log: ["id", "day", "t", "name", "grams", "kcal", "p", "f", "c", "food_id", "created_at"], weight_log: ["id", "day", "kg", "created_at"], user_settings: ["id", "key", "data", "created_at"] };
+let OR = (() => { try { return localStorage.getItem("mytasks_or") === "1"; } catch (e) { return false; } })();
+const COLS = { tasks: TC.concat(OR ? ["ord"] : []), lists: LC, time_log: GC, foods: ["id", "name", "kcal", "p", "f", "c", "portions", "barcode", "created_at"], food_log: ["id", "day", "t", "name", "grams", "kcal", "p", "f", "c", "food_id", "created_at"], weight_log: ["id", "day", "kg", "created_at"], user_settings: ["id", "key", "data", "created_at"] };
+function orSet(ok) { if (ok === OR) return; OR = ok; COLS.tasks = TC.concat(OR ? ["ord"] : []); try { localStorage.setItem("mytasks_or", ok ? "1" : "0"); } catch (e) {} }
 function toRow(tbl, o) {
   const r = {}; COLS[tbl].forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
   if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.steps = r.steps || []; r.files = r.files || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
@@ -424,6 +426,7 @@ async function loadAll() {
   try {
     await flush();
     while (flushing) await new Promise(r => setTimeout(r, 100));
+    if (!OR) { try { const pr = await sb.from("tasks").select("ord").limit(1); if (!pr.error) orSet(true); } catch (e) {} }
     const seq = flushSeq;
     const ls = await fetchAll("lists"), ts = await fetchAll("tasks", q => q.or("done.eq.false,parent_id.not.is.null,done_at.gte." + new Date(Date.now() - 2 * 864e5).toISOString()));   // выполненные старше 2 дней — только по запросу
     let lg = null; try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }
@@ -581,6 +584,7 @@ const SORTS = {
   impdue: { n: "Важность, затем срок", dir: 1, cmp: (a, b) => ((b.starred ? 1 : 0) - (a.starred ? 1 : 0)) || (a.due || "9999").localeCompare(b.due || "9999") },
   imp: { n: "Важность", dir: 1, cmp: (a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) },
   myday: { n: "Добавлено в «Мой день»", dir: 1, cmp: (a, b) => (inMyDay(b) ? 1 : 0) - (inMyDay(a) ? 1 : 0) },
+  queue: { n: "Очередь (Пробел — номер)", dir: 1, cmp: (a, b) => ((a.ord == null ? 1 : 0) - (b.ord == null ? 1 : 0)) || ((a.ord || 0) - (b.ord || 0)) || SORTS.dueimp.cmp(a, b) },
   alpha: { n: "По алфавиту", dir: 1, cmp: (a, b) => a.title.localeCompare(b.title, "ru") }
 };
 const GROUPS = { none: "Не группировать", due: "Срок выполнения", imp: "Важность", cat: "Категория", list: "Список" };
@@ -1520,7 +1524,7 @@ const uxCSS0 = `
 .taskrow.fin{opacity:0;transform:translateX(24px)}
 .rad.on{animation:radpop .25s}
 @keyframes radpop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
-.taskrow{position:relative;touch-action:pan-y}
+.taskrow{position:relative;touch-action:pan-y}.ordb{flex:none;min-width:26px;height:26px;border-radius:13px;border:0;background:var(--acc);color:#fff;font-weight:700;font-size:calc(13px*var(--z,1));cursor:pointer;margin:0 4px;padding:0 6px}.ordb.ghost{background:transparent;color:var(--sub);border:1.5px dashed var(--ln)}.taskrow.dropb{box-shadow:0 -3px 0 var(--acc)}
 @media(max-width:760px){.taskrow{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .taskrow.swr::before,.taskrow.swl::before{position:absolute;top:50%;transform:translateY(-50%);font-weight:600;font-size:calc(13px*var(--z,1));opacity:var(--so,0);pointer-events:none}
 .taskrow.swr::before{content:"✓ Готово";left:14px;color:#107c10;font-size:calc(15px*var(--z,1))!important}
@@ -1648,6 +1652,8 @@ function hkRun(a) {
       let i = ids.indexOf(selId); i = i < 0 ? (a === "nav_next" ? 0 : ids.length - 1) : Math.max(0, Math.min(ids.length - 1, i + (a === "nav_next" ? 1 : -1)));
       mClear(); selId = ids[i]; render(); hkReveal(selId); return true;
     }
+    case "ord_toggle": { const m = mIds(); if (!m.length && !t) return false; ordToggle(m.length ? m : [id]); return true; }
+    case "ord_up": case "ord_down": { if (!t) return false; ordMove(id, a === "ord_up" ? -1 : 1); return true; }
     case "done": {
       if (!t) return need();
       const k = ids.indexOf(id), nxt = ids[k + 1] || ids[k - 1] || null, was = t.done;
@@ -1718,6 +1724,7 @@ function hkKey(e) {
   if ((tag === "BUTTON" || tag === "A") && (e.code === "Enter" || e.code === "Space")) return;     // не перехватываем нажатие на сфокусированной кнопке
   let act = null;
   if (!e.altKey && !e.shiftKey && e.code === "ArrowDown") act = "nav_next"; else if (!e.altKey && !e.shiftKey && e.code === "ArrowUp") act = "nav_prev";
+  else if (!e.altKey && !e.shiftKey && e.code === "Space") act = "ord_toggle"; else if (e.altKey && !e.shiftKey && e.code === "ArrowUp") act = "ord_up"; else if (e.altKey && !e.shiftKey && e.code === "ArrowDown") act = "ord_down";
   else { const M = hkMap(), c = hkCombo(e); for (const k in M) if (M[k] && M[k] === c) { act = k; break; } }
   if (!act) return;
   if (hkRun(act)) { e.preventDefault(); e.stopImmediatePropagation(); }
@@ -1729,7 +1736,7 @@ function hkHTML() {
   return '<label class="swrow" style="margin-top:10px"><input type="checkbox" class="sw" id="s-keyson"' + (on ? " checked" : "") + "> Горячие клавиши включены</label>" +
     '<div style="margin:6px 0 2px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Работают в браузере на компьютере, пока вы не печатаете в поле. Выберите задачу стрелками — справа откроется карточка. Чтобы сменить клавишу, нажмите на неё и нажмите новую; Backspace — снять, ↺ — вернуть стандартную. Буквы привязаны к физической клавише, поэтому работают и в русской раскладке.</div>' +
     HK_GROUPS.map(g => '<div class="lbl">' + g[0] + "</div>" + HK.slice(g[1], g[2]).map(row).join("")).join("") +
-    '<div class="lbl">Всегда (не меняются)</div>' + fix("↑ ↓", "Двигаться по задачам") + fix("1 – 8", "Срок: сегодня, завтра … 6 — через 5 дней, 7 — через неделю, 8 — понедельник") + fix("0", "Убрать срок") + fix("Esc", "Закрыть окно / снять выделение / выйти из заметки") +
+    '<div class="lbl">Всегда (не меняются)</div>' + fix("↑ ↓", "Двигаться по задачам") + fix("Пробел", "Очередь: поставить / снять номер у выбранной") + fix("Alt + ↑ ↓", "Очередь: сдвинуть выбранную выше / ниже") + fix("1 – 8", "Срок: сегодня, завтра … 6 — через 5 дней, 7 — через неделю, 8 — понедельник") + fix("0", "Убрать срок") + fix("Esc", "Закрыть окно / снять выделение / выйти из заметки") +
     fix("Ctrl + A", "Выделить все задачи в списке") + fix("Ctrl + Z", "Отменить последнее действие со сроком, удалением") + fix("Ctrl/Shift + клик", "Выбрать несколько задач") +
     '<div style="margin-top:10px"><button class="btn ghost" data-a="hkresetall">↺ Сбросить все клавиши</button></div>';
 }
@@ -2205,6 +2212,27 @@ function subRow(k) {
   return '<div class="taskrow sub ' + (selId === k.id ? "sel " : "") + (ui.multi && ui.multi[k.id] ? "msel " : "") + (k.done ? "done" : "") + '" data-a="sel" data-id="' + k.id + '">' +
     '<div class="rad ' + (k.done ? "on" : "") + '" data-a="tog" data-id="' + k.id + '">' + (k.done ? ic("check", 11) : "") + "</div>" +
     '<div class="tbody"><div class="ttl">' + esc(k.title) + "</div>" + metaHTML(k, false, false) + "</div></div>";
+}
+let ORK = {}, ORL = [];
+function ordBuild(items) { ORK = {}; ORL = items.filter(t => t.ord != null && !t.parent_id).sort((a, b) => (a.ord - b.ord) || String(a.id).localeCompare(String(b.id))).map(t => t.id); ORL.forEach((id, i) => { ORK[id] = i + 1; }); }
+function ordSort() { if (getSort(view).by !== "queue") { PR.sort[view] = { by: "queue", dir: 1 }; savePrefs(); toast("Сортировка: «Очередь»"); } }
+function ordToggle(ids) {
+  if (!OR) { toast("Очередь: нужна одноразовая настройка базы (колонка ord) — скажи Claude"); return; }
+  const vis = visIds().filter(i => ids.indexOf(i) >= 0 && S.tasks[i] && !S.tasks[i].parent_id); if (!vis.length) return;
+  if (vis.every(i => ORK[i])) vis.forEach(i => upd(i, { ord: null }));
+  else { let n = ORL.length ? Math.max.apply(null, ORL.map(i => S.tasks[i].ord || 0)) : 0; vis.forEach(i => { if (!ORK[i]) upd(i, { ord: ++n }); }); ordSort(); }
+  render();
+}
+function ordMove(id, dir) {
+  if (!OR) { toast("Очередь: нужна одноразовая настройка базы (колонка ord)"); return; }
+  if (!ORK[id]) { toast("Сначала поставь номер — Пробел"); return; }
+  const a = ORL.slice(), i = a.indexOf(id), j = i + dir; if (j < 0 || j >= a.length) return;
+  a[i] = a[j]; a[j] = id; a.forEach((x, k) => { if (S.tasks[x].ord !== k + 1) upd(x, { ord: k + 1 }); }); render(); hkReveal(id);
+}
+function ordDrop(dragId, beforeId) {
+  if (!OR) { toast("Очередь: нужна одноразовая настройка базы (колонка ord)"); return; }
+  const ids = visIds().filter(i => S.tasks[i] && !S.tasks[i].parent_id && i !== dragId), k = ids.indexOf(beforeId); if (k < 0) return;
+  ids.splice(k, 0, dragId); ids.forEach((x, n) => { if (S.tasks[x].ord !== n + 1) upd(x, { ord: n + 1 }); }); ordSort(); render();
 }
 function rowHTML(t, showList, depth) {
   if (t.parent_id && depth) return subRow(t);
@@ -2820,9 +2848,10 @@ function rowBase(t, showList, depth) {
   return '<div class="taskrow ' + (depth ? "sub " : "") + (selId === t.id ? "sel " : "") + (ui.multi && ui.multi[t.id] ? "msel " : "") + (t.done ? "done" : "") + '" data-a="sel" data-id="' + t.id + '" draggable="true">' +
     '<div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + t.id + '">' + (t.done ? ic("check", 13) : "") + "</div>" +
     '<div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + metaHTML(t, showList, depth === 0 && !!t.parent_id) + "</div>" +
-    subBtn(t) + '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
+    subBtn(t) + (!t.parent_id && !t.done ? (ORK[t.id] ? '<button class="ordb" data-a="ordtog" data-id="' + t.id + '" title="Очередь выполнения. Клик или Пробел — снять; Alt+↑↓ — сдвинуть">' + ORK[t.id] + "</button>" : selId === t.id ? '<button class="ordb ghost" data-a="ordtog" data-id="' + t.id + '" title="В очередь (Пробел)">№</button>' : "") : "") + '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
 }
 function mainHTML(items, done, vi) {
+  ordBuild(items);
   const fr = freshTask(items), grid = !!PR.grid[view], showList = view.indexOf("list:") !== 0, sorted = sortItems((fr ? items.filter(t => t !== fr) : items).slice());
   const groups = groupItems(sorted.slice(0, ui.limit)), sc = PR.sort[view];
   if (fr) groups.unshift({ key: "~fresh", label: "Только что добавлено", items: [fr] });   // подвисает сверху независимо от фильтра/сортировки, пока не смените раздел
@@ -3409,6 +3438,7 @@ const acts = {
   },
   async trkdel(a, e) { e.preventDefault && e.preventDefault(); if (!confirm("Удалить место?")) return; await sb.from("places").delete().eq("id", a.dataset.i); trkLoad(); },
   ritclose() { ui.rit = false; render(); },
+  ordtog(a) { ordToggle([a.dataset.id]); },
   ritfold(a) { ui.ritc = ui.ritc || {}; const k = a.dataset.k, cur = ui.ritc[k] === undefined ? a.dataset.d === "1" : ui.ritc[k]; ui.ritc[k] = !cur; render(); },
   ritovl(a, e) { if (e.target === a) { ui.rit = false; render(); } },
   ritok() { PR.ritDone = today; savePrefs(); ui.rit = false; toast("План принят. Хорошего дня!"); render(); },
@@ -4527,7 +4557,10 @@ function init() {
     }
   });
   /* перетаскивание задачи на список */
-  app.addEventListener("dragstart", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r) { e.dataTransfer.setData("text/plain", ui.multi && ui.multi[r.dataset.id] && mIds().length > 1 ? mIds().join(",") : r.dataset.id); e.dataTransfer.effectAllowed = "move"; } });
+  app.addEventListener("dragstart", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r) { e.dataTransfer.setData("text/plain", ui.multi && ui.multi[r.dataset.id] && mIds().length > 1 ? mIds().join(",") : r.dataset.id); e.dataTransfer.effectAllowed = "move"; ui.dragId = r.dataset.id; } });
+  app.addEventListener("dragend", () => { ui.dragId = null; document.querySelectorAll(".taskrow.dropb").forEach(x => x.classList.remove("dropb")); });
+  app.addEventListener("dragover", e => { if (e.target.closest && e.target.closest(".chip[data-lid]")) return; const r = e.target.closest && e.target.closest("#main .taskrow"); if (r && ui.dragId && r.dataset.id !== ui.dragId) { e.preventDefault(); document.querySelectorAll(".taskrow.dropb").forEach(x => { if (x !== r) x.classList.remove("dropb"); }); r.classList.add("dropb"); } });
+  app.addEventListener("drop", e => { if (e.target.closest && e.target.closest(".chip[data-lid]")) return; const r = e.target.closest && e.target.closest("#main .taskrow"); if (r && ui.dragId && r.dataset.id !== ui.dragId) { e.preventDefault(); const d = ui.dragId; ui.dragId = null; ordDrop(d, r.dataset.id); } });
   app.addEventListener("dragover", e => { const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (c) { e.preventDefault(); c.classList.add("dropok"); } });
   app.addEventListener("dragleave", e => { const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (c) c.classList.remove("dropok"); });
   app.addEventListener("drop", e => {
