@@ -862,7 +862,7 @@ function rcpSeen() { try { return JSON.parse(localStorage.getItem("fin_rcs_v1") 
 function rcpText(text, meta) {
   if (!window.RCP) { toast("Парсер не загрузился, обнови приложение"); return; }
   const r = RCP.parse(String(text || ""), meta || {});
-  if (!r.items.length) { ui.sheet = { type: "rcpt", text: String(text || ""), err: "Позиций чека не нашёл. Проверь, что вставлен текст самого чека (с названиями и суммами)." }; render(); return; }
+  if (!r.items.length) { ui.sheet = { type: "rcpt", text: String(text || ""), err: "Позиций чека не нашёл (получено символов: " + String(text || "").length + "). Нужен текст чека с названиями и суммами. Если это он, скинь его разработчику." }; render(); toast("Не нашёл позиций чека", "bad", 3000); return; }
   const cl = cats.filter(c => c.kind === "exp" && !c.archived), ids = new Set(cl.map(c => c.id)), L = RCP.learn(txs, ids);
   const items = r.items.map(x => ({ name: x.name, amount: x.amount, cat: (() => { const c = RCP.suggest(L, x.name, r.merchant); return ids.has(c) ? c : ""; })() }));
   const dup = r.key && rcpSeen().includes(r.key), dd = /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date <= dayKey(new Date()) ? r.date : dayKey(new Date());

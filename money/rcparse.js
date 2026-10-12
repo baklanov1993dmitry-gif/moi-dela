@@ -100,7 +100,38 @@
     return items;
   }
 
+  // Г: «плоский» текст — когда копирование склеило ячейки таблицы в одну строку. Ищем «имя цена кол-во сумма», проверяя цена×кол-во≈сумма.
+  function cleanName(n) {
+    n = n.replace(/^.*(?:Наименование|Цена за ед\.?|Кол\.?|Сумма)\s+(?=\d{1,3}[.)]\s)/i, "");
+    n = n.replace(/^.*(?:НДС\s*\d+\s*%?\s*[\d.,]+|Полный расчет|Код товара\s*\S+|\[M\+\]|\bТМ\b|Товар)\s+/i, "");
+    n = n.replace(/^[\d.,% ]+?(?=\d{1,3}[.)]\s+\S)/, "").replace(/^\d{1,3}[.)]\s+/, "");
+    return n.replace(/\s+/g, " ").trim();
+  }
+  function stratFlat(L) {
+    const flat = L.join(" "), P = "(\\d{1,3}(?: \\d{3})+[.,]\\d{2}|\\d+[.,]\\d{2})", C = "\\s*(?:₽|руб\\.?|р\\.?)?";
+    const re = new RegExp("(?:^|\\s)(\\S.{1,160}?)\\s+" + P + C + "\\s+(\\d+(?:[.,]\\d{1,3})?)\\s*(?:шт|кг|г|л|уп|упак)?\\.?\\s+" + P + C + "(?=\\s|$)", "gi"), items = [];
+    let m;
+    while ((m = re.exec(flat))) {
+      const p = num(m[2]), q = num(m[3]), sm = num(m[4]);
+      if (!(q > 0) || !(sm > 0) || Math.abs(p * q - sm) > Math.max(0.02, sm * 0.006)) { re.lastIndex = m.index + 1; continue; }
+      const name = cleanName(m[1]); if (name.length < 2 || !/[A-Za-zА-Яа-яЁё]/.test(name)) { continue; }
+      items.push({ name, amount: R2(sm), price: p, qty: q });
+    }
+    return items;
+  }
+
+  function stratFlatTriple(L) {
+    const flat = L.join(" "), re = /(\S.{1,140}?)\s+(\d+(?:[.,]\d+)?)\s*(?:шт|кг|г|л|уп)\.?\s+(\d[\d ]*(?:[.,]\d+)?)\s*(?:руб\.?|₽|р\.?)(?=\s|$)/gi, items = [];
+    let m, first = true;
+    while ((m = re.exec(flat))) {
+      let name = m[1]; if (first) { first = false; if (name.length > 50 && name.includes(":")) name = name.slice(name.lastIndexOf(":") + 1).replace(/^\s*\(\d+\)\s*\S+\s+/, ""); }
+      name = name.replace(/\s+/g, " ").trim(); const a = num(m[3]);
+      if (name.length >= 2 && a > 0) items.push({ name, amount: R2(a), price: a, qty: num(m[2]), amb: true });
+    }
+    return items;
+  }
   function findTotal(L) {
+    { const f = L.join(" "), m = /(?:итого|общая сумма(?: покупки| чека)?|сумма чека|к оплате)\s*:?\s*(\d{1,3}(?: \d{3})+[.,]\d{2}|\d+[.,]\d{2})/i.exec(f); if (m && !L.some(l => /^(?:итого|итог|общая сумма|сумма чека|к оплате)/i.test(l))) return R2(num(m[1])); }
     const re = /^(?:итого|итог|общая сумма(?: покупки| чека)?|сумма чека|к оплате|всего(?: к оплате)?)(?![а-яё])\s*[:=]?\s*(.*)$/i;
     for (let i = 0; i < L.length; i++) {
       const m = re.exec(L[i]); if (!m) continue;
@@ -111,7 +142,8 @@
   }
   function titleCase(s) { return s === s.toUpperCase() && /[А-ЯЁA-Z]/.test(s) ? s.charAt(0) + s.slice(1).toLowerCase() : s; }
   function findMerchant(L, from) {
-    for (const l of L) { const m = /^Магазин\s*[«"“'](.+?)[»"”']/i.exec(l); if (m) return m[1].trim(); }
+    { const f = L.join(" "), m = /Магазин\s*[«"“](.+?)[»"”]/i.exec(f); if (m && m[1].length < 50) return m[1].trim(); }
+    { const f = L.slice(0, 120).join(" "), m = /(?:ООО|АО|ПАО|ЗАО|ОАО)\s+[«"“](.+?)[»"”]/.exec(f); if (m && m[1].length < 50) return m[1].trim(); }
     for (const l of L.slice(0, 80)) {
       const m = /^(?:ООО|АО|ПАО|ЗАО|ОАО|ИП)\s+[«"“]?(.+?)[»"”]?$/i.exec(l);
       if (m && l.length < 70) return m[1].replace(/[«»"“”]/g, "").trim();
@@ -123,7 +155,7 @@
 
   function parseLines(L, meta) {
     meta = meta || {};
-    const total = findTotal(L), cands = [stratBlock(L), stratInline(L), stratTriple(L)];
+    const total = findTotal(L), cands = [stratBlock(L), stratInline(L), stratTriple(L), stratFlat(L), stratFlatTriple(L)];
     const sum = a => R2(a.reduce((t, x) => t + x.amount, 0));
     let best = null;
     cands.forEach(a => {
