@@ -6,7 +6,7 @@ const SB_KEY = 'sb_publishable_Hf5J8zcRXPKBVugh68TyAw_ZXQ6leQX';
 
 function pushReceipts() {
   const done = GmailApp.getUserLabelByName('traty-done') || GmailApp.createLabel('traty-done');
-  GmailApp.search('in:inbox -label:traty-done newer_than:14d', 0, 30).forEach(th => {
+  GmailApp.search('label:Чеки -label:traty-done newer_than:14d', 0, 30).forEach(th => {
     let ok = true;
     th.getMessages().forEach(m => {
       try {
