@@ -1971,6 +1971,9 @@ const jrCSS = `
 .rit-sum{margin:10px 0 4px;font-size:calc(14px*var(--z,1));line-height:1.45}.rit-h{margin:16px 0 4px;font-weight:700}.rit-h span{opacity:.55;font-weight:500}.rit-hint{font-size:calc(12px*var(--z,1));color:var(--sub);margin-bottom:6px}
 .rit-r{border-top:1px solid var(--ln);padding:9px 0}.rit-t{font-size:calc(15px*var(--z,1));line-height:1.3}.rit-m{font-size:calc(12px*var(--z,1));color:var(--sub);margin:2px 0 6px}.rit-bs{display:flex;gap:6px;flex-wrap:wrap}
 .trk{font-size:calc(16px*var(--z,1))}.sheet.trk{width:min(760px,100%)}#trk-map .trk-pin{background:none;border:0;font-size:22px;line-height:24px}.trk-lbl{font-weight:700;font-size:13px;padding:1px 6px}#trk-map{height:340px;border-radius:12px;margin:8px 0;isolation:isolate;background:#e8e8e8}.trk-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:10px}.trk-nav .ibtn{font-size:1.6em;line-height:1;padding:2px 12px}@media(max-width:760px){#trk-map{height:48vh}}.trk-st{display:flex;align-items:center;gap:10px;margin:12px 0 4px;font-size:1em}.trk-dot{width:13px;height:13px;border-radius:50%;flex:none}.trk-r{display:flex;gap:12px;border-top:1px solid var(--ln);padding:10px 0;font-size:1em;line-height:1.4}.trk-r b{min-width:88px;flex:none}.trk-r span{color:var(--sub);font-size:.88em}.trk-n{font-weight:600}.trk .rit-b{font-size:.95em;padding:7px 13px;margin-top:4px}.trk .rit-hint,.trk summary{font-size:.9em}
+.sheet.rit{font-size:calc(17px*var(--z,1))}.rit .rit-sum{font-size:calc(17px*var(--z,1))}.rit .rit-t{font-size:calc(19px*var(--z,1));line-height:1.3}.rit .rit-m{font-size:calc(14px*var(--z,1))}.rit .rit-b{font-size:calc(15px*var(--z,1));padding:9px 14px}.rit .rit-hint{font-size:calc(14px*var(--z,1))}
+.rit-hd{display:flex;align-items:center;gap:8px;width:100%;margin:14px 0 2px;padding:11px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--solid,transparent);color:inherit;font:inherit;font-weight:700;font-size:calc(17px*var(--z,1));cursor:pointer;text-align:left}.rit-hd.sub{margin:6px 0 0 10px;width:calc(100% - 10px);font-size:calc(15.5px*var(--z,1));font-weight:600}.rit-hd .rit-ar{width:18px;opacity:.7}.rit-hd .rit-ht{flex:1;min-width:0}.rit-hd b{background:var(--acc);color:#fff;border-radius:11px;padding:1px 9px;font-size:.85em}.rit-hd .rit-hs{font-weight:400;font-size:calc(13px*var(--z,1));opacity:.7;white-space:nowrap}
+.rit-ov{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.rit-ov span{border:1.5px solid;border-radius:14px;padding:3px 11px;font-size:calc(14.5px*var(--z,1))}.rit-how{margin:6px 0;font-size:calc(14px*var(--z,1))}.rit-how summary{cursor:pointer;color:var(--acc)}.rit-how div{margin-top:6px;line-height:1.5;color:var(--sub)}
 .rit-b{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 11px;font-size:calc(12.5px*var(--z,1));cursor:pointer}.rit-ft{display:flex;margin-top:16px;position:sticky;bottom:0;padding:8px 0;background:var(--solid)}
 .jr-edd{display:flex;gap:8px;margin:-4px 0 8px;flex-wrap:wrap}
 .jr-ai{border:1px solid var(--acc);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:calc(14px*var(--z,1));line-height:1.55;background:var(--sel)}
@@ -2874,7 +2877,7 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" : "") +
-    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
+    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
@@ -2999,13 +3002,13 @@ function ritData() {
   const over = act.filter(t => t.due && t.due < today).sort((a, b) => a.due.localeCompare(b.due));
   const tod = act.filter(t => t.due === today);
   const lim = Date.now() - N * 864e5, ids = new Set(over.concat(tod).map(t => t.id));
-  const stall = N ? act.filter(t => !ids.has(t.id) && !(t.due && t.due > today && t.due <= addDays(today, 1)) && ritTouch(t) < lim).sort((a, b) => ritTouch(a) - ritTouch(b)).slice(0, 8) : [];
+  const stall = N ? act.filter(t => !ids.has(t.id) && !(t.due && t.due > today && t.due <= addDays(today, 1)) && ritTouch(t) < lim).sort((a, b) => ritTouch(a) - ritTouch(b)).slice(0, 60) : [];
   return { over, tod, stall, N };
 }
 function ritRow(t, kind) {
   const di = t.due ? dueInfo(t) : null, ag = Math.max(0, Math.floor((Date.now() - ritTouch(t)) / 864e5)), l = S.lists[t.list_id];
   const b = (v, lab) => '<button class="rit-b" data-a="ritset" data-id="' + t.id + '" data-v="' + v + '">' + lab + "</button>";
-  return '<div class="rit-r"><div class="rit-t">' + esc(t.title) + '</div><div class="rit-m">' + (l ? esc(l.name) + " · " : "") + (kind === "stall" ? "без движения " + ag + " дн." : di ? esc(di.txt || di.text || "") : "") + '</div><div class="rit-bs">' +
+  return '<div class="rit-r"><div class="rit-t">' + esc(t.title) + '</div><div class="rit-m">' + (l ? esc(l.name) + " · " : "") + (kind === "stall" ? "без движения " + ag + " дн." : di ? esc(di.txt || di.text || "") : "") + " · " + (t.est_minutes ? "⏱ " + fmtDurM(t.est_minutes) : '<i title="Оценки нет — считаю 30 мин">⏱ ~30 м?</i>') + '</div><div class="rit-bs">' +
     (kind === "tod" ? "" : b("today", "Сегодня")) + b("tom", "Завтра") + b("week", "Через неделю") + (t.due ? b("none", "Без срока") : "") + b("done", "✓ Готово") + "</div></div>";
 }
 const TRK = { day: [], last: null, media: [], places: [], n: 0, loading: false, err: "", off: 0, view: null };
@@ -3160,13 +3163,21 @@ function shareMaybe() {
   goView("list:" + l.id); render();
 }
 function ritualHTML() {
-  if (!ui.rit) return ""; const d = ritData(), est = d.tod.reduce((s, t) => s + (t.est_minutes || 30), 0), cap = capacityMin();
-  const sec = (title, arr, kind, hint) => arr.length ? '<div class="rit-h">' + title + ' <span>' + arr.length + "</span></div>" + (hint ? '<div class="rit-hint">' + hint + "</div>" : "") + arr.map(t => ritRow(t, kind)).join("") : "";
+  if (!ui.rit) return ""; const d = ritData(), eo = t => t.est_minutes || 30, sum = arr => arr.reduce((x, t) => x + eo(t), 0), est = sum(d.tod), cap = capacityMin(), noEst = d.tod.filter(t => !t.est_minutes).length;
+  ui.ritc = ui.ritc || {};
+  const open = (k, def) => ui.ritc[k] === undefined ? def : ui.ritc[k];
+  const hd = (k, title, arr, def, hint) => { const o = open(k, def), ne = arr.filter(t => !t.est_minutes).length; return '<button class="rit-hd' + (o ? " on" : "") + '" data-a="ritfold" data-k="' + k + '" data-d="' + (def ? 1 : 0) + '"><span class="rit-ar">' + (o ? "▾" : "▸") + "</span><span class=\"rit-ht\">" + title + '</span><b>' + arr.length + '</b><span class="rit-hs">≈ ' + fmtDurM(sum(arr)) + (ne ? " (" + ne + " без оценки)" : "") + "</span></button>" + (o && hint ? '<div class="rit-hint">' + hint + "</div>" : ""); };
+  const sec = (k, title, arr, kind, def, hint) => arr.length ? hd(k, title, arr, def, hint) + (open(k, def) ? arr.map(t => ritRow(t, kind)).join("") : "") : "";
+  const byList = {}; d.tod.forEach(t => { const n = (S.lists[t.list_id] || {}).name || "Без списка"; (byList[n] = byList[n] || []).push(t); });
+  const groups = Object.keys(byList).sort((x, y) => byList[y].length - byList[x].length);
+  const todH = d.tod.length ? hd("tod", "На сегодня", d.tod, true, "") + (open("tod", true) ? groups.map(n => { const k = "tl:" + n, g = byList[n], o = open(k, g.length <= 6), ne = g.filter(t => !t.est_minutes).length; return '<button class="rit-hd sub' + (o ? " on" : "") + '" data-a="ritfold" data-k="' + k + '" data-d="' + (g.length <= 6 ? 1 : 0) + '"><span class="rit-ar">' + (o ? "▾" : "▸") + '</span><span class="rit-ht">' + esc(n) + "</span><b>" + g.length + '</b><span class="rit-hs">≈ ' + fmtDurM(sum(g)) + (ne ? " (" + ne + " без оценки)" : "") + "</span></button>" + (o ? g.map(t => ritRow(t, "tod")).join("") : ""); }).join("") : "") : "";
   const empty = !d.over.length && !d.tod.length && !d.stall.length;
-  return '<div class="ovl" data-a="ritovl"><div class="sheet"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">☀️ План на сегодня</div><button class="ibtn" data-a="ritclose">' + ic("x", 18) + "</button></div>" +
-    '<div class="rit-sum">Сегодня задач: <b>' + d.tod.length + "</b> ≈ <b>" + fmtDurM(est) + "</b> из <b>" + fmtDurM(cap) + '</b> рабочего времени' + (est > cap ? ' <b style="color:#d13438">— перебор, что-то перенеси</b>' : "") + "</div>" +
-    sec("Хвосты: просрочено", d.over, "over", "Реши по каждой: на сегодня, на завтра, на неделю или убрать срок.") + sec("На сегодня", d.tod, "tod", "") +
-    sec("Зависли (без движения " + d.N + "+ дн.)", d.stall, "stall", "Давно не трогал. Закрой, назначь срок или оставь как есть.") +
+  const how = '<details class="rit-how"><summary>Как считается время</summary><div>У каждой задачи есть оценка «⏱ сколько займёт» (ставится в карточке задачи). Если оценки нет — я беру <b>30 минут</b> (в списке помечено «~30 м?»). Сумма по задачам на сегодня сравнивается с твоим рабочим временем: <b>' + fmtDurM(cap) + "</b> = рабочий день " + hm(Math.round(PR.dayStart * 60)) + "–" + hm(Math.round(PR.dayEnd * 60)) + " минус резерв " + PR.reserve + "% на непредвиденное. Поставь оценки хотя бы самым крупным делам — цифра станет честной. Пока она грубая: " + noEst + " из " + d.tod.length + " задач без оценки.</div></details>";
+  return '<div class="ovl" data-a="ritovl"><div class="sheet rit"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">☀️ План на сегодня</div><button class="ibtn" data-a="ritclose">' + ic("x", 18) + "</button></div>" +
+    '<div class="rit-sum">Сегодня задач: <b>' + d.tod.length + "</b> ≈ <b>" + fmtDurM(est) + "</b> из <b>" + fmtDurM(cap) + '</b> рабочего времени' + (est > cap ? ' <b style="color:#d13438">— перебор, что-то перенеси</b>' : "") + "</div>" + how +
+    '<div class="rit-ov">' + [["Просрочено", d.over.length, "#d13438"], ["На сегодня", d.tod.length, "var(--acc)"], ["Без движения", d.stall.length, "#9a6b00"]].map(x => '<span style="border-color:' + x[2] + ';color:' + x[2] + '"><b>' + x[1] + "</b> " + x[0] + "</span>").join("") + "</div>" +
+    sec("over", "Хвосты: просрочено", d.over, "over", true, "Реши по каждой: на сегодня, на завтра, на неделю или убрать срок.") + todH +
+    sec("stall", "Без движения " + d.N + "+ дн.", d.stall, "stall", false, "Давно не трогал. Закрой, назначь срок или оставь как есть.") +
     (empty ? '<div class="jr-empty">Всё чисто: хвостов и зависших нет 🎉</div>' : "") +
     '<div class="rit-ft"><button class="btn" data-a="ritok" style="flex:1">Принять план</button></div></div></div>';
 }
@@ -3380,12 +3391,25 @@ const acts = {
   trkprev() { TRK.off--; TRK.view = null; trkLoad(); },
   trknext() { if (TRK.off < 0) { TRK.off++; TRK.view = null; trkLoad(); } },
   vsum(a) { videoSummary(a.dataset.id); },
+  vcopy(a) {
+    const t = S.tasks[a.dataset.id]; if (!t) return; const txt = videoText(t);
+    const pre = "Ниже — подробный пересказ видео. Прочитай его целиком и дальше обсуждай со мной: отвечай по сути, задавай уточняющие вопросы, критикуй слабые места.\n\n" + txt, q = encodeURIComponent(pre);
+    const go = () => { window.open("https://www.google.com/search?udm=50" + (q.length < 1700 ? "&q=" + q : ""), "_blank", "noopener"); };
+    try { navigator.clipboard.writeText(pre).then(() => { toast(q.length < 1700 ? "Скопировано и подставлено в режим ИИ" : "Весь текст скопирован — вставь в поле режима ИИ (длинный: если не влезет — жми «📄 PDF» и загрузи файл)"); go(); }, () => { toast("Не удалось скопировать — открой «Открыть» в заметке и скопируй вручную"); go(); }); } catch (e) { toast("Не удалось скопировать"); go(); }
+  },
+  vpdf(a) {
+    const t = S.tasks[a.dataset.id]; if (!t) return; const txt = videoText(t);
+    const h = "<!doctype html><meta charset=utf-8><title>" + esc(t.title).slice(0, 80) + "</title><style>body{font:14pt/1.5 Arial,sans-serif;margin:18mm;white-space:pre-wrap}h1{font-size:18pt;margin:0 0 8pt}.u{color:#555;font-size:11pt;margin-bottom:14pt}</style><h1>" + esc(t.title) + "</h1><div class=u>" + esc(ytUrl(t.note)) + "</div>" + esc(txt.replace(/^[^\n]*\n[^\n]*\n\n/, ""));
+    let fr = document.getElementById("vpdf-fr"); if (fr) fr.remove(); fr = document.createElement("iframe"); fr.id = "vpdf-fr"; fr.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(fr);
+    fr.srcdoc = h; fr.onload = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); toast("В окне печати выбери «Сохранить как PDF»"); } catch (e) { toast("Печать недоступна в этом браузере"); } };
+  },
   async trkname(a) {
     const p = { lat: +a.dataset.lat, lon: +a.dataset.lon }; if (!isFinite(p.lat)) return; const n = (prompt("Как назвать это место? (дом, офис, зал…)") || "").trim().slice(0, 40); if (!n) return;
     const r = await sb.from("places").insert({ name: n, lat: +p.lat, lon: +p.lon, r: 120 }); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); trkLoad();
   },
   async trkdel(a, e) { e.preventDefault && e.preventDefault(); if (!confirm("Удалить место?")) return; await sb.from("places").delete().eq("id", a.dataset.i); trkLoad(); },
   ritclose() { ui.rit = false; render(); },
+  ritfold(a) { ui.ritc = ui.ritc || {}; const k = a.dataset.k, cur = ui.ritc[k] === undefined ? a.dataset.d === "1" : ui.ritc[k]; ui.ritc[k] = !cur; render(); },
   ritovl(a, e) { if (e.target === a) { ui.rit = false; render(); } },
   ritok() { PR.ritDone = today; savePrefs(); ui.rit = false; toast("План принят. Хорошего дня!"); render(); },
   ritset(a) {
@@ -3721,6 +3745,7 @@ function videoCatchup() {   // видео в очереди без переск�
   const t = Object.values(S.tasks).find(x => !x.done && !x.parent_id && !VB[x.id] && ytUrl(x.note) && !/Смысл видео ━━/.test(x.note || "") && (PR.vtry[x.id] || 0) < 2);
   if (t) videoSummary(t.id);
 }
+const videoText = t => { const m = /━━ Смысл видео ━━\n([\s\S]*)$/.exec(t.note || ""); return "Видео: " + t.title + "\nСсылка: " + ytUrl(t.note) + "\n\n" + (m ? m[1].trim() : ""); };
 const VB = {};   // id → true, пока идёт запрос пересказа (у каждого видео свой, кнопки других не блокируются)
 async function videoSummary(id) {
   const t = S.tasks[id]; if (!t) return; const url = ytUrl(t.note); if (!url) return;
