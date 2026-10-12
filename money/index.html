@@ -504,6 +504,15 @@ function budState(spent, b, am) {
 }
 const BCOL = { ok: "var(--acc)", pace: "#f2b36d", warn: "#f2b36d", over: "var(--exp)" };
 const catSpent = (id, m) => ((monthSums()[m] || {})[id || "_"]) || 0;
+const searchFn = q => {
+  const nz = x => String(x || "").toLowerCase().replace(/ё/g, "е"), toks = nz(q).split(/\s+/).filter(Boolean), tests = toks.map(w => {
+    let m;
+    if ((m = w.match(/^([<>]=?|=)(\d+(?:[.,]\d+)?)$/))) { const v = +m[2].replace(",", "."), o = m[1]; return t => o[0] === ">" ? (o.length > 1 ? t.amount >= v : t.amount > v) : o[0] === "<" ? (o.length > 1 ? t.amount <= v : t.amount < v) : t.amount === v; }
+    if ((m = w.match(/^(\d+(?:[.,]\d+)?)[-–](\d+(?:[.,]\d+)?)$/))) { const a = +m[1].replace(",", "."), b = +m[2].replace(",", "."); return t => t.amount >= Math.min(a, b) && t.amount <= Math.max(a, b); }
+    return t => nz(t.note).includes(w) || nz(catOf(t.category_id).name).includes(w) || String(t.amount).includes(w);
+  });
+  return t => tests.every(f => f(t));
+};
 const fmN = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 function bl(c) {   // подпись остатка в сетке выбора категории
   const s = ui.sheet; if (!s || s.kind !== "exp") return ""; const m = (s.date || dayKey(new Date())).slice(0, 7), b = budgetOf(c, m); if (!b) return "";
@@ -693,9 +702,9 @@ function txRow(t) {
 }
 function listHTML() {
   let arr = ui.q ? txs.slice() : rgTx();
-  if (ui.q) { const q = ui.q.toLowerCase(); arr = arr.filter(t => (t.note || "").toLowerCase().includes(q) || catOf(t.category_id).name.toLowerCase().includes(q) || String(t.amount).includes(q)); }
+  let qst = null; if (ui.q) { const f = searchFn(ui.q); arr = arr.filter(f); qst = { n: arr.length, e: sumBy(arr, t => t.kind === "exp" ? t.amount : 0), i: sumBy(arr, t => t.kind === "exp" ? 0 : t.amount) }; }
   arr.sort((a, b) => b.ts.localeCompare(a.ts)); const lim = ui.q ? 200 : 600, more = arr.length - lim; arr = arr.slice(0, lim);
-  let h = topBar(!ui.q) + '<input class="in" id="q" autocomplete="off" placeholder="Поиск по заметке, категории, сумме" value="' + esc(ui.q) + '">', cur = "", buf = [];
+  let h = topBar(!ui.q) + '<input class="in" id="q" autocomplete="off" placeholder="Поиск по заметке, категории, сумме" value="' + esc(ui.q) + '">' + (qst ? '<div class="sub" style="padding:2px 4px 6px;font-size:.85em">Найдено: ' + qst.n + (qst.e ? " · расходы " + fmN(qst.e) : "") + (qst.i ? " · доходы " + fmN(qst.i) : "") + "</div>" : "") + (!ui.q ? '<div class="sub" style="padding:0 4px 6px;font-size:.78em">Можно искать несколько слов сразу, а ещё: &gt;1000, &lt;500, 100-500</div>' : ""), cur = "", buf = [];
   const groups = []; arr.forEach(t => { const dk = dayKey(new Date(t.ts)); if (dk !== cur) { cur = dk; groups.push({ dk, items: [] }); } groups[groups.length - 1].items.push(t); });
   groups.forEach(g => { const d = new Date(g.dk + "T12:00"), s = sumBy(g.items, t => t.kind === "exp" ? -t.amount : t.amount); h += '<div class="day"><span>' + WD[d.getDay()] + ", " + d.getDate() + " " + MONS_S[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "") + "</span>" + (ui.q ? "" : "<span>" + fm(s) + "</span>") + "</div>" + g.items.map(t => ui.q ? txRowQ(t, ui.q.toLowerCase()) : txRow(t)).join(""); });
   if (!groups.length) h += '<div class="empty">Операций нет</div>'; if (more > 0) h += '<div class="empty">…и ещё ' + more + " (уточни поиск)</div>";
@@ -757,6 +766,7 @@ function moreHTML() {
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="acc" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
     '<label class="set"><span>📥</span><span style="flex:1">Импорт из Monefy (CSV)</span><input type="file" id="csvf" accept=".csv,.txt,text/csv" hidden></label>' +
     '<button class="set" data-a="export"><span>📤</span><span style="flex:1">Экспорт в CSV</span></button>' +
+    '<button class="set" data-a="exportjson"><span>💾</span><span style="flex:1">Резервная копия (JSON)</span></button>' +
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
@@ -770,7 +780,7 @@ function catsMgrHTML() {
 }
 
 /* ============ шаблоны и повторяющиеся (локально на устройстве) ============ */
-let EXT = { tpl: [], rec: [] }; try { const x = JSON.parse(localStorage.getItem("fin_ext_v1") || "{}"); EXT = { tpl: x.tpl || [], rec: x.rec || [] }; } catch (e) {}
+let EXT = { tpl: [], rec: [], due: [] }; try { const x = JSON.parse(localStorage.getItem("fin_ext_v1") || "{}"); EXT = { tpl: x.tpl || [], rec: x.rec || [], due: x.due || [] }; } catch (e) {}
 const saveExt = () => { try { localStorage.setItem("fin_ext_v1", JSON.stringify(EXT)); } catch (e) {} };
 function runRec() {
   if (!user || !cats.length) return; let n = 0; const td = dayKey(new Date()), now = new Date();
@@ -779,11 +789,12 @@ function runRec() {
     for (let i = 0; i < 60; i++) {
       const dim = new Date(y, m + 1, 0).getDate(), ds = dayKey(new Date(y, m, Math.min(r.day, dim)));
       if (ds > td) break;
-      if (ds > r.last) { upTx({ id: uid(), ts: new Date(y, m, Math.min(r.day, dim), 9, 0).toISOString(), amount: r.amt, kind: r.kind, category_id: r.cat, note: r.note || "", account: "Основной" }); r.last = ds; n++; }
+      if (ds > r.last && r.ask) { if (!EXT.due.some(d => d.rid === r.id && d.ds === ds)) EXT.due.push({ rid: r.id, ds }); r.last = ds; n++; }
+      else if (ds > r.last) { upTx({ id: uid(), ts: new Date(y, m, Math.min(r.day, dim), 9, 0).toISOString(), amount: r.amt, kind: r.kind, category_id: r.cat, note: r.note || "", account: "Основной" }); r.last = ds; n++; }
       m++; if (m > 11) { m = 0; y++; }
     }
   });
-  if (n) { saveExt(); render(); toast("Добавлены повторяющиеся: " + n); }
+  if (n) { saveExt(); render(); toast(EXT.due.length ? "Пора подтвердить платежи: " + EXT.due.length : "Добавлены повторяющиеся: " + n); }
 }
 function tplRow(kind) {
   const l = EXT.tpl.filter(t => t.kind === kind && cats.some(c => c.id === t.cat)); if (!l.length) return "";
@@ -905,7 +916,8 @@ function inboxOpen(r) {
   const best = (b.ok && !a.ok) || (b.ok === a.ok && b.items.length > a.items.length) ? b : a;
   rcpFromParsed(best, r.plain || RCP.htmlToText(r.html || ""), { inbox: r.id });
 }
-function inbBanner() { return INB.length && !ui.sheet ? '<button class="inbb" data-a="inbopen">✉️ Чеки из почты: <b>' + INB.length + "</b></button>" : ""; }
+function inbBanner() { if (ui.sheet) return ""; return (INB.length ? '<button class="inbb" data-a="inbopen">✉️ Чеки из почты: <b>' + INB.length + "</b></button>" : "") + (dueList().length ? '<button class="inbb" data-a="dueopen" style="bottom:calc(' + (INB.length ? 262 : 214) + 'px + env(safe-area-inset-bottom))">🔁 К оплате: <b>' + dueList().length + "</b></button>" : ""); }
+function dueList() { return EXT.due.map(d => ({ d, r: EXT.rec.find(x => x.id === d.rid) })).filter(x => x.r && cats.some(c => c.id === x.r.cat)); }
 
 /* ---- выбор категории с поиском для позиции чека ---- */
 function rcpcList(q) {
@@ -936,6 +948,10 @@ function sheetHTML() {
   }
   if (s.type === "rcpc") {
     return '<div class="ov" data-a="rcpcback"><div class="sheet rcp" data-a="nop"><h2 style="margin:0 0 8px">' + (s.all ? "Категория для всех без категории" : "Категория") + '</h2><input class="in" id="rc-q" autocomplete="off" placeholder="🔍 Найти категорию по слову" value="' + esc(s.q || "") + '"><div class="rl" id="rc-l" style="margin-top:6px">' + rcpcList(s.q) + '</div><div style="display:flex;gap:8px;margin-top:6px">' + (s.all ? "" : '<button class="btn g" style="flex:1" data-a="rcpick" data-id="">Без категории</button>') + '<button class="btn g" style="flex:1" data-a="rcpcback">Назад</button></div></div></div>';
+  }
+  if (s.type === "due") {
+    const l = dueList(); if (!l.length) return ""; const x = l[0], c = catOf(x.r.cat), dd = new Date(x.d.ds + "T12:00");
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>🔁 ' + esc(x.r.note || c.name) + '</h2><div class="sub" style="margin-bottom:8px">' + c.name + " · " + dd.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) + (l.length > 1 ? " · ещё " + (l.length - 1) : "") + '</div><input class="in" id="d-amt" inputmode="decimal" placeholder="Сумма, ₽" value="' + esc(x.r.amt) + '"><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" data-a="duego">Записать</button><button class="btn g" data-a="dueskip">Пропустить</button></div></div></div>';
   }
   if (s.type === "rcpt") {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">✉️ Чек из письма</h2><div class="sub" style="font-size:.85em">Открой письмо с чеком, выдели текст и скопируй. Потом нажми «Из буфера» или вставь сюда. Можно и сразу «Поделиться» письмом в «Траты».</div>' + (s.err ? '<div class="sub exp" style="margin:6px 0">' + esc(s.err) + "</div>" : "") + '<textarea class="in" id="rt-t" rows="6" placeholder="Текст письма с чеком" style="width:100%;margin:8px 0;resize:vertical">' + esc(s.text || "") + '</textarea><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="rcpclip">📋 Из буфера</button><button class="btn" data-a="rcpgo" style="flex:1">Разобрать</button></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn g" data-a="rcpfile" style="flex:1">📎 Файл письма (.eml)</button>' + (s.inbox ? '<button class="btn g" data-a="inbskip">Не чек</button>' : "") + '<button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
@@ -970,7 +986,7 @@ function sheetHTML() {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>' + (isRec ? "Повторяющийся платёж" : "Шаблон") + '</h2><div class="seg" style="margin:0 0 8px"><button class="' + (s.kind === "exp" ? "on" : "") + '" data-a="xkind" data-v="exp">Расход</button><button class="' + (s.kind === "inc" ? "on" : "") + '" data-a="xkind" data-v="inc">Доход</button></div>' +
       '<select class="in" id="x-cat">' + cl.map(c => '<option value="' + c.id + '"' + (c.id === s.cat ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") + "</select>" +
       '<input class="in" id="x-amt" inputmode="decimal" placeholder="Сумма, ₽" value="' + esc(s.amt || "") + '"><input class="in" id="x-note" placeholder="Название / заметка (необязательно)" value="' + esc(s.note || "") + '">' +
-      (isRec ? '<input class="in" id="x-day" inputmode="numeric" placeholder="День месяца (1–31)" value="' + esc(s.day || "") + '">' : "") +
+      (isRec ? '<input class="in" id="x-day" inputmode="numeric" placeholder="День месяца (1–31)" value="' + esc(s.day || "") + '"><button class="set" data-a="xask" style="width:100%;margin:6px 0"><span>' + (s.ask ? "☑️" : "⬜") + '</span><span style="flex:1;text-align:left">Спрашивать сумму каждый раз <span class="sub" style="font-size:.8em">— ЖКХ, связь, где сумма плавает</span></span></button>' : "") +
       '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" data-a="xsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="xdel">Удалить</button>' : "") + "</div></div></div>";
   }
   if (s.type === "lim") {
@@ -1204,6 +1220,12 @@ const A = {
   rcat(a) { const b = ui.sheet; rread(); const l = document.querySelector(".rcp .rl"); b.sy = l ? l.scrollTop : 0; ui.sheet = { type: "rcpc", all: a.dataset.i === "all", i: +a.dataset.i, q: "", back: b }; render(); setTimeout(() => { const e = $("rc-q"); if (e) e.focus(); }, 60); },
   rcpick(a) { const s = ui.sheet, b = s.back, id = a.dataset.id || ""; if (s.all) b.items.forEach(x => { if (!x.cat) x.cat = id; }); else if (b.items[s.i]) b.items[s.i].cat = id; ui.sheet = b; render(); const l = document.querySelector(".rcp .rl"); if (l) l.scrollTop = b.sy || 0; },
   rcpcback() { const b = ui.sheet.back; ui.sheet = b; render(); const l = document.querySelector(".rcp .rl"); if (l) l.scrollTop = b.sy || 0; },
+  dueopen() { ui.sheet = { type: "due" }; render(); },
+  duego() { const l = dueList(), x = l[0]; if (!x) { ui.sheet = null; render(); return; } const amt = parseFloat((($("d-amt") || {}).value || "").replace(",", ".")); if (!(amt > 0)) { toast("Введи сумму"); return; }
+    upTx({ id: uid(), ts: new Date(x.d.ds + "T09:00").toISOString(), amount: Math.round(amt * 100) / 100, kind: x.r.kind, category_id: x.r.cat, note: x.r.note || "", account: "Основной" }); x.r.amt = Math.round(amt * 100) / 100;
+    EXT.due = EXT.due.filter(d => d !== x.d); saveExt(); ui.sheet = dueList().length ? { type: "due" } : null; render(); toast("Записано: " + fm(amt)); },
+  dueskip() { const x = dueList()[0]; if (x) EXT.due = EXT.due.filter(d => d !== x.d); saveExt(); ui.sheet = dueList().length ? { type: "due" } : null; render(); },
+  xask() { xread(); ui.sheet.ask = !ui.sheet.ask; render(); },
   inbopen() { if (INB[0]) inboxOpen(INB[0]); },
   inbskip() { const s = ui.sheet; if (s && s.inbox) inboxMark(s.inbox, "skip"); ui.sheet = null; render(); toast("Пропустил"); },
   rdel(a) { ui.sheet.items.splice(+a.dataset.i, 1); render(); },
@@ -1225,24 +1247,28 @@ const A = {
   setext() { ui.set = "ext"; render(); },
   tplgo(a) { const t = EXT.tpl.find(x => x.id === a.dataset.id); if (!t) return; const now = new Date(); upTx({ id: uid(), ts: now.toISOString(), amount: t.amt, kind: t.kind, category_id: t.cat, note: t.note || "", account: "Основной" }); const bm = t.kind === "exp" ? budgetMsg(t.cat, now.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(t.amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200); },
   hmday(a) { ui.rg = { t: "d", a: +new Date(a.dataset.v + "T12:00") }; ui.tab = "list"; render(); },
-  xnew(a) { const kind = "exp"; ui.sheet = { type: "ext", k: a.dataset.k, id: null, kind, cat: (catsOf(kind)[0] || {}).id, amt: "", note: "", day: a.dataset.k === "rec" ? "1" : "" }; render(); },
-  xedit(a) { const r = EXT[a.dataset.k].find(x => x.id === a.dataset.id); if (!r) return; ui.sheet = { type: "ext", k: a.dataset.k, id: r.id, kind: r.kind, cat: r.cat, amt: r.amt, note: r.note || "", day: r.day || "" }; render(); },
+  xnew(a) { const kind = "exp"; ui.sheet = { type: "ext", k: a.dataset.k, id: null, kind, cat: (catsOf(kind)[0] || {}).id, amt: "", note: "", day: a.dataset.k === "rec" ? "1" : "", ask: false }; render(); },
+  xedit(a) { const r = EXT[a.dataset.k].find(x => x.id === a.dataset.id); if (!r) return; ui.sheet = { type: "ext", k: a.dataset.k, id: r.id, kind: r.kind, cat: r.cat, amt: r.amt, note: r.note || "", day: r.day || "", ask: !!r.ask }; render(); },
   xkind(a) { const s = ui.sheet; xread(); s.kind = a.dataset.v; s.cat = (catsOf(s.kind)[0] || {}).id; render(); },
   xsave() {
     const s = ui.sheet; xread(); const amt = parseFloat(String(s.amt).replace(",", ".")), day = Math.round(+s.day);
     if (!s.cat) { toast("Выбери категорию"); return; } if (!(amt > 0)) { toast("Введи сумму"); return; } if (s.k === "rec" && !(day >= 1 && day <= 31)) { toast("День месяца: 1–31"); return; }
     const list = EXT[s.k], o = s.id ? list.find(x => x.id === s.id) : null, r = o || { id: uid() };
-    Object.assign(r, { kind: s.kind, cat: s.cat, amt: Math.round(amt * 100) / 100, note: (s.note || "").trim() });
+    Object.assign(r, { kind: s.kind, cat: s.cat, amt: Math.round(amt * 100) / 100, note: (s.note || "").trim() }); if (s.k === "rec") r.ask = !!s.ask;
     if (s.k === "rec") { const t = new Date(), dim = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate(); r.day = day; if (!o) { const y = new Date(t); y.setDate(y.getDate() - 1); r.last = Math.min(day, dim) >= t.getDate() ? dayKey(y) : dayKey(t); } }
     if (!o) list.push(r); saveExt(); ui.sheet = null; render(); if (s.k === "rec") runRec();
   },
-  xdel() { const s = ui.sheet; EXT[s.k] = EXT[s.k].filter(x => x.id !== s.id); saveExt(); ui.sheet = null; render(); },
+  xdel() { const s = ui.sheet; EXT[s.k] = EXT[s.k].filter(x => x.id !== s.id); EXT.due = EXT.due.filter(d => d.rid !== s.id); saveExt(); ui.sheet = null; render(); },
   limedit(a) { if (!a.dataset.id || a.dataset.id === "_") return; ui.sheet = { type: "lim", id: a.dataset.id }; render(); },
   limfill(a) { const e = $("l-v"); if (e) e.value = a.dataset.v; },
   limsave() { const c = cats.find(x => x.id === ui.sheet.id); if (c) { const v = parseFloat((($("l-v") || {}).value || "").replace(",", ".")); c.lim = v > 0 ? Math.round(v * 100) / 100 : null; upCat(c); } ui.sheet = null; render(); },
   limclear() { const c = cats.find(x => x.id === ui.sheet.id); if (c) { c.lim = null; upCat(c); } ui.sheet = null; render(); },
   acc(a) { PR.acc = a.dataset.v; savePR(); applyTheme(); render(); },
   fullsync() { pull(true); },
+  exportjson() {
+    const d = { app: "traty", exported_at: new Date().toISOString(), categories: cats, tx: txs.map(dbTx), ext: EXT, prefs: PR };
+    const blob = new Blob([JSON.stringify(d)], { type: "application/json" }), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "траты_копия_" + dayKey(new Date()) + ".json"; a.click(); toast("Копия сохранена: " + txs.length + " записей");
+  },
   export() {
     const rows = [["date", "category", "amount", "kind", "note"]].concat(txs.slice().sort((a, b) => a.ts.localeCompare(b.ts)).map(t => [dayKey(new Date(t.ts)), catOf(t.category_id).name, String(t.amount).replace(".", ","), t.kind === "exp" ? "расход" : "доход", (t.note || "").replace(/"/g, '""')]));
     const blob = new Blob(["﻿" + rows.map(r => r.map(x => '"' + x + '"').join(";")).join("\n")], { type: "text/csv" }), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "траты_" + dayKey(new Date()) + ".csv"; a.click();
