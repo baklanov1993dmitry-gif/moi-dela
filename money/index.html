@@ -256,6 +256,7 @@ table.hm td{background-color:transparent}
 </head>
 <body>
 <div id="app"></div>
+<script src="rcparse.js"></script>
 <script>
 "use strict";
 /* ============ утилиты ============ */
@@ -847,14 +848,30 @@ function cgridInner(s) {
 }
 function rsumText(s) { const t = s.items.reduce((a, x) => a + (parseFloat(String(x.amount).replace(",", ".")) || 0), 0), un = s.items.filter(x => !x.cat).length; return "В списке: <b>" + fm(t) + "</b>" + (s.total ? " · на чеке: " + fm(s.total) + (Math.abs(t - s.total) > 1 ? ' <span class="exp">(не сходится — проверь)</span>' : " ✓") : "") + (un ? ' · <span class="exp">без категории: ' + un + "</span>" : ""); }
 function rcpPick() {
-  const i = document.createElement("input"); i.type = "file"; i.accept = "image/*";
-  i.onchange = () => { const f = i.files && i.files[0]; if (f) rcpRun(f); };
+  const i = document.createElement("input"); i.type = "file"; i.accept = "image/*,.eml,.html,.htm,.txt,.mht,message/rfc822,text/html,text/plain";
+  i.onchange = () => { const f = i.files && i.files[0]; if (!f) return; if (/^image\//.test(f.type)) rcpRun(f); else f.text().then(t => rcpText(t, {})).catch(() => toast("Не смог прочитать файл")); };
   i.click();
 }
 async function rcpShrink(file) {
   const bmp = await createImageBitmap(file), k = Math.min(1, 1700 / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
   c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k); c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
   return c.toDataURL("image/jpeg", .85).split(",")[1];
+}
+/* ---- чек из письма: разбор без нейронки (rcparse.js) + категории по истории трат ---- */
+function rcpSeen() { try { return JSON.parse(localStorage.getItem("fin_rcs_v1") || "[]"); } catch (e) { return []; } }
+function rcpText(text, meta) {
+  if (!window.RCP) { toast("Парсер не загрузился, обнови приложение"); return; }
+  const r = RCP.parse(String(text || ""), meta || {});
+  if (!r.items.length) { ui.sheet = { type: "rcpt", text: String(text || ""), err: "Позиций чека не нашёл. Проверь, что вставлен текст самого чека (с названиями и суммами)." }; render(); return; }
+  const cl = cats.filter(c => c.kind === "exp" && !c.archived), ids = new Set(cl.map(c => c.id)), L = RCP.learn(txs, ids);
+  const items = r.items.map(x => ({ name: x.name, amount: x.amount, cat: (() => { const c = RCP.suggest(L, x.name, r.merchant); return ids.has(c) ? c : ""; })() }));
+  const dup = r.key && rcpSeen().includes(r.key), dd = /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date <= dayKey(new Date()) ? r.date : dayKey(new Date());
+  const notes = [];
+  if (dup) notes.push("⚠️ Похоже, этот чек уже записывали.");
+  if (r.refund) notes.push("⚠️ Это возврат, а не покупка.");
+  if (!r.ok) notes.push("Сумма позиций не сошлась с итогом чека, сверь.");
+  ui.sheet = { type: "rcp", merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: true, key: r.key, items };
+  render();
 }
 async function rcpRun(file) {
   if (!navigator.onLine) { toast("Для распознавания нужен интернет"); return; }
@@ -875,7 +892,7 @@ function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
     const c = s.cat ? catOf(s.cat) : null, d = new Date((s.date || dayKey(new Date())) + "T12:00"), dl = d.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }), title = s.id ? "Правка" : s.kind === "exp" ? "Новый расход" : "Новый доход";
-    const head = '<div class="hdr"><button class="hb" data-a="txback">' + UI.back + '</button><div class="ttl"><div class="sa" style="color:var(--tx);font-size:1.35em;margin:0">' + title + "</div></div>" + (s.id ? '<button class="hb" data-a="txdel" style="color:var(--expc)">' + UI.trash + "</button>" : s.kind === "exp" ? '<button class="hb" data-a="rcpbtn" title="Фото чека" style="font-size:22px">📷</button>' : "") + "</div>";
+    const head = '<div class="hdr"><button class="hb" data-a="txback">' + UI.back + '</button><div class="ttl"><div class="sa" style="color:var(--tx);font-size:1.35em;margin:0">' + title + "</div></div>" + (s.id ? '<button class="hb" data-a="txdel" style="color:var(--expc)">' + UI.trash + "</button>" : s.kind === "exp" ? '<button class="hb" data-a="rcptxt" title="Чек из письма" style="font-size:22px">✉️</button><button class="hb" data-a="rcpbtn" title="Фото чека" style="font-size:22px">📷</button>' : "") + "</div>";
     const date = '<label class="dt">' + UI.cal + "<span>" + esc(dl.charAt(0).toUpperCase() + dl.slice(1)) + '</span><input type="date" id="s-date" value="' + esc(s.date) + '" onchange="dateChange(this.value)"></label>';
     const amt = '<div class="amtbox"><div class="cur">' + UI.cash + "<small>RUB</small></div><div class=\"amt\">" + esc(s.expr || "0") + '</div><button class="bs" data-a="key" data-v="⌫">' + UI.bks + "</button></div>";
     if (s.step === "cat") {
@@ -890,6 +907,9 @@ function sheetHTML() {
       '<div class="pal">' + EMO.map(e => '<i data-a="cic" data-v="' + e + '" class="' + (s.icon === e ? "on" : "") + '" style="width:40px;height:40px;border-radius:12px;background:var(--card);font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px">' + ic(e, "var(--tx)", 28, "line") + "</i>").join("") + "</div>" +
       '<div class="pal">' + PAL.map(c => '<i data-a="ccol" data-v="' + c + '" class="' + (s.color === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div>" +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="catsave">Сохранить</button>' + (s.id ? '<button class="btn g" data-a="catarch">' + (s.archived ? "Вернуть" : "Скрыть") + "</button>" : "") + "</div></div></div>";
+  }
+  if (s.type === "rcpt") {
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">✉️ Чек из письма</h2><div class="sub" style="font-size:.85em">Открой письмо с чеком, выдели текст и скопируй. Потом нажми «Из буфера» или вставь сюда. Можно и сразу «Поделиться» письмом в «Траты».</div>' + (s.err ? '<div class="sub exp" style="margin:6px 0">' + esc(s.err) + "</div>" : "") + '<textarea class="in" id="rt-t" rows="6" placeholder="Текст письма с чеком" style="width:100%;margin:8px 0;resize:vertical">' + esc(s.text || "") + '</textarea><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="rcpclip">📋 Из буфера</button><button class="btn" data-a="rcpgo" style="flex:1">Разобрать</button></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn g" data-a="rcpfile" style="flex:1">📎 Файл письма (.eml)</button><button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
   }
   if (s.type === "rcp") {
     if (s.busy) return '<div class="ov"><div class="sheet" data-a="nop" style="text-align:center;padding:30px 20px"><div class="spin" style="font-size:34px">🧾</div><h2 style="margin:12px 0 4px">Читаю чек…</h2><div class="sub">обычно 5–15 секунд</div></div></div>';
@@ -1139,6 +1159,10 @@ const A = {
   capfill(a) { PR.cap = +a.dataset.v; savePR(); render(); },
   normn(a) { PR.normN = +a.dataset.v; savePR(); render(); }, normon() { PR.normOn = PR.normOn === false; savePR(); render(); },
   rcpbtn() { ui.sheet = null; rcpPick(); },
+  rcptxt() { ui.sheet = { type: "rcpt", text: "" }; render(); },
+  async rcpclip() { try { const t = await navigator.clipboard.readText(); if (t && t.trim()) { rcpText(t, {}); return; } toast("В буфере пусто"); } catch (e) { toast("Нет доступа к буферу: вставь текст вручную в поле"); } },
+  rcpgo() { const el = $("rt-t"), t = el ? el.value : ""; if (!t.trim()) { toast("Сначала вставь текст письма"); return; } rcpText(t, {}); },
+  rcpfile() { ui.sheet = null; rcpPick(); },
   rdel(a) { ui.sheet.items.splice(+a.dataset.i, 1); render(); },
   rsave() {
     const s = ui.sheet; rread(); const it = s.items.filter(x => parseFloat(String(x.amount).replace(",", ".")) > 0);
@@ -1147,6 +1171,7 @@ const A = {
     const val = x => Math.round(parseFloat(String(x.amount).replace(",", ".")) * 100) / 100, mer = (s.merchant || "").trim(); let n = 0, sum = 0;
     if (s.merge) { const g = {}; it.forEach(x => { (g[x.cat] = g[x.cat] || []).push(x); }); Object.entries(g).forEach(([c, l]) => { const a = Math.round(l.reduce((t, x) => t + val(x), 0) * 100) / 100; upTx({ id: uid(), ts: d.toISOString(), amount: a, kind: "exp", category_id: c, note: ((mer ? mer + ": " : "") + l.map(x => x.name).join(", ")).slice(0, 140), account: "Основной" }); n++; sum += a; }); }
     else it.forEach(x => { upTx({ id: uid(), ts: d.toISOString(), amount: val(x), kind: "exp", category_id: x.cat, note: ((mer ? mer + " · " : "") + x.name).slice(0, 140), account: "Основной" }); n++; sum += val(x); });
+    if (s.key) { try { const k = rcpSeen(); k.push(s.key); localStorage.setItem("fin_rcs_v1", JSON.stringify(k.slice(-300))); } catch (e) {} }
     ui.sheet = null; render(); toast("Записано трат: " + n + " на " + fm(sum));
   },
   cmp() { if (ui.rg.t === "all" || ui.rg.t === "int") { toast("Для этого периода сравнивать не с чем — выбери месяц, неделю или год"); return; } ui.sheet = { type: "cmp" }; render(); }, cmpk(a) { ui.kind = a.dataset.v; render(); },
@@ -1213,6 +1238,16 @@ document.addEventListener("change", async e => {
 });
 
 /* ============ старт ============ */
+async function rcpShared() {
+  if (!/[?&]share=1\b/.test(location.search)) return;
+  try { history.replaceState(null, "", location.pathname); } catch (e) {}
+  try {
+    const c = await caches.open("money-share"), r = await c.match("shared"); if (!r) return; const j = await r.json(); await c.delete("shared");
+    const text = [j.file, j.text, j.url].filter(Boolean).join("\n");
+    if (!text.trim()) { toast("Поделились пустым, чека не вижу"); return; }
+    rcpText(text, { subject: j.title || "" });
+  } catch (e) { toast("Не получилось принять письмо: " + (e.message || e), "bad", 4000); }
+}
 (async function boot() {
   applyTheme();
   let early = false; try { const raw = JSON.parse(localStorage.getItem("mytasks-auth") || "null"); if (raw && raw.user && raw.user.id) { user = raw.user; early = true; render(); } } catch (e) {}   // мгновенный первый кадр из локальных данных, не дожидаясь сети и библиотеки
@@ -1222,6 +1257,7 @@ document.addEventListener("change", async e => {
   try { const s = await sb.auth.getSession(); user = s.data.session ? s.data.session.user : null; } catch (e) {}
   if (!early || !user) render(); if (!user) return;
   runRec(); flush(); pull(!txs.length);
+  rcpShared();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { runRec(); flush(); pull(false); } });
   window.addEventListener("online", () => { flush(); pull(false); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

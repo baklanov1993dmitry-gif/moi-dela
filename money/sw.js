@@ -1,10 +1,22 @@
 // «Траты»: оболочка из кэша мгновенно, свежая версия подтягивается в фоне. Версию поднимай при смене иконок/манифеста.
-const CACHE = "money-shell-v15";
-const SHELL = ["./", "./index.html", "./manifest.json", "./supabase-lib.js", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png"];
+const CACHE = "money-shell-v16";
+const SHELL = ["./", "./index.html", "./manifest.json", "./supabase-lib.js", "./rcparse.js", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png"];
 self.addEventListener("install", e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {}))))); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch", e => {
   const req = e.request, url = new URL(req.url);
+  // «Поделиться» письмом/текстом в приложение: забираем POST, кладём в кэш, открываем приложение с ?share=1
+  if (req.method === "POST" && url.origin === location.origin && url.pathname.endsWith("/share")) {
+    e.respondWith((async () => {
+      try {
+        const fd = await req.formData(), o = { title: fd.get("title") || "", text: fd.get("text") || "", url: fd.get("url") || "", file: "" };
+        for (const f of fd.getAll("files")) { if (f && f.text) { try { o.file += (o.file ? "\n" : "") + await f.text(); } catch (x) {} } }
+        const c = await caches.open("money-share"); await c.put("shared", new Response(JSON.stringify(o), { headers: { "Content-Type": "application/json" } }));
+      } catch (x) {}
+      return Response.redirect("./?share=1", 303);
+    })());
+    return;
+  }
   if (req.method !== "GET" || url.origin !== location.origin || url.searchParams.has("fresh")) return;
   const shell = req.mode === "navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("index.html") || url.pathname.endsWith("manifest.json");
   if (shell) {
