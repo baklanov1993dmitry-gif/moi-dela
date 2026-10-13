@@ -3140,7 +3140,7 @@ function trkStats(pts) {   // километры по видам движени�
     const a = pts[i - 1], b = pts[i], gap = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000; if (gap <= 0 || gap > 900 || (a.stay && b.stay)) continue;
     const d = trkDist(+a.lat, +a.lon, +b.lat, +b.lon); if (d < 3) continue;
     const v = gap > 90 || b.vel == null ? d / gap * 3.6 : b.vel; if (v > 130) continue;
-    const c = v < 7.5 ? 0 : v < 16 ? 1 : v < 28 ? 2 : 3; S0[c] += d; if (c === 0) walkMin += gap / 60;
+    const c = v < 7.5 ? 0 : v < 28 ? 2 : 3; S0[c] += d; if (c === 0) walkMin += gap / 60;
   }
   return { walk: S0[0], bike: S0[1], kick: S0[2], veh: S0[3], steps: Math.round(S0[0] / 0.75), walkMin };
 }
@@ -3189,7 +3189,7 @@ function trkDec6(str) {   // polyline с точностью 6 знаков (фо
   return out;
 }
 function trkRuns(pts) {   // участки пути: граница — стоянка, длинная пауза или смена вида движения (пешком / вело / транспорт)
-  const cls = v => v < 7 ? 0 : v < 16 ? 1 : v < 28 ? 2 : 3, E = [];   // пешком / вело / самокат-трамвай (16–28) / транспорт
+  const cls = v => v < 7 ? 0 : v < 28 ? 2 : 3, E = [];   // пешком / вело / самокат-трамвай (16–28) / транспорт
   for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], gap = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000, d = trkDist(+a.lat, +a.lon, +b.lat, +b.lon), v = gap > 90 || b.vel == null ? (gap > 0 ? d / gap * 3.6 : 0) : b.vel; E.push({ d, v, gapBig: gap > 900 && d > 300, still: a.stay && b.stay }); }
   const c = E.map(e => cls(e.v)), sm = c.map((x, i) => { const w = c.slice(Math.max(0, i - 2), i + 3), n = [0, 0, 0]; w.forEach(y => n[y]++); return n.indexOf(Math.max(...n)); });
   const runs = []; let cur = null;
@@ -3206,8 +3206,8 @@ async function trkMatch(r) {   // привязка к дорогам через 
   const key = r.pts[0].ts + "|" + r.pts[r.pts.length - 1].ts + "|" + r.pts.length; if (cache[key]) return cache[key].s;
   if (r.dist < 120) return null;
   const n = r.pts.length, step = Math.max(1, Math.ceil(n / 110)), sm = r.pts.filter((_, i) => i % step === 0 || i === n - 1);
-  if (r.v >= 16 && r.v < 28) return null;   // самокат/трамвай: по рельсам и тротуарам — не привязываем (даёт «завороты»), рисуем как есть
-  const costing = r.v < 7 ? "pedestrian" : r.v < 16 ? "bicycle" : "auto";
+  if (r.v >= 7 && r.v < 28) return null;   // самокат/трамвай: по рельсам и тротуарам — не привязываем (даёт «завороты»), рисуем как есть
+  const costing = r.v < 7 ? "pedestrian" : "auto";
   try {
     const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 15000);
     const res = await fetch("https://valhalla1.openstreetmap.de/trace_route", { method: "POST", headers: { "content-type": "application/json" }, signal: ctl.signal, body: JSON.stringify({ shape: sm.map(p => ({ lat: +p.lat, lon: +p.lon })), costing, shape_match: "map_snap", trace_options: { search_radius: 60, gps_accuracy: 25 } }) });
@@ -3226,7 +3226,7 @@ function trkMapDraw() {
   trkLeaflet(() => {
     el = $("trk-map"); if (!el || !ui.trk || el.__m) return; el.__m = 1;
     const map = L.map(el, { zoomControl: true }); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
-    const colr = v => v < 4 ? "#8a8a8a" : v < 7 ? "#107c10" : v < 16 ? "#a23bb0" : v < 28 ? "#e3680c" : "#2b7de9", ll = pts.map(b => [+b.lat, +b.lon]);
+    const colr = v => v < 4 ? "#8a8a8a" : v < 7 ? "#107c10" : v < 28 ? "#e3680c" : "#2b7de9", ll = pts.map(b => [+b.lat, +b.lon]);
     MM.n = 0; MM.ok = 0; trkRuns(pts).forEach(r => {   // маршрут режем на участки по виду движения; каждый «прилипает» к дорогам
       const line = L.polyline(r.pts.map(b => [+b.lat, +b.lon]), { color: colr(r.v), weight: 5, opacity: .85, dashArray: r.gap ? "2 9" : null, lineCap: "round" }).addTo(map);
       if (r.gap || r.pts.length < 3 || r.v < 1) return;
@@ -3252,7 +3252,7 @@ function trkHTML() {
   const segs = trkSegs(trkClean(TRK.day || [])).reverse();
   const row = g => {
     const t = g.start === g.end ? hm(g.start) : hm(g.start) + "–" + hm(g.end), d = dur(new Date(g.end) - new Date(g.start));
-    if (g.key === "m") { const v = g.vs.length ? g.vs.reduce((x, y) => x + y, 0) / g.vs.length : 0, how = v < 7 ? "🚶 пешком" : v < 16 ? "🚲 вело" : v < 28 ? "🛴🚋 самокат / трамвай" : "🚌 транспорт"; return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + how + '<span>' + (d ? " · " + d : "") + (v ? " · ~" + Math.round(v) + " км/ч" : "") + "</span></div></div>"; }
+    if (g.key === "m") { const v = g.vs.length ? g.vs.reduce((x, y) => x + y, 0) / g.vs.length : 0, how = v < 7 ? "🚶 пешком" : v < 28 ? "🛴🚋 самокат / трамвай" : "🚌 транспорт"; return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + how + '<span>' + (d ? " · " + d : "") + (v ? " · ~" + Math.round(v) + " км/ч" : "") + "</span></div></div>"; }
     return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + (g.name ? "📍 " + esc(g.name) : "Новое место") + (d ? "<span> · " + d + "</span>" : "") + (g.name ? "" : '<br><button class="rit-b" data-a="trkname" data-lat="' + g.lat + '" data-lon="' + g.lon + '">Назвать</button>') + "</div></div>";
   };
   const st = trkStats(trkClean(TRK.day || [])), km = m => (m / 1000).toFixed(m < 10000 ? 1 : 0).replace(".", ",") + " км";
@@ -3260,7 +3260,7 @@ function trkHTML() {
   const raw = (TRK.day || []).slice(-30).reverse().map(p => '<div class="trk-r"><b>' + hm(p.ts) + '</b><div>' + (+p.lat).toFixed(4) + ", " + (+p.lon).toFixed(4) + "<span> · " + (p.vel != null ? Math.round(p.vel) + " км/ч · " : "") + (p.acc != null ? "±" + Math.round(p.acc) + " м" : "") + (p.batt != null ? " · 🔋" + p.batt + "%" : "") + "</span></div></div>").join("");
   return '<div class="ovl" data-a="trkovl"><div class="sheet trk"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.3em">📍 Трекер</div><button class="ibtn" data-a="trkload" title="Обновить">' + ic("repeat", 20) + '</button><button class="ibtn" data-a="trkclose">' + ic("x", 20) + "</button></div>" +
     '<div class="trk-st"><span class="trk-dot" style="background:' + col + '"></span><span>' + (!last ? "Точек пока нет" : ago < 20 ? "Онлайн · последняя точка " + hm(last.ts) + " (" + agoT + ")" : ago < 360 ? "📍 На месте с " + hm(last.ts) + " (" + agoT.replace(" назад", "") + ") — точки шлются при движении" : "Давно нет точек (с " + hm(last.ts) + ", " + agoT + ") — проверь OwnTracks") + "</span></div>" +
-    '<div class="trk-nav"><button class="ibtn" data-a="trkprev" title="Предыдущий день">‹</button><b>' + trkDayLabel() + '</b><button class="ibtn" data-a="trknext" title="Следующий день"' + (TRK.off >= 0 ? " disabled" : "") + '>›</button></div>' + sumH + '<div id="trk-map"></div><div class="rit-hint">🟩 пешком · 🟪 вело · 🟧 самокат/трамвай · 🟦 транспорт · серое — почти на месте · пунктир — между точками была пауза · <span id="trk-mm"></span></div>' +
+    '<div class="trk-nav"><button class="ibtn" data-a="trkprev" title="Предыдущий день">‹</button><b>' + trkDayLabel() + '</b><button class="ibtn" data-a="trknext" title="Следующий день"' + (TRK.off >= 0 ? " disabled" : "") + '>›</button></div>' + sumH + '<div id="trk-map"></div><div class="rit-hint">🟩 пешком · 🟧 самокат/трамвай · 🟦 транспорт · серое — почти на месте · пунктир — между точками была пауза · <span id="trk-mm"></span></div>' +
     '<div class="rit-hint">Точек за день: <b>' + TRK.n + "</b>" + (TRK.loading ? " · загружаю…" : "") + (TRK.err ? ' · <span style="color:#d13438">' + esc(TRK.err) + "</span>" : "") + "</div>" +
     (last && !trkPlace(last) ? '<div style="margin:8px 0"><button class="rit-b" data-a="trkname" data-lat="' + last.lat + '" data-lon="' + last.lon + '">📍 Назвать место, где я сейчас</button></div>' : "") +
     (TRK.places.length ? '<div class="rit-hint">Мои места: ' + TRK.places.map(q => esc(q.name) + ' <a href="#" data-a="trkdel" data-i="' + q.id + '" style="color:var(--sub)" title="Удалить">×</a>').join(" · ") + "</div>" : "") +
