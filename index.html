@@ -3200,7 +3200,7 @@ function trkRuns(pts) {   // участки пути: граница — сто�
     if (!cur || cur.gap !== e.gapBig || (!e.gapBig && cur.cls !== sm[i])) { cur = { pts: [pts[i]], cls: sm[i], gap: e.gapBig, vs: [], dist: 0, t: 0 }; runs.push(cur); }
     cur.pts.push(pts[i + 1]); cur.vs.push(e.v); cur.dist += e.d;
   });
-  runs.forEach(r => { const v = r.vs.slice().sort((a, b) => a - b); r.v = v.length ? v[Math.floor(v.length / 2)] : 0; });
+  runs.forEach(r => { const v = r.vs.slice().sort((a, b) => a - b); r.v = v.length ? v[Math.min(v.length - 1, Math.floor(v.length * 0.75))] : 0;   // 75-й процентиль: такси в пробке не должно превращаться в «пешком» });
   return runs;
 }
 async function trkMatch(r) {   // привязка к дорогам через публичный Valhalla (OSM): на сервер уходят только координаты участка
@@ -3215,7 +3215,8 @@ async function trkMatch(r) {   // привязка к дорогам через 
     const res = await fetch("https://valhalla1.openstreetmap.de/trace_route", { method: "POST", headers: { "content-type": "application/json" }, signal: ctl.signal, body: JSON.stringify({ shape: sm.map(p => ({ lat: +p.lat, lon: +p.lon })), costing, shape_match: "map_snap", trace_options: { search_radius: 60, gps_accuracy: 25 } }) });
     clearTimeout(tm); if (!res.ok) return null; const j = await res.json(); if (!j.trip || !j.trip.legs) return null;
     let sh = []; j.trip.legs.forEach(l => { sh = sh.concat(trkDec6(l.shape)); }); if (sh.length < 2) return null;
-    { let L1 = 0, L2 = 0; for (let i = 1; i < sh.length; i++) L1 += trkDist(sh[i - 1][0], sh[i - 1][1], sh[i][0], sh[i][1]); L2 = r.dist; if (L1 > L2 * 1.35 + 80) return null; }   // «прилипание» дало крюк — верим GPS
+    { let L1 = 0, L2 = 0; for (let i = 1; i < sh.length; i++) L1 += trkDist(sh[i - 1][0], sh[i - 1][1], sh[i][0], sh[i][1]); L2 = r.dist; if (L1 > L2 * 1.35 + 80) return null; }
+    { const far = r.pts.filter((_, i) => i % 2 === 0).some(q => { let m = 1e9; for (const w of sh) { const d = trkDist(+q.lat, +q.lon, w[0], w[1]); if (d < m) m = d; if (m < 45) break; } return m > 70; }); if (far) return null; }   // дорога ушла от реальных точек (дворы вместо улицы) — верим GPS   // «прилипание» дало крюк — верим GPS
     try { const ks = Object.keys(cache); if (ks.length > 80) delete cache[ks[0]]; cache[key] = { s: sh.map(q => [Math.round(q[0] * 1e5) / 1e5, Math.round(q[1] * 1e5) / 1e5]) }; localStorage.setItem("trk_mm_v1", JSON.stringify(cache)); } catch (e) {}
     return sh;
   } catch (e) { return null; }
