@@ -3125,7 +3125,14 @@ function trkSegs(pts) {
     if (last && last.key === key && (key !== "u" || trkDist(last.lat, last.lon, lat, lon) < 150)) { last.end = p.ts; last.n++; if (p.vel != null) last.vs.push(p.vel); }
     else segs.push({ key, name: pl ? pl.name : null, start: p.ts, end: p.ts, lat, lon, n: 1, vs: p.vel != null ? [p.vel] : [] });
   }
-  return segs;
+  // короткие «остановки» (<5 мин вне моих мест) — это не место, а часть пути: склеиваем с соседним движением
+  const out = [];
+  for (const g of segs) {
+    if (g.key === "u" && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 5) { g.key = "m"; g.name = null; }
+    const l = out[out.length - 1];
+    if (g.key === "m" && l && l.key === "m") { l.end = g.end; l.n += g.n; l.vs = l.vs.concat(g.vs); } else out.push(g);
+  }
+  return out;
 }
 function trkPopupEl(o) {   // всплывашка над точкой: подписать / переименовать / удалить место
   const d = document.createElement("div"); d.style.cssText = "min-width:200px;font-size:14px";
