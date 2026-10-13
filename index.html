@@ -1767,7 +1767,8 @@ const sndSet = p => { PR.snd = Object.assign(sndCfg(), p); savePrefs(); };
 let sndAC = null; const sndLast = {};
 function snd(ev, force) {
   try {
-    const c = sndCfg(); if (!force && (!c.on || !c.ev[ev])) return;
+    if (ev === "remind" && !force && !snd._r && sndCfg().on && sndCfg().ev.remind) { snd._r = 1; [0, 1100, 2200].forEach(d => setTimeout(() => { snd("remind", true); if (d === 2200) snd._r = 0; }, d)); return; }   // напоминание: три раза подряд и погромче
+    const c = sndCfg(); if (ev === "remind") c.vol = Math.max(c.vol, 95); if (!force && (!c.on || !c.ev[ev])) return;
     const now = Date.now(); if (!force && sndLast[ev] && now - sndLast[ev] < 250) return; sndLast[ev] = now;   // пакетное удаление/выполнение — один звук
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     if (!sndAC) sndAC = new AC(); if (sndAC.state === "suspended") sndAC.resume();
