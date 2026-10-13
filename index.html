@@ -715,6 +715,7 @@ function fireReminder(t) {
   toast("🔔 " + t.title, { ms: 20000, buttons: [["Открыть", () => { selId = t.id; render(); }], ["Выполнено", () => { toggleDone(t.id); render(); }]] });
   try { if (!pushOn() && "Notification" in window && Notification.permission === "granted") new Notification("Напоминание", { body: t.title }); } catch (e) {}
   const b = $("bellbadge"); if (b) { b.textContent = ui.alerts.length; b.style.display = "flex"; }
+  try { if (document.visibilityState === "visible" && navigator.serviceWorker) navigator.serviceWorker.ready.then(r => r.getNotifications().then(ns => ns.forEach(n => { if (n.data && n.data.id === t.id) n.close(); }))); } catch (e) {}   // в приложении всплывашка своя — дубль из шторки убираем
 }
 function applyLoud(id) {   // «⏰» в начале названия = громкое напоминание: MacroDroid ловит его в уведомлении и включает будильник
   const D = ui.dtp, t = S.tasks[id]; if (!t || !D || D.loud == null) return; const has = /^⏰\s*/.test(t.title);

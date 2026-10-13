@@ -1,5 +1,5 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html отдаётся из кэша мгновенно и обновляется в фоне.
-const CACHE = "moidela-shell-v54";
+const CACHE = "moidela-shell-v55";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./manifest-journal.json", "./manifest-food.json", "./manifest-tasks.json", "./icon-journal-192.png", "./icon-food-192.png", "./icon-tasks-192.png", "./foods.json?v=4"];
 
 self.addEventListener("install", e => {
@@ -35,12 +35,10 @@ self.addEventListener("fetch", e => {
 // ---- Web Push: приходит с сервера (Supabase Edge Function), работает при закрытом приложении ----
 self.addEventListener("push", e => {
   let d = {}; try { d = e.data.json(); } catch (_) { d = { title: "Напоминание", body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
-    if (cs.some(c => c.visibilityState === "visible")) return;       // приложение открыто — оно само покажет всплывашку
-    return self.registration.showNotification(d.title || "Напоминание", {
-      body: d.body || "", tag: d.tag || "moidela", renotify: true, requireInteraction: true, silent: false,
-      icon: "icon-192.png", badge: "icon-192.png", vibrate: [250, 100, 250, 100, 250], data: { id: d.id || null }
-    });
+  // Chrome требует показать уведомление на КАЖДЫЙ пуш; иначе он сам рисует заглушку «tap to copy the url for this app». Поэтому показываем всегда.
+  e.waitUntil(self.registration.showNotification(d.title || "Напоминание", {
+    body: d.body || "", tag: d.tag || d.id || "moidela", renotify: true, requireInteraction: true, silent: false,
+    icon: "icon-192.png", badge: "icon-192.png", vibrate: [250, 100, 250, 100, 250], data: { id: d.id || null }
   }));
 });
 self.addEventListener("notificationclick", e => {
