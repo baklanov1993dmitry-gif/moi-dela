@@ -3127,6 +3127,15 @@ function trkSegs(pts) {
   }
   return segs;
 }
+function trkPopupEl(o) {   // всплывашка над точкой: подписать / переименовать / удалить место
+  const d = document.createElement("div"); d.style.cssText = "min-width:200px;font-size:14px";
+  d.innerHTML = '<div style="color:#666;margin-bottom:6px">' + esc(o.info || "") + '</div><input type="text" maxlength="40" placeholder="Дом, офис, зал…" style="width:100%;box-sizing:border-box;padding:7px;font-size:15px;border:1px solid #bbb;border-radius:6px" value="' + esc(o.name || "") + '"><div style="display:flex;gap:6px;margin-top:8px"><button data-ok style="flex:1;padding:7px;border:0;border-radius:6px;background:#2b7de9;color:#fff;font-size:14px">' + (o.id ? "Сохранить" : "Подписать") + "</button>" + (o.id ? '<button data-del style="padding:7px 10px;border:1px solid #d13438;color:#d13438;background:#fff;border-radius:6px;font-size:14px">Удалить</button>' : "") + "</div>";
+  const inp = d.querySelector("input"), ok = d.querySelector("[data-ok]"), del = d.querySelector("[data-del]");
+  const save = async () => { const n = inp.value.trim().slice(0, 40); if (!n) { inp.focus(); return; } ok.disabled = true; const r = o.id ? await sb.from("places").update({ name: n }).eq("id", o.id) : await sb.from("places").insert({ name: n, lat: +o.lat, lon: +o.lon, r: 120 }); if (r.error) { ok.disabled = false; toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); const v = TRK.view; trkLoad().then(() => { TRK.view = v; }); };
+  ok.onclick = save; inp.onkeydown = e => { if (e.key === "Enter") save(); e.stopPropagation(); };
+  if (del) del.onclick = async () => { if (!confirm("Удалить место «" + (o.name || "") + "»?")) return; await sb.from("places").delete().eq("id", o.id); trkLoad(); };
+  return d;
+}
 function trkLeaflet(cb) {
   if (window.L) return cb(); if (TRK.lf) { TRK.lf.push(cb); return; } TRK.lf = [cb];
   const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; document.head.appendChild(css);
@@ -3205,8 +3214,8 @@ function trkMapDraw() {
       MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n; if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } });
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
-    trkSegs(pts).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || m < 5) return; L.circleMarker([g.lat, g.lon], { radius: 9, color: "#444", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip((g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }); });
-    (TRK.places || []).forEach(q => { L.circle([q.lat, q.lon], { radius: q.r || 120, color: "#2b7de9", weight: 1, fillColor: "#2b7de9", fillOpacity: .08 }).addTo(map); L.marker([q.lat, q.lon], { icon: L.divIcon({ className: "trk-pin", html: "📍", iconSize: [24, 24], iconAnchor: [12, 22] }) }).addTo(map).bindTooltip(esc(q.name), { permanent: true, direction: "right", offset: [8, -8], className: "trk-lbl" }); });
+    trkSegs(pts).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || m < 5) return; L.circleMarker([g.lat, g.lon], { radius: 9, color: "#444", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip((g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }).bindPopup(trkPopupEl({ lat: g.lat, lon: g.lon, name: g.name || "", info: hm(g.start) + "–" + hm(g.end) + " · " + Math.round(m) + " мин" })); });
+    (TRK.places || []).forEach(q => { L.circle([q.lat, q.lon], { radius: q.r || 120, color: "#2b7de9", weight: 1, fillColor: "#2b7de9", fillOpacity: .08 }).addTo(map); L.marker([q.lat, q.lon], { icon: L.divIcon({ className: "trk-pin", html: "📍", iconSize: [24, 24], iconAnchor: [12, 22] }) }).addTo(map).bindTooltip(esc(q.name), { permanent: true, direction: "right", offset: [8, -8], className: "trk-lbl" }).bindPopup(trkPopupEl({ id: q.id, lat: q.lat, lon: q.lon, name: q.name, info: "Моё место, радиус " + (q.r || 120) + " м" })); });
     const f = pts[0], e = pts[pts.length - 1];
     L.circleMarker([+f.lat, +f.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#107c10", fillOpacity: 1 }).addTo(map).bindTooltip("старт " + hm(f.ts));
     L.circleMarker([+e.lat, +e.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#d13438", fillOpacity: 1 }).addTo(map).bindTooltip("сейчас/конец " + hm(e.ts));
