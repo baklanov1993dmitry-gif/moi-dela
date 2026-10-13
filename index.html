@@ -3106,7 +3106,7 @@ async function trkLoad() {
   try {
     const t0 = new Date(); t0.setHours(0, 0, 0, 0); t0.setDate(t0.getDate() + TRK.off); const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
     let all = [], a = { error: null };
-    for (let i = 0; i < 8; i++) {   // сервер отдаёт максимум 1000 строк за раз — читаем страницами
+    for (let i = 0; i < 25; i++) {   // сервер отдаёт максимум 1000 строк за раз — читаем страницами
       const r = await sb.from("loc_points").select("ts,lat,lon,vel,acc,batt").gte("ts", t0.toISOString()).lt("ts", t1.toISOString()).order("ts", { ascending: true }).range(i * 1000, i * 1000 + 999);
       if (r.error) { a = r; break; } all = all.concat(r.data || []); if ((r.data || []).length < 1000) break;
     }
