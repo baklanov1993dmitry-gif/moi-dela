@@ -3130,7 +3130,9 @@ function trkSegs(pts) {
   for (const g of segs) {
     if (g.key === "u" && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 5) { g.key = "m"; g.name = null; }
     const l = out[out.length - 1];
-    if (g.key === "m" && l && l.key === "m") { l.end = g.end; l.n += g.n; l.vs = l.vs.concat(g.vs); } else out.push(g);
+    if (l && (Date.parse(g.start) - Date.parse(l.end)) / 60000 >= 10) out.push({ key: "g", name: null, start: l.end, end: g.start, lat: 0, lon: 0, n: 0, vs: [] });   // дыра в данных: телефон не слал точки
+    const l2 = out[out.length - 1];
+    if (g.key === "m" && l2 && l2.key === "m") { l2.end = g.end; l2.n += g.n; l2.vs = l2.vs.concat(g.vs); } else out.push(g);
   }
   return out;
 }
@@ -3233,7 +3235,7 @@ function trkMapDraw() {
       MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n; if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } });
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
-    trkSegs(pts).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || m < 5) return; L.circleMarker([g.lat, g.lon], { radius: 9, color: "#444", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip((g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }).bindPopup(trkPopupEl({ lat: g.lat, lon: g.lon, name: g.name || "", info: hm(g.start) + "–" + hm(g.end) + " · " + Math.round(m) + " мин" })); });
+    trkSegs(pts).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || g.key === "g" || m < 5) return; L.circleMarker([g.lat, g.lon], { radius: 9, color: "#444", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip((g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }).bindPopup(trkPopupEl({ lat: g.lat, lon: g.lon, name: g.name || "", info: hm(g.start) + "–" + hm(g.end) + " · " + Math.round(m) + " мин" })); });
     (TRK.places || []).forEach(q => { L.circle([q.lat, q.lon], { radius: q.r || 120, color: "#2b7de9", weight: 1, fillColor: "#2b7de9", fillOpacity: .08 }).addTo(map); L.marker([q.lat, q.lon], { icon: L.divIcon({ className: "trk-pin", html: "📍", iconSize: [24, 24], iconAnchor: [12, 22] }) }).addTo(map).bindTooltip(esc(q.name), { permanent: true, direction: "right", offset: [8, -8], className: "trk-lbl" }).bindPopup(trkPopupEl({ id: q.id, lat: q.lat, lon: q.lon, name: q.name, info: "Моё место, радиус " + (q.r || 120) + " м" })); });
     const f = pts[0], e = pts[pts.length - 1];
     L.circleMarker([+f.lat, +f.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#107c10", fillOpacity: 1 }).addTo(map).bindTooltip("старт " + hm(f.ts));
@@ -3252,6 +3254,7 @@ function trkHTML() {
   const segs = trkSegs(trkClean(TRK.day || [])).reverse();
   const row = g => {
     const t = g.start === g.end ? hm(g.start) : hm(g.start) + "–" + hm(g.end), d = dur(new Date(g.end) - new Date(g.start));
+    if (g.key === "g") return '<div class="trk-r"><b>' + t + '</b><div class="trk-n" style="color:#d13438">⚠ нет данных<span> · ' + d + " — телефон не присылал точки</span></div></div>";
     if (g.key === "m") { const v = g.vs.length ? g.vs.reduce((x, y) => x + y, 0) / g.vs.length : 0, how = v < 7 ? "🚶 пешком" : v < 28 ? "🛴🚋 самокат / трамвай" : "🚌 транспорт"; return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + how + '<span>' + (d ? " · " + d : "") + (v ? " · ~" + Math.round(v) + " км/ч" : "") + "</span></div></div>"; }
     return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + (g.name ? "📍 " + esc(g.name) : "Новое место") + (d ? "<span> · " + d + "</span>" : "") + (g.name ? "" : '<br><button class="rit-b" data-a="trkname" data-lat="' + g.lat + '" data-lon="' + g.lon + '">Назвать</button>') + "</div></div>";
   };
