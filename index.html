@@ -2796,7 +2796,7 @@ function wkLoad(force) {
     .then(r => { if (r.error) W.err = errText(r.error); else { W.err = ""; W.rows = (r.data || []).filter(x => !x.parent_id); } fin(); })
     .catch(e => { W.err = errText(e); fin(); });
 }
-const TM = { users: [], tasks: [], lists: {}, at: 0, busy: false, err: "", open: {}, lf: {} };
+const TM = { users: [], tasks: [], lists: {}, at: 0, busy: false, err: "", open: {}, lf: {}, ex: {} };
 async function teamLoad(force) {
   if (!sb || !S.user || TM.busy || isLite()) return; if (!force && TM.at && Date.now() - TM.at < 60000) return;
   TM.busy = true; TM.err = ""; render();
@@ -2804,7 +2804,7 @@ async function teamLoad(force) {
     const u = await sb.rpc("team_users"); if (u.error) throw u.error; TM.users = u.data || [];
     const since = new Date(Date.now() - 14 * 864e5).toISOString(); let all = [];
     for (let i = 0; i < 30; i++) {
-      const r = await sb.from("tasks").select("id,user_id,list_id,title,done,done_at,due,starred,ord,est_minutes,created_at,parent_id,status").neq("user_id", S.user.id).or("done.eq.false,done_at.gte." + since).order("created_at").range(i * 1000, i * 1000 + 999);
+      const r = await sb.from("tasks").select("id,user_id,list_id,title,done,done_at,due,starred,ord,est_minutes,created_at,parent_id,status,note,steps,category,repeat_rule").neq("user_id", S.user.id).or("done.eq.false,done_at.gte." + since).order("created_at").range(i * 1000, i * 1000 + 999);
       if (r.error) throw r.error; all = all.concat(r.data || []); if ((r.data || []).length < 1000) break;
     }
     const lr = await sb.from("lists").select("id,name,icon,user_id").neq("user_id", S.user.id); if (lr.error) throw lr.error;
@@ -2816,7 +2816,14 @@ function teamMainHTML(vi) {
   teamLoad(); const one = view.indexOf("team:") === 0 ? view.slice(5) : null, z = "var(--z,1)", tod = today, since7 = new Date(Date.now() - 7 * 864e5).toISOString();
   const nm = u => (u.email || "?").split("@")[0];
   const tile = (n, lb, col) => '<div style="flex:1;min-width:84px;border:1px solid var(--ln);border-radius:8px;padding:calc(8px*' + z + ") calc(10px*" + z + ');background:var(--solid,transparent)"><div style="font-size:calc(20px*' + z + ");font-weight:600;" + (col ? "color:" + col : "") + '">' + n + '</div><div style="font-size:calc(12px*' + z + ');color:var(--sub)">' + lb + "</div></div>";
-  const row = (t, rank) => { const di = t.due ? dueInfo(t) : null, l = TM.lists[t.list_id]; return '<div class="taskrow" style="cursor:default"><div class="rad ' + (t.done ? "on" : "") + '" style="pointer-events:none">' + (t.done ? ic("check", 13) : "") + '</div><div class="tbody"><div class="ttl">' + esc(t.title) + '</div><div class="meta">' + (l ? '<span class="mi">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</span>" : "") + (di ? '<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>" : "") + (t.est_minutes ? '<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>" : "") + "</div></div>" + (rank ? '<span class="ordb" style="pointer-events:none">' + rank + "</span>" : "") + (t.starred ? '<span style="color:var(--acc);padding:0 8px">' + icf("star", 18) + "</span>" : "") + "</div>"; };
+  const row = (t, rank) => {
+    const di = t.due ? dueInfo(t) : null, l = TM.lists[t.list_id], note = (t.note || "").trim(), st = Array.isArray(t.steps) ? t.steps : [], sd = st.filter(x => x.d).length, subs = TM.tasks.filter(x => x.parent_id === t.id), ex = !!TM.ex[t.id], has = note || st.length || subs.length;
+    const nl = note.split("\n").length, long = note.length > 160 || nl > 3;
+    const nh = note ? '<div style="font-size:calc(13px*var(--z,1));color:var(--sub);white-space:pre-wrap;margin-top:4px;line-height:1.4;' + (ex ? "" : "display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;") + '">' + esc(note) + "</div>" : "";
+    const sh = ex && st.length ? '<div style="margin-top:4px;font-size:calc(13px*var(--z,1))">' + st.map(x => '<div style="' + (x.d ? "color:var(--sub);text-decoration:line-through" : "") + '">' + (x.d ? "✓ " : "○ ") + esc(x.t) + "</div>").join("") + "</div>" : "";
+    const bh = ex && subs.length ? '<div style="margin-top:4px;font-size:calc(13px*var(--z,1))">' + subs.map(x => '<div style="' + (x.done ? "color:var(--sub);text-decoration:line-through" : "") + '">' + (x.done ? "✓ " : "↳ ") + esc(x.title) + (x.due ? ' <span style="color:var(--sub)">' + esc(x.due) + "</span>" : "") + "</div>").join("") + "</div>" : "";
+    return '<div class="taskrow" style="cursor:' + (has ? "pointer" : "default") + '"' + (has ? ' data-a="tmex" data-id="' + t.id + '"' : "") + '><div class="rad ' + (t.done ? "on" : "") + '" style="pointer-events:none">' + (t.done ? ic("check", 13) : "") + '</div><div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + nh + sh + bh + '<div class="meta">' + (l ? '<span class="mi">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</span>" : "") + (di ? '<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>" : "") + (t.repeat_rule ? '<span class="mi">' + ic("repeat", 13) + "</span>" : "") + (t.est_minutes ? '<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>" : "") + (st.length ? '<span class="mi">☑ ' + sd + "/" + st.length + "</span>" : "") + (subs.length ? '<span class="mi">↳ ' + subs.filter(x => x.done).length + "/" + subs.length + "</span>" : "") + (t.category ? catPill(t.category) : "") + '<span class="mi" title="создана">+ ' + fmtShort(t.created_at) + "</span>" + (long && !ex ? '<span class="mi" style="color:var(--acc)">ещё…</span>' : "") + "</div></div>" + (rank ? '<span class="ordb" style="pointer-events:none">' + rank + "</span>" : "") + (t.starred ? '<span style="color:var(--acc);padding:0 8px">' + icf("star", 18) + "</span>" : "") + "</div>";
+  };
   const card = u => {
     const lfv = one && TM.lf && TM.lf[u.id], mine = TM.tasks.filter(t => t.user_id === u.id && !t.parent_id && (!lfv || t.list_id === lfv)), act = mine.filter(t => !t.done && t.status !== "someday"), over = act.filter(t => t.due && t.due < tod), td = act.filter(t => t.due === tod), later = act.filter(t => !t.due || t.due > tod), done7 = mine.filter(t => t.done && t.done_at && t.done_at >= since7);
     const ord = a => a.slice().sort((x, y) => ((x.ord == null ? 1 : 0) - (y.ord == null ? 1 : 0)) || ((x.ord || 0) - (y.ord || 0)) || String(x.due || "9").localeCompare(String(y.due || "9")));
@@ -3489,6 +3496,7 @@ const acts = {
   },
   async trkdel(a, e) { e.preventDefault && e.preventDefault(); if (!confirm("Удалить место?")) return; await sb.from("places").delete().eq("id", a.dataset.i); trkLoad(); },
   ritclose() { ui.rit = false; render(); },
+  tmex(a) { TM.ex[a.dataset.id] = !TM.ex[a.dataset.id]; render(); },
   tmopen(a) { TM.open[a.dataset.id] = !TM.open[a.dataset.id]; render(); },
   tmrefresh() { teamLoad(true); },
   tmlist(a) { TM.lf[a.dataset.id] = a.dataset.v || null; render(); },
