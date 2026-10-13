@@ -324,6 +324,10 @@ function nextDue(t) {
 }
 
 /* ===== p3: синхронизация, операции с данными, файлы, напоминания ===== */
+/* ===== режим «только задачи» для всех, кроме владельца ===== */
+const OWNER_EMAILS = ["dmitr.srnku1@gmail.com"];   // полный функционал только у этих аккаунтов
+try { const _fu = new URLSearchParams(location.search).get("full"); if (_fu === "1") localStorage.setItem("mytasks_full", "1"); else if (_fu === "0") localStorage.removeItem("mytasks_full"); } catch (e) {}   // запасной ключ владельца: ?full=1
+const isLite = () => { try { if (localStorage.getItem("mytasks_full") === "1") return false; } catch (e) {} return !!(S.user && S.user.email && OWNER_EMAILS.indexOf(String(S.user.email).toLowerCase()) < 0); };
 const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files", "plan_start", "parent_id"];
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
@@ -414,7 +418,7 @@ function applyServer(tbl, rows) {
   Object.keys(S[tbl]).forEach(id => { if (!seen.has(id) && !P[tbl][id] && !(tbl === "tasks" && DL.has(id))) delete S[tbl][id]; });
 }
 function seedLists() {
-  [["Свои дела", "📋"], ["Развитие", "🚀"], ["Зал", "🏋️"], ["Дом", "🏠"]].forEach((x, i) => {
+  (isLite() ? [["Работа", "💼"], ["Свои дела", "📋"]] : [["Свои дела", "📋"], ["Развитие", "🚀"], ["Зал", "🏋️"], ["Дом", "🏠"]]).forEach((x, i) => {
     const l = { id: uid(), name: x[0], icon: x[1], position: i, created_at: nowISO(), group_name: null, color: null };
     S.lists[l.id] = l; P.lists[l.id] = "u";
   });
@@ -429,10 +433,10 @@ async function loadAll() {
     if (!OR) { try { const pr = await sb.from("tasks").select("ord").limit(1); if (!pr.error) orSet(true); } catch (e) {} }
     const seq = flushSeq;
     const ls = await fetchAll("lists"), ts = await fetchAll("tasks", q => q.or("done.eq.false,parent_id.not.is.null,done_at.gte." + new Date(Date.now() - 2 * 864e5).toISOString()));   // выполненные старше 2 дней — только по запросу
-    let lg = null; try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }
+    let lg = null; if (!isLite()) try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }
     if (lg) { try { const pr = await sb.from("time_log").select("kind").limit(1); jxSet(!pr.error); } catch (e) {} }
     let nu = null;
-    try { nu = { foods: await fetchAll("foods"), food_log: await fetchAll("food_log", q => q.gte("day", addDays(todayISO(), -120))), weight_log: await fetchAll("weight_log"), user_settings: await fetchAll("user_settings") }; nxSet(true); }
+    if (!isLite()) try { nu = { foods: await fetchAll("foods"), food_log: await fetchAll("food_log", q => q.gte("day", addDays(todayISO(), -120))), weight_log: await fetchAll("weight_log"), user_settings: await fetchAll("user_settings") }; nxSet(true); }
     catch (e) { nu = null; if (/relation|does not exist|schema cache|PGRST205|42P01/i.test((e && (e.message || e.code)) || "")) nxSet(false); }   // нет таблицы (SQL не выполнен) — остальное работает
     if (seq !== flushSeq) { loading = false; setTimeout(loadAll, 1500); return; }
     applyServer("lists", ls); applyServer("tasks", ts); if (lg) applyServer("time_log", lg);
@@ -2824,7 +2828,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -2964,7 +2968,7 @@ function popHTML() {
     case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + "" + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
     case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
     case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
-    case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b></div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
+    case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b>" + (isLite() ? '<br><small style="opacity:.65">Режим: только задачи</small>' : "") + "</div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
     case "help": h = '<div class="ptitle">Умный ввод</div><div class="ptext"><b>завтра, послезавтра, сегодня</b><br><b>в пятницу</b>, <b>через 3 дня</b>, <b>25.12</b><br><b>в 18:00</b> — напоминание<br><b>каждый день</b>, <b>по будням</b>, <b>ежемесячно</b><br><b>~30м</b>, <b>1.5ч</b> — сколько займёт<br><b>#зал</b> — в список (или категория)<br><b>!</b> — важное</div><div class="psep"></div><div class="ptitle">Клавиши</div><div class="ptext">Enter — добавить · Esc — закрыть панель<br>ПКМ по задаче — быстрое меню<br>Перетащите задачу на список в левой панели</div>'; break;
   }
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
@@ -3184,7 +3188,7 @@ function trkHTML() {
     "</div></div>" + (setTimeout(trkMapDraw, 0), "");
 }
 function shareMaybe() {
-  if (!pendingShare || !S.user) return; const p = pendingShare; pendingShare = null;
+  if (!pendingShare || !S.user) return; if (isLite()) { pendingShare = null; return; } const p = pendingShare; pendingShare = null;
   const m = [p.url, p.text, p.title].join(" ").match(/https?:\/\/[^\s]+/), url = m ? m[0] : "";
   let title = (p.title || p.text || "").replace(/https?:\/\/[^\s]+/g, "").trim(); if (!title) title = url ? "Видео " + ((url.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{6,})/) || [])[1] || "") : "Без названия";
   let l = listsArr().find(x => /^видео$/i.test(x.name));
@@ -3243,6 +3247,7 @@ function appHTML() {
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
   want = false;
+  if (isLite()) { if (view === "journal" || view === "food") view = "planned"; if (ui.trk) ui.trk = false; }
   try { updBadge(); } catch (e) {}
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
@@ -3771,7 +3776,7 @@ function jrWeekData(m0) {
 const vLine = n => /^(https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+)[ \t]*\n?/i.exec(n || "");
 const noteView = t => { const m = vLine(t.note); return m ? String(t.note).slice(m[0].length).replace(/^\n+/, "") : (t.note || ""); };
 const noteSet = (t, v) => { const m = vLine(t.note); return m ? m[1] + "\n\n" + v : v; };
-const ytUrl = n => { const m = String(n || "").match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
+const ytUrl = n => { if (isLite()) return ""; const m = String(n || "").match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
 function videoCatchup() {   // видео в очереди без пересказа догоняем автоматически (не больше 2 попыток на видео)
   if (!S.user || document.hidden) return; PR.vtry = PR.vtry || {};
   const t = Object.values(S.tasks).find(x => !x.done && !x.parent_id && !VB[x.id] && ytUrl(x.note) && !/Смысл видео ━━/.test(x.note || "") && (PR.vtry[x.id] || 0) < 2);
