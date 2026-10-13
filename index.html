@@ -3101,22 +3101,69 @@ function ritRow(t, kind) {
 const TRK = { day: [], last: null, media: [], places: [], n: 0, loading: false, err: "", off: 0, view: null };
 const trkDist = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r * Math.cos((a + c) / 2 * r); return Math.sqrt(x * x + y * y) * R; };
 const trkPlace = p => TRK.places.find(q => trkDist(+p.lat, +p.lon, q.lat, q.lon) <= (q.r || 120));
+async function trkFetchDay(t0, t1) {
+  let all = [];
+  for (let i = 0; i < 25; i++) {   // сервер отдаёт максимум 1000 строк за раз — читаем страницами
+    const r = await sb.from("loc_points").select("ts,lat,lon,vel,acc,batt").gte("ts", t0.toISOString()).lt("ts", t1.toISOString()).order("ts", { ascending: true }).range(i * 1000, i * 1000 + 999);
+    if (r.error) throw r.error; all = all.concat(r.data || []); if ((r.data || []).length < 1000) break;
+  }
+  return all;
+}
 async function trkLoad() {
   if (!sb || !S.user) return; TRK.loading = true; TRK.err = ""; render();
   try {
     const t0 = new Date(); t0.setHours(0, 0, 0, 0); t0.setDate(t0.getDate() + TRK.off); const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
-    let all = [], a = { error: null };
-    for (let i = 0; i < 25; i++) {   // сервер отдаёт максимум 1000 строк за раз — читаем страницами
-      const r = await sb.from("loc_points").select("ts,lat,lon,vel,acc,batt").gte("ts", t0.toISOString()).lt("ts", t1.toISOString()).order("ts", { ascending: true }).range(i * 1000, i * 1000 + 999);
-      if (r.error) { a = r; break; } all = all.concat(r.data || []); if ((r.data || []).length < 1000) break;
-    }
-    if (!a.error) a = { data: all, error: null };
-    const l = await sb.from("loc_points").select("ts,lat,lon,vel,acc,batt").order("ts", { ascending: false }).limit(1);
     const pl = await sb.from("places").select("id,name,lat,lon,r"); TRK.places = pl.error ? [] : (pl.data || []);
+    const raw = await trkFetchDay(t0, t1); TRK.D = null; TRK.packed = false;
+    if (raw.length) TRK.D = trkBuild(raw);
+    else if (TRK.off < 0) { const cd = await sb.from("loc_days").select("data").eq("day", isoLocal(t0)).maybeSingle(); if (cd.data && cd.data.data) { TRK.D = trkUnpack(cd.data.data); TRK.packed = true; } }
+    if (!TRK.D) TRK.D = { pts: [], segs: [], stats: trkStats([]), n: 0 };
+    const l = await sb.from("loc_points").select("ts,lat,lon,vel,acc,batt").order("ts", { ascending: false }).limit(1);
     const m = await sb.from("media_events").select("ts,app,title,artist,state").order("ts", { ascending: false }).limit(15);
-    if (a.error) throw a.error; TRK.day = a.data || []; TRK.last = (l.data || [])[0] || null; TRK.n = TRK.day.length; TRK.media = m.error ? [] : (m.data || []);
+    TRK.day = raw; TRK.last = (l.data || [])[0] || null; TRK.n = raw.length || TRK.D.n || 0; TRK.media = m.error ? [] : (m.data || []);
   } catch (e) { TRK.err = (e && e.message) || "ошибка загрузки"; }
-  TRK.loading = false; render();
+  TRK.loading = false; render(); if (!TRK.err) trkCompactPass();
+}
+// ---- сжатие дней: упрощённая траектория + остановки + километры (хранятся годами), сырые точки держим 14 дней ----
+function trkBuild(raw) { const c = trkClean(raw); return { pts: c, segs: trkSegs(c), stats: trkStats(c), n: raw.length }; }
+function trkSimplify(P, eps) {   // Дуглас–Пекер; точки стоянок (stay) не выбрасываем — в них время остановки
+  const n = P.length; if (n < 3) return P.slice();
+  const k0 = Math.cos(+P[0].lat * Math.PI / 180), X = P.map(q => [+q.lon * 111320 * k0, +q.lat * 110540]), keep = new Uint8Array(n); keep[0] = keep[n - 1] = 1; P.forEach((q, i) => { if (q.stay) keep[i] = 1; });
+  const st = [[0, n - 1]];
+  while (st.length) {
+    const [a, b] = st.pop(); if (b - a < 2) continue; let md = 0, mi = -1; const ax = X[a][0], ay = X[a][1], dx = X[b][0] - ax, dy = X[b][1] - ay, L2 = dx * dx + dy * dy;
+    for (let i = a + 1; i < b; i++) { let t = L2 ? ((X[i][0] - ax) * dx + (X[i][1] - ay) * dy) / L2 : 0; t = Math.max(0, Math.min(1, t)); const d = Math.hypot(X[i][0] - ax - t * dx, X[i][1] - ay - t * dy); if (d > md) { md = d; mi = i; } }
+    if (md > eps && mi > 0) { keep[mi] = 1; st.push([a, mi], [mi, b]); }
+  }
+  return P.filter((_, i) => keep[i]);
+}
+function trkPack(D) {
+  const P = trkSimplify(D.pts, 10), T = x => Math.round(Date.parse(x) / 1000), r5 = x => Math.round(+x * 1e5) / 1e5;
+  return { pts: P.map((q, i) => { const a = P[i - 1]; let v = 0; if (a) { const dt = (Date.parse(q.ts) - Date.parse(a.ts)) / 1000; v = dt > 0 ? trkDist(+a.lat, +a.lon, +q.lat, +q.lon) / dt * 3.6 : 0; } return [T(q.ts), r5(q.lat), r5(q.lon), Math.round(v * 10) / 10, q.stay ? 1 : 0]; }),
+    segs: D.segs.map(g => [g.key, T(g.start), T(g.end), r5(g.lat), r5(g.lon), g.vs.length ? Math.round(g.vs.reduce((x, y) => x + y, 0) / g.vs.length * 10) / 10 : 0]), stats: D.stats, n: D.n };
+}
+function trkUnpack(J) {
+  const iso = x => new Date(x * 1000).toISOString();
+  const pts = J.pts.map(a => ({ ts: iso(a[0]), lat: a[1], lon: a[2], vel: a[3], stay: a[4] }));
+  const segs = J.segs.map(a => { const pl = (a[0][0] === "p" || a[0] === "u") ? trkPlace({ lat: a[3], lon: a[4] }) : null; return { key: pl ? "p" + pl.id : a[0], name: pl ? pl.name : null, start: iso(a[1]), end: iso(a[2]), lat: a[3], lon: a[4], n: 1, vs: a[5] ? [a[5]] : [] }; });
+  return { pts, segs, stats: J.stats, n: J.n };
+}
+async function trkCompactPass() {   // в фоне: сжать прошедшие дни, у которых ещё нет сжатой записи; сырьё старше 14 дней — удалить после сжатия
+  if (TRK.cp || !sb || !S.user) return; TRK.cp = true;
+  try {
+    const f = await sb.from("loc_points").select("ts").order("ts", { ascending: true }).limit(1); if (f.error || !(f.data || []).length) { TRK.cp = false; return; }
+    const have = new Set(), h = await sb.from("loc_days").select("day"); if (h.error) { TRK.cp = false; return; } (h.data || []).forEach(x => have.add(x.day));
+    const d0 = new Date(f.data[0].ts); d0.setHours(0, 0, 0, 0); const today0 = new Date(); today0.setHours(0, 0, 0, 0); let done = 0;
+    for (let d = new Date(d0); d < today0 && done < 3; d.setDate(d.getDate() + 1)) {
+      const t0 = new Date(d), t1 = new Date(d); t1.setDate(t1.getDate() + 1); const key = isoLocal(t0), age = Math.round((today0 - t0) / 864e5);
+      if (!have.has(key)) {
+        const raw = await trkFetchDay(t0, t1); if (!raw.length) continue;
+        const w = await sb.from("loc_days").upsert({ day: key, data: trkPack(trkBuild(raw)), n_raw: raw.length }, { onConflict: "user_id,day" }); if (w.error) break; have.add(key); done++;
+      }
+      if (age > 14) await sb.from("loc_points").delete().gte("ts", t0.toISOString()).lt("ts", t1.toISOString());
+    }
+  } catch (e) {}
+  TRK.cp = false;
 }
 function trkSegs(pts) {
   const segs = [];
@@ -3222,9 +3269,20 @@ async function trkMatch(r) {   // привязка к дорогам через 
   } catch (e) { return null; }
 }
 const MM = { n: 0, ok: 0 };
+function trkOrder(map, r, col) {   // очерёдность: стрелки направления вдоль участка + время начала
+  const P = r.pts; if (P.length < 2 || r.dist < 60) return; let acc = 0, next = 120;
+  const brg = (a, b) => { const y = Math.sin((b.lon - a.lon) * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180), x = Math.cos(a.lat * Math.PI / 180) * Math.sin(b.lat * Math.PI / 180) - Math.sin(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.cos((b.lon - a.lon) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; };
+  const step = Math.max(150, r.dist / 8);
+  for (let i = 1; i < P.length; i++) {
+    const a = { lat: +P[i - 1].lat, lon: +P[i - 1].lon }, b = { lat: +P[i].lat, lon: +P[i].lon }; acc += trkDist(a.lat, a.lon, b.lat, b.lon);
+    if (acc >= next) { next = acc + step; L.marker([(a.lat + b.lat) / 2, (a.lon + b.lon) / 2], { interactive: false, icon: L.divIcon({ className: "", html: '<div style="transform:rotate(' + Math.round(brg(a, b)) + 'deg);font-size:15px;line-height:15px;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;text-align:center">▲</div>', iconSize: [15, 15], iconAnchor: [7, 7] }) }).addTo(map); }
+  }
+  const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
+  L.marker([+P[0].lat, +P[0].lon], { interactive: false, icon: L.divIcon({ className: "", html: '<div style="display:inline-block;transform:translate(6px,-22px);background:#fff;border:1.5px solid ' + col + ';border-radius:8px;padding:0 5px;font-size:11px;font-weight:700;color:#222;white-space:nowrap">' + hm(P[0].ts) + "</div>", iconSize: [0, 0] }) }).addTo(map);
+}
 function trkMapDraw() {
   let el = $("trk-map"); if (!el || !ui.trk) return;
-  const pts = trkClean(TRK.day || []);
+  const pts = (TRK.D || { pts: [] }).pts;
   if (!pts.length) { el.innerHTML = '<div class="jr-empty" style="padding:60px 0;text-align:center">' + (TRK.loading ? "Загружаю…" : "Нет точек за этот день") + "</div>"; return; }
   trkLeaflet(() => {
     el = $("trk-map"); if (!el || !ui.trk || el.__m) return; el.__m = 1;
@@ -3232,11 +3290,12 @@ function trkMapDraw() {
     const colr = v => v < 4 ? "#8a8a8a" : v < 7 ? "#107c10" : v < 28 ? "#e3680c" : "#2b7de9", ll = pts.map(b => [+b.lat, +b.lon]);
     MM.n = 0; MM.ok = 0; trkRuns(pts).forEach(r => {   // маршрут режем на участки по виду движения; каждый «прилипает» к дорогам
       const line = L.polyline(r.pts.map(b => [+b.lat, +b.lon]), { color: colr(r.v), weight: 5, opacity: .85, dashArray: r.gap ? "2 9" : null, lineCap: "round" }).addTo(map);
+      trkOrder(map, r, colr(r.v));
       if (r.gap || r.pts.length < 3 || r.v < 1) return;
       MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n; if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } });
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
-    trkSegs(pts).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || g.key === "g" || m < 5) return; L.circleMarker([g.lat, g.lon], { radius: 9, color: "#444", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip((g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }).bindPopup(trkPopupEl({ lat: g.lat, lon: g.lon, name: g.name || "", info: hm(g.start) + "–" + hm(g.end) + " · " + Math.round(m) + " мин" })); });
+    let SN = 0; (TRK.D ? TRK.D.segs : []).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || g.key === "g" || m < 5) return; SN++; L.marker([g.lat, g.lon], { icon: L.divIcon({ className: "", html: '<div style="width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid #444;text-align:center;line-height:20px;font-weight:700;font-size:13px;color:#222">' + SN + "</div>", iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(map).bindTooltip("№" + SN + " · " + (g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }).bindPopup(trkPopupEl({ lat: g.lat, lon: g.lon, name: g.name || "", info: hm(g.start) + "–" + hm(g.end) + " · " + Math.round(m) + " мин" })); });
     (TRK.places || []).forEach(q => { L.circle([q.lat, q.lon], { radius: q.r || 120, color: "#2b7de9", weight: 1, fillColor: "#2b7de9", fillOpacity: .08 }).addTo(map); L.marker([q.lat, q.lon], { icon: L.divIcon({ className: "trk-pin", html: "📍", iconSize: [24, 24], iconAnchor: [12, 22] }) }).addTo(map).bindTooltip(esc(q.name), { permanent: true, direction: "right", offset: [8, -8], className: "trk-lbl" }).bindPopup(trkPopupEl({ id: q.id, lat: q.lat, lon: q.lon, name: q.name, info: "Моё место", r: q.r || 120 })); });
     const f = pts[0], e = pts[pts.length - 1];
     L.circleMarker([+f.lat, +f.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#107c10", fillOpacity: 1 }).addTo(map).bindTooltip("старт " + hm(f.ts));
@@ -3252,14 +3311,14 @@ function trkHTML() {
   const last = TRK.last, ago = last ? Math.round((Date.now() - new Date(last.ts)) / 60000) : null;
   const col = ago == null ? "#999" : ago < 20 ? "#107c10" : ago < 360 ? "#2b7de9" : "#d13438";
   const agoT = ago == null ? "" : ago < 1 ? "только что" : ago < 60 ? ago + " мин назад" : Math.floor(ago / 60) + " ч " + (ago % 60) + " мин назад";
-  const segs = trkSegs(trkClean(TRK.day || [])).reverse();
+  const segs = (TRK.D ? TRK.D.segs : []).slice().reverse();
   const row = g => {
     const t = g.start === g.end ? hm(g.start) : hm(g.start) + "–" + hm(g.end), d = dur(new Date(g.end) - new Date(g.start));
     if (g.key === "g") return '<div class="trk-r"><b>' + t + '</b><div class="trk-n" style="color:#d13438">⚠ нет данных<span> · ' + d + " — телефон не присылал точки</span></div></div>";
     if (g.key === "m") { const v = g.vs.length ? g.vs.reduce((x, y) => x + y, 0) / g.vs.length : 0, how = v < 7 ? "🚶 пешком" : v < 28 ? "🛴🚋 самокат / трамвай" : "🚌 транспорт"; return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + how + '<span>' + (d ? " · " + d : "") + (v ? " · ~" + Math.round(v) + " км/ч" : "") + "</span></div></div>"; }
     return '<div class="trk-r"><b>' + t + '</b><div class="trk-n">' + (g.name ? "📍 " + esc(g.name) : "Новое место") + (d ? "<span> · " + d + "</span>" : "") + (g.name ? "" : '<br><button class="rit-b" data-a="trkname" data-lat="' + g.lat + '" data-lon="' + g.lon + '">Назвать</button>') + "</div></div>";
   };
-  const st = trkStats(trkClean(TRK.day || [])), km = m => (m / 1000).toFixed(m < 10000 ? 1 : 0).replace(".", ",") + " км";
+  const st = TRK.D ? TRK.D.stats : trkStats([]), km = m => (m / 1000).toFixed(m < 10000 ? 1 : 0).replace(".", ",") + " км";
   const sumH = st.walk + st.bike + st.kick + st.veh > 0 ? '<div class="rit-hint" style="margin:6px 0;line-height:1.6">🚶 <b>' + km(st.walk) + '</b> пешком · ≈<b>' + st.steps.toLocaleString("ru") + '</b> шагов' + (st.walkMin ? " · " + Math.round(st.walkMin) + " мин в ходьбе" : "") + (st.bike ? "<br>🚲 " + km(st.bike) : "") + (st.kick ? "<br>🛴🚋 " + km(st.kick) : "") + (st.veh ? "<br>🚌 " + km(st.veh) : "") + "</div>" : "";
   const raw = (TRK.day || []).slice(-30).reverse().map(p => '<div class="trk-r"><b>' + hm(p.ts) + '</b><div>' + (+p.lat).toFixed(4) + ", " + (+p.lon).toFixed(4) + "<span> · " + (p.vel != null ? Math.round(p.vel) + " км/ч · " : "") + (p.acc != null ? "±" + Math.round(p.acc) + " м" : "") + (p.batt != null ? " · 🔋" + p.batt + "%" : "") + "</span></div></div>").join("");
   return '<div class="ovl" data-a="trkovl"><div class="sheet trk"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.3em">📍 Трекер</div><button class="ibtn" data-a="trkload" title="Обновить">' + ic("repeat", 20) + '</button><button class="ibtn" data-a="trkclose">' + ic("x", 20) + "</button></div>" +
@@ -4711,7 +4770,7 @@ async function checkBuild() {
     location.reload();
   } catch (e) {}
 }
-if (CFG0.TEST) window.__t = { localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog };
+if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog };
 init();
 
 })();
