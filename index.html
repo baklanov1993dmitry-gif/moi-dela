@@ -443,6 +443,7 @@ async function loadAll() {
     if (seq !== flushSeq) { loading = false; setTimeout(loadAll, 1500); return; }
     applyServer("lists", ls); applyServer("tasks", ts); if (lg) applyServer("time_log", lg);
     if (nu) for (const t in nu) applyServer(t, nu[t]);
+    if (!isLite() && !TM.at && !TM.busy) setTimeout(teamLoad, 600);
     if (!ls.length && !ts.length && !Object.keys(S.lists).length && !pendCount()) seedLists();
     lastLoad = Date.now(); try { Object.values(S.tasks).forEach(t => { if (/^⏰/.test(t.title || "") && !t.remind_at) upd(t.id, { title: t.title.replace(/^⏰\s*/, "") }); }); } catch (e) {} persistSoon(); shareMaybe(); setTimeout(videoCatchup, 3000);
     setSync(pendCount() ? "err" : "ok", pendCount() ? "есть неотправленное" : "");
@@ -2740,6 +2741,7 @@ const listIcon = l => l && l.icon && l.icon !== "🗂️" && l.icon !== "🗂" ?
 function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
   if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
+  if (view.indexOf("team:") === 0) { const u = TM.users.find(x => x.id === view.slice(5)); return { svg: "users", name: u ? (u.email || "?").split("@")[0] : "Сотрудник", sub: "Задачи сотрудника (только чтение)" }; }
   if (view === "team") return { svg: "users", name: "Команда", sub: "Задачи сотрудников (только чтение)" };
   if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
   if (view === "food") return { svg: "food", name: "Питание", sub: "КБЖУ, вода и вес" };
@@ -2794,7 +2796,7 @@ function wkLoad(force) {
     .then(r => { if (r.error) W.err = errText(r.error); else { W.err = ""; W.rows = (r.data || []).filter(x => !x.parent_id); } fin(); })
     .catch(e => { W.err = errText(e); fin(); });
 }
-const TM = { users: [], tasks: [], lists: {}, at: 0, busy: false, err: "", open: {} };
+const TM = { users: [], tasks: [], lists: {}, at: 0, busy: false, err: "", open: {}, lf: {} };
 async function teamLoad(force) {
   if (!sb || !S.user || TM.busy || isLite()) return; if (!force && TM.at && Date.now() - TM.at < 60000) return;
   TM.busy = true; TM.err = ""; render();
@@ -2811,24 +2813,25 @@ async function teamLoad(force) {
   TM.busy = false; if (view === "team") render();
 }
 function teamMainHTML(vi) {
-  teamLoad(); const z = "var(--z,1)", tod = today, since7 = new Date(Date.now() - 7 * 864e5).toISOString();
+  teamLoad(); const one = view.indexOf("team:") === 0 ? view.slice(5) : null, z = "var(--z,1)", tod = today, since7 = new Date(Date.now() - 7 * 864e5).toISOString();
   const nm = u => (u.email || "?").split("@")[0];
   const tile = (n, lb, col) => '<div style="flex:1;min-width:84px;border:1px solid var(--ln);border-radius:8px;padding:calc(8px*' + z + ") calc(10px*" + z + ');background:var(--solid,transparent)"><div style="font-size:calc(20px*' + z + ");font-weight:600;" + (col ? "color:" + col : "") + '">' + n + '</div><div style="font-size:calc(12px*' + z + ');color:var(--sub)">' + lb + "</div></div>";
   const row = (t, rank) => { const di = t.due ? dueInfo(t) : null, l = TM.lists[t.list_id]; return '<div class="taskrow" style="cursor:default"><div class="rad ' + (t.done ? "on" : "") + '" style="pointer-events:none">' + (t.done ? ic("check", 13) : "") + '</div><div class="tbody"><div class="ttl">' + esc(t.title) + '</div><div class="meta">' + (l ? '<span class="mi">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</span>" : "") + (di ? '<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>" : "") + (t.est_minutes ? '<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>" : "") + "</div></div>" + (rank ? '<span class="ordb" style="pointer-events:none">' + rank + "</span>" : "") + (t.starred ? '<span style="color:var(--acc);padding:0 8px">' + icf("star", 18) + "</span>" : "") + "</div>"; };
   const card = u => {
-    const mine = TM.tasks.filter(t => t.user_id === u.id && !t.parent_id), act = mine.filter(t => !t.done && t.status !== "someday"), over = act.filter(t => t.due && t.due < tod), td = act.filter(t => t.due === tod), later = act.filter(t => !t.due || t.due > tod), done7 = mine.filter(t => t.done && t.done_at && t.done_at >= since7);
+    const lfv = one && TM.lf && TM.lf[u.id], mine = TM.tasks.filter(t => t.user_id === u.id && !t.parent_id && (!lfv || t.list_id === lfv)), act = mine.filter(t => !t.done && t.status !== "someday"), over = act.filter(t => t.due && t.due < tod), td = act.filter(t => t.due === tod), later = act.filter(t => !t.due || t.due > tod), done7 = mine.filter(t => t.done && t.done_at && t.done_at >= since7);
     const ord = a => a.slice().sort((x, y) => ((x.ord == null ? 1 : 0) - (y.ord == null ? 1 : 0)) || ((x.ord || 0) - (y.ord || 0)) || String(x.due || "9").localeCompare(String(y.due || "9")));
-    const last = mine.reduce((m, t) => { const d = t.done_at && t.done_at > t.created_at ? t.done_at : t.created_at; return d > m ? d : m; }, ""), o = !!TM.open[u.id];
+    const last = mine.reduce((m, t) => { const d = t.done_at && t.done_at > t.created_at ? t.done_at : t.created_at; return d > m ? d : m; }, ""), o = one ? true : !!TM.open[u.id];
     const rk = {}; ord(act.filter(t => t.ord != null)).forEach((t, i) => { rk[t.id] = i + 1; });
     const grp = (k, title, arr, rkOn) => arr.length ? '<div class="gh" style="cursor:default"><span>' + title + '</span><span class="cnt">' + arr.length + '</span></div><div class="cards">' + (rkOn ? ord(arr) : arr).slice(0, 40).map(t => row(t, rkOn ? rk[t.id] : 0)).join("") + (arr.length > 40 ? '<div style="color:var(--sub);padding:4px">…и ещё ' + (arr.length - 40) + "</div>" : "") + "</div>" : "";
-    return '<div class="jr-sbox" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;cursor:pointer" data-a="tmopen" data-id="' + u.id + '"><b style="font-size:calc(17px*' + z + ')">' + esc(nm(u)) + '</b><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + esc(u.email || "") + '</span><span style="flex:1"></span><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + (last ? "последняя активность: " + fmtShort(last) : "записей нет") + "</span>" + ic(o ? "chevd" : "chevr", 16) + '</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' + tile(act.length, "активных") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(td.length, "на сегодня", "var(--acc)") + tile(done7.length, "закрыто за 7 дн.") + "</div>" +
+    const lchips = one ? '<div class="jr-chips" style="margin-top:10px"><button class="jr-chip' + (!lfv ? " on" : "") + '" data-a="tmlist" data-id="' + u.id + '" data-v="">Все списки</button>' + Object.values(TM.lists).filter(l => l.user_id === u.id).map(l => '<button class="jr-chip' + (lfv === l.id ? " on" : "") + '" data-a="tmlist" data-id="' + u.id + '" data-v="' + l.id + '">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</button>").join("") + "</div>" : "";
+    return '<div class="jr-sbox" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;cursor:pointer" data-a="tmopen" data-id="' + u.id + '"><b style="font-size:calc(17px*' + z + ')">' + esc(nm(u)) + '</b><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + esc(u.email || "") + '</span><span style="flex:1"></span><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + (last ? "последняя активность: " + fmtShort(last) : "записей нет") + "</span>" + ic(o ? "chevd" : "chevr", 16) + '</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' + tile(act.length, "активных") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(td.length, "на сегодня", "var(--acc)") + tile(done7.length, "закрыто за 7 дн.") + "</div>" + lchips +
       (o ? grp("o", "Просрочено", ord(over), true) + grp("t", "На сегодня (по очереди)", td, true) + grp("l", "Позже / без срока", later, false) + grp("d", "Закрыто за 7 дней", done7.sort((a, b) => String(b.done_at).localeCompare(String(a.done_at))), false) : "") + "</div>";
   };
   let body;
   if (TM.err === "setup") body = '<div class="jr-box"><b>Нужна одноразовая настройка базы</b><div class="jr-hint">Выполни в Supabase → SQL Editor файл <b>migration_v16.sql</b> (права руководителя на чтение). Скажи Claude — он сделает.</div></div>';
   else if (TM.err) body = '<div class="jr-empty" style="color:#d13438">Не получилось загрузить: ' + esc(TM.err) + "</div>";
   else if (!TM.users.length) body = '<div class="jr-empty">' + (TM.busy ? "Загружаю…" : "Пока никто из сотрудников не зарегистрировался. Дай им ссылку на приложение — «Создать аккаунт».") + "</div>";
-  else body = TM.users.slice().sort((a, b) => nm(a).localeCompare(nm(b))).map(card).join("");
+  else body = TM.users.filter(u => !one || u.id === one).slice().sort((a, b) => nm(a).localeCompare(nm(b))).map(card).join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool" data-a="tmrefresh">' + ic("repeat", 16) + " Обновить</button></div>" +
     '<div class="msub">' + esc(vi.sub) + (TM.busy ? " · обновляю…" : TM.at ? " · обновлено " + hm(minOf(new Date(TM.at).toISOString())) : "") + '</div><div class="scroll" id="list">' + body + "</div></div>";
 }
@@ -2869,7 +2872,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8") + TM.users.slice().sort((a, b) => String(a.email).localeCompare(String(b.email))).map(u => sm("team:" + u.id, "users", "  " + (u.email || "?").split("@")[0], 0, "#8764b8")).join("")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -3009,7 +3012,7 @@ function popHTML() {
     case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + "" + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
     case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
     case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
-    case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b>" + (isLite() ? '<br><small style="opacity:.65">Режим: только задачи. Руководитель видит ваши задачи.</small>' : "") + "</div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
+    case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b>" + (isLite() ? '<br><small style="opacity:.65">Режим: только задачи</small>' : "") + "</div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
     case "help": h = '<div class="ptitle">Умный ввод</div><div class="ptext"><b>завтра, послезавтра, сегодня</b><br><b>в пятницу</b>, <b>через 3 дня</b>, <b>25.12</b><br><b>в 18:00</b> — напоминание<br><b>каждый день</b>, <b>по будням</b>, <b>ежемесячно</b><br><b>~30м</b>, <b>1.5ч</b> — сколько займёт<br><b>#зал</b> — в список (или категория)<br><b>!</b> — важное</div><div class="psep"></div><div class="ptitle">Клавиши</div><div class="ptext">Enter — добавить · Esc — закрыть панель<br>ПКМ по задаче — быстрое меню<br>Перетащите задачу на список в левой панели</div>'; break;
   }
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
@@ -3283,12 +3286,12 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view === "team" ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function render() {
   want = false;
-  if (isLite()) { if (view === "journal" || view === "food" || view === "team") view = "planned"; if (ui.trk) ui.trk = false; }
+  if (isLite()) { if (view === "journal" || view === "food" || view.indexOf("team") === 0) view = "planned"; if (ui.trk) ui.trk = false; }
   try { updBadge(); } catch (e) {}
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
@@ -3488,6 +3491,7 @@ const acts = {
   ritclose() { ui.rit = false; render(); },
   tmopen(a) { TM.open[a.dataset.id] = !TM.open[a.dataset.id]; render(); },
   tmrefresh() { teamLoad(true); },
+  tmlist(a) { TM.lf[a.dataset.id] = a.dataset.v || null; render(); },
   ordtog(a) { ordToggle([a.dataset.id]); },
   ritfold(a) { ui.ritc = ui.ritc || {}; const k = a.dataset.k, cur = ui.ritc[k] === undefined ? a.dataset.d === "1" : ui.ritc[k]; ui.ritc[k] = !cur; render(); },
   ritovl(a, e) { if (e.target === a) { ui.rit = false; render(); } },
