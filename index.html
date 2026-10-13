@@ -333,8 +333,11 @@ const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "sta
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
 let OR = (() => { try { return localStorage.getItem("mytasks_or") === "1"; } catch (e) { return false; } })();
-const COLS = { tasks: TC.concat(OR ? ["ord"] : []), lists: LC, time_log: GC, foods: ["id", "name", "kcal", "p", "f", "c", "portions", "barcode", "created_at"], food_log: ["id", "day", "t", "name", "grams", "kcal", "p", "f", "c", "food_id", "created_at"], weight_log: ["id", "day", "kg", "created_at"], user_settings: ["id", "key", "data", "created_at"] };
-function orSet(ok) { if (ok === OR) return; OR = ok; COLS.tasks = TC.concat(OR ? ["ord"] : []); try { localStorage.setItem("mytasks_or", ok ? "1" : "0"); } catch (e) {} }
+let RP = (() => { try { return localStorage.getItem("mytasks_rp") === "1"; } catch (e) { return false; } })();
+const tcols = () => TC.concat(OR ? ["ord"] : []).concat(RP ? ["remind_place"] : []);
+const COLS = { tasks: tcols(), lists: LC, time_log: GC, foods: ["id", "name", "kcal", "p", "f", "c", "portions", "barcode", "created_at"], food_log: ["id", "day", "t", "name", "grams", "kcal", "p", "f", "c", "food_id", "created_at"], weight_log: ["id", "day", "kg", "created_at"], user_settings: ["id", "key", "data", "created_at"] };
+function orSet(ok) { if (ok === OR) return; OR = ok; COLS.tasks = tcols(); try { localStorage.setItem("mytasks_or", ok ? "1" : "0"); } catch (e) {} }
+function rpSet(ok) { if (ok === RP) return; RP = ok; COLS.tasks = tcols(); try { localStorage.setItem("mytasks_rp", ok ? "1" : "0"); } catch (e) {} }
 function toRow(tbl, o) {
   const r = {}; COLS[tbl].forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
   if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.steps = r.steps || []; r.files = r.files || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
@@ -433,6 +436,7 @@ async function loadAll() {
     await flush();
     while (flushing) await new Promise(r => setTimeout(r, 100));
     if (!OR) { try { const pr = await sb.from("tasks").select("ord").limit(1); if (!pr.error) orSet(true); } catch (e) {} }
+    if (!RP) { try { const pr = await sb.from("tasks").select("remind_place").limit(1); if (!pr.error) rpSet(true); } catch (e) {} }
     const seq = flushSeq;
     const ls = await fetchAll("lists"), ts = await fetchAll("tasks", q => q.or("done.eq.false,parent_id.not.is.null,done_at.gte." + new Date(Date.now() - 2 * 864e5).toISOString()));   // выполненные старше 2 дней — только по запросу
     let lg = null; if (!isLite()) try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }
@@ -447,7 +451,7 @@ async function loadAll() {
     if (!ls.length && !ts.length && !Object.keys(S.lists).length && !pendCount()) seedLists();
     lastLoad = Date.now(); try { Object.values(S.tasks).forEach(t => { if (/^⏰/.test(t.title || "") && !t.remind_at) upd(t.id, { title: t.title.replace(/^⏰\s*/, "") }); }); } catch (e) {} persistSoon(); shareMaybe(); setTimeout(videoCatchup, 3000);
     setSync(pendCount() ? "err" : "ok", pendCount() ? "есть неотправленное" : "");
-    renderSoon(); checkReminders(); if (pushOn()) syncPush();
+    renderSoon(); checkReminders(); if (pushOn()) syncPush(); if (RP && PLC === null) loadPlaces();
   } catch (e) { setSync("err", errText(e)); }
   finally { loading = false; }
 }
@@ -1337,10 +1341,25 @@ function dtpHTML(p, t) {
       '<input id="dtp-t" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="чч:мм" value="' + esc(D.time || "") + '"><button type="button" class="tb" data-a="dstep" data-d="15">+15</button></div>' +
       '<div class="tchips">' + (() => { const all = tchipsList(), nw = pad(new Date().getHours()) + ":" + pad(new Date().getMinutes()), fut = D.date === today ? all.filter(c => c > nw) : all; return (fut.length ? fut : all).slice(0, 4); })().map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
+    h += placeBlock(t);
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
   }
   return h;
+}
+
+/* ----- напоминание «когда окажусь рядом с местом» ----- */
+let PLC = null;
+async function loadPlaces() { if (!sb || !S.user) return; try { const r = await sb.from("places").select("id,name,lat,lon,r"); PLC = r.error ? [] : (r.data || []); } catch (e) { PLC = []; } if (ui.dtp) render(); else renderSoon(); }
+const placeName = id => { const q = (PLC || []).find(x => x.id === id); return q ? q.name : ""; };
+function placeBlock(t) {
+  if (!RP) return '<div class="dtp-tl" style="margin-top:12px">📍 По месту</div><div class="dtp-sum">Нужна одноразовая настройка базы (колонка remind_place) — скажи Claude</div>';
+  if (PLC === null) { loadPlaces(); return '<div class="dtp-tl" style="margin-top:12px">📍 Когда окажусь рядом</div><div class="dtp-sum">Загружаю места…</div>'; }
+  const cur = t && t.remind_place;
+  if (!PLC.length) return '<div class="dtp-tl" style="margin-top:12px">📍 Когда окажусь рядом</div><div class="dtp-sum">Мест пока нет: назови их в «Трекере» (тап по остановке на карте)</div>';
+  return '<div class="dtp-tl" style="margin-top:12px">📍 Или когда окажусь рядом с…</div><div class="dqrow big" style="flex-wrap:wrap">' +
+    PLC.map(q => '<button type="button" class="dq' + (cur === q.id ? " on" : "") + '" data-a="dplace" data-v="' + q.id + '">' + esc(q.name) + "</button>").join("") +
+    (cur ? '<button type="button" class="dq" data-a="dplace" data-v="" style="color:#d13438">Убрать</button>' : "") + "</div>";
 }
 function dtpSum() { const D = ui.dtp, b = parseISO(D.date), mm = parseTimeText(D.time); return WDS[b.getDay()] + ", " + b.getDate() + " " + MONG[b.getMonth()] + (mm != null ? " в " + hm(mm) : ""); }
 const dtpDay = v => v === "today" ? today : v === "tom" ? addDays(today, 1) : v === "week" ? nextMonday() : v === "mon" ? (() => { const d = parseISO(today); d.setMonth(d.getMonth() + 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); })() : v;
@@ -1386,6 +1405,7 @@ const dtpActs = {
     if (Date.parse(iso) < Date.now() - 60000) return toast("Это время уже прошло — выберите позже");
     patchTask(dtpId(), { remind_at: iso }); applyLoud(dtpId()); askNotify(); dtpDone();
   },
+  dplace(a) { const id = a.dataset.v || null; patchTask(dtpId(), { remind_place: id }); if (id) { try { if (typeof Notification !== "undefined") askNotify(); } catch (e) {} toast("📍 Напомню в Telegram, когда окажешься рядом: " + placeName(id)); } dtpDone(); },
   dclear() { const D = ui.dtp; if (!D) return; if (D.mode === "due") setDue(dtpId(), null); else patchTask(dtpId(), { remind_at: null }); dtpDone(); },
   dtpclose() { ui.dtp = null; closePop(); render(); },
   // шаги ±15 минут у полей времени в «Дне»
@@ -2959,7 +2979,7 @@ function detailHTML(t) {
   return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + '</button><span class="mdl">' + (S.lists[t.list_id] ? esc((S.lists[t.list_id].icon && S.lists[t.list_id].icon !== "🗂️" ? S.lists[t.list_id].icon : "") + S.lists[t.list_id].name) : "") + "</span></div>" : "") + '<div class="dscroll" id="dscroll">' + subCrumb(t) +
     '<div class="dcard dtc"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div></div>" + subBlock(t) +
     '<div class="dcard">' +
-    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at ? "act" : "", t.remind_at ? "clrremind" : "") +
+    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : t.remind_place ? "📍 Рядом с: " + esc(placeName(t.remind_place) || "местом") : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at || t.remind_place ? "act" : "", t.remind_at ? "clrremind" : "") +
     row("cal", di ? esc(di.txt) : "Срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
     row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") +
     row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") +
