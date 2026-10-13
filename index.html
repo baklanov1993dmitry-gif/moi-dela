@@ -733,6 +733,7 @@ function checkReminders() {
     const t = S.tasks[id]; if (!t.remind_at || t.done) continue;
     const at = Date.parse(t.remind_at); if (isNaN(at) || at > now || N[id] === t.remind_at) continue;
     N[id] = t.remind_at; ch = true;
+    if (pushOn() && now - at > 90e3) continue;   // сервер уже прислал пуш/Telegram — не пиликаем при разблокировке
     if (now - at < 24 * 3600e3) fireReminder(t);          // пропущенные старше суток — молча
   }
   if (ch) { const ks = Object.keys(N); if (ks.length > 3000) ks.forEach(k => { if (!S.tasks[k]) delete N[k]; }); jset(LSK.notified, N); }

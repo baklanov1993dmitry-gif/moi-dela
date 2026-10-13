@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
     const now = new Date(), since = new Date(now.getTime() - 24 * 3600e3);
     const { data: tasks, error } = await sb.from("tasks")
-      .select("id,user_id,title,remind_at,remind_sent_for")
+      .select("id,user_id,title,remind_at,remind_sent_for,due,list_id")
       .eq("done", false)
       .lte("remind_at", now.toISOString())
       .gt("remind_at", since.toISOString());
@@ -43,11 +43,22 @@ Deno.serve(async (req) => {
 
     const tgT = Deno.env.get("TG_TOKEN"), tgC = Deno.env.get("TG_CHAT");
     let sent = 0;
+    const lids = [...new Set(due.map((t) => t.list_id).filter(Boolean))];
+    const lname: Record<string, string> = {};
+    if (lids.length) { const { data: ls } = await sb.from("lists").select("id,name").in("id", lids); (ls ?? []).forEach((l: { id: string; name: string }) => { lname[l.id] = l.name; }); }
+    const ymd = (d: Date) => new Date(d.getTime() + 7 * 3600e3).toISOString().slice(0, 10);   // Новосибирск UTC+7
+    const today = ymd(now), tomorrow = ymd(new Date(now.getTime() + 86400e3));
+    const info = (t: { due?: string | null; list_id?: string | null }) => {
+      const p: string[] = [];
+      if (t.list_id && lname[t.list_id]) p.push("📋 " + lname[t.list_id]);
+      if (t.due) p.push("⏳ " + (t.due < today ? "просрочено " + t.due.slice(8) + "." + t.due.slice(5, 7) : t.due === today ? "срок сегодня" : t.due === tomorrow ? "срок завтра" : "срок " + t.due.slice(8) + "." + t.due.slice(5, 7)));
+      return p.join(" · ");
+    };
     const dead: string[] = [];
     for (const t of due) {
       const mine = (subs ?? []).filter((s) => s.user_id === t.user_id);
       if (!mine.length && !(tgT && tgC)) { console.log("no subs for task " + t.id); continue; }
-      const payload = JSON.stringify({ title: "🔔 Напоминание", body: t.title, tag: t.id, id: t.id });
+      const payload = JSON.stringify({ title: "🔔 Напоминание", body: t.title + (info(t) ? "\n" + info(t) : ""), tag: t.id, id: t.id });
       let ok = false;
       await Promise.all(mine.map(async (s) => {
         try {
@@ -61,7 +72,7 @@ Deno.serve(async (req) => {
       }));
       if (tgT && tgC) {   // дублируем в Telegram
         try {
-          const r = await fetch("https://api.telegram.org/bot" + tgT + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: tgC, text: "🔔 " + t.title }) });
+          const r = await fetch("https://api.telegram.org/bot" + tgT + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: tgC, text: "🔔 " + t.title + (info(t) ? "\n" + info(t) : "") }) });
           if (r.ok) { ok = true; sent++; } else console.error("tg fail " + r.status);
         } catch (err) { console.error("tg err " + (err as Error).message); }
       }
