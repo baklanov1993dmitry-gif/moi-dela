@@ -3334,6 +3334,8 @@ function trkRuns(pts) {   // участки пути: граница — сто�
   runs.forEach(r => { const v = r.vs.slice().sort((a, b) => a - b); r.v = v.length ? v[Math.min(v.length - 1, Math.floor(v.length * 0.75))] : 0;   /* 75-й процентиль: такси в пробке не «пешком» */ });
   return runs;
 }
+let MQ = Promise.resolve();
+const mmSlot = fn => { const r = MQ.then(fn); MQ = r.catch(() => {}).then(() => new Promise(z => setTimeout(z, 500))); return r; };
 async function trkMatch(r) {
   const no = w => { MM.why[w] = (MM.why[w] || 0) + 1; return null; };   // привязка к дорогам через публичный Valhalla (OSM): на сервер уходят только координаты участка
   let cache = {}; try { cache = JSON.parse(localStorage.getItem("trk_mm_v3") || "{}"); } catch (e) {}
@@ -3343,9 +3345,16 @@ async function trkMatch(r) {
   const tight = r.v >= 7 && r.v < 28;   // самокат/трамвай: привязываем только если дорога почти точно совпадает с треком (иначе рисуем как есть)
   const costing = r.v < 7 ? "pedestrian" : "auto";
   try {
-    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 15000);
-    const res = await fetch("https://valhalla1.openstreetmap.de/trace_route", { method: "POST", headers: { "content-type": "application/json" }, signal: ctl.signal, body: JSON.stringify({ shape: sm.map(p => ({ lat: +p.lat, lon: +p.lon })), costing, shape_match: "map_snap", trace_options: { search_radius: 60, gps_accuracy: 25 } }) });
-    clearTimeout(tm); if (!res.ok) return no("сервер " + res.status); const j = await res.json(); if (!j.trip || !j.trip.legs) return no("нет маршрута");
+    const bodyS = JSON.stringify({ shape: sm.map(p => ({ lat: +p.lat, lon: +p.lon })), costing, shape_match: "map_snap", trace_options: { search_radius: 60, gps_accuracy: 25 } });
+    const res = await mmSlot(async () => {   // публичный Valhalla не любит пачки запросов: по одному, с паузой и одним повтором
+      for (let k = 0; k < 2; k++) {
+        const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 20000);
+        try { const rr = await fetch("https://valhalla1.openstreetmap.de/trace_route", { method: "POST", headers: { "content-type": "application/json" }, signal: ctl.signal, body: bodyS }); clearTimeout(tm); if (rr.status !== 429 && rr.status < 500) return rr; if (k) return rr; }
+        catch (e) { clearTimeout(tm); if (k) throw e; }
+        await new Promise(z => setTimeout(z, 2000));
+      }
+    });
+    const tm = 0; if (!res.ok) return no("сервер " + res.status); const j = await res.json(); if (!j.trip || !j.trip.legs) return no("нет маршрута");
     let sh = []; j.trip.legs.forEach(l => { sh = sh.concat(trkDec6(l.shape)); }); if (sh.length < 2) return no("пусто");
     { let L1 = 0, L2 = 0; for (let i = 1; i < sh.length; i++) L1 += trkDist(sh[i - 1][0], sh[i - 1][1], sh[i][0], sh[i][1]); L2 = r.dist; if (L1 > (tight ? L2 * 1.2 + 60 : L2 * 1.35 + 80)) return no("длиннее трека"); }
     { const dn = [sh[0]]; for (let i = 1; i < sh.length; i++) { const a = sh[i - 1], b = sh[i], d = trkDist(a[0], a[1], b[0], b[1]), k = Math.ceil(d / 12); for (let j = 1; j <= k; j++) dn.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]); }   // у Valhalla на прямых вершины редкие — уплотняем, иначе расстояние до трека считается неверно
