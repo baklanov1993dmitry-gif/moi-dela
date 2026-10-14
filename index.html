@@ -3385,18 +3385,20 @@ function trkMapDraw() {
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
     let SN = 0; (TRK.D ? TRK.D.segs : []).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || g.key === "g" || m < 5) return; SN++; L.marker([g.lat, g.lon], { icon: L.divIcon({ className: "", html: '<div style="width:26px;height:26px;border-radius:50%;background:#222;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);text-align:center;line-height:22px;font-weight:800;font-size:14px;color:#fff">' + SN + "</div>", iconSize: [26, 26], iconAnchor: [30, 30] }), zIndexOffset: 1000 }).addTo(map).bindTooltip("№" + SN + " · " + (g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }).bindPopup(trkPopupEl({ lat: g.lat, lon: g.lon, name: g.name || "", info: hm(g.start) + "–" + hm(g.end) + " · " + Math.round(m) + " мин" })); });
+    const PM = [];   // метки мест: перетаскивание включается только кнопкой в всплывашке
     (TRK.places || []).forEach(q => {
       const ci = L.circle([q.lat, q.lon], { radius: q.r || 30, color: "#2b7de9", weight: 1, fillColor: "#2b7de9", fillOpacity: .08 }).addTo(map);
-      const mk = L.marker([q.lat, q.lon], { icon: L.divIcon({ className: "trk-pin", html: "📍", iconSize: [24, 24], iconAnchor: [12, 22] }), zIndexOffset: -500, draggable: true }).addTo(map); mk.dragging.disable();
+      const mk = L.marker([q.lat, q.lon], { icon: L.divIcon({ className: "trk-pin", html: "📍", iconSize: [24, 24], iconAnchor: [12, 22] }), zIndexOffset: -500, draggable: true }).addTo(map); PM.push(mk);
       mk.bindTooltip(esc(q.name), { permanent: true, direction: "right", offset: [8, -8], className: "trk-lbl" }).bindPopup(trkPopupEl({ id: q.id, lat: q.lat, lon: q.lon, name: q.name, info: "Моё место", r: q.r || 30,
-        onMove: () => { map.closePopup(); mk.dragging.enable(); toast("Перетащи метку на нужное место и отпусти"); } }));
+        onMove: () => { map.closePopup(); mk.dragging && mk.dragging.enable(); toast("Перетащи метку на нужное место и отпусти"); } }));
       mk.on("drag", () => ci.setLatLng(mk.getLatLng()));
-      mk.on("dragend", async () => { const p2 = mk.getLatLng(); mk.dragging.disable(); const r = await sb.from("places").update({ lat: p2.lat, lon: p2.lng }).eq("id", q.id); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("📍 Метка перенесена"); trkLoad(); });
+      mk.on("dragend", async () => { const p2 = mk.getLatLng(); mk.dragging && mk.dragging.disable(); const r = await sb.from("places").update({ lat: p2.lat, lon: p2.lng }).eq("id", q.id); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("📍 Метка перенесена"); trkLoad(); });
     });
     const f = pts[0], e = pts[pts.length - 1];
     L.circleMarker([+f.lat, +f.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#107c10", fillOpacity: 1 }).addTo(map).bindTooltip("старт " + hm(f.ts));
     L.circleMarker([+e.lat, +e.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#d13438", fillOpacity: 1 }).addTo(map).bindTooltip("сейчас/конец " + hm(e.ts));
     if (TRK.view && TRK.view.off === TRK.off) map.setView(TRK.view.c, TRK.view.z); else map.fitBounds(ll, { padding: [24, 24], maxZoom: 17 });
+    PM.forEach(m => m.dragging && m.dragging.disable());
     const declutter = () => {   // подписи мест: показываем по очереди, пересекающиеся прячем; при отдалении — только значки
       const zm = map.getZoom(), boxes = []; const ms = []; map.eachLayer(l => { if (l.getTooltip && l.options && l.options.icon && l.options.icon.options.className === "trk-pin" && l.getTooltip()) ms.push(l); });
       ms.sort((a, b) => a.getLatLng().lat < b.getLatLng().lat ? 1 : -1).forEach(l => { const el = l.getTooltip().getElement(); if (!el) return;
