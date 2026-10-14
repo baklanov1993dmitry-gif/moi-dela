@@ -3174,7 +3174,7 @@ function ritRow(t, kind) {
 }
 const TRK = { day: [], last: null, media: [], places: [], n: 0, loading: false, err: "", off: 0, view: null };
 const trkDist = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r * Math.cos((a + c) / 2 * r); return Math.sqrt(x * x + y * y) * R; };
-const trkPlace = p => TRK.places.find(q => trkDist(+p.lat, +p.lon, q.lat, q.lon) <= (q.r || 120));
+const trkPlace = p => TRK.places.find(q => trkDist(+p.lat, +p.lon, q.lat, q.lon) <= (q.r || 30) + Math.min(+p.acc || 0, 40));   // радиус места + погрешность самой точки: круги точности пересекаются
 async function trkFetchDay(t0, t1) {
   let all = [];
   for (let i = 0; i < 25; i++) {   // сервер отдаёт максимум 1000 строк за раз — читаем страницами
