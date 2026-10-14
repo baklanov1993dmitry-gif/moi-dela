@@ -3338,7 +3338,8 @@ async function trkMatch(r) {
     clearTimeout(tm); if (!res.ok) return no("сервер " + res.status); const j = await res.json(); if (!j.trip || !j.trip.legs) return no("нет маршрута");
     let sh = []; j.trip.legs.forEach(l => { sh = sh.concat(trkDec6(l.shape)); }); if (sh.length < 2) return no("пусто");
     { let L1 = 0, L2 = 0; for (let i = 1; i < sh.length; i++) L1 += trkDist(sh[i - 1][0], sh[i - 1][1], sh[i][0], sh[i][1]); L2 = r.dist; if (L1 > (tight ? L2 * 1.2 + 60 : L2 * 1.35 + 80)) return no("длиннее трека"); }
-    { const far = r.pts.filter((_, i) => i % 2 === 0).some(q => { let m = 1e9; for (const w of sh) { const d = trkDist(+q.lat, +q.lon, w[0], w[1]); if (d < m) m = d; if (m < 45) break; } return m > (tight ? 40 : 70); }); if (far) return no("далеко от трека"); }   // дорога ушла от реальных точек (дворы вместо улицы) — верим GPS   // «прилипание» дало крюк — верим GPS
+    { const dn = [sh[0]]; for (let i = 1; i < sh.length; i++) { const a = sh[i - 1], b = sh[i], d = trkDist(a[0], a[1], b[0], b[1]), k = Math.ceil(d / 12); for (let j = 1; j <= k; j++) dn.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]); }   // у Valhalla на прямых вершины редкие — уплотняем, иначе расстояние до трека считается неверно
+    const far = r.pts.filter((_, i) => i % 2 === 0).some(q => { let m = 1e9; for (const w of dn) { const d = trkDist(+q.lat, +q.lon, w[0], w[1]); if (d < m) m = d; if (m < 45) break; } return m > (tight ? 45 : 70); }); if (far) return no("далеко от трека"); }   // дорога ушла от реальных точек (дворы вместо улицы) — верим GPS   // «прилипание» дало крюк — верим GPS
     try { const ks = Object.keys(cache); if (ks.length > 80) delete cache[ks[0]]; cache[key] = { s: sh.map(q => [Math.round(q[0] * 1e5) / 1e5, Math.round(q[1] * 1e5) / 1e5]) }; localStorage.setItem("trk_mm_v3", JSON.stringify(cache)); } catch (e) {}
     return sh;
   } catch (e) { return no("ошибка сети"); }
