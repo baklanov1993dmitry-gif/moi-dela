@@ -3249,7 +3249,7 @@ function trkSegs(pts) {
   // короткие «остановки» (<10 мин вне моих мест) — это не место, а часть пути: склеиваем с соседним движением
   const out = [];
   segs.forEach((g, gi) => {   // проход мимо названного места (<7 мин) — не остановка, а часть пути; последний сегмент «сейчас» оставляем
-    if (g.key[0] === "p" && gi < segs.length - 1 && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 7) { g.key = "m"; g.name = null; }
+    if (g.key[0] === "p" && gi < segs.length - 1 && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 5) { g.key = "m"; g.name = null; }
   });
   for (const g of segs) {
     if (g.key === "u" && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 10) { g.key = "m"; g.name = null; }
@@ -3297,13 +3297,13 @@ function trkClean(raw) {   // чистка GPS-мусора: неточные т
   while (i < o.length) {
     const pl = trkPlace(o[i]); let j = i;
     if (pl) {   // в названном месте — все точки сводим в центр места
-      { let lastIn = i, outT = null;   // гистерезис: GPS в помещении «гуляет», но дольше 10 мин вне радиуса места — уже другое место (напр. дом рядом с магазином)
+      { let lastIn = i, outT = null, tout = false;   // гистерезис: GPS в помещении «гуляет» (стоишь у входа — точки в 100–150 м), но дольше 10 мин вне радиуса места — уже другое место
         while (j + 1 < o.length) { const nx = o[j + 1], q = trkPlace(nx); if (q && q.id !== pl.id) break;
           if (q && q.id === pl.id) { lastIn = j + 1; outT = null; j++; continue; }
-          if (trkDist(+nx.lat, +nx.lon, pl.lat, pl.lon) > Math.max(100, (pl.r || 30) * 3)) break;
-          if (outT == null) outT = T(nx); if (T(nx) - outT > 10 * 60000) break; j++; }
-        j = lastIn; }
-      if (j < o.length - 1 && (() => { let a = -1, b = -1; for (let k = i; k <= j; k++) { const q = trkPlace(o[k]); if (q && q.id === pl.id) { if (a < 0) a = k; b = k; } } return a < 0 || (Date.parse(o[b].ts) - Date.parse(o[a].ts)) / 60000 < 7; })()) { for (let k = i; k <= j; k++) out.push(o[k]); i = j + 1; continue; }   // просто прошёл мимо — точки не схлопываем
+          if (trkDist(+nx.lat, +nx.lon, pl.lat, pl.lon) > Math.max(150, (pl.r || 30) * 5)) break;
+          if (outT == null) outT = T(nx); if (T(nx) - outT > 10 * 60000) { tout = true; break; } j++; }
+        if (tout) j = lastIn; }
+      if (j < o.length - 1 && (Date.parse(o[j].ts) - Date.parse(o[i].ts)) / 60000 < 5) { for (let k = i; k <= j; k++) out.push(o[k]); i = j + 1; continue; }   // просто прошёл мимо — точки не схлопываем
       const m = { lat: pl.lat, lon: pl.lon, vel: 0, acc: 10, stay: 1 }; out.push(Object.assign({ ts: o[i].ts }, m)); if (j > i) out.push(Object.assign({ ts: o[j].ts }, m)); i = j + 1; continue;
     }
     while (j + 1 < o.length && D(o[i], o[j + 1]) < 70) j++;
