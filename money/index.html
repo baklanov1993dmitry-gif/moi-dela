@@ -218,7 +218,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .rs.over::after{content:"!";position:absolute;top:-4px;right:-2px;width:15px;height:15px;border-radius:50%;background:var(--exp);color:#fff;font-size:11px;font-weight:700;line-height:15px;text-align:center}
 .cgrid button .bl,.bl{font-style:normal;font-size:10.5px;color:var(--sub);line-height:1}.bl.warn{color:#f2b36d}.bl.bad{color:var(--exp)}
 .cgrid button{gap:3px}
-.toast{max-width:92%;text-align:center}.toast.bad{background:#7a2f2f;color:#fff}.toast.warn{background:#6d5521;color:#fff}.toast.ok{background:color-mix(in srgb,var(--acc) 35%,#222);color:#fff}
+.toast{left:8px;right:8px;bottom:auto;top:calc(8px + env(safe-area-inset-top));transform:none;max-width:none;width:auto;padding:7px 14px;border-radius:14px;font-size:.92em;line-height:1.25;text-align:center;pointer-events:none}.toast.bad{background:#7a2f2f;color:#fff}.toast.warn{background:#6d5521;color:#fff}.toast.ok{background:color-mix(in srgb,var(--acc) 35%,#222);color:#fff}
 .themes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.themes button{background:var(--card);border-radius:10px;padding:8px 4px;border:2px solid transparent;font-size:.8em}.themes button.on{border-color:var(--acc)}
 .themes i{display:block;position:relative;height:44px;border-radius:6px;overflow:hidden;margin-bottom:6px;border:1px solid var(--ln)}.themes i b{position:absolute;left:0;right:0;top:0;height:12px}.themes i u{position:absolute;left:8px;bottom:7px;width:20px;height:7px;border-radius:3px}
 .gb{position:relative;height:10px;border-radius:5px;background:color-mix(in srgb,var(--tx) 13%,transparent);margin:8px 0}.gb i{display:block;height:100%;border-radius:5px}.gb s{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--tx);opacity:.75;border-radius:1px}.gb.sm{height:7px;margin:6px 0 4px}.gb.sm s{top:-2px;bottom:-2px}
@@ -369,7 +369,7 @@ let flushing = false;
 const savePR = () => jset(LS.pref, PR);
 const THEMES = [["gray", "Серая", "#424242", "#616161"], ["black", "Чёрная", "#000000", "#171717"], ["light", "Светлая", "#f2f3f5", "#e3e6ec"], ["navy", "Синяя", "#141a2c", "#1f2742"], ["forest", "Лесная", "#14201a", "#1d3328"], ["plum", "Сливовая", "#1d1626", "#2e2140"], ["sand", "Песок", "#f4efe6", "#e6dccb"], ["cream", "Кремовая", "#fbf6e6", "#f1e9d0"], ["beige", "Бежевая", "#e8dcc8", "#d9c9ae"], ["mint", "Мятная", "#eaf3ee", "#d6e7dd"], ["sky", "Небесная", "#eaf1f8", "#d5e2f0"], ["rose", "Розовая", "#f8ecee", "#efd7db"], ["lav", "Лавандовая", "#efeaf6", "#e0d7ee"]], ACCS = ["#81c995", "#6fd1c4", "#6aa8ff", "#a78bfa", "#f2b36d", "#e88fc4", "#b6d96a", "#ff8f6b", "#ffd54f", "#4dd0e1", "#9fa8ff", "#ff7a90", "#c5e1a5", "#ffab40", "#2e9e5b", "#1f7ae0", "#7c4dff", "#d6336c", "#c2410c", "#0f766e", "#8d6e63", "#90a4ae"];
 function applyTheme() { if (PR.theme === "dark") PR.theme = "gray"; const th = THEMES.find(t => t[0] === PR.theme) || THEMES[0]; document.documentElement.dataset.t = th[0]; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = th[3]; }
-function toast(t, cls, ms) { const e = document.createElement("div"); e.className = "toast " + (cls || ""); e.textContent = t; e.style.whiteSpace = "pre-line"; document.body.appendChild(e); setTimeout(() => e.remove(), ms || 2200); }
+function toast(t, cls, ms) { const e = document.createElement("div"); e.className = "toast " + (cls || ""); e.textContent = String(t).replace(/\n+/g, " · "); document.body.appendChild(e); setTimeout(() => e.remove(), ms || 2200); }
 const catOf = id => cats.find(c => c.id === id) || { id: null, name: "Без категории", icon: "❔", color: "#8d99ae", kind: "exp" };
 const catsOf = k => cats.filter(c => c.kind === k && !c.archived).sort((a, b) => a.position - b.position);
 
@@ -937,7 +937,7 @@ function sheetHTML() {
       return '<div class="full fcat">' + head + date + amt + '<input class="in cs" id="cs" autocomplete="off" placeholder="🔍 Найти категорию" value="' + esc(s.cq || "") + '"><div class="cgrid" id="cg">' + cgridInner(s) + "</div></div>";
     }
     const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
-    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
+    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" enterkeyhint="done" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
       (c ? '<button class="cbtn sv" data-a="txsave">Сохранить · ' + esc(c.name) + "</button>" : "") + '<button class="cbtn" data-a="cstep">Выбор категории</button></div>';
   }
   if (s.type === "cat") {
@@ -1294,6 +1294,12 @@ const A = {
   };
   document.addEventListener("touchend", e => { fin(e); setTimeout(() => { touching = 0; }, 60); }, { passive: true }); document.addEventListener("touchcancel", e => { fin(e); touching = 0; }, { passive: true });
 })();
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || !ui.sheet) return; const id = e.target.id;
+  if (id === "s-note" && ui.sheet.type === "tx") { e.preventDefault(); e.target.blur(); if (ui.sheet.cat) saveTx(); else if (A.cstep) A.cstep(); return; }
+  if ((id === "x-amt" || id === "x-note" || id === "x-day") && ui.sheet.type === "ext") { e.preventDefault(); e.target.blur(); A.xsave(); return; }
+  if (id === "d-amt" && ui.sheet.type === "due") { e.preventDefault(); e.target.blur(); A.duego(); }
+});
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
 document.addEventListener("input", e => { if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
