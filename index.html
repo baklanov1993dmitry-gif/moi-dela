@@ -3297,7 +3297,12 @@ function trkClean(raw) {   // чистка GPS-мусора: неточные т
   while (i < o.length) {
     const pl = trkPlace(o[i]); let j = i;
     if (pl) {   // в названном месте — все точки сводим в центр места
-      while (j + 1 < o.length) { const q = trkPlace(o[j + 1]); if ((q && q.id === pl.id) || trkDist(+o[j + 1].lat, +o[j + 1].lon, pl.lat, pl.lon) <= Math.max(100, (pl.r || 30) * 3)) j++; else break; }   // гистерезис: внутри помещения GPS «гуляет» на сотни метров
+      { let lastIn = i, outT = null;   // гистерезис: GPS в помещении «гуляет», но дольше 10 мин вне радиуса места — уже другое место (напр. дом рядом с магазином)
+        while (j + 1 < o.length) { const nx = o[j + 1], q = trkPlace(nx); if (q && q.id !== pl.id) break;
+          if (q && q.id === pl.id) { lastIn = j + 1; outT = null; j++; continue; }
+          if (trkDist(+nx.lat, +nx.lon, pl.lat, pl.lon) > Math.max(100, (pl.r || 30) * 3)) break;
+          if (outT == null) outT = T(nx); if (T(nx) - outT > 10 * 60000) break; j++; }
+        j = lastIn; }
       if (j < o.length - 1 && (() => { let a = -1, b = -1; for (let k = i; k <= j; k++) { const q = trkPlace(o[k]); if (q && q.id === pl.id) { if (a < 0) a = k; b = k; } } return a < 0 || (Date.parse(o[b].ts) - Date.parse(o[a].ts)) / 60000 < 7; })()) { for (let k = i; k <= j; k++) out.push(o[k]); i = j + 1; continue; }   // просто прошёл мимо — точки не схлопываем
       const m = { lat: pl.lat, lon: pl.lon, vel: 0, acc: 10, stay: 1 }; out.push(Object.assign({ ts: o[i].ts }, m)); if (j > i) out.push(Object.assign({ ts: o[j].ts }, m)); i = j + 1; continue;
     }
