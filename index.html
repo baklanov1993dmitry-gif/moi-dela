@@ -3323,7 +3323,7 @@ function trkDec6(str) {   // polyline с точностью 6 знаков (фо
 function trkRuns(pts) {   // участки пути: граница — стоянка, длинная пауза или смена вида движения (пешком / вело / транспорт)
   const cls = v => v < 7 ? 0 : v < 28 ? 2 : 3, E = [];   // пешком / вело / самокат-трамвай (16–28) / транспорт
   for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], gap = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000, d = trkDist(+a.lat, +a.lon, +b.lat, +b.lon), v = gap > 90 || b.vel == null ? (gap > 0 ? d / gap * 3.6 : 0) : b.vel; E.push({ d, v, gapBig: gap > 900 && d > 300, still: a.stay && b.stay }); }
-  const c = E.map(e => cls(e.v)), sm = c.map((x, i) => { const w = c.slice(Math.max(0, i - 2), i + 3), n = [0, 0, 0]; w.forEach(y => n[y]++); return n.indexOf(Math.max(...n)); });
+  const c = E.map(e => cls(e.v)), sm = c.map((x, i) => { const w = c.slice(Math.max(0, i - 2), i + 3), n = [0, 0, 0, 0]; w.forEach(y => n[y]++); return n.indexOf(Math.max(...n)); });
   const runs = []; let cur = null;
   E.forEach((e, i) => {
     if (e.still || e.d < 25) { cur = null; return; }
@@ -3413,7 +3413,11 @@ function trkHTML() {
     if (g.key === "g") return '<div class="trk-r"><b>' + t + '</b><div class="trk-n" style="color:#d13438">⚠ нет данных<span> · ' + d + " — телефон не присылал точки</span></div></div>";
     if (g.key === "m" && TRK.D && TRK.D.pts) {   // участок пути делим по виду движения: «5 мин пешком, потом самокат»
       const t0 = Date.parse(g.start), t1 = Date.parse(g.end), seg = TRK.D.pts.filter(q => { const t = Date.parse(q.ts); return t >= t0 && t <= t1; });
-      const rs = trkRuns(seg).filter(r => !r.gap && r.dist >= 80), nm = ["🚶 пешком", "", "🛴🚋 самокат / трамвай", "🚌 транспорт"];
+      const nm = ["🚶 пешком", "", "🛴🚋 самокат / трамвай", "🚌 транспорт"], rs = []; trkRuns(seg).filter(r => !r.gap && r.dist >= 80).forEach(r => {   // соседние участки одного вида движения склеиваем в один
+        const l = rs[rs.length - 1], rt0 = Date.parse(r.pts[0].ts);
+        if (l && l.cls === r.cls && rt0 - Date.parse(l.pts[l.pts.length - 1].ts) < 4 * 60000) { l.v = (l.v * l.dist + r.v * r.dist) / (l.dist + r.dist); l.dist += r.dist; l.pts = l.pts.concat(r.pts); }
+        else rs.push({ pts: r.pts.slice(), cls: r.cls, v: r.v, dist: r.dist });
+      });
       if (rs.length) return rs.slice().reverse().map(r => { const a = r.pts[0].ts, b = r.pts[r.pts.length - 1].ts, dd = dur(Date.parse(b) - Date.parse(a)), v = Math.round(r.v), km = r.dist < 1000 ? Math.round(r.dist / 10) * 10 + " м" : (r.dist / 1000).toFixed(1).replace(".", ",") + " км";
         return '<div class="trk-r"><b>' + hm(a) + "–" + hm(b) + '</b><div class="trk-n">' + nm[r.cls] + "<span>" + (dd ? " · " + dd : "") + " · " + km + " · ~" + v + " км/ч</span></div></div>"; }).join("");
     }
