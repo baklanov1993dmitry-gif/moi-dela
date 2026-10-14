@@ -969,7 +969,6 @@ function sheetHTML() {
     return '<div class="ov" data-a="shclose"><div class="sheet rcp" data-a="nop"><div class="rhd"><div class="rm">🧾 ' + esc(s.merchant || "Чек") + '</div><label class="rdt">📅 <span>' + esc(dl) + '</span><input type="date" id="r-date" value="' + esc(s.date) + '"></label></div>' +
       '<div class="rtot" id="rsum">' + rsumText(s) + "</div>" + (s.note ? '<div class="rnote">' + esc(s.note) + "</div>" : "") +
       '<div class="rl">' + (keys.length ? keys.map(k => gh(k) + g[k].map(row).join("")).join("") : '<div class="empty">Позиций не осталось</div>') + "</div>" +
-      '<label class="rmg"><input type="checkbox" id="r-merge"' + (s.merge ? " checked" : "") + '><span><b>Одной тратой на категорию</b><small>выключи — каждая позиция запишется отдельно</small></span></label>' +
       '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div>' + (s.inbox ? '<button class="btn g" style="width:100%;margin-top:8px" data-a="inbskip">Не чек — пропустить</button>' : "") + "</div></div>";
   }
   if (s.type === "tplq") {
