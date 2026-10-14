@@ -1369,7 +1369,7 @@ function mapPick(taskId) {
   ov.innerHTML = '<div style="display:flex;gap:6px;padding:8px;align-items:center"><button type="button" id="mp-x" class="btn ghost">✕</button><input id="mp-q" placeholder="Адрес или место (необязательно)" style="flex:1;min-width:0;padding:8px"><button type="button" id="mp-s" class="btn">Найти</button></div>' +
     '<div id="mp-map" style="flex:1;min-height:200px"></div>' +
     '<div style="padding:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span id="mp-h" style="width:100%;font-size:13px;opacity:.7">Тапни по карте, чтобы поставить точку</span>' +
-    '<input id="mp-n" placeholder="Название места" style="flex:1;min-width:120px;padding:8px"><select id="mp-r" style="padding:8px"><option>50</option><option>100</option><option selected>150</option><option>250</option><option>500</option></select><span>м</span><button type="button" id="mp-ok" class="btn">Сохранить</button></div>';
+    '<input id="mp-n" placeholder="Название места" style="flex:1;min-width:120px;padding:8px"><select id="mp-r" style="padding:8px"><option selected>30</option><option>50</option><option>100</option><option>150</option><option>250</option></select><span>м</span><button type="button" id="mp-ok" class="btn">Сохранить</button></div>';
   document.body.appendChild(ov);
   const close = () => ov.remove(); document.getElementById("mp-x").onclick = close;
   let pos = null, mk = null, ci = null, map = null;
@@ -3272,7 +3272,7 @@ function trkStats(pts) {   // километры по видам движени�
 }
 function trkPopupEl(o) {   // всплывашка над точкой: подписать / переименовать / удалить место
   const d = document.createElement("div"); d.style.cssText = "min-width:200px;font-size:14px";
-  d.innerHTML = '<div style="color:#666;margin-bottom:6px">' + esc(o.info || "") + '</div><input type="text" maxlength="40" placeholder="Дом, офис, зал…" style="width:100%;box-sizing:border-box;padding:7px;font-size:15px;border:1px solid #bbb;border-radius:6px" value="' + esc(o.name || "") + '"><label style="display:block;margin-top:8px;color:#666">Радиус места: <select data-r style="font-size:14px;padding:3px">' + [30, 60, 120, 200, 300].map(x => '<option value="' + x + '"' + (x === (o.r || 120) ? " selected" : "") + ">" + x + " м</option>").join("") + '</select></label><div style="display:flex;gap:6px;margin-top:8px"><button data-ok style="flex:1;padding:7px;border:0;border-radius:6px;background:#2b7de9;color:#fff;font-size:14px">' + (o.id ? "Сохранить" : "Подписать") + "</button>" + (o.id ? '<button data-del style="padding:7px 10px;border:1px solid #d13438;color:#d13438;background:#fff;border-radius:6px;font-size:14px">Удалить</button>' : "") + "</div>";
+  d.innerHTML = '<div style="color:#666;margin-bottom:6px">' + esc(o.info || "") + '</div><input type="text" maxlength="40" placeholder="Дом, офис, зал…" style="width:100%;box-sizing:border-box;padding:7px;font-size:15px;border:1px solid #bbb;border-radius:6px" value="' + esc(o.name || "") + '"><label style="display:block;margin-top:8px;color:#666">Радиус места: <select data-r style="font-size:14px;padding:3px">' + [30, 50, 80, 120, 200, 300].map(x => '<option value="' + x + '"' + (x === (o.r || 30) ? " selected" : "") + ">" + x + " м</option>").join("") + '</select></label><div style="display:flex;gap:6px;margin-top:8px"><button data-ok style="flex:1;padding:7px;border:0;border-radius:6px;background:#2b7de9;color:#fff;font-size:14px">' + (o.id ? "Сохранить" : "Подписать") + "</button>" + (o.id ? '<button data-del style="padding:7px 10px;border:1px solid #d13438;color:#d13438;background:#fff;border-radius:6px;font-size:14px">Удалить</button>' : "") + "</div>";
   const rs = d.querySelector("[data-r]"), inp = d.querySelector("input"), ok = d.querySelector("[data-ok]"), del = d.querySelector("[data-del]");
   const save = async () => { const n = inp.value.trim().slice(0, 40); if (!n) { inp.focus(); return; } ok.disabled = true; const r = o.id ? await sb.from("places").update({ name: n, r: +rs.value }).eq("id", o.id) : await sb.from("places").insert({ name: n, lat: +o.lat, lon: +o.lon, r: +rs.value }); if (r.error) { ok.disabled = false; toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); const v = TRK.view; trkLoad().then(() => { TRK.view = v; }); };
   ok.onclick = save; inp.onkeydown = e => { if (e.key === "Enter") save(); e.stopPropagation(); };
@@ -3677,7 +3677,7 @@ const acts = {
   },
   async trkname(a) {
     const p = { lat: +a.dataset.lat, lon: +a.dataset.lon }; if (!isFinite(p.lat)) return; const n = (prompt("Как назвать это место? (дом, офис, зал…)") || "").trim().slice(0, 40); if (!n) return;
-    const r = await sb.from("places").insert({ name: n, lat: +p.lat, lon: +p.lon, r: 120 }); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); trkLoad();
+    const r = await sb.from("places").insert({ name: n, lat: +p.lat, lon: +p.lon, r: 30 }); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); trkLoad();
   },
   async trkdel(a, e) { e.preventDefault && e.preventDefault(); if (!confirm("Удалить место?")) return; await sb.from("places").delete().eq("id", a.dataset.i); trkLoad(); },
   ritclose() { ui.rit = false; render(); },
