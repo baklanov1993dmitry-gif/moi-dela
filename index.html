@@ -3246,13 +3246,13 @@ function trkSegs(pts) {
     if (last && last.key === key && (key !== "u" || trkDist(last.lat, last.lon, lat, lon) < 150)) { last.end = p.ts; last.n++; if (p.vel != null) last.vs.push(p.vel); }
     else segs.push({ key, name: pl ? pl.name : null, start: p.ts, end: p.ts, lat, lon, n: 1, vs: p.vel != null ? [p.vel] : [] });
   }
-  // короткие «остановки» (<5 мин вне моих мест) — это не место, а часть пути: склеиваем с соседним движением
+  // короткие «остановки» (<10 мин вне моих мест) — это не место, а часть пути: склеиваем с соседним движением
   const out = [];
   segs.forEach((g, gi) => {   // проход мимо названного места (<7 мин) — не остановка, а часть пути; последний сегмент «сейчас» оставляем
     if (g.key[0] === "p" && gi < segs.length - 1 && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 7) { g.key = "m"; g.name = null; }
   });
   for (const g of segs) {
-    if (g.key === "u" && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 5) { g.key = "m"; g.name = null; }
+    if (g.key === "u" && (Date.parse(g.end) - Date.parse(g.start)) / 60000 < 10) { g.key = "m"; g.name = null; }
     const l = out[out.length - 1];
     if (l && (Date.parse(g.start) - Date.parse(l.end)) / 60000 >= 10) out.push({ key: "g", name: null, start: l.end, end: g.start, lat: 0, lon: 0, n: 0, vs: [] });   // дыра в данных: телефон не слал точки
     const l2 = out[out.length - 1];
