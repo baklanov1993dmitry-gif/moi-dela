@@ -1387,16 +1387,26 @@ function mapPick(taskId) {
     try { navigator.geolocation && navigator.geolocation.getCurrentPosition(g => { if (!pos) map.setView([g.coords.latitude, g.coords.longitude], 16); }, () => {}, { timeout: 4000 }); } catch (e) {}
   });
   document.getElementById("mp-r").onchange = () => { if (pos) put(pos[0], pos[1]); };
-  document.getElementById("mp-s").onclick = async () => {
-    const q = document.getElementById("mp-q").value.trim(); if (!q || !map) return;
-    try { const r = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ru&q=" + encodeURIComponent(q)); const j = await r.json();
-      if (j[0]) { map.setView([+j[0].lat, +j[0].lon], 17); put(+j[0].lat, +j[0].lon); const n = document.getElementById("mp-n"); if (!n.value) n.value = q.slice(0, 40); } else toast("Ничего не найдено"); } catch (e) { toast("Поиск не сработал"); }
+  const say = t => { const h = document.getElementById("mp-h"); if (h) h.textContent = t; };
+  const geo = async q => {   // Nominatim (с уклоном к текущему виду карты), затем Photon
+    const c = map.getCenter(), vb = [c.lng - 1, c.lat + 1, c.lng + 1, c.lat - 1].join(",");
+    try { const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ru&viewbox=" + vb + "&q=" + encodeURIComponent(q)); if (r.ok) { const j = await r.json(); if (j[0]) return [+j[0].lat, +j[0].lon, j[0].display_name]; } } catch (e) {}
+    try { const r = await fetch("https://photon.komoot.io/api/?limit=1&lat=" + c.lat + "&lon=" + c.lng + "&q=" + encodeURIComponent(q)); if (r.ok) { const j = await r.json(), f = j.features && j.features[0]; if (f) return [f.geometry.coordinates[1], f.geometry.coordinates[0], (f.properties || {}).name || q]; } } catch (e) {}
+    return null;
   };
+  const doSearch = async () => {
+    const q = document.getElementById("mp-q").value.trim(); if (!q) return say("Впиши адрес и нажми «Найти»"); if (!map) return say("Карта ещё грузится…");
+    say("Ищу…"); let g = await geo(q); if (!g && !/новосиб/i.test(q)) g = await geo(q + ", Новосибирск");
+    if (!g) return say("Не нашёл «" + q + "». Попробуй иначе (улица, дом, город) или тапни по карте");
+    map.setView([g[0], g[1]], 17); put(g[0], g[1]); const n = document.getElementById("mp-n"); if (!n.value) n.value = q.slice(0, 40);
+  };
+  document.getElementById("mp-s").onclick = doSearch;
+  document.getElementById("mp-q").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } };
   document.getElementById("mp-ok").onclick = async () => {
     const name = document.getElementById("mp-n").value.trim();
-    if (!pos) return toast("Сначала поставь точку на карте"); if (!name) return toast("Дай месту название");
+    if (!pos) return say("Сначала поставь точку на карте"); if (!name) return say("Дай месту название");
     const r = await sb.from("places").insert({ name, lat: pos[0], lon: pos[1], r: +document.getElementById("mp-r").value }).select("id,name,lat,lon,r").single();
-    if (r.error) return toast("Не сохранилось: " + r.error.message);
+    if (r.error) return say("Не сохранилось: " + r.error.message);
     PLC = (PLC || []).concat([r.data]); if (taskId) patchTask(taskId, { remind_place: r.data.id });
     close(); toast("📍 Готово: напомню, когда окажешься рядом с «" + name + "»"); render();
   };
