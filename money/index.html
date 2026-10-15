@@ -271,7 +271,7 @@ table.hm td{background-color:transparent}
 <body>
 <div id="app"></div>
 <script src="rcparse.js"></script>
-<script src="price.js"></script>
+<script src="price.js"></script><script src="food.js"></script>
 <script>
 "use strict";
 /* ============ утилиты ============ */
@@ -618,20 +618,35 @@ function budBody() {
   } else if (capOn) h += '<div class="sub qnote">План по категориям строится только для текущего месяца.</div>';
   return h + budRows(am);
 }
+const WINS = [[30, "30 дн"], [90, "3 мес"], [180, "6 мес"], [365, "год"], [0, "всё"]];
+const winOf = n => +n > 0 ? [Date.now() - n * 864e5, Date.now() + 864e5] : [0, Infinity];
+const winLbl = n => (WINS.find(x => x[0] === +n) || WINS[1])[1];
+const winChips = (act, cur) => '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + WINS.map(w => '<button class="chip' + (+cur === w[0] ? " on" : "") + '" data-a="' + act + '" data-v="' + w[0] + '">' + w[1] + "</button>").join("") + "</div>";
+const prcN = () => PR.prcN != null ? +PR.prcN : 90, nutN = () => PR.nutN != null ? +PR.nutN : 30;
 function prcRows(B) { return PRICES.filter(r => { const t = +new Date(r.ts); return t >= B[0] && t < B[1]; }); }
-function prcSum(B) { const sm = PRC.summary(PRC.groups(prcRows(B))); return sm ? "инфляция " + ppct(sm.med) : (PRICES.length ? "мало данных" : ""); }
-function prcBody(B) {
-  const rows = prcRows(B), gs = PRC.groups(rows), sm = PRC.summary(gs);
+function prcSum() { const sm = PRC.summary(PRC.groups(prcRows(winOf(prcN())))); return sm ? "инфляция " + ppct(sm.med) : (PRICES.length ? "мало данных" : ""); }
+function prcBody() {
+  const n = prcN(), B = winOf(n), rows = prcRows(B), gs = PRC.groups(rows), sm = PRC.summary(gs), chips = winChips("prcset", n);
   if (!PRICES.length) return '<div class="sub">Цен пока нет. Они копятся из чеков, а старые можно подтянуть из заметок.</div><button class="btn g" data-a="gopr" style="width:100%;margin-top:8px">Открыть справочник цен</button>';
-  const days = Math.max(7, Math.ceil((Math.min(B[1], Date.now()) - Math.max(B[0], Math.min(...PRICES.map(r => +new Date(r.ts))))) / 864e5)), wk = days / 7;
-  const keys = new Set(rows.map(r => r.pkey || PRC.key(r.name))), rep = gs.filter(g => g.count >= 2).length;
-  let o = '<div style="margin-bottom:8px"><b>Личная инфляция за период:</b> ' + (sm ? '<b class="' + pcol(sm.med) + '">' + ppct(sm.med) + '</b> <span class="sub">(медиана по ' + sm.n + ' тов.; на год ≈ ' + ppct(sm.year) + ')</span>' : '<span class="sub">нужны товары, купленные минимум дважды с разницей в неделю и больше</span>') + "</div>";
-  o += '<div style="margin-bottom:8px"><b>Разнообразие:</b> ' + keys.size + ' разных продуктов за период' + (wk >= 1 ? ', ≈ ' + (keys.size / wk).toFixed(1) + ' в неделю' : '') + '<br><span class="sub">повторно покупал ' + rep + ' из них · одноразовых ' + (keys.size - rep) + '</span></div>';
+  let o = chips + '<div style="margin-bottom:8px"><b>Личная инфляция за ' + (n ? winLbl(n) : "всё время") + ':</b> ' + (sm ? '<b class="' + pcol(sm.med) + '">' + ppct(sm.med) + '</b> <span class="sub">(медиана по ' + sm.n + ' тов.; на год ≈ ' + ppct(sm.year) + ')</span>' : '<span class="sub">нужны товары, купленные минимум дважды с разницей в неделю и больше</span>') + "</div>";
   const mv = gs.filter(g => g.pct != null).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 5);
   if (mv.length) o += '<div class="sub" style="margin-bottom:4px">Сильнее всего изменились:</div>' + mv.map(g => '<div class="pr"><span>' + esc(g.name) + '</span><b class="' + pcol(g.pct) + '">' + ppct(g.pct) + "</b></div>").join("");
   return o + '<button class="btn g" data-a="gopr" style="width:100%;margin-top:10px">Весь справочник цен ›</button>';
 }
-function budScreen() { return topBar(true, "setmain") + '<div class="card"><h3>🎯 Бюджет месяца <span class="sub" style="font-size:.8em;font-weight:400">' + budSum() + '</span></h3><div class="acb" style="padding:0">' + budBody() + "</div></div>"; }
+function nutSum() { if (!window.FOOD) return ""; const r = FOOD.analyze(txs, cats, nutN()); return r.enough ? r.verdict.t.toLowerCase() + " · " + r.score : "мало данных"; }
+function nutBody() {
+  const n = nutN(), r = FOOD.analyze(txs, cats, n), col = { good: "inc", mid: "sub", bad: "exp", na: "sub" }[r.verdict.k];
+  let o = winChips("nutset", n) + '<div style="margin-bottom:8px"><b class="' + col + '" style="font-size:1.1em">' + r.verdict.t + (r.enough ? " · " + r.score + "/100" : "") + '</b><br><span class="sub">' + r.verdict.d + "</span></div>";
+  if (!r.enough) return o + '<div class="sub" style="font-size:.85em">Распознал продукты в ' + r.matched + " из " + r.total + " трат. Чем чаще в заметках названия продуктов (или чек через «Чек»), тем точнее выводы.</div>";
+  const bar = (g, mx) => '<div class="wrow"><span class="wn" style="width:auto;min-width:0;flex:1.3;font-size:.88em">' + g.i + " " + g.t + '</span><div class="tr" style="flex:1"><i style="width:' + Math.min(100, g.f / mx * 100).toFixed(1) + "%;background:" + (g.good ? (g.f >= g.good ? "var(--inc)" : g.f >= g.good * 0.5 ? "var(--acc)" : "var(--exp)") : (g.f > g.bad ? "var(--exp)" : "var(--acc)")) + '"></i></div><span class="wv" style="min-width:64px;text-align:right"><b>' + g.f.toFixed(1) + "</b><small> /" + (g.good || "≤" + g.bad) + "</small></span></div>";
+  const gd = r.groups.filter(g => g.good), bd = r.groups.filter(g => g.bad && (g.n > 0 || g.f > 0)), mx = Math.max(...r.groups.map(g => g.good || g.bad), ...r.groups.map(g => g.f));
+  o += '<div class="sub" style="margin:6px 0 2px">Дней в неделю с покупкой / ориентир</div>' + gd.map(g => bar(g, mx)).join("") + (bd.length ? '<div class="sub" style="margin:8px 0 2px">Что лучше ограничивать</div>' + bd.map(g => bar(g, mx)).join("") : "");
+  if (r.lack.length) o += '<div style="margin-top:10px"><b>Чего не хватает:</b>' + r.lack.map(g => '<div class="sub" style="margin-top:4px">' + g.i + " <b>" + g.t + "</b> — " + (g.n ? "редко (" + g.f.toFixed(1) + " дн./нед.)" : "не покупал вообще") + ". " + g.tip + "</div>").join("") + "</div>";
+  if (r.over.length) o += '<div style="margin-top:10px"><b>Многовато:</b>' + r.over.map(g => '<div class="sub" style="margin-top:4px">' + g.i + " <b>" + g.t + "</b> — " + g.f.toFixed(1) + " дн./нед. " + g.tip + "</div>").join("") + "</div>";
+  if (!r.lack.length && !r.over.length) o += '<div style="margin-top:10px" class="sub">Явных перекосов нет, так держать 👍</div>';
+  return o + '<div class="sub" style="font-size:.78em;margin-top:10px">Оценка по покупкам и заметкам, а не по съеденному. Распознано продуктов в ' + r.matched + " из " + r.total + " трат. Это ориентир, не медицинская рекомендация.</div>";
+}
+function budScreen() { return topBar(true) + '<div class="card"><h3>🎯 Бюджет месяца <span class="sub" style="font-size:.8em;font-weight:400">' + budSum() + '</span></h3><div class="acb" style="padding:0">' + budBody() + "</div></div>"; }
 function budSum() {
   const am = anchorMonth(), md = bmode(); if (md === "off") return "выкл.";
   const sp = monTot(monthSums(), am);
@@ -679,7 +694,7 @@ function bars(vals, labels, opts) {   // вертикальные столбцы
 
 /* ============ экраны ============ */
 function topBar(withRange, back) {
-  const home = ui.tab === "home", ttl = { home: "Траты", list: "Операции", stats: "Аналитика", more: "Ещё" }[ui.tab] || "Траты";
+  const home = ui.tab === "home", ttl = { home: "Траты", list: "Операции", bud: "Бюджет", stats: "Аналитика", more: "Ещё" }[ui.tab] || "Траты";
   const arrows = withRange && ui.rg.t !== "all" && ui.rg.t !== "int", shifted = n => { const B = rgBounds(ui.rg, n); return rgLabel({ t: ui.rg.t, a: B[0] }); };
   const sm = l => l.replace(/ \d{4}$/, ""), nextOK = arrows && rgBounds(ui.rg, 1)[0] <= Date.now();
   const hdr = '<div class="hdr"><button class="hb" data-a="' + (back || (home ? "pickrange" : "tab")) + '" data-v="home">' + (home && !back ? UI.filter : UI.back) + '</button><div class="ttl"><div class="logo">' + ttl + '</div><div class="sa">Все счета</div></div><button class="hb" data-a="search">' + UI.search + "</button>" + (home ? '<button class="hb" data-a="cmp" title="Сравнить с прошлым периодом">' + UI.swap + "</button>" : "") + '<button class="hb" data-a="menu">' + UI.dots + "</button></div>";
@@ -775,7 +790,8 @@ function statsHTML() {
   const arr = rgTx(), B = rgBounds(ui.rg), t = ui.rg.t, ex = arr.filter(x => x.kind === "exp"), exp = sumBy(ex);
   const first = txs.length ? Math.min(...txs.map(x => +new Date(x.ts))) : Date.now(), s0 = Math.max(B[0], first), e0 = Math.min(B[1], Date.now() + 864e5), days = Math.max(1, Math.ceil((e0 - s0) / 864e5));
   let h = topBar(true) + '<div class="kp"><div><small>Расходы</small><b class="exp">' + fm(exp) + "</b></div><div><small>В день</small><b>" + fm(exp / days) + "</b></div><div><small>Покупок</small><b>" + ex.length + "</b></div><div><small>Средний чек</small><b>" + fm(ex.length ? exp / ex.length : 0) + "</b></div></div>";
-  h += acc("prc", "📈", "Цены на продукты", prcSum(B), () => prcBody(B));
+  h += acc("nut", "🥗", "Рацион и питание", nutSum(), nutBody);
+  h += acc("prc", "📈", "Цены на продукты", prcSum(), prcBody);
   h += acc("avg", "📈", "Средние траты", avgSum(), avgBody);
   if (!arr.length) return h + '<div class="empty">Нет данных за период</div>';
   const am = anchorMonth();
@@ -799,13 +815,11 @@ function moreHTML() {
   if (ui.set === "cats") return catsMgrHTML();
   if (ui.set === "ext") return extHTML();
   if (ui.set === "prices") return pricesHTML();
-  if (ui.set === "budget") return budScreen();
   const sets = [["line", "Линии"], ["badge", "Значки"], ["emoji", "Эмодзи"]], demo = ["🛒", "🍽️", "💊", "🚌"], dc = ["#ff7a7a", "#ffb04d", "#5fd0a5", "#6aa8ff"];
   return topBar(false) +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Набор иконок</div><div class="iset">' + sets.map(t => '<button class="' + ((PR.iset || "line") === t[0] ? "on" : "") + '" data-a="iset" data-v="' + t[0] + '"><div>' + demo.map((e, i) => ic(e, dc[i], 30, t[0])).join("") + "</div><span>" + t[1] + "</span></button>").join("") + "</div></div>" +
     '<button class="set" data-a="rnames"><span>🏷️</span><span style="flex:1">Названия категорий в колесе</span><b class="tg' + (PR.rn !== false ? " on" : "") + '">' + (PR.rn !== false ? "вкл" : "выкл") + '</b></button>' +
     '<button class="set" data-a="setext"><span>⚡</span><span style="flex:1">Шаблоны и повторяющиеся</span><span class="sub">' + (EXT.tpl.length + EXT.rec.length || "") + ' ›</span></button>' +
-    '<button class="set" data-a="setbudget"><span>🎯</span><span style="flex:1">Бюджет месяца</span><span class="sub">' + budSum() + ' ›</span></button>' +
     '<button class="set" data-a="setprices"><span>📈</span><span style="flex:1">Цены на продукты</span><span class="sub">' + (PRICES.length || "") + ' ›</span></button>' +
     '<button class="set" data-a="setcats"><span>🗂️</span><span style="flex:1">Категории</span><span class="sub">›</span></button>' +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Тема</div><div class="themes">' + THEMES.map(t => '<button class="' + (PR.theme === t[0] ? "on" : "") + '" data-a="theme" data-v="' + t[0] + '"><i style="background:' + t[2] + '"><b style="background:' + t[3] + '"></b><u style="background:' + PR.acc + '"></u></i><span>' + t[1] + "</span></button>").join("") + "</div></div>" +
@@ -816,7 +830,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 32 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 33 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1116,7 +1130,7 @@ function render() {
   if (!user) { login(); return; }
   const scr = ui.tab === "more" ? moreHTML() : pageHTML(0);
   const keep = $("main") && ui._lt === ui.tab ? $("main").scrollTop : 0; ui._lt = ui.tab;
-  const menu = ui.menu ? '<div class="mov" data-a="menuclose"><div class="menu" data-a="nop">' + [["home", "Главная"], ["list", "Операции"], ["stats", "Аналитика"], ["more", "Категории и настройки"]].map(t => '<button data-a="tab" data-v="' + t[0] + '"' + (ui.tab === t[0] ? ' class="on"' : "") + ">" + t[1] + "</button>").join("") + "</div></div>" : "";
+  const menu = ui.menu ? '<div class="mov" data-a="menuclose"><div class="menu" data-a="nop">' + [["home", "Главная"], ["list", "Операции"], ["bud", "Бюджет месяца"], ["stats", "Аналитика"], ["more", "Категории и настройки"]].map(t => '<button data-a="tab" data-v="' + t[0] + '"' + (ui.tab === t[0] ? ' class="on"' : "") + ">" + t[1] + "</button>").join("") + "</div></div>" : "";
   $("app").innerHTML = '<div id="main">' + scr + "</div>" + sheetHTML() + menu + inbBanner();
   if ($("main")) { const mn = $("main"); mn.scrollTop = ui.tab === "home" && ui.view === "ring" ? 0 : keep; mn.classList.toggle("noscr", ui.tab === "home" && ui.view === "ring"); const hd = mn.querySelector(".hdr"), mr = mn.querySelector(".mrow"); if (hd) { mn.style.setProperty("--h1", hd.offsetHeight + "px"); if (mr) mn.style.setProperty("--h2", hd.offsetHeight + mr.offsetHeight + "px"); } }
   document.querySelectorAll(".hmw").forEach(e => { e.scrollLeft = e.scrollWidth; });
@@ -1132,7 +1146,7 @@ function pageHTML(d) {   // HTML страницы (с кэшем): соседн�
   try {
     const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
     let h = PC.get(key); if (h != null) return h;
-    h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : statsHTML();
+    h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : ui.tab === "bud" ? budScreen() : statsHTML();
     PC.set(key, h); if (PC.size > 14) PC.delete(PC.keys().next().value); return h;
   } finally { ui.rg = sv; }
 }
@@ -1184,7 +1198,7 @@ function onBack() {
     if (ui.menu) ui.menu = false;
     else if (ui.sheet) { if (ui.sheet.step === "cat") ui.sheet.step = "kb"; else ui.sheet = null; }
     else if (ui.tab === "more" && ui.set === "prices" && ui.pk) ui.pk = null;
-    else if (ui.tab === "more" && (ui.set === "cats" || ui.set === "prices" || ui.set === "budget")) ui.set = "main";
+    else if (ui.tab === "more" && (ui.set === "cats" || ui.set === "prices")) ui.set = "main";
     else if (ui.tab !== "home") { ui.tab = "home"; ui.q = ""; ui.set = "main"; }
     else if (ui.view === "list") ui.view = "ring";
     render(); return;
@@ -1345,10 +1359,10 @@ const A = {
   },
   cmp() { if (ui.rg.t === "all" || ui.rg.t === "int") { toast("Для этого периода сравнивать не с чем — выбери месяц, неделю или год"); return; } ui.sheet = { type: "cmp" }; render(); }, cmpk(a) { ui.kind = a.dataset.v; render(); },
   qtpl() { ui.sheet = { type: "tplq" }; render(); }, qbud() { ui.sheet = { type: "pulse" }; render(); },
-  qtplset() { ui.sheet = null; ui.tab = "more"; ui.set = "ext"; render(); }, qbudgo() { ui.sheet = null; ui.tab = "stats"; render(); },
+  qtplset() { ui.sheet = null; ui.tab = "more"; ui.set = "ext"; render(); }, qbudgo() { ui.sheet = null; ui.tab = "bud"; render(); },
   rnames() { PR.rn = PR.rn === false; savePR(); render(); },
   setext() { ui.set = "ext"; render(); },
-  setbudget() { ui.set = "budget"; render(); },
+  prcset(a) { PR.prcN = +a.dataset.v; savePR(); render(); }, nutset(a) { PR.nutN = +a.dataset.v; savePR(); render(); },
   gopr() { ui.tab = "more"; ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
   setprices() { ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
   pbscan() { ui.sheet = { type: "pback", groups: pbScan() }; render(); },
