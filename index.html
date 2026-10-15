@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "15.10 21:00";
+const BUILD = "15.10 21:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4582,13 +4582,20 @@ function nuStatsHTML() {
     '<div class="jr-st" style="margin-top:14px">Вес</div>' + nuWeightChart(ws) + '<button class="btn jr-go" data-a="nuai" style="margin-top:12px">🤖 ИИ-разбор питания</button>' + aiBox(N.ai) + nuRepHTML();
 }
 const nuRepMd = t => esc(t).replace(/^#{1,3} (.+)$/gm, '<div class="jr-st" style="margin:12px 0 4px">$1</div>').replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^[-•] (.+)$/gm, '<div style="padding-left:14px;text-indent:-12px">• $1</div>').replace(/\n(?!<div)/g, "<br>");
+const nuRepSaved = () => Object.values(S.user_settings).filter(r => r.key && r.key.indexOf("nutrep") === 0 && r.data && r.data.text).map(r => ({ id: r.id, day: r.data.day, from: r.data.from, to: r.data.to, text: r.data.text, at: r.created_at || "" })).sort((a, b) => (b.at + b.day).localeCompare(a.at + a.day));
+function nuRepSave(text, data) {
+  const ts = nowISO(), id = huid((S.user ? S.user.id : "") + ":rep:" + ts), d = { day: todayISO(), from: data.period.from, to: data.period.to, text };
+  S.user_settings[id] = { id, key: "nutrep:" + ts, data: d, created_at: ts }; mark("user_settings", id, "u"); return id;
+}
 function nuRepRange() { const N = NUN(), R = N.rep || (N.rep = { n: 14, from: "", to: "" }); if (R.n) return { from: addDays(todayISO(), -(R.n - 1)), to: todayISO() }; return { from: R.from || addDays(todayISO(), -13), to: R.to || todayISO() }; }
 function nuRepHTML() {
   const N = NUN(), R = N.rep || (N.rep = { n: 14, from: "", to: "" }), rg = nuRepRange();
   const chips = [[7, "7 дн"], [14, "14 дн"], [30, "30 дн"], [90, "90 дн"], [0, "Свой"]].map(c => '<button class="jr-chip' + (R.n === c[0] ? " on" : "") + '" data-a="nurepn" data-v="' + c[0] + '">' + c[1] + "</button>").join("");
   const dates = R.n ? "" : '<div class="jr-f" style="margin-top:8px"><input type="date" id="nu-rf" class="inp" value="' + rg.from + '"><input type="date" id="nu-rt" class="inp" value="' + rg.to + '"></div>';
-  const rep = !N.rrep ? "" : N.rrep.busy ? '<div class="jr-ai">Анализирую питание, ~20–40 секунд…</div>' : N.rrep.err ? '<div class="jr-ai">Не получилось: ' + esc(N.rrep.err === "setup" ? "ИИ не подключён" : N.rrep.err) + "</div>" : '<div class="jr-ai">' + nuRepMd(N.rrep.text) + "</div>";
-  return '<div class="jr-st" style="margin-top:18px">Полезно ли я питаюсь</div><div class="jr-hint">Разбор за период с опорой на нормы ВОЗ, EFSA и Минздрава РФ.</div><div class="jr-chips" style="margin-top:8px">' + chips + "</div>" + dates + '<div class="jr-f" style="margin-top:10px"><button class="btn jr-go" data-a="nurep">📊 Разобрать питание</button><button class="btn ghost" data-a="nurepcopy" title="Скопировать данные и промпт, открыть Gemini">Gemini вручную</button></div>' + rep;
+  const saved = nuRepSaved(), cur = N.rrep && !N.rrep.busy && !N.rrep.err ? N.rrep.id : null, show = N.repOpen || (!N.rrep && saved[0] ? saved[0].id : null);
+  const hist = saved.map(r => { const open = (show || cur) === r.id; return '<div class="nu-meal" style="--mc:#3d8fe0;margin-top:8px"><div class="nu-head" data-a="nurepopen" data-id="' + r.id + '"><div class="nu-mh"><span class="nu-mt">' + esc(jrShort(r.day)) + " · " + esc(jrShort(r.from)) + "–" + esc(jrShort(r.to)) + '</span><button class="ibtn" data-a="nurepdel" data-id="' + r.id + '" title="Удалить разбор">' + ic("x", 16) + "</button></div></div>" + (open ? '<div class="jr-ai" style="margin:6px 0">' + nuRepMd(r.text) + "</div>" : "") + "</div>"; }).join("");
+  const rep = !N.rrep ? "" : N.rrep.busy ? '<div class="jr-ai">Анализирую питание, ~20–40 секунд…</div>' : N.rrep.err ? '<div class="jr-ai">Не получилось: ' + esc(N.rrep.err === "setup" ? "ИИ не подключён" : N.rrep.err) + "</div>" : "";
+  return '<div class="jr-st" style="margin-top:18px">Полезно ли я питаюсь</div><div class="jr-hint">Разбор за период с опорой на нормы ВОЗ, EFSA и Минздрава РФ.</div><div class="jr-chips" style="margin-top:8px">' + chips + "</div>" + dates + '<div class="jr-f" style="margin-top:10px"><button class="btn jr-go" data-a="nurep">📊 Разобрать питание</button><button class="btn ghost" data-a="nurepcopy" title="Скопировать данные и промпт, открыть Gemini">Gemini вручную</button></div>' + rep + (hist ? '<div class="jr-st" style="margin-top:14px">Сохранённые разборы</div>' + hist : "");
 }
 function nuRepData() {
   const rg = nuRepRange(), days = [], foods = {}, P0 = nuProf(), tg = nuTargets(rg.to);
@@ -4736,8 +4743,10 @@ Object.assign(acts, {
     if (!R.n) { const f = $("nu-rf"), t = $("nu-rt"); if (f && f.value) R.from = f.value; if (t && t.value) R.to = t.value; if (R.from > R.to) { toast("Дата «с» позже «по»"); return; } }
     const data = nuRepData(); if (data.period.days_logged < 2) { N.rrep = { err: "Мало записей: нужно хотя бы 2 дня с едой в периоде" }; render(); return; }
     N.rrep = { busy: true }; render();
-    aiCall("nutrition_report", data).then(t => { N.rrep = { text: t }; render(); }).catch(e => { N.rrep = { err: e.message }; render(); });
+    aiCall("nutrition_report", data).then(t => { N.rrep = { text: t, id: nuRepSave(t, data) }; N.repOpen = N.rrep.id; render(); }).catch(e => { N.rrep = { err: e.message }; render(); });
   },
+  nurepopen(a) { const N = NUN(), id = a.dataset.id; N.repOpen = (N.repOpen === id ? "-" : id); N.rrep = null; render(); },
+  nurepdel(a) { const id = a.dataset.id; if (!S.user_settings[id] || !confirm("Удалить этот разбор?")) return; delete S.user_settings[id]; mark("user_settings", id, "d"); render(); },
   nurepcopy() {
     const N = NUN(), R = N.rep || {}; if (!R.n) { const f = $("nu-rf"), t = $("nu-rt"); if (f && f.value) R.from = f.value; if (t && t.value) R.to = t.value; }
     const txt = "Ты — нутрициолог-аналитик. Разбери моё питание за период по нормам ВОЗ, EFSA, Минздрава РФ (МР 2.3.1.0253-21): что хорошо, что плохо, чего не хватает (клетчатка, омега-3, Ca, Fe, K, Mg, D — оценка по названиям продуктов), чего в избытке, 3–5 шагов, источники. Без диагнозов. Отвечай по-русски, кратко. Данные (JSON; foods: " + "название, граммы, ккал, Б, Ж, У, записей, дней):\n" + JSON.stringify(nuRepData());
