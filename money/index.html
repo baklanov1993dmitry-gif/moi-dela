@@ -271,6 +271,7 @@ table.hm td{background-color:transparent}
 <body>
 <div id="app"></div>
 <script src="rcparse.js"></script>
+<script src="price.js"></script>
 <script>
 "use strict";
 /* ============ утилиты ============ */
@@ -382,9 +383,35 @@ function saveLocal() { txv++; jset(LS.cats, cats); try { localStorage.setItem(LS
 function queue(op) { pend.push(op); saveLocal(); flush(); }
 const upCat = c => { c.updated_at = nowISO(); const i = cats.findIndex(x => x.id === c.id); if (i < 0) cats.push(c); else cats[i] = c; queue({ op: "up", t: "fin_categories", row: dbCat(c) }); };
 const upTx = t => { t.updated_at = nowISO(); const i = txs.findIndex(x => x.id === t.id); if (i < 0) txs.push(t); else txs[i] = t; queue({ op: "up", t: "fin_tx", row: dbTx(t) }); };
-const delTx = id => { txs = txs.filter(t => t.id !== id); queue({ op: "del", t: "fin_tx", id }); };
+const delTx = id => { txs = txs.filter(t => t.id !== id); queue({ op: "del", t: "fin_tx", id }); PRICES.filter(r => r.tx_id === id).forEach(r => delPrice(r.id)); };
 const dbCat = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, kind: c.kind, position: c.position, archived: !!c.archived, lim: +c.lim > 0 ? +c.lim : null, updated_at: c.updated_at });
 const dbTx = t => ({ id: t.id, ts: t.ts, amount: t.amount, kind: t.kind, category_id: t.category_id, note: t.note || "", account: t.account || "Основной", updated_at: t.updated_at });
+/* ---- цены товаров (личная инфляция): отдельная очередь, сбой не блокирует траты ---- */
+const LSP = { rows: "fin_price_v1", pend: "fin_pricepend_v1" };
+let PRICES = jget(LSP.rows, []), pendP = jget(LSP.pend, []), priceErr = "", flushingP = false;
+const savePrices = () => { jset(LSP.rows, PRICES); jset(LSP.pend, pendP); };
+const dbPrice = r => ({ id: r.id, ts: r.ts, name: r.name, pkey: r.pkey, price: r.price, qty: r.qty, amount: r.amount, shop: r.shop || "", tx_id: r.tx_id || null, updated_at: r.updated_at });
+const pendDel = id => pendP.some(o => o.op === "del" && o.id === id);
+function addPrice(r) { r.updated_at = nowISO(); PRICES.push(r); pendP.push({ op: "up", row: dbPrice(r) }); savePrices(); flushP(); }
+function delPrice(id) { PRICES = PRICES.filter(r => r.id !== id); pendP.push({ op: "del", id }); savePrices(); flushP(); }
+async function flushP() {
+  if (flushingP || !sb || !user || !pendP.length) return; flushingP = true;
+  try { while (pendP.length) { const op = pendP[0], r = op.op === "up" ? await sb.from("fin_price").upsert(op.row) : await sb.from("fin_price").delete().eq("id", op.id); if (r.error) throw r.error; pendP.shift(); jset(LSP.pend, pendP); } priceErr = ""; }
+  catch (e) { priceErr = String(e && e.message || e); }
+  flushingP = false;
+}
+async function pullP() {
+  if (!sb || !user) return;
+  try {
+    let all = [], from = 0;
+    for (let i = 0; i < 40; i++) { const r = await sb.from("fin_price").select("id,ts,name,pkey,price,qty,amount,shop,tx_id,updated_at").order("id").range(from, from + 999); if (r.error) throw r.error; all = all.concat(r.data || []); if ((r.data || []).length < 1000) break; from += 1000; }
+    const have = new Set(all.map(r => r.id)), upIds = new Set(pendP.filter(o => o.op === "up").map(o => o.row.id));
+    PRICES = all.filter(r => !pendDel(r.id)).map(r => Object.assign({}, r, { price: +r.price, qty: +r.qty, amount: +r.amount })).concat(PRICES.filter(r => upIds.has(r.id) && !have.has(r.id)));
+    savePrices(); priceErr = "";
+  } catch (e) { priceErr = String(e && e.message || e); }
+  if (ui.tab === "more" && ui.set === "prices") softRender();
+  flushP();
+}
 async function flush() {
   if (flushing || !sb || !user) return; flushing = true;
   try {
@@ -756,22 +783,57 @@ function statsHTML() {
 function moreHTML() {
   if (ui.set === "cats") return catsMgrHTML();
   if (ui.set === "ext") return extHTML();
+  if (ui.set === "prices") return pricesHTML();
   const sets = [["line", "Линии"], ["badge", "Значки"], ["emoji", "Эмодзи"]], demo = ["🛒", "🍽️", "💊", "🚌"], dc = ["#ff7a7a", "#ffb04d", "#5fd0a5", "#6aa8ff"];
   return topBar(false) +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Набор иконок</div><div class="iset">' + sets.map(t => '<button class="' + ((PR.iset || "line") === t[0] ? "on" : "") + '" data-a="iset" data-v="' + t[0] + '"><div>' + demo.map((e, i) => ic(e, dc[i], 30, t[0])).join("") + "</div><span>" + t[1] + "</span></button>").join("") + "</div></div>" +
     '<button class="set" data-a="rnames"><span>🏷️</span><span style="flex:1">Названия категорий в колесе</span><b class="tg' + (PR.rn !== false ? " on" : "") + '">' + (PR.rn !== false ? "вкл" : "выкл") + '</b></button>' +
     '<button class="set" data-a="setext"><span>⚡</span><span style="flex:1">Шаблоны и повторяющиеся</span><span class="sub">' + (EXT.tpl.length + EXT.rec.length || "") + ' ›</span></button>' +
+    '<button class="set" data-a="setprices"><span>📈</span><span style="flex:1">Цены на продукты</span><span class="sub">' + (PRICES.length || "") + ' ›</span></button>' +
     '<button class="set" data-a="setcats"><span>🗂️</span><span style="flex:1">Категории</span><span class="sub">›</span></button>' +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Тема</div><div class="themes">' + THEMES.map(t => '<button class="' + (PR.theme === t[0] ? "on" : "") + '" data-a="theme" data-v="' + t[0] + '"><i style="background:' + t[2] + '"><b style="background:' + t[3] + '"></b><u style="background:' + PR.acc + '"></u></i><span>' + t[1] + "</span></button>").join("") + "</div></div>" +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="acc" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
     '<label class="set"><span>📥</span><span style="flex:1">Импорт из Monefy (CSV)</span><input type="file" id="csvf" accept=".csv,.txt,text/csv" hidden></label>' +
     '<button class="set" data-a="export"><span>📤</span><span style="flex:1">Экспорт в CSV</span></button>' +
-    '<button class="set" data-a="clnote"><span>🧹</span><span style="flex:1">Убрать названия магазинов из заметок</span></button>' +
     '<button class="set" data-a="exportjson"><span>💾</span><span style="flex:1">Резервная копия (JSON)</span></button>' +
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
     '<div class="empty" style="font-size:.8em">Операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+}
+/* ---- справочник цен ---- */
+const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
+const pcol = p => p == null ? "" : p > 0.5 ? "exp" : p < -0.5 ? "inc" : "sub";
+const ppct = p => p == null ? "" : (p > 0 ? "+" : "") + (Math.abs(p) < 10 ? p.toFixed(1) : Math.round(p)) + "%";
+const pdate = r => { const d = new Date(r.ts); return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + String(d.getFullYear()).slice(2); };
+function spark(rows) {
+  if (rows.length < 2) return "";
+  const W = 300, H = 56, v = rows.map(r => r.price), mn = Math.min(...v), mx = Math.max(...v), t0 = new Date(rows[0].ts).getTime(), t1 = new Date(rows[rows.length - 1].ts).getTime() || t0 + 1;
+  const X = r => 6 + (new Date(r.ts).getTime() - t0) / Math.max(1, t1 - t0) * (W - 12), Y = r => mx === mn ? H / 2 : H - 6 - (r.price - mn) / (mx - mn) * (H - 12);
+  return '<svg viewBox="0 0 ' + W + " " + H + '" style="width:100%;height:' + H + 'px;display:block;margin:4px 0 8px"><polyline fill="none" stroke="var(--acc)" stroke-width="2" points="' + rows.map(r => X(r).toFixed(1) + "," + Y(r).toFixed(1)).join(" ") + '"/>' + rows.map(r => '<circle cx="' + X(r).toFixed(1) + '" cy="' + Y(r).toFixed(1) + '" r="3" fill="var(--acc)"/>').join("") + "</svg>";
+}
+function priceListInner(gs, q) {
+  let L = gs.slice().sort((a, b) => new Date(b.last.ts) - new Date(a.last.ts));
+  if (q) { const ws = q.split(/\s+/).filter(Boolean); L = L.filter(g => { const h = (g.name + " " + g.key).toLowerCase(); return ws.every(w => h.includes(w)); }); }
+  if (!L.length) return '<div class="sub" style="padding:8px 0">' + (gs.length ? "Ничего не нашлось" : "Пока пусто. Цены сохраняются сами, когда ты записываешь чек из письма.") + "</div>";
+  return L.slice(0, 300).map(g => '<button class="xrow" data-a="popen" data-k="' + esc(g.key) + '"><div class="xm"><div>' + esc(g.name) + '</div><div class="sub" style="font-size:.8em">' + pdate(g.last) + (g.last.shop ? " · " + esc(g.last.shop) : "") + " · покупок: " + g.count + '</div></div><div style="text-align:right"><b>' + rub(g.last.price) + '</b>' + (g.pctPrev != null ? '<div class="' + pcol(g.pctPrev) + '" style="font-size:.8em">' + ppct(g.pctPrev) + "</div>" : "") + "</div></button>").join("");
+}
+function pricesHTML() {
+  const gs = PRC.groups(PRICES), g = ui.pk && gs.find(x => x.key === ui.pk);
+  if (g) return priceDetailHTML(g);
+  const sm = PRC.summary(gs);
+  return topBar(false, "setmain") +
+    '<div class="card"><h3>📈 Цены на продукты</h3>' +
+    (sm ? '<div style="margin-bottom:8px">Личная инфляция: цены на твои товары изменились в среднем на <b class="' + pcol(sm.med) + '">' + ppct(sm.med) + '</b> (медиана по ' + sm.n + (sm.n % 10 === 1 && sm.n % 100 !== 11 ? ' товару' : ' товарам') + '), в пересчёте на год ≈ <b class="' + pcol(sm.year) + '">' + ppct(sm.year) + '</b></div>' : '<div class="sub" style="margin-bottom:8px">Покажу инфляцию, когда у товаров накопится по две покупки с разницей больше недели.</div>') +
+    (priceErr ? '<div class="bad" style="font-size:.85em;margin-bottom:8px">Таблица цен в базе недоступна: ' + esc(priceErr.slice(0, 120)) + ". Нужно выполнить migration_v19.sql в Supabase; пока цены хранятся на телефоне.</div>" : "") +
+    '<input class="in" id="pq" autocomplete="off" placeholder="Найти товар" value="' + esc(ui.pq || "") + '"><div id="pl">' + priceListInner(gs, (ui.pq || "").toLowerCase().trim()) + "</div></div>";
+}
+function priceDetailHTML(g) {
+  const L = g.rows.slice().reverse();
+  return topBar(false, "pclose") +
+    '<div class="card"><h3>' + esc(g.name) + '</h3><div style="font-size:1.5em;font-weight:700">' + rub(g.last.price) + '</div><div class="sub" style="font-size:.85em">последняя цена · ' + pdate(g.last) + (g.last.shop ? " · " + esc(g.last.shop) : "") + "</div>" +
+    (g.pct != null ? '<div style="margin:6px 0">С первой записи (' + pdate(g.first) + ", " + rub(g.first.price) + "): <b class=\"" + pcol(g.pct) + '">' + ppct(g.pct) + "</b></div>" : '<div class="sub" style="margin:6px 0">Одна покупка: пока не с чем сравнивать.</div>') +
+    spark(g.rows) + L.map(r => '<div class="xrow" style="cursor:default"><div class="xm"><div>' + pdate(r) + (r.shop ? " · " + esc(r.shop) : "") + '</div><div class="sub" style="font-size:.8em">' + esc(r.name) + (r.qty && r.qty !== 1 ? " · кол-во " + r.qty : "") + '</div></div><b>' + rub(r.price) + '</b><button class="hb" data-a="pdel" data-id="' + r.id + '" title="Удалить запись" style="opacity:.6">✕</button></div>').join("") + "</div>";
 }
 function catsMgrHTML() {
   const K = ui.kind;
@@ -887,7 +949,7 @@ function rcpFromParsed(r, text, extra) {
   extra = extra || {};
   if (!r.items.length) { ui.sheet = { type: "rcpt", text: String(text || ""), inbox: extra.inbox || null, err: "Позиций чека не нашёл (получено символов: " + String(text || "").length + "). Нужен текст чека с названиями и суммами." + (extra.inbox ? " Если это не чек, нажми «Не чек»." : " Если это он, скинь его разработчику.") }; render(); toast("Не нашёл позиций чека", "bad", 3000); return; }
   const cl = cats.filter(c => c.kind === "exp" && !c.archived), ids = new Set(cl.map(c => c.id)), L = RCP.learn(txs, ids);
-  const items = r.items.map(x => ({ name: x.name, amount: x.amount, cat: (() => { const c = RCP.suggest(L, x.name, r.merchant); return ids.has(c) ? c : ""; })() }));
+  const items = r.items.map(x => ({ name: x.name, amount: x.amount, p: x.price, q: x.qty, a0: x.amount, cat: (() => { const c = RCP.suggest(L, x.name, r.merchant); return ids.has(c) ? c : ""; })() }));
   const dup = r.key && rcpSeen().includes(r.key), dd = /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date <= dayKey(new Date()) ? r.date : dayKey(new Date());
   const notes = [];
   if (dup) notes.push("⚠️ Похоже, этот чек уже записывали.");
@@ -1068,7 +1130,7 @@ function slide(dir) { if (sliding) return; if (dir > 0 && rgBounds(ui.rg, 1)[0] 
 
 /* ============ кнопка «Назад» ============ */
 let hDepth = 0, hSkip = 0, guarded = false, lastBack = 0;
-const layerCount = () => !user ? 0 : (ui.menu ? 1 : 0) + (ui.sheet ? 1 + (ui.sheet.step === "cat" ? 1 : 0) : 0) + (ui.tab === "more" && ui.set !== "main" ? 1 : 0) + (ui.tab !== "home" || ui.view === "list" ? 1 : 0);
+const layerCount = () => !user ? 0 : (ui.menu ? 1 : 0) + (ui.sheet ? 1 + (ui.sheet.step === "cat" ? 1 : 0) : 0) + (ui.tab === "more" && ui.set !== "main" ? 1 : 0) + (ui.tab === "more" && ui.set === "prices" && ui.pk ? 1 : 0) + (ui.tab !== "home" || ui.view === "list" ? 1 : 0);
 function ensureGuard() {
   try { if (guarded || (navigator.userActivation && !navigator.userActivation.hasBeenActive)) return; history.replaceState({ base: 1 }, ""); history.pushState({ guard: 1 }, ""); guarded = true; } catch (e) {}
 }
@@ -1086,7 +1148,8 @@ function onBack() {
     hDepth--;
     if (ui.menu) ui.menu = false;
     else if (ui.sheet) { if (ui.sheet.step === "cat") ui.sheet.step = "kb"; else ui.sheet = null; }
-    else if (ui.tab === "more" && ui.set === "cats") ui.set = "main";
+    else if (ui.tab === "more" && ui.set === "prices" && ui.pk) ui.pk = null;
+    else if (ui.tab === "more" && (ui.set === "cats" || ui.set === "prices")) ui.set = "main";
     else if (ui.tab !== "home") { ui.tab = "home"; ui.q = ""; ui.set = "main"; }
     else if (ui.view === "list") ui.view = "ring";
     render(); return;
@@ -1236,7 +1299,11 @@ const A = {
     const d = new Date(s.date + "T12:00"), now = new Date(); if (s.date === dayKey(now)) d.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
     const val = x => Math.round(parseFloat(String(x.amount).replace(",", ".")) * 100) / 100, mer = (s.merchant || "").trim(); let n = 0, sum = 0;
     if (s.merge) { const g = {}; it.forEach(x => { (g[x.cat] = g[x.cat] || []).push(x); }); Object.entries(g).forEach(([c, l]) => { const a = Math.round(l.reduce((t, x) => t + val(x), 0) * 100) / 100; upTx({ id: uid(), ts: d.toISOString(), amount: a, kind: "exp", category_id: c, note: ((mer ? mer + ": " : "") + l.map(x => x.name).join(", ")).slice(0, 140), account: "Основной" }); n++; sum += a; }); }
-    else it.forEach(x => { upTx({ id: uid(), ts: d.toISOString(), amount: val(x), kind: "exp", category_id: x.cat, note: String(x.name).slice(0, 140), account: "Основной" }); n++; sum += val(x); });
+    else it.forEach(x => {
+      const id = uid(), a = val(x), nm = String(x.name).slice(0, 140), q = +x.q > 0 ? +x.q : 1, p = a === +x.a0 ? PRC.unitPrice(x.p, q, a) : PRC.unitPrice(0, q, a);
+      upTx({ id, ts: d.toISOString(), amount: a, kind: "exp", category_id: x.cat, note: nm, account: "Основной" }); n++; sum += a;
+      if (p > 0 && PRC.key(nm)) addPrice({ id: uid(), ts: d.toISOString(), name: nm, pkey: PRC.key(nm), price: p, qty: q, amount: a, shop: mer, tx_id: id });
+    });
     if (s.inbox) inboxMark(s.inbox, "done");
     if (s.key) { try { const k = rcpSeen(); k.push(s.key); localStorage.setItem("fin_rcs_v1", JSON.stringify(k.slice(-300))); } catch (e) {} }
     ui.sheet = null; render(); toast("Записано трат: " + n + " на " + fm(sum));
@@ -1246,6 +1313,9 @@ const A = {
   qtplset() { ui.sheet = null; ui.tab = "more"; ui.set = "ext"; render(); }, qbudgo() { ui.sheet = null; ui.tab = "stats"; render(); },
   rnames() { PR.rn = PR.rn === false; savePR(); render(); },
   setext() { ui.set = "ext"; render(); },
+  setprices() { ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
+  popen(a) { ui.pk = a.dataset.k; render(); }, pclose() { ui.pk = null; render(); },
+  pdel(a) { if (confirm("Удалить эту запись цены? (сама трата останется)")) { delPrice(a.dataset.id); render(); } },
   tplgo(a) { const t = EXT.tpl.find(x => x.id === a.dataset.id); if (!t) return; const now = new Date(); upTx({ id: uid(), ts: now.toISOString(), amount: t.amt, kind: t.kind, category_id: t.cat, note: t.note || "", account: "Основной" }); const bm = t.kind === "exp" ? budgetMsg(t.cat, now.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(t.amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200); },
   hmday(a) { ui.rg = { t: "d", a: +new Date(a.dataset.v + "T12:00") }; ui.tab = "list"; render(); },
   xnew(a) { const kind = "exp"; ui.sheet = { type: "ext", k: a.dataset.k, id: null, kind, cat: (catsOf(kind)[0] || {}).id, amt: "", note: "", day: a.dataset.k === "rec" ? "1" : "", ask: false }; render(); },
@@ -1266,14 +1336,8 @@ const A = {
   limclear() { const c = cats.find(x => x.id === ui.sheet.id); if (c) { c.lim = null; upCat(c); } ui.sheet = null; render(); },
   acc(a) { PR.acc = a.dataset.v; savePR(); applyTheme(); render(); },
   fullsync() { pull(true); },
-  clnote() {
-    const rx = /^[^·]{2,60} · /, L = txs.filter(t => t.kind === "exp" && rx.test(t.note || ""));
-    if (!L.length) { toast("Нечего чистить"); return; }
-    if (!confirm("Убрать название магазина в начале заметки у " + L.length + " трат?\nНапример: «" + L[0].note + "» → «" + L[0].note.replace(rx, "") + "»")) return;
-    L.forEach(t => upTx(Object.assign({}, t, { note: t.note.replace(rx, "") }))); render(); toast("Исправлено: " + L.length);
-  },
   exportjson() {
-    const d = { app: "traty", exported_at: new Date().toISOString(), categories: cats, tx: txs.map(dbTx), ext: EXT, prefs: PR };
+    const d = { app: "traty", exported_at: new Date().toISOString(), categories: cats, tx: txs.map(dbTx), ext: EXT, prefs: PR, prices: PRICES };
     const blob = new Blob([JSON.stringify(d)], { type: "application/json" }), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "траты_копия_" + dayKey(new Date()) + ".json"; a.click(); toast("Копия сохранена: " + txs.length + " записей");
   },
   export() {
@@ -1308,7 +1372,7 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
-document.addEventListener("input", e => { if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
+document.addEventListener("input", e => { if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
     rread(); const sh = ui.sheet;
@@ -1344,9 +1408,9 @@ async function rcpShared() {
   sb = window.supabase.createClient(CFG.url, CFG.key, { auth: { storageKey: "mytasks-auth", persistSession: true, autoRefreshToken: true } });
   try { const s = await sb.auth.getSession(); user = s.data.session ? s.data.session.user : null; } catch (e) {}
   if (!early || !user) render(); if (!user) return;
-  runRec(); flush(); pull(!txs.length);
+  runRec(); flush(); pull(!txs.length); pullP();
   rcpShared(); inboxPull(); setInterval(inboxPull, 120000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { runRec(); flush(); pull(false); inboxPull(); } });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { runRec(); flush(); pull(false); inboxPull(); pullP(); } });
   window.addEventListener("online", () => { flush(); pull(false); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

@@ -169,7 +169,7 @@
       const alt = items.map(x => R2(x.price * x.qty));
       if (Math.abs(alt.reduce((a, b) => a + b, 0) - total) < Math.abs(sum(items) - total)) items.forEach((x, i) => { x.amount = alt[i]; });
     }
-    items = items.filter(x => x.amount > 0).map(x => ({ name: x.name.replace(/\s+/g, " ").slice(0, 80), amount: x.amount, cat: "" }));
+    items = items.filter(x => x.amount > 0).map(x => ({ name: x.name.replace(/\s+/g, " ").slice(0, 80), amount: x.amount, price: x.price, qty: x.qty, cat: "" }));
     const date = findDate(L) || (meta.date ? (() => { const d = new Date(meta.date); return isNaN(d) ? "" : d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); })() : "");
     const merchant = findMerchant(L, meta.from), got = sum(items);
     const j = L.join("\n");
