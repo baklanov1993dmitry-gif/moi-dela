@@ -32,7 +32,7 @@
     const from = days > 0 ? now - days * 864e5 : 0;
     const span = Math.max(7, Math.ceil((now - Math.max(from, first)) / 864e5)), weeks = span / 7;
     const rows = all.filter(t => +new Date(t.ts) >= from);
-    const st = {}; G.forEach(g => st[g.id] = { days: new Set(), n: 0, sum: 0 });
+    const st = {}; G.forEach(g => st[g.id] = { days: new Set(), n: 0, sum: 0, items: [] });
     let matched = 0, withNote = 0;
     rows.forEach(t => {
       const note = nn(t.note); let hit = false;
@@ -41,11 +41,11 @@
         let ok = note && g.re.test(note);
         if (g.id === "out" && !ok && catFast.test(cn[t.category_id] || "")) ok = true;
         if (g.id === "veg" && /фри(?![а-я])/.test(note)) ok = false;
-        if (ok) { const s = st[g.id]; s.days.add(dk(new Date(t.ts))); s.n++; s.sum += +t.amount || 0; hit = true; }
+        if (ok) { const s = st[g.id]; s.days.add(dk(new Date(t.ts))); s.n++; s.sum += +t.amount || 0; s.items.push(t); hit = true; }
       });
       if (hit) matched++;
     });
-    const out = G.map(g => { const s = st[g.id], f = s.days.size / weeks; return Object.assign({}, g, { f, n: s.n, sum: s.sum, nd: s.days.size }); });
+    const out = G.map(g => { const s = st[g.id], f = s.days.size / weeks; return Object.assign({}, g, { f, n: s.n, sum: s.sum, nd: s.days.size, items: s.items }); });
     const good = out.filter(g => g.good), bad = out.filter(g => g.bad);
     const cover = good.reduce((a, g) => a + Math.min(1, g.f / g.good), 0) / good.length;
     const pen = bad.reduce((a, g) => a + (g.f > g.bad ? Math.min(12, 12 * (g.f - g.bad) / g.bad) : 0), 0);

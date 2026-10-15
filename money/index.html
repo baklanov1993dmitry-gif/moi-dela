@@ -214,7 +214,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .crow{position:relative}
 .crow .ci{width:36px;height:36px;margin-right:6px}.crow .chev{margin-right:6px}.crow .chev svg{width:15px}
 .pbar{position:absolute;left:50px;right:8px;bottom:5px;height:5px;border-radius:2px;background:color-mix(in srgb,var(--tx) 12%,transparent)}.pbar i{display:block;height:100%;border-radius:2px}.pbar.norm{opacity:.6}.pbar.lim{height:6px}
-#main .crow{min-height:46px;padding-bottom:0}#main .crow.cur{margin:0 -8px;width:calc(100% + 16px)}#main .crow.cur .chev{width:22px;margin-right:3px}#main .crow .ci{position:relative}#main .crow .lkb{position:absolute;right:-5px;bottom:-4px;font-size:11px;line-height:1;filter:drop-shadow(0 0 2px var(--bg))}#main .crow .fr{font-size:14.5px;font-weight:500;color:var(--tx);padding:2px 8px;border-radius:9px;white-space:nowrap}#main .crow .ck{color:var(--sub);margin-left:5px}.grpend{height:12px}.grpst{height:6px}.am{color:#ffb04d}.pr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:14.5px}.pr:last-child{border-bottom:0}.pr b{font-weight:600;white-space:nowrap}#main .crow .ar{display:flex;align-items:baseline;gap:2px;flex:none;white-space:nowrap}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px}.infob{font-size:17px;color:var(--sub);padding:2px 6px 2px 2px}.ln1{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acb .sub,.acb .qnote{font-size:12.5px;line-height:1.35}.acb .qnote{padding:7px 10px;margin-top:6px}.acb .bt b{font-size:1.05em}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
+#main .crow{min-height:46px;padding-bottom:0}#main .crow.cur{margin:0 -8px;width:calc(100% + 16px)}#main .crow.cur .chev{width:22px;margin-right:3px}#main .crow .ci{position:relative}#main .crow .lkb{position:absolute;right:-5px;bottom:-4px;font-size:11px;line-height:1;filter:drop-shadow(0 0 2px var(--bg))}#main .crow .fr{font-size:14.5px;font-weight:500;color:var(--tx);padding:2px 8px;border-radius:9px;white-space:nowrap}#main .crow .ck{color:var(--sub);margin-left:5px}.grpend{height:12px}.grpst{height:6px}.nutr{display:block;width:100%;text-align:left;padding:2px 0;background:none;border:0;color:inherit;font:inherit}.am{color:#ffb04d}.pr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:14.5px}.pr:last-child{border-bottom:0}.pr b{font-weight:600;white-space:nowrap}#main .crow .ar{display:flex;align-items:baseline;gap:2px;flex:none;white-space:nowrap}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px}.infob{font-size:17px;color:var(--sub);padding:2px 6px 2px 2px}.ln1{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acb .sub,.acb .qnote{font-size:12.5px;line-height:1.35}.acb .qnote{padding:7px 10px;margin-top:6px}.acb .bt b{font-size:1.05em}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
 .rs.over::after{content:"!";position:absolute;top:-4px;right:-2px;width:15px;height:15px;border-radius:50%;background:var(--exp);color:#fff;font-size:11px;font-weight:700;line-height:15px;text-align:center}
 .cgrid button .bl,.bl{font-style:normal;font-size:10.5px;color:var(--sub);line-height:1}.bl.warn{color:#f2b36d}.bl.bad{color:var(--exp)}
 .cgrid button{gap:3px}
@@ -634,15 +634,20 @@ function prcBody() {
   return o + '<button class="btn g" data-a="gopr" style="width:100%;margin-top:10px">Весь справочник цен ›</button>';
 }
 function nutSum() { if (!window.FOOD) return ""; const r = FOOD.analyze(txs, cats, nutN()); return r.enough ? r.verdict.t.toLowerCase() + " · " + r.score : "мало данных"; }
+function nutList(g) {
+  if (ui.ng !== g.id) return "";
+  if (!g.items.length) return '<div class="sub" style="padding:6px 8px;font-size:.85em">За период покупок в этой группе нет.</div>';
+  return g.items.slice().sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 80).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '" style="padding-left:12px"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="exp">' + fm(t.amount) + "</span></button>"; }).join("") + (g.items.length > 80 ? '<div class="sub" style="padding:4px 8px;font-size:.8em">…и ещё ' + (g.items.length - 80) + "</div>" : "");
+}
 function nutBody() {
   const n = nutN(), r = FOOD.analyze(txs, cats, n), col = { good: "inc", mid: "am", bad: "exp", na: "sub" }[r.verdict.k];
   let o = winChips("nutset", n) + '<div style="margin-bottom:8px"><b class="' + col + '" style="font-size:1.1em">' + r.verdict.t + (r.enough ? " · " + r.score + "/100" : "") + '</b><br><span class="sub">' + r.verdict.d + "</span></div>";
   if (!r.enough) return o + '<div class="sub" style="font-size:.85em">Распознал продукты в ' + r.matched + " из " + r.total + " трат. Чем чаще в заметках названия продуктов (или чек через «Чек»), тем точнее выводы.</div>";
   const bar = g => { const lim = g.good || g.bad, fill = Math.min(1, g.f / lim), cl = g.good ? (g.f >= g.good ? "#5fd0a5" : g.f >= g.good * 0.5 ? "#ffb04d" : "#ff7a7a") : (g.f > g.bad ? "#ff7a7a" : g.f >= g.bad * 0.7 ? "#ffb04d" : "#5fd0a5");
-    return '<div class="wrow"><span class="wn" style="width:auto;min-width:0;flex:1.3;font-size:.88em">' + g.i + " " + g.t + '</span><div class="tr" style="flex:1"><i style="width:' + (fill * 100).toFixed(1) + "%;background:" + cl + '"></i></div><span class="wv" style="min-width:74px;text-align:right"><b>' + g.f.toFixed(1) + "</b><small> из " + (g.good ? "" : "макс ") + lim + "</small></span></div>"; };
+    return '<button class="nutr" data-a="nutg" data-v="' + g.id + '"><div class="wrow"><span class="wn" style="width:auto;min-width:0;flex:1.3;font-size:.88em">' + g.i + " " + g.t + '</span><div class="tr" style="flex:1"><i style="width:' + (fill * 100).toFixed(1) + "%;background:" + cl + '"></i></div><span class="wv" style="min-width:74px;text-align:right"><b>' + g.f.toFixed(1) + "</b><small> из " + (g.good ? "" : "макс ") + lim + "</small></span></div></button>" + nutList(g); };
   const gd = r.groups.filter(g => g.good), bd = r.groups.filter(g => g.bad), out = r.groups.find(g => g.info);
   o += '<div class="sub" style="margin:6px 0 2px">Что стоит есть регулярно (дней в неделю с покупкой): 🟢 норма выполнена, 🟡 хотя бы половина, 🔴 меньше половины</div>' + gd.map(bar).join("") + '<div class="sub" style="margin:8px 0 2px">Что лучше ограничивать: 🟢 в пределах, 🟡 близко к максимуму, 🔴 перебор</div>' + bd.map(bar).join("");
-  if (out && out.n) o += '<div class="sub" style="margin-top:8px">' + out.i + " Кафе и рестораны: " + out.n + " раз, " + fmN(out.sum) + " ₽. На оценку не влияет: что именно съел там, неизвестно.</div>";
+  if (out && out.n) o += '<button class="nutr sub" data-a="nutg" data-v="out" style="margin-top:8px">' + out.i + " Кафе и рестораны: " + out.n + " раз, " + fmN(out.sum) + " ₽ ›<br><small>На оценку не влияет: что именно съел там, неизвестно.</small></button>" + nutList(out);
   if (r.lack.length) o += '<div style="margin-top:10px"><b>Чего не хватает:</b>' + r.lack.map(g => '<div class="sub" style="margin-top:4px">' + g.i + " <b>" + g.t + "</b> — " + (g.n ? "редко (" + g.f.toFixed(1) + " дн./нед.)" : "не покупал вообще") + ". " + g.tip + "</div>").join("") + "</div>";
   if (r.over.length) o += '<div style="margin-top:10px"><b>Многовато:</b>' + r.over.map(g => '<div class="sub" style="margin-top:4px">' + g.i + " <b>" + g.t + "</b> — " + g.f.toFixed(1) + " дн./нед. " + g.tip + "</div>").join("") + "</div>";
   if (!r.lack.length && !r.over.length) o += '<div style="margin-top:10px" class="sub">Явных перекосов нет, так держать 👍</div>';
@@ -832,7 +837,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 35 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 36 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1146,7 +1151,7 @@ const PC = new Map();
 function pageHTML(d) {   // HTML страницы (с кэшем): соседние месяцы строятся заранее в простое
   const sv = ui.rg; if (d) { ui.rg = Object.assign({}, sv); rgShift(d); }
   try {
-    const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
+    const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), ui.ng || "", txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
     let h = PC.get(key); if (h != null) return h;
     h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : ui.tab === "bud" ? budScreen() : statsHTML();
     PC.set(key, h); if (PC.size > 14) PC.delete(PC.keys().next().value); return h;
@@ -1364,6 +1369,7 @@ const A = {
   qtplset() { ui.sheet = null; ui.tab = "more"; ui.set = "ext"; render(); }, qbudgo() { ui.sheet = null; ui.tab = "bud"; render(); },
   rnames() { PR.rn = PR.rn === false; savePR(); render(); },
   setext() { ui.set = "ext"; render(); },
+  nutg(a) { ui.ng = ui.ng === a.dataset.v ? null : a.dataset.v; render(); },
   prcset(a) { PR.prcN = +a.dataset.v; savePR(); render(); }, nutset(a) { PR.nutN = +a.dataset.v; savePR(); render(); },
   gopr() { ui.tab = "more"; ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
   setprices() { ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
