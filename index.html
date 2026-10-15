@@ -4579,7 +4579,34 @@ function nuStatsHTML() {
   const ws = Object.values(S.weight_log).sort((a, b) => a.day.localeCompare(b.day)).slice(-30);
   return '<div class="jr-st">Калории за 14 дней</div><svg viewBox="0 0 ' + W + " " + H + '" style="width:100%">' + bars + '<line x1="0" x2="' + W + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '" stroke="currentColor" stroke-dasharray="4 3" opacity=".5"/><text x="' + (W - 2) + '" y="' + (ty - 3).toFixed(1) + '" font-size="8" text-anchor="end" fill="currentColor" opacity=".7">цель ' + r0(tg.kcal) + "</text></svg>" +
     '<div class="nu-per">' + (w.length ? "В среднем " + r0(avg("kcal")) + " ккал, белка " + r0(avg("p")) + " г · в норме (±10%) " + ok + " из " + w.length + " дн." : "Пока нет записей за 14 дней") + "</div>" +
-    '<div class="jr-st" style="margin-top:14px">Вес</div>' + nuWeightChart(ws) + '<button class="btn jr-go" data-a="nuai" style="margin-top:12px">🤖 ИИ-разбор питания</button>' + aiBox(N.ai);
+    '<div class="jr-st" style="margin-top:14px">Вес</div>' + nuWeightChart(ws) + '<button class="btn jr-go" data-a="nuai" style="margin-top:12px">🤖 ИИ-разбор питания</button>' + aiBox(N.ai) + nuRepHTML();
+}
+const nuRepMd = t => esc(t).replace(/^#{1,3} (.+)$/gm, '<div class="jr-st" style="margin:12px 0 4px">$1</div>').replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^[-•] (.+)$/gm, '<div style="padding-left:14px;text-indent:-12px">• $1</div>').replace(/\n(?!<div)/g, "<br>");
+function nuRepRange() { const N = NUN(), R = N.rep || (N.rep = { n: 14, from: "", to: "" }); if (R.n) return { from: addDays(todayISO(), -(R.n - 1)), to: todayISO() }; return { from: R.from || addDays(todayISO(), -13), to: R.to || todayISO() }; }
+function nuRepHTML() {
+  const N = NUN(), R = N.rep || (N.rep = { n: 14, from: "", to: "" }), rg = nuRepRange();
+  const chips = [[7, "7 дн"], [14, "14 дн"], [30, "30 дн"], [90, "90 дн"], [0, "Свой"]].map(c => '<button class="jr-chip' + (R.n === c[0] ? " on" : "") + '" data-a="nurepn" data-v="' + c[0] + '">' + c[1] + "</button>").join("");
+  const dates = R.n ? "" : '<div class="jr-f" style="margin-top:8px"><input type="date" id="nu-rf" class="inp" value="' + rg.from + '"><input type="date" id="nu-rt" class="inp" value="' + rg.to + '"></div>';
+  const rep = !N.rrep ? "" : N.rrep.busy ? '<div class="jr-ai">Анализирую питание, ~20–40 секунд…</div>' : N.rrep.err ? '<div class="jr-ai">Не получилось: ' + esc(N.rrep.err === "setup" ? "ИИ не подключён" : N.rrep.err) + "</div>" : '<div class="jr-ai">' + nuRepMd(N.rrep.text) + "</div>";
+  return '<div class="jr-st" style="margin-top:18px">Полезно ли я питаюсь</div><div class="jr-hint">Разбор за период с опорой на нормы ВОЗ, EFSA и Минздрава РФ.</div><div class="jr-chips" style="margin-top:8px">' + chips + "</div>" + dates + '<button class="btn jr-go" data-a="nurep" style="margin-top:10px">📊 Разобрать питание</button>' + rep;
+}
+function nuRepData() {
+  const rg = nuRepRange(), days = [], foods = {}, P0 = nuProf(), tg = nuTargets(rg.to);
+  let d = rg.from, guard = 0, water = 0, wd = 0;
+  while (d <= rg.to && guard++ < 400) {
+    const e = nuEntries(d); if (e.length) { const t = nuSum(e); days.push({ d: d.slice(5), kcal: r0(t.kcal), p: r0(t.p), f: r0(t.f), c: r0(t.c) }); e.forEach(x => { const o = foods[x.name] || (foods[x.name] = { n: x.name, g: 0, k: 0, p: 0, f: 0, c: 0, times: 0, days: new Set() }); o.g += +x.grams || 0; o.k += +x.kcal || 0; o.p += +x.p || 0; o.f += +x.f || 0; o.c += +x.c || 0; o.times++; o.days.add(d); }); }
+    const w = nuWater(d).reduce((a, x) => a + (+x.grams || 0), 0); if (w) { water += w; wd++; }
+    d = addDays(d, 1);
+  }
+  const n = days.length, avg = k => n ? days.reduce((a, x) => a + x[k], 0) / n : 0;
+  const top = Object.values(foods).sort((a, b) => b.k - a.k).slice(0, 70).map(o => [o.n.slice(0, 50), r0(o.g), r0(o.k), r0(o.p), r0(o.f), r0(o.c), o.times, o.days.size]);
+  const ws = Object.values(S.weight_log).filter(w => w.day >= rg.from && w.day <= rg.to).sort((a, b) => a.day.localeCompare(b.day)), wk = nuWeightAt(rg.to);
+  return { period: { from: rg.from, to: rg.to, calendar_days: Math.round((parseISO(rg.to) - parseISO(rg.from)) / 864e5) + 1, days_logged: n },
+    profile: { sex: P0.sex, age: P0.age, height_cm: P0.h, weight_kg: wk ? +wk.kg : null, goal: P0.mode, activity: P0.act },
+    targets: { kcal: tg.kcal, protein: tg.p, fat: tg.f, carbs: tg.c, water_ml: tg.water },
+    avg_per_logged_day: { kcal: r0(avg("kcal")), protein: r0(avg("p")), fat: r0(avg("f")), carbs: r0(avg("c")), water_ml: wd ? r0(water / wd) : null, water_days: wd },
+    weight_change: ws.length > 1 ? { from: +ws[0].kg, to: +ws[ws.length - 1].kg, n: ws.length } : null,
+    days, foods_cols: "name,grams_total,kcal,protein,fat,carbs,entries,days_present", foods: top };
 }
 function nuWeightChart(ws) {
   if (ws.length < 2) return '<div class="jr-hint" style="margin-top:12px">График появится после двух записей веса.</div>';
@@ -4702,6 +4729,14 @@ Object.assign(acts, {
     const weights = Object.values(S.weight_log).sort((a, b) => a.day.localeCompare(b.day)).slice(-30).map(w => ({ day: w.day, kg: +w.kg }));
     N.ai = { busy: true }; render();
     aiCall("nutrition", { targets: { kcal: tg.kcal, protein: tg.p, fat: tg.f, carbs: tg.c }, days, weights }).then(t => { N.ai = { text: t }; render(); }).catch(e => { N.ai = { err: e.message }; render(); });
+  },
+  nurepn(a) { const N = NUN(), R = N.rep || (N.rep = { n: 14, from: "", to: "" }); R.n = +a.dataset.v; N.rrep = null; render(); },
+  nurep() {
+    const N = NUN(), R = N.rep || (N.rep = { n: 14, from: "", to: "" });
+    if (!R.n) { const f = $("nu-rf"), t = $("nu-rt"); if (f && f.value) R.from = f.value; if (t && t.value) R.to = t.value; if (R.from > R.to) { toast("Дата «с» позже «по»"); return; } }
+    const data = nuRepData(); if (data.period.days_logged < 2) { N.rrep = { err: "Мало записей: нужно хотя бы 2 дня с едой в периоде" }; render(); return; }
+    N.rrep = { busy: true }; render();
+    aiCall("nutrition_report", data).then(t => { N.rrep = { text: t }; render(); }).catch(e => { N.rrep = { err: e.message }; render(); });
   },
   nuweb() { nuWeb(); },
   async nuaifood() {
