@@ -38,6 +38,25 @@
     const yr = L.map(g => (Math.pow(g.last.price / g.first.price, 365 * 864e5 / (t(g.last) - t(g.first))) - 1) * 100).sort((a, b) => a - b);
     return { n: L.length, med, year: yr[Math.floor(yr.length / 2)] };
   }
-  const api = { key, unitPrice, groups, summary };
+  // цены из старых ручных заметок: «тунец 450», «Тунец по 520 р/кг», «Ашан: молоко 95, хлеб 60»
+  function fromNote(note, amount) {
+    let n = String(note || "").trim();
+    n = n.replace(/^[^:·,\d]{2,30}?\s*[:·]\s+/, "");              // префикс «Магазин: » / «Магазин · »
+    const parts = n.split(/,\s+|;\s*|\n+/).map(x => x.trim()).filter(Boolean), out = [];
+    parts.forEach(p0 => {
+      if (/\d{1,2}[.,]\d{1,2}[.,]\d{2,4}/.test(p0)) return;      // даты не цены
+      const p = p0.replace(/\d+(?:[.,]\d+)?\s*(?:%|кг|гр|г|мл|л|шт|уп|упак)(?![а-яёa-z])\.?/gi, " ").replace(/\s+/g, " ").trim();
+      const m = /^([^\d]*[а-яёa-z][^\d]*?)\s*(?:по|-|—|:|=|x|х)?\s*(\d+(?:[.,]\d+)?)\s*(?:₽|р\.?|руб\.?|рублей)?\s*(?:\/\s*(?:кг|шт|л|г))?\.?$/i.exec(p);
+      if (!m) return;
+      const name = m[1].replace(/\s*(?:по|-|—|:|=)\s*$/i, "").trim(), price = parseFloat(m[2].replace(",", "."));
+      if (name.length < 3 || !(price >= 10) || !key(name)) return;
+      if (/^\d{1,2}[.,](?:0\d|1[0-2])$/.test(m[2]) && Math.abs(+amount - price) > 0.5) return;   // похоже на дату 12.05
+      let qty = 1; const a = +amount;
+      if (parts.length === 1 && a > 0 && Math.abs(a - price) > 0.5) { const q = a / price; if (q >= 0.05 && q <= 50) qty = Math.round(q * 1000) / 1000; }
+      out.push({ name, price, qty });
+    });
+    return out;
+  }
+  const api = { key, unitPrice, groups, summary, fromNote };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PRC = api;
 })(typeof self !== "undefined" ? self : this);

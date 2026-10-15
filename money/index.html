@@ -393,6 +393,7 @@ const savePrices = () => { jset(LSP.rows, PRICES); jset(LSP.pend, pendP); };
 const dbPrice = r => ({ id: r.id, ts: r.ts, name: r.name, pkey: r.pkey, price: r.price, qty: r.qty, amount: r.amount, shop: r.shop || "", tx_id: r.tx_id || null, updated_at: r.updated_at });
 const pendDel = id => pendP.some(o => o.op === "del" && o.id === id);
 function addPrice(r) { r.updated_at = nowISO(); PRICES.push(r); pendP.push({ op: "up", row: dbPrice(r) }); savePrices(); flushP(); }
+function addPrices(L) { const t = nowISO(); L.forEach(r => { r.updated_at = t; PRICES.push(r); pendP.push({ op: "up", row: dbPrice(r) }); }); savePrices(); flushP(); }
 function delPrice(id) { PRICES = PRICES.filter(r => r.id !== id); pendP.push({ op: "del", id }); savePrices(); flushP(); }
 async function flushP() {
   if (flushingP || !sb || !user || !pendP.length) return; flushingP = true;
@@ -799,7 +800,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 28 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -811,6 +812,23 @@ function spark(rows) {
   const W = 300, H = 56, v = rows.map(r => r.price), mn = Math.min(...v), mx = Math.max(...v), t0 = new Date(rows[0].ts).getTime(), t1 = new Date(rows[rows.length - 1].ts).getTime() || t0 + 1;
   const X = r => 6 + (new Date(r.ts).getTime() - t0) / Math.max(1, t1 - t0) * (W - 12), Y = r => mx === mn ? H / 2 : H - 6 - (r.price - mn) / (mx - mn) * (H - 12);
   return '<svg viewBox="0 0 ' + W + " " + H + '" style="width:100%;height:' + H + 'px;display:block;margin:4px 0 8px"><polyline fill="none" stroke="var(--acc)" stroke-width="2" points="' + rows.map(r => X(r).toFixed(1) + "," + Y(r).toFixed(1)).join(" ") + '"/>' + rows.map(r => '<circle cx="' + X(r).toFixed(1) + '" cy="' + Y(r).toFixed(1) + '" r="3" fill="var(--acc)"/>').join("") + "</svg>";
+}
+function pbScan() {
+  const have = new Set(PRICES.map(r => r.tx_id + "|" + r.pkey)), known = new Set(PRICES.map(r => r.pkey)), m = new Map();
+  txs.forEach(t => {
+    if (t.kind !== "exp" || !t.note) return;
+    PRC.fromNote(t.note, t.amount).forEach(c => { const k = PRC.key(c.name); if (!k || have.has(t.id + "|" + k)) return; (m.get(k) || m.set(k, []).get(k)).push({ tx: t.id, ts: t.ts, amount: t.amount, name: c.name, price: c.price, qty: c.qty }); });
+  });
+  return [...m].map(([k, rows]) => { rows.sort((a, b) => new Date(a.ts) - new Date(b.ts)); return { k, name: rows[rows.length - 1].name, rows, on: rows.length >= 2 || known.has(k) }; }).sort((a, b) => b.rows.length - a.rows.length);
+}
+function pbHTML(s) {
+  const on = s.groups.filter(g => g.on), n = on.reduce((a, g) => a + g.rows.length, 0);
+  return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">🔎 Цены в старых заметках</h2>' +
+    (s.groups.length ? '<div class="sub" style="font-size:.85em;margin-bottom:6px">Нашёл товары, у которых в заметке есть цена. Галочки стоят у тех, что встречаются 2+ раза (для динамики нужны повторы). Сними лишнее, например «такси».</div><div style="max-height:46vh;overflow:auto">' +
+      s.groups.slice(0, 200).map((g, i) => '<button class="xrow" data-a="pbtog" data-i="' + i + '"><span style="font-size:1.2em">' + (g.on ? "☑" : "☐") + '</span><div class="xm"><div>' + esc(g.name) + '</div><div class="sub" style="font-size:.8em">' + g.rows.length + " зап.: " + fm(g.rows[0].price) + " → " + fm(g.rows[g.rows.length - 1].price) + " · " + pdate(g.rows[0]) + " — " + pdate(g.rows[g.rows.length - 1]) + "</div></div></button>").join("") +
+      '</div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" data-a="pbadd">Добавить: ' + n + '</button><button class="btn g" data-a="shclose">Отмена</button></div>'
+      : '<div class="sub" style="margin:8px 0">Ничего подходящего не нашёл: нужны заметки вида «тунец 450».</div><button class="btn g" data-a="shclose">Закрыть</button>') +
+    "</div></div>";
 }
 function priceListInner(gs, q) {
   let L = gs.slice().sort((a, b) => new Date(b.last.ts) - new Date(a.last.ts));
@@ -826,7 +844,7 @@ function pricesHTML() {
     '<div class="card"><h3>📈 Цены на продукты</h3>' +
     (sm ? '<div style="margin-bottom:8px">Личная инфляция: цены на твои товары изменились в среднем на <b class="' + pcol(sm.med) + '">' + ppct(sm.med) + '</b> (медиана по ' + sm.n + (sm.n % 10 === 1 && sm.n % 100 !== 11 ? ' товару' : ' товарам') + '), в пересчёте на год ≈ <b class="' + pcol(sm.year) + '">' + ppct(sm.year) + '</b></div>' : '<div class="sub" style="margin-bottom:8px">Покажу инфляцию, когда у товаров накопится по две покупки с разницей больше недели.</div>') +
     (priceErr ? '<div class="bad" style="font-size:.85em;margin-bottom:8px">Таблица цен в базе недоступна: ' + esc(priceErr.slice(0, 120)) + ". Нужно выполнить migration_v19.sql в Supabase; пока цены хранятся на телефоне.</div>" : "") +
-    '<input class="in" id="pq" autocomplete="off" placeholder="Найти товар" value="' + esc(ui.pq || "") + '"><div id="pl">' + priceListInner(gs, (ui.pq || "").toLowerCase().trim()) + "</div></div>";
+    '<button class="btn g" data-a="pbscan" style="width:100%;margin-bottom:8px">🔎 Найти цены в старых заметках</button><input class="in" id="pq" autocomplete="off" placeholder="Найти товар" value="' + esc(ui.pq || "") + '"><div id="pl">' + priceListInner(gs, (ui.pq || "").toLowerCase().trim()) + "</div></div>";
 }
 function priceDetailHTML(g) {
   const L = g.rows.slice().reverse();
@@ -1012,6 +1030,7 @@ function sheetHTML() {
   if (s.type === "rcpc") {
     return '<div class="ov" data-a="rcpcback"><div class="sheet rcp" data-a="nop"><h2 style="margin:0 0 8px">' + (s.all ? "Категория для всех без категории" : "Категория") + '</h2><input class="in" id="rc-q" autocomplete="off" placeholder="🔍 Найти категорию по слову" value="' + esc(s.q || "") + '"><div class="rl" id="rc-l" style="margin-top:6px">' + rcpcList(s.q) + '</div><div style="display:flex;gap:8px;margin-top:6px">' + (s.all ? "" : '<button class="btn g" style="flex:1" data-a="rcpick" data-id="">Без категории</button>') + '<button class="btn g" style="flex:1" data-a="rcpcback">Назад</button></div></div></div>';
   }
+  if (s.type === "pback") return pbHTML(s);
   if (s.type === "due") {
     const l = dueList(); if (!l.length) return ""; const x = l[0], c = catOf(x.r.cat), dd = new Date(x.d.ds + "T12:00");
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>🔁 ' + esc(x.r.note || c.name) + '</h2><div class="sub" style="margin-bottom:8px">' + c.name + " · " + dd.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) + (l.length > 1 ? " · ещё " + (l.length - 1) : "") + '</div><input class="in" id="d-amt" inputmode="decimal" placeholder="Сумма, ₽" value="' + esc(x.r.amt) + '"><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" data-a="duego">Записать</button><button class="btn g" data-a="dueskip">Пропустить</button></div></div></div>';
@@ -1314,6 +1333,9 @@ const A = {
   rnames() { PR.rn = PR.rn === false; savePR(); render(); },
   setext() { ui.set = "ext"; render(); },
   setprices() { ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
+  pbscan() { ui.sheet = { type: "pback", groups: pbScan() }; render(); },
+  pbtog(a) { const g = ui.sheet.groups[+a.dataset.i]; if (g) g.on = !g.on; render(); },
+  pbadd() { const L = []; ui.sheet.groups.filter(g => g.on).forEach(g => g.rows.forEach(r => L.push({ id: uid(), ts: r.ts, name: r.name, pkey: PRC.key(r.name), price: r.price, qty: r.qty, amount: r.amount, shop: "", tx_id: r.tx }))); ui.sheet = null; if (L.length) addPrices(L); render(); toast("Добавлено цен: " + L.length); },
   popen(a) { ui.pk = a.dataset.k; render(); }, pclose() { ui.pk = null; render(); },
   pdel(a) { if (confirm("Удалить эту запись цены? (сама трата останется)")) { delPrice(a.dataset.id); render(); } },
   tplgo(a) { const t = EXT.tpl.find(x => x.id === a.dataset.id); if (!t) return; const now = new Date(); upTx({ id: uid(), ts: now.toISOString(), amount: t.amt, kind: t.kind, category_id: t.cat, note: t.note || "", account: "Основной" }); const bm = t.kind === "exp" ? budgetMsg(t.cat, now.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(t.amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200); },
