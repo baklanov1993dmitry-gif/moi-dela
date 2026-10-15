@@ -766,6 +766,7 @@ function moreHTML() {
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Акцентный цвет <span class="sub" style="font-size:.8em">— месяцы, бейджи, сумма, «+»</span></div><div class="pal">' + ACCS.map(c => '<i data-a="acc" data-v="' + c + '" class="' + (PR.acc === c ? "on" : "") + '" style="background:' + c + '"></i>').join("") + "</div></div>" +
     '<label class="set"><span>📥</span><span style="flex:1">Импорт из Monefy (CSV)</span><input type="file" id="csvf" accept=".csv,.txt,text/csv" hidden></label>' +
     '<button class="set" data-a="export"><span>📤</span><span style="flex:1">Экспорт в CSV</span></button>' +
+    '<button class="set" data-a="clnote"><span>🧹</span><span style="flex:1">Убрать названия магазинов из заметок</span></button>' +
     '<button class="set" data-a="exportjson"><span>💾</span><span style="flex:1">Резервная копия (JSON)</span></button>' +
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
@@ -1235,7 +1236,7 @@ const A = {
     const d = new Date(s.date + "T12:00"), now = new Date(); if (s.date === dayKey(now)) d.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
     const val = x => Math.round(parseFloat(String(x.amount).replace(",", ".")) * 100) / 100, mer = (s.merchant || "").trim(); let n = 0, sum = 0;
     if (s.merge) { const g = {}; it.forEach(x => { (g[x.cat] = g[x.cat] || []).push(x); }); Object.entries(g).forEach(([c, l]) => { const a = Math.round(l.reduce((t, x) => t + val(x), 0) * 100) / 100; upTx({ id: uid(), ts: d.toISOString(), amount: a, kind: "exp", category_id: c, note: ((mer ? mer + ": " : "") + l.map(x => x.name).join(", ")).slice(0, 140), account: "Основной" }); n++; sum += a; }); }
-    else it.forEach(x => { upTx({ id: uid(), ts: d.toISOString(), amount: val(x), kind: "exp", category_id: x.cat, note: ((mer ? mer + " · " : "") + x.name).slice(0, 140), account: "Основной" }); n++; sum += val(x); });
+    else it.forEach(x => { upTx({ id: uid(), ts: d.toISOString(), amount: val(x), kind: "exp", category_id: x.cat, note: String(x.name).slice(0, 140), account: "Основной" }); n++; sum += val(x); });
     if (s.inbox) inboxMark(s.inbox, "done");
     if (s.key) { try { const k = rcpSeen(); k.push(s.key); localStorage.setItem("fin_rcs_v1", JSON.stringify(k.slice(-300))); } catch (e) {} }
     ui.sheet = null; render(); toast("Записано трат: " + n + " на " + fm(sum));
@@ -1265,6 +1266,12 @@ const A = {
   limclear() { const c = cats.find(x => x.id === ui.sheet.id); if (c) { c.lim = null; upCat(c); } ui.sheet = null; render(); },
   acc(a) { PR.acc = a.dataset.v; savePR(); applyTheme(); render(); },
   fullsync() { pull(true); },
+  clnote() {
+    const rx = /^[^·]{2,60} · /, L = txs.filter(t => t.kind === "exp" && rx.test(t.note || ""));
+    if (!L.length) { toast("Нечего чистить"); return; }
+    if (!confirm("Убрать название магазина в начале заметки у " + L.length + " трат?\nНапример: «" + L[0].note + "» → «" + L[0].note.replace(rx, "") + "»")) return;
+    L.forEach(t => upTx(Object.assign({}, t, { note: t.note.replace(rx, "") }))); render(); toast("Исправлено: " + L.length);
+  },
   exportjson() {
     const d = { app: "traty", exported_at: new Date().toISOString(), categories: cats, tx: txs.map(dbTx), ext: EXT, prefs: PR };
     const blob = new Blob([JSON.stringify(d)], { type: "application/json" }), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "траты_копия_" + dayKey(new Date()) + ".json"; a.click(); toast("Копия сохранена: " + txs.length + " записей");
