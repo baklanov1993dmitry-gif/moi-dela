@@ -214,7 +214,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .crow{position:relative}
 .crow .ci{width:36px;height:36px;margin-right:6px}.crow .chev{margin-right:6px}.crow .chev svg{width:15px}
 .pbar{position:absolute;left:50px;right:8px;bottom:5px;height:5px;border-radius:2px;background:color-mix(in srgb,var(--tx) 12%,transparent)}.pbar i{display:block;height:100%;border-radius:2px}.pbar.norm{opacity:.6}.pbar.lim{height:6px}
-#main .crow{min-height:46px;padding-bottom:0}#main .crow.cur{margin:0 -8px;width:calc(100% + 16px)}#main .crow.cur .chev{width:22px;margin-right:3px}#main .crow .ci{position:relative}#main .crow .lkb{position:absolute;right:-5px;bottom:-4px;font-size:11px;line-height:1;filter:drop-shadow(0 0 2px var(--bg))}#main .crow .fr{font-size:14.5px;font-weight:500;color:var(--tx);padding:2px 8px;border-radius:9px;white-space:nowrap}#main .crow .ck{color:var(--sub);margin-left:5px}.grpend{height:12px}.grpst{height:6px}.nutr{display:block;width:100%;text-align:left;padding:2px 0;background:none;border:0;color:inherit;font:inherit}.am{color:#ffb04d}.pr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:14.5px}.pr:last-child{border-bottom:0}.pr b{font-weight:600;white-space:nowrap}#main .crow .ar{display:flex;align-items:baseline;gap:2px;flex:none;white-space:nowrap}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px}.infob{font-size:17px;color:var(--sub);padding:2px 6px 2px 2px}.ln1{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acb .sub,.acb .qnote{font-size:12.5px;line-height:1.35}.acb .qnote{padding:7px 10px;margin-top:6px}.acb .bt b{font-size:1.05em}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
+#main .crow{min-height:46px;padding-bottom:0}#main .crow.cur{margin:0 -8px;width:calc(100% + 16px)}#main .crow.cur .chev{width:22px;margin-right:3px}#main .crow .ci{position:relative}#main .crow .lkb{position:absolute;right:-5px;bottom:-4px;font-size:11px;line-height:1;filter:drop-shadow(0 0 2px var(--bg))}#main .crow .fr{font-size:14.5px;font-weight:500;color:var(--tx);padding:2px 8px;border-radius:9px;white-space:nowrap}#main .crow .ck{color:var(--sub);margin-left:5px}.grpend{height:12px}.grpst{height:6px}.sgs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 14px 0;flex:none}.sgs:empty{display:none}.sg{background:var(--card2);color:var(--tx);border-radius:14px;padding:6px 12px;font-size:.9em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nutr{display:block;width:100%;text-align:left;padding:2px 0;background:none;border:0;color:inherit;font:inherit}.am{color:#ffb04d}.pr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:14.5px}.pr:last-child{border-bottom:0}.pr b{font-weight:600;white-space:nowrap}#main .crow .ar{display:flex;align-items:baseline;gap:2px;flex:none;white-space:nowrap}#main .crow.cld{opacity:.5}#main .crow .bd{font-size:11px;line-height:16px;min-width:17px;padding:0 5px;border-radius:6px}.srtr{display:flex;justify-content:space-between;align-items:center;margin:0 0 2px}.infob{font-size:17px;color:var(--sub);padding:2px 6px 2px 2px}.ln1{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acb .sub,.acb .qnote{font-size:12.5px;line-height:1.35}.acb .qnote{padding:7px 10px;margin-top:6px}.acb .bt b{font-size:1.05em}.srtb{font-size:12.5px;color:var(--sub);padding:4px 2px}.hint{display:flex;gap:8px;align-items:flex-start;background:var(--card);border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:12px;line-height:1.35;color:var(--sub)}.hint b{color:var(--tx);flex:none;padding:0 2px}
 .rs.over::after{content:"!";position:absolute;top:-4px;right:-2px;width:15px;height:15px;border-radius:50%;background:var(--exp);color:#fff;font-size:11px;font-weight:700;line-height:15px;text-align:center}
 .cgrid button .bl,.bl{font-style:normal;font-size:10.5px;color:var(--sub);line-height:1}.bl.warn{color:#f2b36d}.bl.bad{color:var(--exp)}
 .cgrid button{gap:3px}
@@ -633,6 +633,34 @@ function prcBody() {
   if (mv.length) o += '<div class="sub" style="margin-bottom:4px">Сильнее всего изменились:</div>' + mv.map(g => '<div class="pr"><span>' + esc(g.name) + '</span><b class="' + pcol(g.pct) + '">' + ppct(g.pct) + "</b></div>").join("");
   return o + '<button class="btn g" data-a="gopr" style="width:100%;margin-top:10px">Весь справочник цен ›</button>';
 }
+// подсказки заметки: что покупал раньше (по введённым буквам)
+let SUGX = { v: -1, L: [] };
+function sugIndex() {
+  if (SUGX.v === txv && SUGX.n === txs.length) return SUGX.L;
+  const m = new Map(), nz = x => String(x).toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+  txs.forEach(t => {
+    if (t.kind !== "exp" || !t.note) return;
+    String(t.note).split(/\s*,\s+|\s+,\s*|;|\n/).forEach(p => {
+      p = p.trim().replace(/^[^:·,\d]{2,30}?\s*[:·]\s+/, ""); if (p.length < 2 || p.length > 60 || /^\d+([.,]\d+)?$/.test(p)) return;
+      const k = nz(p), e = m.get(k) || { k, n: 0, last: 0, cat: {}, text: p }; e.n++; const ts = +new Date(t.ts); if (ts >= e.last) { e.last = ts; e.text = p; } if (t.category_id) e.cat[t.category_id] = (e.cat[t.category_id] || 0) + 1; m.set(k, e);
+    });
+  });
+  SUGX = { v: txv, n: txs.length, L: [...m.values()] }; return SUGX.L;
+}
+function sugFor(text) {
+  const parts = String(text || "").split(/,\s*/), q = parts[parts.length - 1].toLowerCase().replace(/ё/g, "е").trim(); if (q.length < 2) return [];
+  const now = Date.now(), out = [];
+  sugIndex().forEach(e => {
+    if (e.k === q) return; let sc = 0;
+    if (e.k.startsWith(q)) sc = 3; else if (e.k.split(" ").some(w => w.startsWith(q))) sc = 2; else if (q.length >= 3 && e.k.includes(q)) sc = 1; else return;
+    out.push({ e, sc: sc * 10 + Math.log2(1 + e.n) * 2 - Math.min(5, (now - e.last) / 864e5 / 60) });
+  });
+  return out.sort((a, b) => b.sc - a.sc).slice(0, 6).map(o => o.e);
+}
+function sugHTML(text) {
+  const L = sugFor(text); SUGX.cur = L;
+  return L.map((e, i) => '<button class="sg" data-a="sugpick" data-i="' + i + '">' + esc(e.text) + "</button>").join("");
+}
 function nutAn(n) { const k = txv + "|" + cats.length + "|" + new Date().getDate(); if (nutAn.k !== k) { nutAn.k = k; nutAn.v = {}; } return nutAn.v[n] || (nutAn.v[n] = FOOD.analyze(txs, cats, n)); }
 function agoTxt(n) { return n === 0 ? "сегодня" : n === 1 ? "вчера" : n + " дн. назад"; }
 function nutNote() {
@@ -844,7 +872,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 38 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 39 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1062,7 +1090,7 @@ function sheetHTML() {
       return '<div class="full fcat">' + head + date + amt + '<input class="in cs" id="cs" autocomplete="off" placeholder="🔍 Найти категорию" value="' + esc(s.cq || "") + '"><div class="cgrid" id="cg">' + cgridInner(s) + "</div></div>";
     }
     const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
-    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" enterkeyhint="done" autocomplete="off" value="' + esc(s.note || "") + '"></label><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
+    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" enterkeyhint="done" autocomplete="off" value="' + esc(s.note || "") + '"></label><div class="sgs" id="s-sug">' + sugHTML(s.note || "") + '</div><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
       (c ? '<button class="cbtn sv" data-a="txsave">Сохранить · ' + esc(c.name) + "</button>" : "") + '<button class="cbtn" data-a="cstep">Выбор категории</button></div>';
   }
   if (s.type === "cat") {
@@ -1379,6 +1407,12 @@ const A = {
   setext() { ui.set = "ext"; render(); },
   nutg(a) { ui.ng = ui.ng === a.dataset.v ? null : a.dataset.v; render(); },
   prcset(a) { PR.prcN = +a.dataset.v; savePR(); render(); }, nutset(a) { PR.nutN = +a.dataset.v; savePR(); render(); },
+  sugpick(a) {
+    const s = ui.sheet, e = (SUGX.cur || [])[+a.dataset.i], inp = $("s-note"); if (!s || !e || !inp) return;
+    const parts = inp.value.split(/,\s*/); parts[parts.length - 1] = e.text; inp.value = parts.join(", "); s.note = inp.value;
+    if (!s.cat && s.kind === "exp") { let b = null, bn = 0; Object.keys(e.cat).forEach(c => { if (e.cat[c] > bn && catOf(c) && catOf(c).id) { b = c; bn = e.cat[c]; } }); if (b) s.cat = b; }
+    const box = $("s-sug"); if (box) box.innerHTML = ""; render(); const i2 = $("s-note"); if (i2) { i2.focus(); try { i2.setSelectionRange(i2.value.length, i2.value.length); } catch (x) { } }
+  },
   gonut() { ui.tab = "stats"; ui.set = "main"; PR.acs = Object.assign(PR.acs || {}, { nut: true }); savePR(); render(); },
   gopr() { ui.tab = "more"; ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
   setprices() { ui.set = "prices"; ui.pk = null; ui.pq = ""; render(); pullP(); },
@@ -1443,7 +1477,7 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
-document.addEventListener("input", e => { if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
+document.addEventListener("input", e => { if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
     rread(); const sh = ui.sheet;
