@@ -42,16 +42,29 @@
   function fromNote(note, amount) {
     let n = String(note || "").trim();
     n = n.replace(/^[^:·,\d]{2,30}?\s*[:·]\s+/, "");              // префикс «Магазин: » / «Магазин · »
-    const parts = n.split(/,\s+|;\s*|\n+/).map(x => x.trim()).filter(Boolean), out = [];
-    parts.forEach(p0 => {
-      if (/\d{1,2}[.,]\d{1,2}[.,]\d{2,4}/.test(p0)) return;      // даты не цены
+    n = n.replace(/(?<![а-яёa-z])(?:по\s+акции|акция|акции|акц\.?|скидка|скидке|распродажа|по\s+цене|цена|цены)(?![а-яёa-z])/gi, " ").replace(/\s+/g, " ").trim();
+    const parts = [];
+    n.split(/\s*,\s+|\s+,\s*|;\s*|\n+/).map(x => x.trim()).filter(Boolean).forEach(x => {
+      if (parts.length && /^\d+(?:[.,]\d+)?\s*(?:₽|р\.?|руб\.?)?$/.test(x)) parts[parts.length - 1] += " " + x; else parts.push(x);   // «тунец 3шт , 450»
+    });
+    const out = [];
+    parts.forEach(p00 => {
+      if (/\d{1,2}[.,]\d{1,2}[.,]\d{2,4}/.test(p00)) return;      // даты не цены
+      const p0 = p00;
+      const qm = /(\d+(?:[.,]\d+)?)\s*шт(?![а-яёa-z])/i.exec(p0), N = qm ? parseFloat(qm[1].replace(",", ".")) : 0;
       const p = p0.replace(/\d+(?:[.,]\d+)?\s*(?:%|кг|гр|г|мл|л|шт|уп|упак)(?![а-яёa-z])\.?/gi, " ").replace(/\s+/g, " ").trim();
       const m = /^([^\d]*[а-яёa-z][^\d]*?)\s*(?:по|-|—|:|=|x|х)?\s*(\d+(?:[.,]\d+)?)\s*(?:₽|р\.?|руб\.?|рублей)?\s*(?:\/\s*(?:кг|шт|л|г))?\.?$/i.exec(p);
       if (!m) return;
       const name = m[1].replace(/\s*(?:по|-|—|:|=)\s*$/i, "").trim(), price = parseFloat(m[2].replace(",", "."));
       if (name.length < 3 || !(price >= 10) || !key(name)) return;
       if (/^\d{1,2}[.,](?:0\d|1[0-2])$/.test(m[2]) && Math.abs(+amount - price) > 0.5) return;   // похоже на дату 12.05
-      let qty = 1; const a = +amount;
+      const a = +amount;
+      if (N > 1) {   // «3шт, цена 450» = 450 за все три; «3шт по 150» = 150 за штуку
+        const perPiece = /(?<![а-яёa-z])по\s+\d/i.test(p0) || (a > 0 && Math.abs(a - price * N) <= 1);
+        out.push({ name, price: Math.round((perPiece ? price : price / N) * 100) / 100, qty: N });
+        return;
+      }
+      let qty = 1;
       if (parts.length === 1 && a > 0 && Math.abs(a - price) > 0.5) { const q = a / price; if (q >= 0.05 && q <= 50) qty = Math.round(q * 1000) / 1000; }
       out.push({ name, price, qty });
     });
