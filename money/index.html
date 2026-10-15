@@ -638,9 +638,11 @@ function nutBody() {
   const n = nutN(), r = FOOD.analyze(txs, cats, n), col = { good: "inc", mid: "sub", bad: "exp", na: "sub" }[r.verdict.k];
   let o = winChips("nutset", n) + '<div style="margin-bottom:8px"><b class="' + col + '" style="font-size:1.1em">' + r.verdict.t + (r.enough ? " · " + r.score + "/100" : "") + '</b><br><span class="sub">' + r.verdict.d + "</span></div>";
   if (!r.enough) return o + '<div class="sub" style="font-size:.85em">Распознал продукты в ' + r.matched + " из " + r.total + " трат. Чем чаще в заметках названия продуктов (или чек через «Чек»), тем точнее выводы.</div>";
-  const bar = (g, mx) => '<div class="wrow"><span class="wn" style="width:auto;min-width:0;flex:1.3;font-size:.88em">' + g.i + " " + g.t + '</span><div class="tr" style="flex:1"><i style="width:' + Math.min(100, g.f / mx * 100).toFixed(1) + "%;background:" + (g.good ? (g.f >= g.good ? "var(--inc)" : g.f >= g.good * 0.5 ? "var(--acc)" : "var(--exp)") : (g.f > g.bad ? "var(--exp)" : "var(--acc)")) + '"></i></div><span class="wv" style="min-width:64px;text-align:right"><b>' + g.f.toFixed(1) + "</b><small> /" + (g.good || "≤" + g.bad) + "</small></span></div>";
-  const gd = r.groups.filter(g => g.good), bd = r.groups.filter(g => g.bad && (g.n > 0 || g.f > 0)), mx = Math.max(...r.groups.map(g => g.good || g.bad), ...r.groups.map(g => g.f));
-  o += '<div class="sub" style="margin:6px 0 2px">Дней в неделю с покупкой / ориентир</div>' + gd.map(g => bar(g, mx)).join("") + (bd.length ? '<div class="sub" style="margin:8px 0 2px">Что лучше ограничивать</div>' + bd.map(g => bar(g, mx)).join("") : "");
+  const bar = g => { const lim = g.good || g.bad, fill = Math.min(1, g.f / lim), ok = g.good ? g.f >= g.good : g.f <= g.bad, mid = g.good && g.f >= g.good * 0.5;
+    return '<div class="wrow"><span class="wn" style="width:auto;min-width:0;flex:1.3;font-size:.88em">' + g.i + " " + g.t + '</span><div class="tr" style="flex:1"><i style="width:' + (fill * 100).toFixed(1) + "%;background:" + (ok ? "var(--inc)" : g.good ? (mid ? "var(--acc)" : "var(--exp)") : "var(--exp)") + '"></i></div><span class="wv" style="min-width:74px;text-align:right"><b>' + g.f.toFixed(1) + "</b><small> из " + (g.good ? "" : "макс ") + lim + "</small></span></div>"; };
+  const gd = r.groups.filter(g => g.good), bd = r.groups.filter(g => g.bad), out = r.groups.find(g => g.info);
+  o += '<div class="sub" style="margin:6px 0 2px">Что стоит есть регулярно: дней в неделю с покупкой. Полная дорожка = норма выполнена</div>' + gd.map(bar).join("") + '<div class="sub" style="margin:8px 0 2px">Что лучше ограничивать: дорожка заполнена = достигнут допустимый максимум, красная = перебор</div>' + bd.map(bar).join("");
+  if (out && out.n) o += '<div class="sub" style="margin-top:8px">' + out.i + " Кафе и рестораны: " + out.n + " раз, " + fmN(out.sum) + " ₽. На оценку не влияет: что именно съел там, неизвестно.</div>";
   if (r.lack.length) o += '<div style="margin-top:10px"><b>Чего не хватает:</b>' + r.lack.map(g => '<div class="sub" style="margin-top:4px">' + g.i + " <b>" + g.t + "</b> — " + (g.n ? "редко (" + g.f.toFixed(1) + " дн./нед.)" : "не покупал вообще") + ". " + g.tip + "</div>").join("") + "</div>";
   if (r.over.length) o += '<div style="margin-top:10px"><b>Многовато:</b>' + r.over.map(g => '<div class="sub" style="margin-top:4px">' + g.i + " <b>" + g.t + "</b> — " + g.f.toFixed(1) + " дн./нед. " + g.tip + "</div>").join("") + "</div>";
   if (!r.lack.length && !r.over.length) o += '<div style="margin-top:10px" class="sub">Явных перекосов нет, так держать 👍</div>';
@@ -830,7 +832,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 33 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 34 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
