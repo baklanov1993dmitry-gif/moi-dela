@@ -4588,7 +4588,7 @@ function nuRepHTML() {
   const chips = [[7, "7 дн"], [14, "14 дн"], [30, "30 дн"], [90, "90 дн"], [0, "Свой"]].map(c => '<button class="jr-chip' + (R.n === c[0] ? " on" : "") + '" data-a="nurepn" data-v="' + c[0] + '">' + c[1] + "</button>").join("");
   const dates = R.n ? "" : '<div class="jr-f" style="margin-top:8px"><input type="date" id="nu-rf" class="inp" value="' + rg.from + '"><input type="date" id="nu-rt" class="inp" value="' + rg.to + '"></div>';
   const rep = !N.rrep ? "" : N.rrep.busy ? '<div class="jr-ai">Анализирую питание, ~20–40 секунд…</div>' : N.rrep.err ? '<div class="jr-ai">Не получилось: ' + esc(N.rrep.err === "setup" ? "ИИ не подключён" : N.rrep.err) + "</div>" : '<div class="jr-ai">' + nuRepMd(N.rrep.text) + "</div>";
-  return '<div class="jr-st" style="margin-top:18px">Полезно ли я питаюсь</div><div class="jr-hint">Разбор за период с опорой на нормы ВОЗ, EFSA и Минздрава РФ.</div><div class="jr-chips" style="margin-top:8px">' + chips + "</div>" + dates + '<button class="btn jr-go" data-a="nurep" style="margin-top:10px">📊 Разобрать питание</button>' + rep;
+  return '<div class="jr-st" style="margin-top:18px">Полезно ли я питаюсь</div><div class="jr-hint">Разбор за период с опорой на нормы ВОЗ, EFSA и Минздрава РФ.</div><div class="jr-chips" style="margin-top:8px">' + chips + "</div>" + dates + '<div class="jr-f" style="margin-top:10px"><button class="btn jr-go" data-a="nurep">📊 Разобрать питание</button><button class="btn ghost" data-a="nurepcopy" title="Скопировать данные и промпт, открыть Gemini">Gemini вручную</button></div>' + rep;
 }
 function nuRepData() {
   const rg = nuRepRange(), days = [], foods = {}, P0 = nuProf(), tg = nuTargets(rg.to);
@@ -4737,6 +4737,12 @@ Object.assign(acts, {
     const data = nuRepData(); if (data.period.days_logged < 2) { N.rrep = { err: "Мало записей: нужно хотя бы 2 дня с едой в периоде" }; render(); return; }
     N.rrep = { busy: true }; render();
     aiCall("nutrition_report", data).then(t => { N.rrep = { text: t }; render(); }).catch(e => { N.rrep = { err: e.message }; render(); });
+  },
+  nurepcopy() {
+    const N = NUN(), R = N.rep || {}; if (!R.n) { const f = $("nu-rf"), t = $("nu-rt"); if (f && f.value) R.from = f.value; if (t && t.value) R.to = t.value; }
+    const txt = "Ты — нутрициолог-аналитик. Разбери моё питание за период по нормам ВОЗ, EFSA, Минздрава РФ (МР 2.3.1.0253-21): что хорошо, что плохо, чего не хватает (клетчатка, омега-3, Ca, Fe, K, Mg, D — оценка по названиям продуктов), чего в избытке, 3–5 шагов, источники. Без диагнозов. Отвечай по-русски, кратко. Данные (JSON; foods: " + "название, граммы, ккал, Б, Ж, У, записей, дней):\n" + JSON.stringify(nuRepData());
+    const done = () => { toast("Скопировано — вставь в Gemini"); window.open("https://gemini.google.com/app", "_blank"); };
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, () => toast("Не удалось скопировать")); else toast("Нет доступа к буферу");
   },
   nuweb() { nuWeb(); },
   async nuaifood() {

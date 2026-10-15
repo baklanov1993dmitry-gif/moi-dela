@@ -21,18 +21,49 @@ SYS.nutrition_report = `Ты — клинически мыслящий нутр�
 ## Что сделать — 3–5 конкретных шагов с продуктами и граммами.
 ## Опора — 3–5 коротких ссылок на источники (организация, год, тезис), без выдуманных цифр.
 Правила: не придумывай то, чего нет в данных; если дней записи мало или данные неполные — скажи это в начале; не ставь диагнозов и не назначай лекарства/добавки в дозах, при тревожных признаках (очень низкие ккал <1200, длительный сильный дефицит) мягко советуй врача/диетолога. Различай факты из данных и оценки.`;
+
+// Бесплатный разбор питания через Gemini API (тот же GEMINI_API_KEY, что у video)
+async function gemini(sys: string, body: string): Promise<string> {
+  const key = Deno.env.get("GEMINI_API_KEY"); if (!key) throw new Error("GEMINI_API_KEY не задан");
+  const models = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i) as string[];
+  let j: any = {}, lastErr = "";
+  for (const model of models) {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      method: "POST", headers: { "x-goog-api-key": key, "content-type": "application/json" },
+      body: JSON.stringify({ model, input: [{ type: "text", text: sys + "\n\nДанные (JSON):\n" + body }] }),
+    });
+    j = await r.json().catch(() => ({}));
+    if (r.ok) { lastErr = ""; break; }
+    lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
+    if (!/demand|overload|unavailable|try again|not found|no longer|quota|rate|permission|403|503|429|404/i.test(lastErr + r.status)) break;
+  }
+  if (lastErr) throw new Error(lastErr);
+  const grab = (o: any, out: string[]) => {
+    if (!o || typeof o !== "object") return;
+    if (Array.isArray(o)) { o.forEach((x) => grab(x, out)); return; }
+    if (/thought|reason/i.test(String(o.type || ""))) return;
+    if (typeof o.text === "string") out.push(o.text);
+    for (const k of Object.keys(o)) if (k !== "text" && typeof o[k] === "object") grab(o[k], out);
+  };
+  const parts: string[] = [], steps = (j.steps || []).filter((x: any) => /model_output|output/i.test(String(x?.type || "")));
+  grab(steps.length ? steps : j.outputs ?? j, parts);
+  let text = parts.join("\n").trim(); if (!text && typeof j.output_text === "string") text = j.output_text;
+  if (!text) throw new Error("пустой ответ: " + JSON.stringify(j).slice(0, 300));
+  return text;
+}
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
-    const key = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!key) return json({ error: "ANTHROPIC_API_KEY не задан" }, 500);
     const { kind, data } = await req.json();
     const sys = SYS[kind];
     if (!sys) return json({ error: "unknown kind" }, 400);
     const body = JSON.stringify(data ?? {});
     if (body.length > 20000) return json({ error: "too large" }, 413);
+    if (kind === "nutrition_report") return json({ text: await gemini(sys, body) });
+    const key = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!key) return json({ error: "ANTHROPIC_API_KEY не задан" }, 500);
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
