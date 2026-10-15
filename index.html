@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "15.10 21:20";
+const BUILD = "15.10 21:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3515,6 +3515,19 @@ function appHTML() {
   return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
+function morphKeep(o, n, keep, nk) {
+  if (o === keep) return true;
+  if (o.tagName !== n.tagName) return false;
+  for (const a of Array.from(n.attributes)) if (o.getAttribute(a.name) !== a.value) o.setAttribute(a.name, a.value);
+  const oc = Array.from(o.children), nc = Array.from(n.children);
+  const oi = oc.findIndex(c => c === keep || c.contains(keep)), ni = nc.findIndex(c => c === nk || c.contains(nk));
+  if (oi < 0 || ni < 0 || oi !== ni) return false;
+  for (let i = 0; i < oi; i++) if (!oc[i].isEqualNode(nc[i])) oc[i].replaceWith(nc[i]);
+  if (!morphKeep(oc[oi], nc[ni], keep, nk)) return false;
+  for (let i = oi + 1; i < oc.length; i++) oc[i].remove();
+  for (let i = ni + 1; i < nc.length; i++) o.appendChild(nc[i]);
+  return true;
+}
 function render() {
   want = false;
   if (isLite()) { if (view === "journal" || view === "food" || view.indexOf("team") === 0) view = "planned"; if (ui.trk) ui.trk = false; }
@@ -3526,7 +3539,10 @@ function render() {
   today = todayISO();
   if (!selId) lastDetail = null; if (!ui.settings) lastSettings = false;
   if (pendingOpen && S.tasks[pendingOpen]) { selId = pendingOpen; pendingOpen = null; ui.left = false; }
-  app.innerHTML = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : appHTML());
+  const html = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : appHTML());
+  let kept = false;   // поиск: поле ввода остаётся живым (не теряем клавиатуру/композицию), перерисовывается всё вокруг
+  if (fid === "q" && S.user && screen !== "setup") { try { const tmp = document.createElement(app.tagName); tmp.innerHTML = html; const nk = tmp.querySelector("#q"); if (nk) kept = morphKeep(app, tmp, ae, nk); } catch (e) { kept = false; } }
+  if (!kept) app.innerHTML = html;
   applyTheme();
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
