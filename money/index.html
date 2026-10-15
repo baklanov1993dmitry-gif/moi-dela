@@ -892,7 +892,7 @@ function rcpFromParsed(r, text, extra) {
   if (dup) notes.push("⚠️ Похоже, этот чек уже записывали.");
   if (r.refund) notes.push("⚠️ Это возврат, а не покупка.");
   if (!r.ok) notes.push("Сумма позиций не сошлась с итогом чека, сверь.");
-  ui.sheet = { type: "rcp", merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: true, key: r.key, items, inbox: extra.inbox || null };
+  ui.sheet = { type: "rcp", merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: false, key: r.key, items, inbox: extra.inbox || null };
   render();
 }
 function rcpText(text, meta) {
