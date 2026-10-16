@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const { data: subs, error: e2 } = await sb.from("push_subs").select("endpoint,p256dh,auth,user_id").in("user_id", users);
     if (e2) { console.error("subs: " + e2.message); return new Response("subs: " + e2.message, { status: 500 }); }
 
-    const tgT = Deno.env.get("TG_TOKEN"), tgC = Deno.env.get("TG_CHAT");
+    const tgT = Deno.env.get("TG_TOKEN"), tgC = Deno.env.get("TG_CHAT"), tgOwner = Deno.env.get("TG_USER") ?? Deno.env.get("TRACK_USER");   // Telegram — только задачи владельца бота, чужие напоминания не пересылаем
     let sent = 0;
     const lids = [...new Set(due.map((t) => t.list_id).filter(Boolean))];
     const lname: Record<string, string> = {};
@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
     const dead: string[] = [], tgItems: typeof due = [], okIds = new Set<string>(), pushOk = new Set<string>();
     for (const t of due) {
       const mine = (subs ?? []).filter((s) => s.user_id === t.user_id);
-      if (!mine.length && !(tgT && tgC)) { console.log("no subs for task " + t.id); continue; }
+      const tgMine = !!(tgT && tgC && tgOwner && t.user_id === tgOwner);
+      if (!mine.length && !tgMine) { console.log("no subs for task " + t.id); continue; }
       const payload = JSON.stringify({ title: "🔔 Напоминание", body: t.title + (info(t) ? "\n" + info(t) : ""), tag: t.id, id: t.id });
       let ok = false;
       await Promise.all(mine.map(async (s) => {
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
         }
       }));
       if (ok) pushOk.add(t.id);
-      if (tgT && tgC) tgItems.push(t); else if (ok) await sb.from("tasks").update({ remind_sent_for: t.remind_at }).eq("id", t.id);
+      if (tgMine) tgItems.push(t); else if (ok) await sb.from("tasks").update({ remind_sent_for: t.remind_at }).eq("id", t.id);
       else continue;
       okIds.add(t.id);
     }
