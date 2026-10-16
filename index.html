@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "16.10 07:30";
+const BUILD = "16.10 08:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1340,10 +1340,10 @@ function dtpHTML(p, t) {
     '<div class="dtp-t">Срок выполнения</div><div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + q("mon", "+ месяц") + "</div>" + calHTML(D.date, D.y, D.m);
   if (rem) {
     if (D.rtab === "place") return h + '<div class="dtp-btns" style="margin-top:14px"><button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
-    const tm = parseTimeText(D.time), hh = tm != null ? Math.floor(tm / 60) % 24 : 9, mi = Math.min(11, Math.round(((tm != null ? tm % 60 : 0)) / 5));
+    const tm = parseTimeText(D.time), hh = tm != null ? Math.floor(tm / 60) % 24 : 9, mi = tm != null ? tm % 60 : 0;
     const col = (id, n, st) => '<div class="dtw-col" id="' + id + '"><div class="dtw-p"></div>' + Array.from({ length: n }, (_, k) => '<div data-i="' + k + '">' + pad(k * st) + "</div>").join("") + '<div class="dtw-p"></div></div>';
-    setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); if (e1) e1.scrollTop = hh * 40; if (e2) e2.scrollTop = mi * 40; }, 0);
-    h += '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi * 5) + '"><div class="dtw">' + col("dtw-h", 24, 1) + "<b>:</b>" + col("dtw-m", 12, 5) + '<div class="dtw-sel"></div></div>' +
+    setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); if (e1) e1.scrollTop = hh * 40; if (e2) e2.scrollTop = mi * 40; dtwCol(D.wcol || "h"); }, 0);
+    h += '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24, 1) + "<b>:</b>" + col("dtw-m", 60, 1) + '<div class="dtw-sel"></div></div>' +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
@@ -1476,12 +1476,39 @@ document.addEventListener("touchend", e => {
   if (!_cs || !ui.dtp) return; const t = e.changedTouches[0], dx = t.clientX - _cs.x, dy = t.clientY - _cs.y; _cs = null;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { dtpActs.calnav({ dataset: { d: dx < 0 ? 1 : -1 } }); }
 }, { passive: true });
+function dtwCol(c) { const D = ui.dtp; if (!D) return; D.wcol = c; ["h", "m"].forEach(k => { const e = $("dtw-" + k); if (e) e.classList.toggle("act", k === c); }); }
+function dtwStep(col, d) {   // шаг ровно на 1 час/минуту, с переносом (59 → 00 следующего часа не делаем: колонки независимы)
+  const e = $("dtw-" + col); if (!e) return; const mx = col === "h" ? 23 : 59, cur = Math.round(e.scrollTop / 40), v = Math.max(0, Math.min(mx, cur + d));
+  e.scrollTo({ top: v * 40, behavior: "auto" });
+}
+let _dwacc = 0;
+document.addEventListener("wheel", e => {
+  const c = e.target.closest && e.target.closest(".dtw-col"); if (!c || !ui.dtp) return;
+  e.preventDefault(); const col = c.id === "dtw-h" ? "h" : "m"; dtwCol(col);
+  const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+  if (Math.abs(dy) >= 50) { _dwacc = 0; dtwStep(col, dy > 0 ? 1 : -1); return; }
+  _dwacc += dy; while (Math.abs(_dwacc) >= 60) { dtwStep(col, _dwacc > 0 ? 1 : -1); _dwacc -= _dwacc > 0 ? 60 : -60; }
+}, { passive: false });
+document.addEventListener("mousedown", e => { const c = e.target.closest && e.target.closest(".dtw-col"); if (c && ui.dtp) dtwCol(c.id === "dtw-h" ? "h" : "m"); }, true);
+document.addEventListener("click", e => {   // клик по числу — выбрать его
+  const it = e.target.closest && e.target.closest(".dtw-col > div[data-i]"); if (!it || !ui.dtp) return;
+  const c = it.parentElement; c.scrollTo({ top: +it.dataset.i * 40, behavior: "smooth" });
+}, true);
+document.addEventListener("keydown", e => {
+  const D = ui.dtp; if (!D || !document.querySelector(".dtw") || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tg = e.target && e.target.tagName; if (tg === "INPUT" || tg === "TEXTAREA" || tg === "SELECT") return;
+  const col = D.wcol || "h", k = e.key;
+  if (k === "ArrowLeft" || k === "ArrowRight") { e.preventDefault(); e.stopPropagation(); dtwCol(k === "ArrowLeft" ? "h" : "m"); }
+  else if (k === "ArrowUp" || k === "ArrowDown") { e.preventDefault(); e.stopPropagation(); dtwStep(col, (k === "ArrowDown" ? 1 : -1) * (e.shiftKey ? 5 : 1)); }
+  else if (k === "PageUp" || k === "PageDown") { e.preventDefault(); e.stopPropagation(); dtwStep(col, k === "PageDown" ? 10 : -10); }
+  else if (k === "Enter") { e.preventDefault(); e.stopPropagation(); dtpActs.dok(); }
+}, true);
 let _dtwT = null;
 document.addEventListener("scroll", e => {
   const c = e.target; if (!c || !c.classList || !c.classList.contains("dtw-col") || !ui.dtp) return;
   clearTimeout(_dtwT); _dtwT = setTimeout(() => {
     const h = $("dtw-h"), m = $("dtw-m"), inp = $("dtp-t"); if (!h || !m || !inp) return;
-    const hh = Math.max(0, Math.min(23, Math.round(h.scrollTop / 40))), mm = Math.max(0, Math.min(11, Math.round(m.scrollTop / 40))) * 5;
+    const hh = Math.max(0, Math.min(23, Math.round(h.scrollTop / 40))), mm = Math.max(0, Math.min(59, Math.round(m.scrollTop / 40)));
     inp.value = hm(hh * 60 + mm); ui.dtp.time = inp.value; const sm = document.querySelector(".dtp-sum"); if (sm) sm.textContent = ui.dtp.date ? dtpSum() : "Выберите день";
   }, 90);
 }, true);
@@ -1504,7 +1531,7 @@ const dtpCSS = `
 .dtw{isolation:isolate;position:relative;display:flex;justify-content:center;align-items:center;gap:6px;margin:6px 0 2px}
 .dtw>b{font-size:30px}
 .dtw-col{height:160px;width:92px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;text-align:center;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
-.dtw-col::-webkit-scrollbar{display:none}
+.dtw-col::-webkit-scrollbar{display:none}.dtw-col.act{box-shadow:inset 0 0 0 2px var(--acc);border-radius:10px}.dtw-col{cursor:ns-resize}
 .dtw-col>div{height:40px;line-height:40px;scroll-snap-align:center}
 .dtw-col>.dtw-p{height:60px;scroll-snap-align:none}
 .dtw-sel{position:absolute;left:50%;transform:translateX(-50%);width:230px;top:60px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--acc) 14%,transparent);border:1px solid var(--acc);pointer-events:none;z-index:-1}
