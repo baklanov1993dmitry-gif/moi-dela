@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "15.10 21:40";
+const BUILD = "16.10 07:30";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1333,13 +1333,17 @@ function dtpHTML(p, t) {
       '<div class="psep"></div><button type="button" class="dli" data-a="dcal">' + ic("cal", 18) + '<span class="dlx">Выбрать дату</span></button>' +
       (t && t.due ? '<button type="button" class="dli" data-a="dclear" style="color:#d13438">' + ic("x", 18) + '<span class="dlx">Убрать срок</span></button>' : "");
   }
-  let h = rem ? '<div class="dtp-t">Напомнить</div>' + placeBlock(t) + '<div class="dtp-tl" style="margin-top:12px">Или по времени: через</div><div class="dqrow big"><button type="button" class="dq" data-a="drel" data-v="15">15 мин</button><button type="button" class="dq" data-a="drel" data-v="60">1 час</button><button type="button" class="dq" data-a="drel" data-v="180">3 часа</button></div>' +
-    '<div class="dtp-tl">Или в конкретное время</div><div class="dqrow big">' + q("today", "Сегодня") + q("tom", "Завтра") + '<button type="button" class="dq' + (D.rcal ? " on" : "") + '" data-a="drcal">📅 Дата</button></div>' + (D.rcal ? calHTML(D.date, D.y, D.m) : "") :
+  if (rem && !D.rtab) D.rtab = t && t.remind_place && !t.remind_at ? "place" : "time";
+  const tab = (v, label) => '<button type="button" class="dtp-tab' + (D.rtab === v ? " on" : "") + '" data-a="drtab" data-v="' + v + '">' + label + "</button>";
+  let h = rem ? '<div class="dtp-h">Напомнить</div>' + (t && t.title ? '<div class="dtp-s">' + esc(t.title.slice(0, 70)) + "</div>" : "") + '<div class="dtp-tabs">' + tab("time", "🕐 По времени") + tab("place", "📍 У места") + "</div>" + (D.rtab === "place" ? placeBlock(t) :
+    '<div class="dqrow big">' + q("today", "Сегодня") + q("tom", "Завтра") + '<button type="button" class="dq' + (D.rcal ? " on" : "") + '" data-a="drcal">📅 Дата</button></div>' + (D.rcal ? calHTML(D.date, D.y, D.m) : "")) :
     '<div class="dtp-t">Срок выполнения</div><div class="dqrow">' + q("today", "Сегодня") + q("tom", "Завтра") + q("week", "Пн, " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) + q("mon", "+ месяц") + "</div>" + calHTML(D.date, D.y, D.m);
   if (rem) {
-    h += '<form id="dtpform" class="dtp-time"><div class="tfld big" style="margin-top:6px"><button type="button" class="tb" data-a="dstep" data-d="-15">−15</button>' +
-      '<input id="dtp-t" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="чч:мм" value="' + esc(D.time || "") + '"><button type="button" class="tb" data-a="dstep" data-d="15">+15</button></div>' +
-      '<div class="tchips">' + (() => { const all = tchipsList(), nw = pad(new Date().getHours()) + ":" + pad(new Date().getMinutes()), fut = D.date === today ? all.filter(c => c > nw) : all; return (fut.length ? fut : all).slice(0, 4); })().map(c => '<button type="button" class="dq' + (D.time === c ? " on" : "") + '" data-a="dtime" data-v="' + c + '">' + c + "</button>").join("") + "</div>" +
+    if (D.rtab === "place") return h + '<div class="dtp-btns" style="margin-top:14px"><button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
+    const tm = parseTimeText(D.time), hh = tm != null ? Math.floor(tm / 60) % 24 : 9, mi = Math.min(11, Math.round(((tm != null ? tm % 60 : 0)) / 5));
+    const col = (id, n, st) => '<div class="dtw-col" id="' + id + '"><div class="dtw-p"></div>' + Array.from({ length: n }, (_, k) => '<div data-i="' + k + '">' + pad(k * st) + "</div>").join("") + '<div class="dtw-p"></div></div>';
+    setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); if (e1) e1.scrollTop = hh * 40; if (e2) e2.scrollTop = mi * 40; }, 0);
+    h += '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi * 5) + '"><div class="dtw">' + col("dtw-h", 24, 1) + "<b>:</b>" + col("dtw-m", 12, 5) + '<div class="dtw-sel"></div></div>' +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
@@ -1352,7 +1356,7 @@ let PLC = null;
 async function loadPlaces() { if (!sb || !S.user) return; try { const r = await sb.from("places").select("id,name,lat,lon,r"); PLC = r.error ? [] : (r.data || []); } catch (e) { PLC = []; } if (ui.dtp) render(); else renderSoon(); }
 const placeName = id => { const q = (PLC || []).find(x => x.id === id); return q ? q.name : ""; };
 function placeBlock(t) {
-  const H = '<div class="dtp-tl" style="margin-top:12px">📍 Когда окажусь рядом с…</div>';
+  const H = '<div class="dtp-tl" style="margin-top:6px">Напомню в Telegram, когда окажусь рядом с…</div>';
   if (!RP) return H + '<div class="dtp-sum">Нужна одноразовая настройка базы (колонка remind_place) — скажи Claude</div>';
   if (PLC === null) loadPlaces();
   const cur = t && t.remind_place, list = PLC || [];
@@ -1436,6 +1440,7 @@ const dtpActs = {
     if (D.mode === "due") { setDue(dtpId(), iso); return dtpDone(); }
     D.date = iso; const b = parseISO(iso); D.y = b.getFullYear(); D.m = b.getMonth(); keepTime(); render();
   },
+  drtab(a) { const D = ui.dtp; if (!D) return; keepTime(); D.rtab = a.dataset.v; render(); },
   drcal() { if (ui.dtp) { ui.dtp.rcal = !ui.dtp.rcal; render(); } },
   dloud() { const D = ui.dtp; if (!D) return; const t = S.tasks[dtpId()]; D.loud = !(D.loud != null ? D.loud : (t && /^⏰/.test(t.title))); render(); },
   dtime(a) { if (ui.dtp) { ui.dtp.time = a.dataset.v; render(); } },
@@ -1471,6 +1476,15 @@ document.addEventListener("touchend", e => {
   if (!_cs || !ui.dtp) return; const t = e.changedTouches[0], dx = t.clientX - _cs.x, dy = t.clientY - _cs.y; _cs = null;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { dtpActs.calnav({ dataset: { d: dx < 0 ? 1 : -1 } }); }
 }, { passive: true });
+let _dtwT = null;
+document.addEventListener("scroll", e => {
+  const c = e.target; if (!c || !c.classList || !c.classList.contains("dtw-col") || !ui.dtp) return;
+  clearTimeout(_dtwT); _dtwT = setTimeout(() => {
+    const h = $("dtw-h"), m = $("dtw-m"), inp = $("dtp-t"); if (!h || !m || !inp) return;
+    const hh = Math.max(0, Math.min(23, Math.round(h.scrollTop / 40))), mm = Math.max(0, Math.min(11, Math.round(m.scrollTop / 40))) * 5;
+    inp.value = hm(hh * 60 + mm); ui.dtp.time = inp.value; const sm = document.querySelector(".dtp-sum"); if (sm) sm.textContent = ui.dtp.date ? dtpSum() : "Выберите день";
+  }, 90);
+}, true);
 function keepTime() { const e = $("dtp-t"); if (e && ui.dtp) { const v = e.value.trim(); if (v) ui.dtp.time = v; } }   // не терять набранное время при перерисовке
 const tfield = (id, v) => '<div class="tfld"><button type="button" class="tb" data-a="tstep" data-t="' + id + '" data-d="-15">−</button><input id="' + id + '" type="text" inputmode="numeric" autocomplete="off" maxlength="5" value="' + esc(v) + '"><button type="button" class="tb" data-a="tstep" data-t="' + id + '" data-d="15">+</button></div>';
 
@@ -1482,6 +1496,18 @@ const dtpCSS = `
 .pop.dtl .dli .dr{font-size:calc(12px*var(--z,1))} .pop.dtl .psep{margin:6px 0}
 .dtpb{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.4);z-index:59}
 @media(max-width:760px){.pop.dtp{left:8px!important;right:8px!important;top:calc(env(safe-area-inset-top) + 52px)!important;bottom:auto!important;transform:none;width:auto;border-radius:18px;max-height:calc(100dvh - 70px);overflow-y:auto;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.35)}.cal-d{height:46px;font-size:calc(16px*var(--z,1))}.cal-w span{font-size:calc(13.5px*var(--z,1))}.cal-n{height:44px;width:48px}.cal-t{font-size:calc(17px*var(--z,1))}.dq{padding:12px 8px;font-size:calc(14.5px*var(--z,1))}}
+.dtp-h{font-size:calc(23px*var(--z,1));font-weight:800;text-align:center;margin:2px 0 2px}
+.dtp-s{font-size:calc(13px*var(--z,1));color:var(--sub);text-align:center;margin:0 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dtp-tabs{display:flex;gap:4px;background:var(--inp);border-radius:12px;padding:3px;margin:0 0 12px}
+.dtp-tab{flex:1;padding:10px 6px;border-radius:10px;font-size:calc(14.5px*var(--z,1));font-weight:600;color:var(--sub)}
+.dtp-tab.on{background:var(--solid,#fff);color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.dtw{isolation:isolate;position:relative;display:flex;justify-content:center;align-items:center;gap:6px;margin:6px 0 2px}
+.dtw>b{font-size:30px}
+.dtw-col{height:160px;width:92px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;text-align:center;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
+.dtw-col::-webkit-scrollbar{display:none}
+.dtw-col>div{height:40px;line-height:40px;scroll-snap-align:center}
+.dtw-col>.dtw-p{height:60px;scroll-snap-align:none}
+.dtw-sel{position:absolute;left:50%;transform:translateX(-50%);width:230px;top:60px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--acc) 14%,transparent);border:1px solid var(--acc);pointer-events:none;z-index:-1}
 .dtp-t{font-weight:700;font-size:1.1em;margin-bottom:10px}
 .dqrow,.tchips{display:flex;gap:6px;flex-wrap:wrap}
 .tchips{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px}
