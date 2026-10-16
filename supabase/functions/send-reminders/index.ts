@@ -25,6 +25,18 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
+    // Telegram-вебхук для кнопок и ответа «ок»: проверяем раз в ~10 минут, при расхождении ставим сами
+    try {
+      const tg0 = Deno.env.get("TG_TOKEN"), tk = Deno.env.get("TRACK_KEY");
+      if (tg0 && tk && new Date().getMinutes() % 10 === 0) {
+        const want = Deno.env.get("SUPABASE_URL") + "/functions/v1/track?k=" + tk + "&tg=1";
+        const gi = await (await fetch("https://api.telegram.org/bot" + tg0 + "/getWebhookInfo")).json();
+        if (gi?.result?.url !== want) {
+          const sr = await fetch("https://api.telegram.org/bot" + tg0 + "/setWebhook", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: want, allowed_updates: ["message", "callback_query"] }) });
+          console.log("setWebhook " + sr.status);
+        }
+      }
+    } catch (err) { console.error("webhook check " + (err as Error).message); }
     const now = new Date(), since = new Date(now.getTime() - 24 * 3600e3);
     const { data: tasks, error } = await sb.from("tasks")
       .select("id,user_id,title,remind_at,remind_sent_for,due,list_id")
@@ -54,7 +66,7 @@ Deno.serve(async (req) => {
       if (t.due) p.push("⏳ " + (t.due < today ? "просрочено " + t.due.slice(8) + "." + t.due.slice(5, 7) : t.due === today ? "срок сегодня" : t.due === tomorrow ? "срок завтра" : "срок " + t.due.slice(8) + "." + t.due.slice(5, 7)));
       return p.join(" · ");
     };
-    const dead: string[] = [];
+    const dead: string[] = [], tgItems: typeof due = [], okIds = new Set<string>(), pushOk = new Set<string>();
     for (const t of due) {
       const mine = (subs ?? []).filter((s) => s.user_id === t.user_id);
       if (!mine.length && !(tgT && tgC)) { console.log("no subs for task " + t.id); continue; }
@@ -70,13 +82,28 @@ Deno.serve(async (req) => {
           console.error("push fail " + code + " " + (err as Error).message);
         }
       }));
-      if (tgT && tgC) {   // дублируем в Telegram
-        try {
-          const r = await fetch("https://api.telegram.org/bot" + tgT + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: tgC, text: "🔔 " + t.title + (info(t) ? "\n" + info(t) : "") }) });
-          if (r.ok) { ok = true; sent++; } else console.error("tg fail " + r.status);
-        } catch (err) { console.error("tg err " + (err as Error).message); }
+      if (ok) pushOk.add(t.id);
+      if (tgT && tgC) tgItems.push(t); else if (ok) await sb.from("tasks").update({ remind_sent_for: t.remind_at }).eq("id", t.id);
+      else continue;
+      okIds.add(t.id);
+    }
+    if (tgT && tgC && tgItems.length) {   // Telegram: одна карточка с кнопками или аккуратная сводка
+      const e = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const cut = (x: string, n: number) => (x.length > n ? x.slice(0, n - 1) + "…" : x);
+      let text: string, kb: unknown[][];
+      if (tgItems.length === 1) {
+        const t = tgItems[0], inf = info(t);
+        text = "🔔 <b>" + e(t.title) + "</b>" + (inf ? "\n<i>" + e(inf) + "</i>" : "");
+        kb = [[{ text: "✅ Готово", callback_data: "d:" + t.id }, { text: "⏰ +1 час", callback_data: "s:" + t.id }, { text: "🌙 Завтра", callback_data: "t:" + t.id }]];
+      } else {
+        text = "🔔 <b>Напоминания · " + tgItems.length + "</b>\n" + tgItems.slice(0, 10).map((t, i) => { const inf = info(t); return "\n" + (i + 1) + ". <b>" + e(t.title) + "</b>" + (inf ? "\n    <i>" + e(inf) + "</i>" : ""); }).join("");
+        kb = tgItems.slice(0, 10).map((t, i) => [{ text: "✅ " + (i + 1) + ". " + cut(t.title, 28), callback_data: "d:" + t.id }, { text: "⏰ 1ч", callback_data: "s:" + t.id }]);
       }
-      if (ok) await sb.from("tasks").update({ remind_sent_for: t.remind_at }).eq("id", t.id);
+      try {
+        const r = await fetch("https://api.telegram.org/bot" + tgT + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: tgC, text, parse_mode: "HTML", disable_web_page_preview: true, reply_markup: { inline_keyboard: kb } }) });
+        if (r.ok) { sent++; for (const t of tgItems) await sb.from("tasks").update({ remind_sent_for: t.remind_at }).eq("id", t.id); }
+        else { console.error("tg fail " + r.status + " " + (await r.text()).slice(0, 200)); for (const t of tgItems) if (pushOk.has(t.id)) await sb.from("tasks").update({ remind_sent_for: t.remind_at }).eq("id", t.id); }
+      } catch (err) { console.error("tg err " + (err as Error).message); }
     }
     if (dead.length) await sb.from("push_subs").delete().in("endpoint", dead);
     const res = "ok: due=" + due.length + " sent=" + sent + " dead=" + dead.length;
