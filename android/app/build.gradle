@@ -1,4 +1,5 @@
 plugins { id 'com.android.application' }
+def runNo = Integer.parseInt(System.getenv("GITHUB_RUN_NUMBER") ?: "1")
 android {
     namespace 'com.moidela.app'
     compileSdk 34
@@ -6,8 +7,8 @@ android {
         applicationId "com.moidela.app"
         minSdk 21
         targetSdk 34
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
-        versionName "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "1")
+        versionCode = runNo
+        versionName = "1.0." + runNo
     }
     signingConfigs {
         release {
