@@ -4,6 +4,7 @@ const H = { "Content-Type": "application/json" };
 const ok = (o: unknown = [], s = 200) => new Response(JSON.stringify(o), { status: s, headers: H });
 Deno.serve(async (req) => {
   const url = new URL(req.url);
+  if (url.searchParams.get("ra") === "1") return await raHandle(url);   // кнопки в уведомлении: авторизация по HMAC-подписи
   const key = Deno.env.get("TRACK_KEY"), user = Deno.env.get("TRACK_USER");
   if (!key || !user || url.searchParams.get("k") !== key) return ok({ error: "forbidden" }, 403);
   let b: Record<string, unknown> = {};
@@ -89,6 +90,22 @@ async function tgLastReminded(base: string, hd: Record<string, string>, user: st
     if (r.ok) { const a = await r.json(); if (a[0]) out.push({ ...a[0], _at: Date.parse(a[0][col]) }); }
   }
   out.sort((a, b) => b._at - a._at); return out[0] || null;
+}
+
+async function raHandle(url: URL): Promise<Response> {
+  const id = url.searchParams.get("id") || "", a = url.searchParams.get("a") || "", sig = url.searchParams.get("sig") || "";
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !["done", "snooze", "tom"].includes(a)) return ok({ error: "bad" }, 400);
+  const hk = await crypto.subtle.importKey("raw", new TextEncoder().encode(Deno.env.get("CRON_SECRET") ?? ""), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const want = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", hk, new TextEncoder().encode(id + ":" + a)))).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+  if (sig.length !== want.length || sig !== want) return ok({ error: "forbidden" }, 403);
+  const base = Deno.env.get("SUPABASE_URL") + "/rest/v1/", sk = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const hd = { apikey: sk, Authorization: "Bearer " + sk, "Content-Type": "application/json" };
+  const r = await fetch(base + "tasks?select=*&id=eq." + id, { headers: hd }); const arr = r.ok ? await r.json() : []; const t = arr[0];
+  if (!t) return ok({ error: "no task" }, 404);
+  if (a === "done") { if (!t.done) await tgComplete(base, hd, t.user_id, t); }
+  else if (a === "snooze") await tgSnooze(base, hd, t.user_id, id, Date.now() + 3600e3);
+  else { const d = ymdz(Date.now() + 86400e3).split("-").map(Number); await tgSnooze(base, hd, t.user_id, id, Date.UTC(d[0], d[1] - 1, d[2], 9, 0) - 7 * 3600e3); }
+  return ok({ ok: true });
 }
 async function tgHandle(base: string, hd: Record<string, string>, user: string, u: TRow) {
   const owner = Deno.env.get("TG_CHAT"); if (!owner) return;

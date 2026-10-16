@@ -66,12 +66,15 @@ Deno.serve(async (req) => {
       if (t.due) p.push("⏳ " + (t.due < today ? "просрочено " + t.due.slice(8) + "." + t.due.slice(5, 7) : t.due === today ? "срок сегодня" : t.due === tomorrow ? "срок завтра" : "срок " + t.due.slice(8) + "." + t.due.slice(5, 7)));
       return p.join(" · ");
     };
+    const hkey = await crypto.subtle.importKey("raw", new TextEncoder().encode(Deno.env.get("CRON_SECRET") ?? ""), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sign = async (id: string, a: string) => Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", hkey, new TextEncoder().encode(id + ":" + a)))).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+    const actUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1/track";
     const dead: string[] = [], tgItems: typeof due = [], okIds = new Set<string>(), pushOk = new Set<string>();
     for (const t of due) {
       const mine = (subs ?? []).filter((s) => s.user_id === t.user_id);
       const tgMine = !!(tgT && tgC && tgOwner && t.user_id === tgOwner);
       if (!mine.length && !tgMine) { console.log("no subs for task " + t.id); continue; }
-      const payload = JSON.stringify({ title: "🔔 Напоминание", body: t.title + (info(t) ? "\n" + info(t) : ""), tag: t.id, id: t.id });
+      const payload = JSON.stringify({ title: "🔔 Напоминание", body: t.title + (info(t) ? "\n" + info(t) : ""), tag: t.id, id: t.id, u: actUrl, sig: { done: await sign(t.id, "done"), snooze: await sign(t.id, "snooze"), tom: await sign(t.id, "tom") } });
       let ok = false;
       await Promise.all(mine.map(async (s) => {
         try {
