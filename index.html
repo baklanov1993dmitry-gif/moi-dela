@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "16.10 08:40";
+const BUILD = "16.10 13:30";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -457,6 +457,7 @@ async function loadAll() {
 }
 function onRt(tbl, p) {
   if (!S.user) return;
+  { const o = p.new || p.old; if (o && o.user_id && o.user_id !== S.user.id) { const fid = o.id; if (fid && S[tbl] && S[tbl][fid] && S[tbl][fid].user_id && S[tbl][fid].user_id !== S.user.id) delete S[tbl][fid]; return; } }   // у руководителя есть право читать чужое (вкладка «Команда»): события чужих строк в наши данные и напоминания не попадают
   if (p.eventType === "DELETE") {
     const id = p.old && p.old.id;
     if (id && !P[tbl][id]) { delete S[tbl][id]; if (selId === id) selId = null; }
@@ -736,6 +737,7 @@ function checkReminders() {
   const now = Date.now(), N = jget(LSK.notified, {}); let ch = false;
   for (const id in S.tasks) {
     const t = S.tasks[id]; if (!t.remind_at || t.done) continue;
+    if (t.user_id && t.user_id !== S.user.id) { delete S.tasks[id]; continue; }   // чужая задача (из realtime) — не наша, не напоминаем
     const at = Date.parse(t.remind_at); if (isNaN(at) || at > now || N[id] === t.remind_at) continue;
     N[id] = t.remind_at; ch = true;
     if (now - at > 90e3) continue;   // опоздавшие (Telegram/пуш уже дошли) — не пиликаем при входе в приложение
