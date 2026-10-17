@@ -1,0 +1,67 @@
+package com.moidela.app;
+
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+final class Sync {
+    /** Блокирующий: вызывать из фонового потока. Тянет задачи, ставит будильники, обновляет виджет. */
+    static void run(Context c) {
+        if (!Store.linked(c)) return;
+        String body = Net.get(Store.api(c, "list", ""));
+        if (body == null) return;
+        try {
+            JSONObject o = new JSONObject(body);
+            Store.p(c).edit().putString("data", body).apply();
+            schedule(c, o.optJSONArray("rem"));
+        } catch (Exception e) { /* кривой ответ — оставляем прежнее */ }
+        TodayWidget.refresh(c);
+    }
+
+    static PendingIntent alarmPi(Context c, String id, String title, long at, int flags) {
+        Intent i = new Intent(c, AlarmReceiver.class).setData(Uri.parse("md://t/" + id));
+        i.putExtra("id", id).putExtra("title", title).putExtra("at", at);
+        return PendingIntent.getBroadcast(c, 0, i, flags | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    static void schedule(Context c, JSONArray rem) {
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        String prev = Store.p(c).getString("alarms", "");
+        StringBuilder now = new StringBuilder();
+        long t = System.currentTimeMillis();
+        java.util.HashSet<String> keep = new java.util.HashSet<>();
+        if (rem != null) for (int i = 0; i < rem.length(); i++) {
+            JSONObject x = rem.optJSONObject(i);
+            if (x == null) continue;
+            long at = x.optLong("at", 0);
+            String id = x.optString("id");
+            if (at <= t + 2000 || id.length() < 8) continue;
+            PendingIntent pi = alarmPi(c, id, x.optString("title"), at, PendingIntent.FLAG_UPDATE_CURRENT);
+            PendingIntent show = PendingIntent.getActivity(c, 0, TodayWidget.openApp(c), PendingIntent.FLAG_IMMUTABLE);
+            try { am.setAlarmClock(new AlarmManager.AlarmClockInfo(at, show), pi); } catch (Exception e) { continue; }
+            keep.add(id);
+            if (now.length() > 0) now.append(',');
+            now.append(id);
+        }
+        for (String id : prev.split(",")) {   // убрать будильники задач, у которых напоминание пропало/перенесено
+            if (id.length() < 8 || keep.contains(id)) continue;
+            PendingIntent pi = alarmPi(c, id, "", 0, PendingIntent.FLAG_NO_CREATE);
+            if (pi != null) { am.cancel(pi); pi.cancel(); }
+        }
+        Store.p(c).edit().putString("alarms", now.toString()).apply();
+    }
+
+    static void ensureJob(Context c) {
+        JobScheduler js = (JobScheduler) c.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+        JobInfo.Builder b = new JobInfo.Builder(1, new ComponentName(c, SyncJob.class))
+            .setPeriodic(15 * 60 * 1000L).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPersisted(true);
+        js.schedule(b.build());
+    }
+}

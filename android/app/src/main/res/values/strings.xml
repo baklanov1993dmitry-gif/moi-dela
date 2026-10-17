@@ -8,4 +8,8 @@
     <string name="sc_journal_l">Журнал</string>
     <string name="sc_food_s">Питание</string>
     <string name="sc_food_l">Питание</string>
+    <string name="sc_add_s">Добавить</string>
+    <string name="sc_add_l">Добавить дело</string>
+    <string name="tile_label">Новое дело</string>
+    <string name="share_label">Добавить в «Мои дела»</string>
 </resources>

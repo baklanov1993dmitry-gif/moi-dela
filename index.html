@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "16.10 23:00";
+const BUILD = "17.10 11:00";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3179,7 +3179,7 @@ function settingsHTML() {
     '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
     '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Мой день» — это список на сегодня, который каждое утро начинается с нуля: вы сами выбираете, что берёте в работу сегодня. Если вам хватает «Запланировано» (по датам), оставьте выключенным.</div>';
   else if (tab === "notif") b =
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button><button class="btn ghost" data-a="devlink">🤖 Подключить Android-приложение</button></div>' +
     '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Звук и вибрация этого приложения настраиваются в Android: долгое нажатие на уведомление → «Настройки».</div>';
   else if (tab === "snd") b = sndHTML();
   else if (tab === "keys" && !isMobile()) b = hkHTML();
@@ -3817,6 +3817,15 @@ const acts = {
   ics() { const u = selId && gcalUrl(S.tasks[selId]); if (u) window.open(u, "_blank", "noopener"); },
   async pushdiag() { showMsg("Проверяю…", true); showMsg(await pushDiag(), true); },
   async pushtog() { showMsg("Подождите…", true); const was = pushOn(), r = was ? await disablePush() : await enablePush(); showMsg(r || (was ? "Пуши выключены" : "Пуши включены ✓ напоминания придут, даже когда приложение закрыто"), !r); render(); },
+  async devlink() {   // выдаёт телефону ключ и открывает нативную часть приложения (будильники, виджет, плитка)
+    try {
+      const s = (await sb.auth.getSession()).data.session; if (!s) throw new Error("нет входа");
+      const r = await fetch(sb.supabaseUrl + "/functions/v1/device?a=link", { method: "POST", headers: { Authorization: "Bearer " + s.access_token, apikey: sb.supabaseKey } });
+      const j = await r.json(); if (!j.key) throw new Error(j.error || r.status);
+      showMsg("Открываю приложение…", true);
+      location.href = "intent://link?k=" + j.key + "&b=" + encodeURIComponent(j.base) + "#Intent;scheme=moidela;package=com.moidela.app;end";
+    } catch (e) { showMsg("Не вышло: " + (e.message || e)); }
+  },
   notify() { askNotify(); showMsg("Если браузер спросил разрешение — нажмите «Разрешить»", true); },
   login() { doAuth("login"); }, signup() { doAuth("signup"); }, savecfg() { saveCfg(); },
   resetcfg() { try { localStorage.removeItem(LSK.cfg); } catch (e) {} cfg = getCfg(); screen = "setup"; ui.msg = ""; render(); },
