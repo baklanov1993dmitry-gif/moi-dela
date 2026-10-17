@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 12:07";
+const BUILD = "17.10 12:13";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2456,8 +2456,11 @@ function fltBtns() {
   return '<button class="tool ' + (n ? "on" : "") + '" data-a="pop" data-p="filter">▽ Фильтр' + (n ? " · " + n : "") + '</button><button class="tool" data-a="submode" title="Показывать подзадачи внутри списка или только задачи верхнего уровня">' + (PR.subs === "top" ? "☰ Только главные" : "☷ С подзадачами") + "</button>";
 }
 function mToolsHTML() {
-  const sc = PR.sort[view], gr = getGroup(view) !== (view === "planned" ? "due" : "none"), n = fltCount(), any = !!sc || gr || n;
-  return '<div class="mtools"><button class="mt ' + (sc ? "on" : "") + '" data-a="pop" data-p="sort">' + ic("sort", 18) + '<span>Сортир.</span></button><button class="mt ' + (gr ? "on" : "") + '" data-a="pop" data-p="group">' + ic("group", 18) + '<span>Группы</span></button><button class="mt ' + (n ? "on" : "") + '" data-a="pop" data-p="filter">' + ic("flt", 18) + '<span>Фильтр' + (n ? " · " + n : "") + '</span></button>' +
+  const sc = PR.sort[view], g = getGroup(view), gr = g !== (view === "planned" ? "due" : "none"), n = fltCount(), any = !!sc || gr || n, f = PR.flt[view] || {};
+  const FS = { over: "Просрочено", today: "Сегодня", todover: "Сегодня+просроч.", tom: "Завтра", week: "7 дней", nodue: "Без срока" }, GS = { due: "Срок", imp: "Важность", cat: "Категория", list: "Список" };
+  const parts = []; if (f.date) parts.push(FS[f.date] || "Срок"); if (f.star) parts.push("Важные"); if (f.rem) parts.push("С напоминанием"); if (f.cat) parts.push(esc(f.cat));
+  const fl = n ? (parts[0] || "Фильтр") + (parts.length > 1 ? " +" + (parts.length - 1) : "") : "Фильтр";
+  return '<div class="mtools"><button class="mt ' + (sc ? "on" : "") + '" data-a="pop" data-p="sort">' + ic(sc && sc.dir === -1 ? "down" : "sort", 18) + '<span>' + (sc && SORTS[sc.by] ? esc(SORTS[sc.by].n.split(" ")[0]) : "Сортир.") + '</span></button><button class="mt ' + (gr ? "on" : "") + '" data-a="pop" data-p="group">' + ic("group", 18) + '<span>' + (gr ? (GS[g] || "Группы") : "Группы") + '</span></button><button class="mt flx ' + (n ? "on" : "") + '" data-a="pop" data-p="filter">' + ic("flt", 18) + '<span>' + fl + '</span></button>' +
     '<button class="mt rs" data-a="resetall" title="Сбросить сортировку, группировку и фильтры"' + (any ? "" : " disabled") + ">" + ic("rst", 19) + "</button></div>";
 }
 function fltBarHTML() {
@@ -2837,11 +2840,11 @@ select.inp option{color:#111}
 .mt{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:38px;border-radius:19px;background:var(--card);border:1px solid var(--ln);box-shadow:none;color:var(--tx);font-size:calc(14px*var(--z,1));font-weight:600;white-space:nowrap;min-width:0}
 .mt span{overflow:hidden;text-overflow:ellipsis}.mt svg{flex-shrink:0;color:var(--sub)}
 .mt.on{background:var(--acc);color:#fff}.mt.on svg{color:#fff}
-.mt.rs{flex:0 0 38px;width:38px;padding:0}
+.mt.flx{flex:1 1 0}.mt:not(.flx):not(.rs){flex:0 1 auto;padding:0 14px}.mt.on:not(.rs) svg{display:none}.mt{padding:0 8px;font-size:calc(13.5px*var(--z,1))}.mt.rs{flex:0 0 38px;width:38px;padding:0}
 .mhide{display:none!important}
 .ptr{position:fixed;top:44px;left:50%;transform:translate(-50%,0);background:var(--card,var(--solid));color:var(--tx);border:1px solid var(--ln);border-radius:18px;padding:6px 14px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.2);z-index:90;opacity:0;pointer-events:none;transition:opacity .15s}
 @media (max-width:760px){.mhide-m{display:none!important}.ordb.ghost{display:none!important}}
-.mttl{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding-left:2px;color:var(--acc);font-weight:700;font-size:calc(21px*var(--z,1))}.mttl svg{flex-shrink:0}.mtn{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.mte{font-size:calc(20px*var(--z,1))}#app.hasbg .mttl{color:#fff}.mt.rs:disabled{opacity:.35}
+.mttl{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding-left:2px;color:var(--acc);font-weight:700;font-size:calc(22px*var(--z,1))}.mttl svg{flex-shrink:0}.mtn{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.mte{font-size:calc(26px*var(--z,1))}#app.hasbg .mttl{color:#fff}.mt.rs:disabled{opacity:.35}
 .nu-act{flex-wrap:nowrap!important;gap:6px}.nu-act .tool{flex:1;justify-content:center;padding-left:6px;padding-right:6px;white-space:nowrap;min-width:0}
 .mi.dueb{background:none;border:0;padding:2px 6px;margin:-2px -6px;border-radius:8px;font:inherit;color:inherit;cursor:pointer}.mi.dueb:active,.mi.dueb:hover{background:var(--inp)}
 .jr-ed{padding:14px!important}
@@ -3087,7 +3090,7 @@ function mainHTML(items, done, vi) {
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
     (view !== "search" && !isMobile() ? '<span class="seg"><button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1" title="Сетка">' + ic("grid", 16) + '</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0" title="Список">' + ic("list", 16) + '</button></span>' +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" + fltBtns() : "") + "</div>" +
-    '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) : "") + '</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() : "");
+    '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) : "") + '</span><span class="mchips">' + (isMobile() ? "" : sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + (isMobile() ? "" : fltBarHTML()) + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() : "");
   if (view !== "search" && !isMobile()) h += addBarHTML();
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
@@ -5071,7 +5074,6 @@ async function checkBuild() {
     if (sessionStorage.getItem("moi_rl") === v) return;                       // уже пробовали — не зацикливаемся
     const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;   // не мешаем вводу
     sessionStorage.setItem("moi_rl", v);
-    try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(g => g.update())); } catch (e) {}
     try {   // кладём свежую страницу в кэш до перезагрузки — иначе SW отдаст старую
       const fr = await fetch("index.html?fresh=" + Date.now(), { cache: "no-store" });
       if (fr.ok) for (const k of await caches.keys()) if (/^moidela-shell/.test(k)) { const c = await caches.open(k); await c.put("./index.html", fr.clone()); await c.put("./", fr.clone()); }
