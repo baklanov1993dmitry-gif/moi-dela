@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 23:05";
+const BUILD = "17.10 23:10";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1429,11 +1429,11 @@ function dtpHTML(p, t) {
   if (rem) {
     if (D.rtab === "place") return h + '<div class="dtp-btns" style="margin-top:14px"><button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
     const tm = parseTimeText(D.time), hh = tm != null ? Math.floor(tm / 60) % 24 : 9, mi = tm != null ? tm % 60 : 0;
-    const col = (id, n, st) => '<div class="dtw-col" id="' + id + '"><div class="dtw-p"></div>' + Array.from({ length: n }, (_, k) => '<div data-i="' + k + '">' + pad(k * st) + "</div>").join("") + '<div class="dtw-p"></div></div>';
-    setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); if (e1) e1.scrollTop = hh * 40; if (e2) e2.scrollTop = mi * 40; dtwCol(D.wcol || "h"); }, 0);
+    const col = (id, n) => '<div class="jr-wcw"><div class="jr-wsq"></div><div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: WC * n }, (_, i) => '<div data-i="' + i + '">' + pad(i % n) + "</div>").join("") + '<div class="jr-wp"></div></div></div>';
+    setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); const mid = Math.floor(WC / 2); if (e1) { e1.scrollTop = (mid * 24 + hh) * WR; jrWFx(e1); } if (e2) { e2.scrollTop = (mid * 60 + mi) * WR; jrWFx(e2); } dtwCol(D.wcol || "h"); }, 0);
     if (D.via === undefined) D.via = (t && t.remind_via) || "tg";
     const via = (v, label) => '<button type="button" class="dq' + (D.via === v ? " on" : "") + '" data-a="dvia" data-v="' + v + '">' + label + "</button>";
-    h += (RV ? '<div class="dtp-tl" style="margin:2px 0 6px;text-align:center">Как напомнить</div><div class="dqrow big">' + via("tg", "💬 Telegram") + via("alarm", "⏰ Будильник") + via("both", "Оба") + "</div>" : "") + '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24, 1) + "<b>:</b>" + col("dtw-m", 60, 1) + '<div class="dtw-sel"></div></div>' +
+    h += (RV ? '<div class="dtp-tl" style="margin:2px 0 6px;text-align:center">Как напомнить</div><div class="dqrow big">' + via("tg", "💬 Telegram") + via("alarm", "⏰ Будильник") + via("both", "Оба") + "</div>" : "") + '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24) + "<b>:</b>" + col("dtw-m", 60) + "</div>" +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
@@ -1567,23 +1567,23 @@ document.addEventListener("touchend", e => {
   if (!_cs || !ui.dtp) return; const t = e.changedTouches[0], dx = t.clientX - _cs.x, dy = t.clientY - _cs.y; _cs = null;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { dtpActs.calnav({ dataset: { d: dx < 0 ? 1 : -1 } }); }
 }, { passive: true });
-function dtwCol(c) { const D = ui.dtp; if (!D) return; D.wcol = c; ["h", "m"].forEach(k => { const e = $("dtw-" + k); if (e) e.classList.toggle("act", k === c); }); }
-function dtwStep(col, d) {   // шаг ровно на 1 час/минуту, с переносом (59 → 00 следующего часа не делаем: колонки независимы)
-  const e = $("dtw-" + col); if (!e) return; const mx = col === "h" ? 23 : 59, cur = Math.round(e.scrollTop / 40), v = Math.max(0, Math.min(mx, cur + d));
-  e.scrollTo({ top: v * 40, behavior: "auto" });
+function dtwCol(c) { const D = ui.dtp; if (!D) return; D.wcol = c; ["h", "m"].forEach(k => { const e = $("dtw-" + k); if (e) { e.classList.toggle("act", k === c); const q = e.previousElementSibling; if (q) q.classList.toggle("on", k === c); } }); }
+function dtwStep(col, d) {   // шаг ровно на 1; колесо бесконечное (колонки независимы)
+  const e = $("dtw-" + col); if (!e) return; const n = WN[col], cur = Math.round(e.scrollTop / WR);
+  e.scrollTo({ top: Math.max(0, Math.min(WC * n - 1, cur + d)) * WR, behavior: "auto" });
 }
 let _dwacc = 0;
 document.addEventListener("wheel", e => {
-  const c = e.target.closest && e.target.closest(".dtw-col"); if (!c || !ui.dtp) return;
+  const c = e.target.closest && e.target.closest('.jr-wc[id^="dtw-"]'); if (!c || !ui.dtp) return;
   e.preventDefault(); const col = c.id === "dtw-h" ? "h" : "m"; dtwCol(col);
   const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
   if (Math.abs(dy) >= 50) { _dwacc = 0; dtwStep(col, dy > 0 ? 1 : -1); return; }
   _dwacc += dy; while (Math.abs(_dwacc) >= 60) { dtwStep(col, _dwacc > 0 ? 1 : -1); _dwacc -= _dwacc > 0 ? 60 : -60; }
 }, { passive: false });
-document.addEventListener("mousedown", e => { const c = e.target.closest && e.target.closest(".dtw-col"); if (c && ui.dtp) dtwCol(c.id === "dtw-h" ? "h" : "m"); }, true);
+document.addEventListener("mousedown", e => { const c = e.target.closest && e.target.closest('.jr-wc[id^="dtw-"]'); if (c && ui.dtp) dtwCol(c.id === "dtw-h" ? "h" : "m"); }, true);
 document.addEventListener("click", e => {   // клик по числу — выбрать его
-  const it = e.target.closest && e.target.closest(".dtw-col > div[data-i]"); if (!it || !ui.dtp) return;
-  const c = it.parentElement; c.scrollTo({ top: +it.dataset.i * 40, behavior: "smooth" });
+  const it = e.target.closest && e.target.closest('.jr-wc[id^="dtw-"] > div[data-i]'); if (!it || !ui.dtp) return;
+  const c = it.parentElement; c.scrollTo({ top: +it.dataset.i * WR, behavior: "smooth" });
 }, true);
 document.addEventListener("keydown", e => {
   const D = ui.dtp; if (!D || !document.querySelector(".dtw") || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1596,10 +1596,10 @@ document.addEventListener("keydown", e => {
 }, true);
 let _dtwT = null;
 document.addEventListener("scroll", e => {
-  const c = e.target; if (!c || !c.classList || !c.classList.contains("dtw-col") || !ui.dtp) return;
+  const c = e.target; if (!c || (c.id !== "dtw-h" && c.id !== "dtw-m") || !ui.dtp) return;
   clearTimeout(_dtwT); _dtwT = setTimeout(() => {
     const h = $("dtw-h"), m = $("dtw-m"), inp = $("dtp-t"); if (!h || !m || !inp) return;
-    const hh = Math.max(0, Math.min(23, Math.round(h.scrollTop / 40))), mm = Math.max(0, Math.min(59, Math.round(m.scrollTop / 40)));
+    const hh = Math.round(h.scrollTop / WR) % 24, mm = Math.round(m.scrollTop / WR) % 60;
     inp.value = hm(hh * 60 + mm); ui.dtp.time = inp.value; const sm = document.querySelector(".dtp-sum"); if (sm) sm.textContent = ui.dtp.date ? dtpSum() : "Выберите день";
   }, 90);
 }, true);
@@ -2167,16 +2167,16 @@ const jrCSS = `
 .jr-nr svg{transform:scaleX(-1)}
 .jr-tot{color:var(--sub);font-size:calc(12.2px*var(--z,1));padding:2px 8px 6px}
 .jr-empty{text-align:center;padding:34px 10px;color:var(--sub);font-size:calc(13px*var(--z,1))}
-.jr-wov{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.jr-wov{touch-action:none;position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
 .jr-wbox{background:var(--solid,#fff);color:var(--tx);width:100%;max-width:420px;border-radius:18px 18px 0 0;padding:14px 16px 18px;box-shadow:0 -6px 30px rgba(0,0,0,.3)}
 @media(min-width:761px){.jr-wov{align-items:flex-start}.jr-wbox{margin-top:84px;border-radius:18px;box-shadow:0 10px 36px rgba(0,0,0,.35)}}
 .jr-wt{font-weight:600;text-align:center;margin-bottom:6px;font-size:calc(14px*var(--z,1))}
 .jr-wr{position:relative;display:flex;justify-content:center;align-items:center;gap:6px}
 .jr-wr>b{font-size:30px}
 .jr-wcw{position:relative;width:84px;height:220px}.jr-wsq{position:absolute;left:4px;right:4px;top:88px;height:44px;border-radius:14px;background:color-mix(in srgb,var(--acc) 16%,transparent);opacity:0;transition:opacity .15s}.jr-wsq.on{opacity:1}
-.jr-wc{height:220px;width:84px;position:relative;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;text-align:center;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;overscroll-behavior:contain;-webkit-tap-highlight-color:transparent}
+.jr-wc{height:220px;width:84px;position:relative;overflow-x:hidden;overflow-y:scroll;touch-action:none;scrollbar-width:none;text-align:center;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;overscroll-behavior:contain;-webkit-tap-highlight-color:transparent}
 .jr-wc::-webkit-scrollbar{display:none}.jr-wc.act{}.jr-wl{display:flex;justify-content:center;gap:18px;font-size:12px;color:var(--sub);margin:0 0 4px}.jr-wl span{width:90px;text-align:center;padding:2px 0;border-radius:8px;cursor:pointer}.jr-wl span.act{color:var(--acc);font-weight:700}
-.jr-wc>div{height:44px;line-height:44px;scroll-snap-align:center;opacity:.28;will-change:transform,opacity}
+.jr-wc>div{height:44px;line-height:44px;opacity:.28;will-change:transform,opacity}
 .jr-wc>.jr-wp{height:88px;scroll-snap-align:none;opacity:1}
 
 .jr-wb{display:flex;gap:8px;margin-top:14px;align-items:center}
@@ -4154,6 +4154,14 @@ function jrWStep(col, d, abs) {
   const t = Math.max(0, Math.min(WC * n - 1, cur + delta)); J.wh[k] = ((t % n) + n) % n; el.scrollTo({ top: t * WR, behavior: "auto" });
 }
 function jrWCol(c) { const J = ui.jr; if (!J || !J.wh) return; J.wh.col = c; J.wh.buf = ""; ["h", "m"].forEach(k => { const e = $("jr-wh-" + k), l = $("jr-wl-" + k); if (e) { e.classList.toggle("act", k === c); const q = e.previousElementSibling; if (q) q.classList.toggle("on", k === c); } if (l) l.classList.toggle("act", k === c); }); }
+// пальцем: своя прокрутка с ускорением ×1.35 и инерцией, колонка не уезжает вбок
+const WGAIN = 1.35; let _wt = null;
+document.addEventListener("touchstart", e => { const c = e.target.closest && e.target.closest(".jr-wc"); if (!c || e.touches.length !== 1) return; cancelAnimationFrame(c._raf); const J = ui.jr; if (c.id.indexOf("dtw-") === 0) { if (ui.dtp) dtwCol(c.id === "dtw-h" ? "h" : "m"); } else if (J && J.wh) jrWCol(c.id === "jr-wh-h" ? "h" : "m"); _wt = { c, y: e.touches[0].clientY, t: performance.now(), v: 0 }; }, { passive: true });
+document.addEventListener("touchmove", e => { if (!_wt) return; if (e.cancelable) e.preventDefault(); const y = e.touches[0].clientY, now = performance.now(), dy = (_wt.y - y) * WGAIN, dt = Math.max(1, now - _wt.t); _wt.c.scrollTop += dy; _wt.v = 0.7 * _wt.v + 0.3 * (dy / dt); _wt.y = y; _wt.t = now; }, { passive: false });
+const wEnd = () => { if (!_wt) return; const c = _wt.c; let v = performance.now() - _wt.t > 90 ? 0 : _wt.v; _wt = null;
+  const step = () => { c.scrollTop += v * 16; v *= 0.94; if (Math.abs(v) > 0.04) c._raf = requestAnimationFrame(step); else c.scrollTo({ top: Math.round(c.scrollTop / WR) * WR, behavior: "smooth" }); };
+  c._raf = requestAnimationFrame(step); };
+document.addEventListener("touchend", wEnd, true); document.addEventListener("touchcancel", wEnd, true);
 let _wacc = 0;
 document.addEventListener("wheel", e => {
   const c = e.target.closest && e.target.closest(".jr-wc"); if (!c || !ui.jr || !ui.jr.wh) return;
@@ -4178,7 +4186,9 @@ document.addEventListener("keydown", e => {
   }
   else if (k === "Enter") { e.preventDefault(); acts.jrwok(); }
 }, true);
-document.addEventListener("scroll", e => { const t = e.target, J = ui.jr; if (!J || !J.wh || !t || !t.id) return; const k = t.id === "jr-wh-h" ? "h" : t.id === "jr-wh-m" ? "m" : ""; if (!k) return; const n = WN[k], idx = Math.round(t.scrollTop / WR); J.wh[k] = ((idx % n) + n) % n; jrWFx(t);
+document.addEventListener("scroll", e => { const t = e.target, J = ui.jr; if (!t || !t.id) return; const q = /^(jr-wh|dtw)-([hm])$/.exec(t.id); if (!q) return; const k = q[2], n = WN[k], idx = Math.round(t.scrollTop / WR);
+  if (q[1] === "jr-wh") { if (!J || !J.wh) return; J.wh[k] = ((idx % n) + n) % n; }
+  jrWFx(t);
   clearTimeout(t._rc); t._rc = setTimeout(() => { const i = Math.round(t.scrollTop / WR); if (i < 3 * n || i > (WC - 3) * n) { t.style.scrollSnapType = "none"; t.scrollTop = (Math.floor(WC / 2) * n + (i % n)) * WR; t.style.scrollSnapType = ""; jrWFx(t); } }, 160); }, true);
 const jrKind = l => l.kind === "p" ? "p" : "t";
 const jrDay = l => jrKind(l) === "p" ? l.d1 : (l.start_at ? dayOf(l.start_at) : null);
