@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 16:44";
+const BUILD = "17.10 17:11";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -548,7 +548,9 @@ function suggestions() {
     .sort((a, b) => a.due.localeCompare(b.due)).slice(0, 15);
 }
 function createFromText(raw, draft) {
-  const ls = listsArr(), p = localParse(raw, ls), d = draft || {};
+  const ls = listsArr(); let vurl = "";   // ссылка на YouTube в тексте: уходит в заметку, дальше — авто-пересказ (если задача в списке «Видео»)
+  if (!isLite()) { const ym = String(raw).match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); if (ym) { vurl = ym[0]; raw = String(raw).replace(vurl, " ").replace(/\s+/g, " ").trim(); } }
+  const p = localParse(raw, ls), d = draft || {};
   const f = { title: p.title, due: d.due || p.due, category: p.category, starred: !!(d.starred || p.starred), est_minutes: p.est, list_id: p.list_id, repeat_rule: d.repeat_rule || p.repeat, remind_at: d.remind_at || p.remind };
   if (view === "myday" || d.my) { f.my_day = true; f.my_day_date = today; }
   if (view === "starred") f.starred = true;
@@ -557,7 +559,22 @@ function createFromText(raw, draft) {
   if (f.repeat_rule && !f.due) f.due = today;
   if (view.indexOf("list:") === 0 && !f.list_id) f.list_id = view.slice(5);
   if (!f.list_id && ls.length) f.list_id = ls[0].id;
-  const t = addTask(f); if (f.remind_at) askNotify(); snd("add"); ui.fresh = { id: t.id, view, at: Date.now() }; return t;
+  const vl = vurl && ls.find(x => x.id === f.list_id), isVid = !!(vl && /^видео$/i.test(vl.name));
+  if (vurl && !isVid) f.title = ((f.title || "") + " " + vurl).trim();   // не в «Видео» — ссылка остаётся в названии, как раньше
+  if (isVid) {
+    const dup = Object.values(S.tasks).find(x => !x.done && x.list_id === f.list_id && (x.note || "").indexOf(vurl) >= 0);
+    if (dup) { toast("Это видео уже в очереди"); return dup; }
+    f.note = vurl; if (!f.title) f.title = "Видео " + ((vurl.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{6,})/) || [])[1] || "");
+  }
+  const t = addTask(f); if (f.remind_at) askNotify(); snd("add"); ui.fresh = { id: t.id, view, at: Date.now() };
+  if (isVid) videoStart(t.id, vurl, !p.title);
+  return t;
+}
+function videoStart(id, url, needTitle) {   // новое видео: настоящее название с YouTube + пересказ
+  toast("Добавлено в «Видео» — делаю пересказ…");
+  if (needTitle) { const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 6000);
+    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent(url), { signal: ac.signal }).then(r => r.ok ? r.json() : null).then(j => { const t = S.tasks[id]; if (j && j.title && t && /^Видео /.test(t.title)) { upd(id, { title: String(j.title).slice(0, 200) }); render(); } }).catch(() => {}).finally(() => clearTimeout(tm)); }
+  setTimeout(() => videoSummary(id), 300);
 }
 function addFromInput(inp) {
   const raw = inp.value.trim(); if (!raw) return;
@@ -3595,7 +3612,7 @@ function shareMaybe() {
   let l = listsArr().find(x => /^видео$/i.test(x.name));
   if (!l) { l = { id: uid(), name: "Видео", icon: "📺", position: listsArr().length, created_at: nowISO(), group_name: null, color: null }; S.lists[l.id] = l; mark("lists", l.id, "u"); }
   const dup = url && Object.values(S.tasks).find(t => !t.done && t.list_id === l.id && (t.note || "").indexOf(url) >= 0);
-  if (dup) toast("Это видео уже в очереди"); else { const nt = addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); toast("Добавлено в «Видео» — делаю пересказ…"); setTimeout(() => videoSummary(nt.id), 300); }
+  if (dup) toast("Это видео уже в очереди"); else { const nt = addTask({ list_id: l.id, title: title.slice(0, 200), note: url }); videoStart(nt.id, url, /^Видео /.test(title)); }
   goView("list:" + l.id); render();
 }
 function ritualHTML() {
@@ -5176,7 +5193,7 @@ function init() {
   if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } });
   try { if (isMobile() && !new URLSearchParams(location.search).get("app") && !pendingShare && !pendingOpen) ui.left = true; } catch (e) {}   // обычный запуск с телефона — главное меню, «назад» закрывает приложение, как все
   applyTheme(); boot();
-  setTimeout(checkBuild, 1500); setInterval(checkBuild, 300000);
+  setTimeout(videoCatchup, 6000); setTimeout(checkBuild, 1500); setInterval(checkBuild, 300000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkBuild(); });
 }
 /* самообновление: сверяем BUILD с build.txt на сервере и перезагружаемся, если вышла новая версия (старая вкладка не «залипает») */
