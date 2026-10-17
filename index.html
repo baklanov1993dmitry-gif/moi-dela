@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 13:30";
+const BUILD = "17.10 15:10";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1616,6 +1616,19 @@ const uxActs = {
   },
   postp(a, e) { if (e && e.stopPropagation) e.stopPropagation(); postpone(a.dataset.id, a.dataset.v); render(); }
 };
+function ptrInit(app) {
+  let y0 = 0, el = null, pull = 0, bar = null;
+  const ready = () => isMobile() && !ui.pop && !ui.settings && !ui.qa && !(S.user == null);
+  app.addEventListener("touchstart", e => { pull = 0; el = null; if (!ready() || e.touches.length !== 1) return; const l = e.target.closest && e.target.closest("#list"); if (l && l.scrollTop <= 0 && !e.target.closest("input,textarea,.jr-wov")) { el = l; y0 = e.touches[0].clientY; } }, { passive: true });
+  app.addEventListener("touchmove", e => {
+    if (!el) return; const d = e.touches[0].clientY - y0;
+    if (d < 10 || el.scrollTop > 0) { pull = 0; if (bar) bar.style.opacity = 0; return; }
+    if (!bar) { bar = document.createElement("div"); bar.className = "ptr"; document.body.appendChild(bar); }
+    pull = Math.min(d, 110); bar.style.opacity = Math.min(1, pull / 80); bar.style.transform = "translate(-50%," + (pull * .6) + "px)"; bar.textContent = pull > 80 ? "↓ отпусти — обновлю" : "↓ потяни, чтобы обновить";
+  }, { passive: true });
+  const fin = () => { if (bar) { bar.style.opacity = 0; } if (pull > 80 && el) { toast("Обновляю…"); loadAll(); } el = null; pull = 0; };
+  app.addEventListener("touchend", fin); app.addEventListener("touchcancel", () => { el = null; pull = 0; if (bar) bar.style.opacity = 0; });
+}
 function swipeInit(app) {
   let sx = 0, sy = 0, row = null, dx = 0, lock = 0, kids = [], lpT = 0;
   const lpClear = () => { if (lpT) { clearTimeout(lpT); lpT = 0; } };
@@ -2052,7 +2065,8 @@ const jrCSS = `
 .jr-day .linkbtn{margin-left:8px}
 .linkbtn{background:none;border:0;color:var(--acc);cursor:pointer;padding:2px 0;font-size:calc(11.3px*var(--z,1))}
 .jr-box .btn,.jr-nudge .btn{height:34px;min-height:0;padding:0 14px;font-size:calc(12.2px*var(--z,1))}
-.jr-nudge{margin-top:6px}
+.jr-nudge{margin-top:6px;flex-wrap:nowrap;padding:3px 6px 3px 12px;min-height:0}
+.jr-nudge .btn{height:30px}
 .jr-tr{display:flex;align-items:center;gap:10px}
 .jr-tr>span{font-size:22px;color:var(--sub)}
 .jr-tb{flex:1;border:1.5px solid var(--ln);background:var(--solid,transparent);color:var(--tx);border-radius:14px;padding:8px 10px;cursor:pointer;font-size:calc(22px*var(--z,1));font-weight:600;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;line-height:1.25}
@@ -2558,6 +2572,13 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .stabs{flex-wrap:nowrap;overflow-x:auto;gap:0;margin:10px -16px 4px;padding:0 8px;border-bottom:1px solid var(--ln);scrollbar-width:none}
 .stab{border:0;border-radius:0;padding:12px 12px;font-size:calc(16px*var(--z,1));white-space:nowrap;border-bottom:3px solid transparent;color:var(--sub)}
 .stab.on{background:transparent;color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+.smenu{display:flex;flex-direction:column;margin:8px -16px 0}
+.smi{display:flex;align-items:center;gap:10px;padding:0 16px;min-height:62px;border:0;border-bottom:1px solid var(--ln);background:transparent;color:var(--tx);text-align:left}
+.smi .smt{font-size:calc(18px*var(--z,1));white-space:nowrap}
+.smi i{flex:1;font-style:normal;color:var(--sub);font-size:calc(13px*var(--z,1));text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.smi svg{color:var(--sub);flex-shrink:0}
+.lbl{margin:16px 0 6px!important}
+.swrow{min-height:44px!important}
 .lbl{text-transform:none;letter-spacing:0;font-size:calc(15px*var(--z,1));margin:22px 0 8px}
 .inp,.btn{font-size:calc(17px*var(--z,1))} select.inp{height:52px} .inp{border-radius:6px}
 .btn{padding:13px 16px;border-radius:6px}
@@ -2812,6 +2833,8 @@ select.inp option{color:#111}
 .mt.on{background:var(--acc);color:#fff}.mt.on svg{color:#fff}
 .mt.rs{flex:0 0 38px;width:38px;padding:0}
 .mhide{display:none!important}
+.ptr{position:fixed;top:44px;left:50%;transform:translate(-50%,0);background:var(--card,var(--solid));color:var(--tx);border:1px solid var(--ln);border-radius:18px;padding:6px 14px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.2);z-index:90;opacity:0;pointer-events:none;transition:opacity .15s}
+@media (max-width:760px){.mhide-m{display:none!important}.ordb.ghost{display:none!important}}
 .mttl{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding-left:2px;color:var(--acc);font-weight:700;font-size:calc(21px*var(--z,1))}.mttl svg{flex-shrink:0}.mtn{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.mte{font-size:calc(20px*var(--z,1))}#app.hasbg .mttl{color:#fff}.mt.rs:disabled{opacity:.35}
 .nu-act{flex-wrap:nowrap!important;gap:6px}.nu-act .tool{flex:1;justify-content:center;padding-left:6px;padding-right:6px;white-space:nowrap;min-width:0}
 .mi.dueb{background:none;border:0;padding:2px 6px;margin:-2px -6px;border-radius:8px;font:inherit;color:inherit;cursor:pointer}.mi.dueb:active,.mi.dueb:hover{background:var(--inp)}
@@ -2892,10 +2915,10 @@ function viewInfo() {
   if (view === "search") return { svg: "search", name: "Результаты поиска", sub: "«" + ui.q + "»" };
   const l = S.lists[view.slice(5)]; return { emoji: l.icon, svg: "list", name: l.name, list: l };
 }
-function mtopHTML(vi, cnt) {
+function mtopHTML(vi, cnt, extra) {
   if (!isMobile()) return "";
   if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
-  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
+  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + (extra || "") + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
 function lheadHTML() {
   if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
@@ -3156,7 +3179,7 @@ function popHTML() {
       break;
     }
     case "gmenu": h = it("g_up", "Переместить выше", 'data-g="' + esc(p.g) + '"') + it("g_down", "Переместить ниже", 'data-g="' + esc(p.g) + '"') + it("g_rename", "Переименовать группу", 'data-g="' + esc(p.g) + '"') + it("g_ungroup", "Расформировать группу", 'data-g="' + esc(p.g) + '"', "danger"); break;
-    case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + "" + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
+    case "ctx": if (t && t.parent_id) { h = it("ttog", t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить подзадачу", idA, "danger"); break; } h = (PR.myday ? it("ctx_myday", t && inMyDay(t) ? "Убрать из «Мой день»" : "Добавить в «Мой день»", idA) : "") + it("ctx_sub", "Добавить подзадачу", idA) + (t && !t.done ? it("ctx_ord", ORK[id] ? "Убрать из очереди" : "В очередь", idA) : "") + it("star", t && t.starred ? "Снять отметку «Важно»" : "Отметить как важное", idA) + '<div class="psep"></div>' + dueQuick("due") + (t && t.due ? it("due", "Удалить срок", idA + ' data-v="clear"') : "") + '<div class="psep"></div>' + it("ctx_tolist", "Переместить в список…", idA) + "" + it("ttog", t && t.done ? "Вернуть в работу" : "Отметить выполненной", idA) + it("ctx_del", "Удалить задачу", idA, "danger"); break;
     case "tolist": h = '<div class="ptitle">Переместить в список</div>' + listsArr().map(l => it("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), idA + ' data-v="' + l.id + '"', t && t.list_id === l.id ? "cur" : "")).join(""); break;
     case "bell": h = '<div class="ptitle">Напоминания</div>' + (ui.alerts.length ? ui.alerts.slice(0, 12).map((a, i) => it("alert", esc(a.title), 'data-id="' + a.id + '" data-i="' + i + '"', "", esc(fmtShort(a.at)))).join("") + '<div class="psep"></div>' + it("alertsclr", "Очистить") : '<div class="ptext" style="color:var(--sub)">Пока ничего не сработало. Напоминания приходят, пока открыто приложение; позже подключим Telegram.</div>'); break;
     case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b>" + (isLite() ? '<br><small style="opacity:.65">Режим: только задачи</small>' : "") + "</div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
@@ -3173,7 +3196,10 @@ function settingsHTML() {
   const sec = (t, inner) => '<div class="lbl">' + t + "</div>" + inner;
   const TABS = [["view", "🎨 Вид"], ["work", "🗓️ Дела"], ["notif", "🔔 Уведомления"], ["snd", "🔊 Звуки"]].concat(isMobile() ? [] : [["keys", "⌨️ Клавиши"]]).concat([["bk", "💾 Копии"], ["acc", "👤 Аккаунт"]]);
   let b = "";
-  if (tab === "view") b =
+  const smenu = isMobile() && ui.smenu;
+  const SHINT = { view: "тема, цвет, шрифт", work: "рабочий день, Мой день", notif: "пуши, Android, будильник", snd: "звуки событий", bk: "резервные копии", acc: "почта, выход", keys: "" };
+  if (smenu) b = '<div class="smenu">' + TABS.map(t => '<button class="smi" data-a="stab" data-v="' + t[0] + '"><span class="smt">' + t[1] + '</span><i>' + (SHINT[t[0]] || "") + '</i>' + ic("chevr", 16) + "</button>").join("") + '</div><div class="sub" style="margin:14px 4px;color:var(--sub);font-size:calc(12px*var(--z,1))">' + esc(S.user ? S.user.email : "") + " · сборка " + BUILD + "</div>";
+  else if (tab === "view") b =
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
     sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (curAccent() === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" + (view.indexOf("list:") === 0 && S.lists[view.slice(5)] && S.lists[view.slice(5)].color ? '<div class="jr-hint" style="margin-top:6px">У списка «' + esc(S.lists[view.slice(5)].name) + '» свой цвет — выбор здесь поменяет и его.</div>' : "")) +
     sec("Цвет текста — только для «" + esc(viewInfo().name) + "»", '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button data-a="tcolor" data-v="" style="height:30px;padding:0 10px;border-radius:15px;border:3px solid ' + (!(PR.tc || {})[view] ? "var(--tx)" : "var(--ln)") + ';background:transparent;color:var(--tx);font-size:12px">авто</button>' + TCOLORS.map(c => '<button data-a="tcolor" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + ((PR.tc || {})[view] === c ? "var(--acc)" : "rgba(128,128,128,.45)") + '"></button>').join("") + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sub)">свой <input type="color" id="s-tc" value="' + ((PR.tc || {})[view] || "#323130") + '" style="width:34px;height:30px;padding:0;border:0;background:none"></label></div><div class="jr-hint" style="margin-top:6px">Действует на текст в этом списке (у каждого списка и раздела свой). Остальные не меняются.</div>') +
@@ -3198,8 +3224,8 @@ function settingsHTML() {
     '<div class="sacc"><span class="av">' + esc((S.user ? S.user.email : "?").slice(0, 2).toUpperCase()) + '</span><span><b>' + esc((S.user ? S.user.email : "").split("@")[0]) + "</b><br>" + esc(S.user ? S.user.email : "") + "</span></div>" +
     '<div class="sub" style="margin:10px 0;color:var(--sub);line-height:1.5">' + esc(S.user ? S.user.email : "") + "<br>задач: " + Object.keys(S.tasks).length + " · сборка " + BUILD + "</div>" +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>';
-  return '<div class="ovl" data-a="ovl"><div class="sheet' + (freshS ? " fade" : "") + '">' + (isMobile() ? '<div class="shead"><button class="ibtn" data-a="closeSettings">' + ic("arrowl", 22) + '</button><div style="flex:1;font-size:calc(22px*var(--z,1))">Параметры</div></div>' : '<div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>') +
-    '<div class="stabs">' + TABS.map(t => '<button class="stab' + (tab === t[0] ? " on" : "") + '" data-a="stab" data-v="' + t[0] + '">' + t[1] + "</button>").join("") + "</div>" + b +
+  return '<div class="ovl" data-a="ovl"><div class="sheet' + (freshS ? " fade" : "") + '">' + (isMobile() ? '<div class="shead"><button class="ibtn" data-a="closeSettings">' + ic("arrowl", 22) + '</button><div style="flex:1;font-size:calc(22px*var(--z,1))">' + (smenu ? "Параметры" : esc((TABS.filter(t => t[0] === tab)[0] || ["", ""])[1].replace(/^\S+\s/, ""))) + '</div></div>' : '<div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>') +
+    (isMobile() ? "" : '<div class="stabs">' + TABS.map(t => '<button class="stab' + (tab === t[0] ? " on" : "") + '" data-a="stab" data-v="' + t[0] + '">' + t[1] + "</button>").join("") + "</div>") + b +
     '<div id="msg" style="margin-top:10px;min-height:18px;font-size:calc(13px*var(--z,1));white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
 }
 const msgHTML = () => '<div id="msg" style="margin-top:12px;min-height:20px;font-size:calc(13.5px*var(--z,1));color:' + (ui.msgOk ? "#16a34a" : "#dc2626") + '">' + esc(ui.msg) + "</div>";
@@ -3768,7 +3794,7 @@ const acts = {
     setListGroup(view.slice(5), name.trim()); render();
   },
   sync() { loadAll(); },
-  settings() { ui.settings = true; ui.msg = ""; closePop(); render(); },
+  settings() { ui.settings = true; ui.smenu = true; ui.msg = ""; closePop(); render(); },
   bgclear() { TH.bg = ""; saveTheme(); render(); },
   ritual() { ui.rit = true; ui.left = false; render(); },
   trk() { ui.trk = true; ui.left = false; TRK.off = 0; TRK.view = null; render(); trkLoad(); },
@@ -3812,9 +3838,9 @@ const acts = {
     if (v === "done") toggleDone(t.id); else setDueKeepRemind(t, v === "today" ? today : v === "tom" ? addDays(today, 1) : v === "week" ? addDays(today, 7) : null);
     if (v !== "done" && v !== "none") { /* срок поставлен */ } render();
   },
-  closeSettings() { ui.settings = false; render(); },
+  closeSettings() { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; render(); },
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
-  stab(a) { ui.stab = a.dataset.v; render(); },
+  stab(a) { ui.stab = a.dataset.v; ui.smenu = false; render(); },
   theme(a) { const T = THEMES[a.dataset.v]; TH.theme = a.dataset.v; if (T) { TH.accent = T.acc; TH.font = T.font; } saveTheme(); render(); },
   tcolor(a) { PR.tc = PR.tc || {}; if (a.dataset.v) PR.tc[view] = a.dataset.v; else delete PR.tc[view]; savePrefs(); render(); },
   accent(a) {
@@ -3889,6 +3915,7 @@ const acts = {
       case "g_up": moveGroup(d.g, -1); break;
       case "g_down": moveGroup(d.g, 1); break;
       case "g_ungroup": renameGroup(d.g, null); break;
+      case "ctx_ord": ordToggle([id]); break;
       case "ctx_myday": if (t) setMyDay(id, !inMyDay(t)); break;
       case "star": if (t) upd(id, { starred: !t.starred }); break;
       case "ctx_tolist": return sub("tolist");
@@ -3905,7 +3932,7 @@ const acts = {
       }
       case "alert": if (S.tasks[id]) selId = id; break;
       case "alertsclr": ui.alerts = []; break;
-      case "settings": ui.settings = true; ui.msg = ""; break;
+      case "settings": ui.settings = true; ui.smenu = true; ui.msg = ""; break;
       case "sub_sort": return sub("sort");
       case "sub_filter": return sub("filter");
       case "subs_mode": PR.subs = PR.subs === "top" ? "all" : "top"; savePrefs(); break;
@@ -4085,7 +4112,7 @@ function journalMainHTML(vi) {
   }
   let nudge = "";
   if (JX && !J.nudgeOff && all.length && !all.some(l => { const d = jrDay(l); return d === yest || (jrKind(l) === "p" && l.d2 && d <= yest && l.d2 >= yest) || (jrKind(l) === "t" && l.end_at && dayOf(l.end_at) === yest); }))
-    nudge = '<div class="jr-nudge">Вчера (' + WDS[parseISO(yest).getDay()] + ", " + jrShort(yest) + ') пусто. Добить одной строкой?<span style="flex:1"></span><button class="btn" data-a="jrfill">Добить</button><button class="btn ghost" data-a="jrnudgeoff">Не сегодня</button></div>';
+    nudge = '<div class="jr-nudge">Вчера (' + WDS[parseISO(yest).getDay()] + ", " + jrShort(yest) + ') пусто<span style="flex:1"></span><button class="btn" data-a="jrfill">Добить</button><button class="ibtn" data-a="jrnudgeoff" title="Не сегодня" style="width:30px;height:30px">' + ic("x", 16) + '</button></div>';
   let body = "", lastMo = "", lastWk = "";
   const mAgg = {}; if (J.hist) all.forEach(l => { const d = jrDay(l), m = d.slice(0, 7), o = mAgg[m] || (mAgg[m] = { n: 0, t: 0 }); o.n++; o.t += jrMinOf(l); });
   shown.forEach(d => {
@@ -4106,9 +4133,9 @@ function journalMainHTML(vi) {
   const wheel = J.wh ? jrWheelHTML() : "";
   function jrMonthChips(all) { const m = {}; all.forEach(l => { const k = jrDay(l).slice(0, 7); m[k] = (m[k] || 0) + 1; }); const ks = Object.keys(m).sort().reverse(); let y = ""; return '<button class="jr-chip' + (!J.hm ? " on" : "") + '" data-a="jrmo" data-v="">Все</button>' + ks.map(k => { const yy = k.slice(0, 4), lab = MSH[+k.slice(5) - 1] + (yy !== new Date().getFullYear() + "" ? " " + yy.slice(2) : ""); return '<button class="jr-chip' + (J.hm === k ? " on" : "") + '" data-a="jrmo" data-v="' + k + '">' + lab + ' <small>' + m[k] + "</small></button>"; }).join(""); }
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
-  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
+  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, 1, isMobile() ? '<button class="ibtn" data-a="jrxl" title="Excel">' + ic("dl", 20) + "</button>" + (JX ? '<button class="ibtn" data-a="jrimp" title="Импорт">' + ic("fplus", 20) + "</button>" : "") : "") + '<div class="mhead mhide"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jran">📈 Аналитика</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
+    '<div class="msub mhide-m">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jran">📈 Аналитика</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
@@ -4558,7 +4585,7 @@ function nuSetupHTML() {
 }
 function nutriMainHTML(vi) {
   const N = NUN(); nuLoadBase();
-  const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#e3680c;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool nu-big" data-a="nustats" title="Графики и итоги">' + ic("sort", 20) + '<span class="tm"> Графики</span></button><button class="tool nu-big" data-a="nuallm" title="Свернуть / развернуть все приёмы">' + ic("list", 20) + '<span class="tm"> ' + (N.allc ? "Развернуть" : "Свернуть") + '</span></button><button class="tool nu-big" data-a="nugoals">' + ic("gear", 20) + '<span class="tl"> Цели</span></button></div>';
+  const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, 1, isMobile() ? '<button class="ibtn" data-a="nustats" title="Графики">' + ic("sort", 20) + '</button><button class="ibtn" data-a="nugoals" title="Цели">' + ic("gear", 20) + "</button>" : "") + '<div class="mhead mhide"><h1><span style="color:#e3680c;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span><button class="tool nu-big" data-a="nustats" title="Графики и итоги">' + ic("sort", 20) + '<span class="tm"> Графики</span></button><button class="tool nu-big" data-a="nuallm" title="Свернуть / развернуть все приёмы">' + ic("list", 20) + '<span class="tm"> ' + (N.allc ? "Развернуть" : "Свернуть") + '</span></button><button class="tool nu-big" data-a="nugoals">' + ic("gear", 20) + '<span class="tl"> Цели</span></button></div>';
   if (!NX) return head + '<div class="msub">' + esc(vi.sub) + '</div><div class="scroll" id="list">' + nuSetupHTML() + "</div></div>";
   const day = N.day, ent = nuEntries(day), T = nuSum(ent), tg = nuTargets(day), P0 = nuProf(), wr = nuWeightAt(day), wat = nuWater(day).reduce((s, x) => s + (+x.grams || 0), 0);
   const dnav = '<div class="nu-date"><button class="ibtn" data-a="nuprev" title="Предыдущий день">' + ic("arrowl", 20) + '</button><label class="nu-dl">' + esc(nuDayLabel(day)) + '<input type="date" id="nu-day" value="' + day + '"></label><button class="ibtn" data-a="nunext" title="Следующий день"><span style="display:flex;transform:rotate(180deg)">' + ic("arrowl", 20) + "</span></button>" + (day !== todayISO() ? '<button class="tool" data-a="nutoday">Сегодня</button>' : "") + "</div>";
@@ -5019,7 +5046,7 @@ function init() {
   setInterval(() => { if (!document.hidden) bkTick(); }, 120000); setTimeout(() => bkTick(), 25000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); ritMaybe(); }, 20000); setTimeout(ritMaybe, 4000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
-  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); desktopInit(app); listDragInit(app);
+  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
   try { const q = new URLSearchParams(location.search); if (q.get("url") || q.get("text") || q.get("title")) { pendingShare = { title: q.get("title") || "", text: q.get("text") || "", url: q.get("url") || "" }; history.replaceState(null, "", location.pathname); } } catch (e) {}
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
