@@ -78,11 +78,11 @@ Deno.serve(async (req) => {
     const r = await fetch(SU + "/functions/v1/track?ra=1&id=" + id + "&a=" + a + "&sig=" + sig);   // та же логика, что у кнопок пуша (повторы и т.д.)
     return ok({ ok: r.ok }, r.ok ? 200 : 502);
   }
-  if (a === "jrc") {   // темы журнала для формы на телефоне: самые частые
-    const r = await fetch(base + "time_log?select=cat&user_id=eq." + uid + "&cat=not.is.null&order=created_at.desc&limit=400", { headers: hd });
-    const cnt: Record<string, number> = {};
-    if (r.ok) for (const x of await r.json()) if (x.cat) cnt[x.cat] = (cnt[x.cat] || 0) + 1;
-    return ok({ cats: Object.keys(cnt).sort((p, q) => cnt[q] - cnt[p]).slice(0, 12) });
+  if (a === "jrc") {   // темы журнала для формы на телефоне: каждая тема отдельно (в записях они хранятся через запятую), по частоте
+    const r = await fetch(base + "time_log?select=cat&user_id=eq." + uid + "&cat=not.is.null&order=created_at.desc&limit=2000", { headers: hd });
+    const cnt: Record<string, { n: number; t: string }> = {};
+    if (r.ok) for (const x of await r.json()) for (const t0 of String(x.cat || "").split(",")) { const t = t0.trim().replace(/^#/, "").slice(0, 40), k = t.toLowerCase(); if (!t) continue; (cnt[k] = cnt[k] || { n: 0, t }).n++; }
+    return ok({ cats: Object.values(cnt).sort((p, q) => q.n - p.n).slice(0, 60).map((v) => v.t) });
   }
   if (a === "jr") {   // запись в журнал с телефона (таймер старт/стоп): title, start (мс), end (мс), cat, val = u|n|x
     let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }

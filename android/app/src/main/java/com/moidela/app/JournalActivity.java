@@ -12,6 +12,8 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -32,39 +34,14 @@ public class JournalActivity extends Activity {
     boolean night;
     int cBg, cTx, cMut, cFld;
     EditText et, emin;
-    String val = "", cat = "";
+    String val = "";
     TextView[] vb = new TextView[3];
-    ArrayList<TextView> chips = new ArrayList<>();
-    Flow flow;
-    TextView noCats;
-    final String[] VK = {"u", "n", "x"}, VL = {"🟢  Полезное", "⚪  Нейтрально", "🔴  Зря"};
+    AutoCompleteTextView[] tf = new AutoCompleteTextView[3];
+    ArrayList<ArrayAdapter<String>> ads = new ArrayList<>();
+    ArrayList<String> allCats = new ArrayList<>();
+    final String[] VK = {"u", "n", "x"}, VL = {"🟢 Польза", "⚪ Норм", "🔴 Зря"};
     final int[] VC = {Color.parseColor("#16A34A"), Color.parseColor("#64748B"), Color.parseColor("#DC2626")};
     long start;
-
-    /** Простая «переносящая» раскладка для чипов тем. */
-    static class Flow extends ViewGroup {
-        int gap;
-        Flow(Context c, int gap) { super(c); this.gap = gap; }
-        @Override protected void onMeasure(int wS, int hS) {
-            int w = MeasureSpec.getSize(wS), x = 0, y = 0, rowH = 0;
-            for (int i = 0; i < getChildCount(); i++) {
-                View v = getChildAt(i);
-                v.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.AT_MOST), MeasureSpec.UNSPECIFIED);
-                if (x > 0 && x + v.getMeasuredWidth() > w) { x = 0; y += rowH + gap; rowH = 0; }
-                x += v.getMeasuredWidth() + gap; rowH = Math.max(rowH, v.getMeasuredHeight());
-            }
-            setMeasuredDimension(w, y + rowH);
-        }
-        @Override protected void onLayout(boolean ch, int l, int t, int r, int b) {
-            int w = r - l, x = 0, y = 0, rowH = 0;
-            for (int i = 0; i < getChildCount(); i++) {
-                View v = getChildAt(i);
-                if (x > 0 && x + v.getMeasuredWidth() > w) { x = 0; y += rowH + gap; rowH = 0; }
-                v.layout(x, y, x + v.getMeasuredWidth(), y + v.getMeasuredHeight());
-                x += v.getMeasuredWidth() + gap; rowH = Math.max(rowH, v.getMeasuredHeight());
-            }
-        }
-    }
 
     int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + 0.5f); }
 
@@ -171,20 +148,39 @@ public class JournalActivity extends Activity {
         fl.topMargin = dp(14);
         card.addView(et, fl);
 
-        card.addView(label("Тема"));
-        flow = new Flow(this, dp(8));
-        card.addView(flow);
-        noCats = tv("Загружаю темы…", 14, cMut, false);
-        flow.addView(noCats);
+        card.addView(label("Темы (выбери или впиши новую)"));
+        LinearLayout tr = new LinearLayout(this);
+        for (int i = 0; i < 3; i++) {
+            final AutoCompleteTextView a = new AutoCompleteTextView(this);
+            final ArrayAdapter<String> ad = new ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line, new ArrayList<String>()) {
+                @Override public View getView(int pos, View cv, ViewGroup par) {
+                    TextView t = (TextView) super.getView(pos, cv, par);
+                    t.setTextColor(cTx); t.setTextSize(16); t.setBackgroundColor(Color.TRANSPARENT); t.setPadding(dp(14), dp(12), dp(14), dp(12));
+                    return t;
+                }
+            };
+            ads.add(ad);
+            a.setAdapter(ad);
+            a.setHint("тема " + (i + 1)); a.setSingleLine(); a.setTextSize(16);
+            a.setTextColor(cTx); a.setHintTextColor(cMut);
+            a.setBackground(rr(cFld, 14)); a.setPadding(dp(12), dp(14), dp(12), dp(14));
+            a.setThreshold(0); a.setDropDownBackgroundDrawable(rr(cFld, 12)); a.setDropDownHeight(dp(260));
+            a.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { a.showDropDown(); } });
+            a.setOnFocusChangeListener(new View.OnFocusChangeListener() { public void onFocusChange(View v, boolean f) { if (f) a.showDropDown(); } });
+            tf[i] = a;
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            if (i > 0) p.leftMargin = dp(8);
+            tr.addView(a, p);
+        }
+        card.addView(tr);
         final Context c = getApplicationContext();
-        new Thread(new Runnable() { public void run() {
-            JSONArray a = null;
-            try { String r = Net.get(Store.api(c, "jrc", "")); if (r != null) a = new JSONObject(r).optJSONArray("cats"); } catch (Exception e) { /* без тем */ }
-            final JSONArray arr = a;
+        new Thread(new Runnable() { public void run() {   // темы из журнала (по частоте)
+            JSONArray arr = null;
+            try { String r = Net.get(Store.api(c, "jrc", "")); if (r != null) arr = new JSONObject(r).optJSONArray("cats"); } catch (Exception e) { /* без подсказок — можно вписать */ }
+            final JSONArray fa = arr;
             runOnUiThread(new Runnable() { public void run() {
-                flow.removeAllViews();
-                if (arr == null || arr.length() == 0) { noCats.setText("Тем пока нет — появятся после записей с темой"); flow.addView(noCats); return; }
-                for (int i = 0; i < arr.length(); i++) addChip(arr.optString(i));
+                if (fa == null) return;
+                for (ArrayAdapter<String> ad : ads) { ad.clear(); for (int i = 0; i < fa.length(); i++) ad.add(fa.optString(i)); ad.notifyDataSetChanged(); }
             } });
         } }).start();
 
@@ -192,7 +188,7 @@ public class JournalActivity extends Activity {
         LinearLayout vr = new LinearLayout(this);
         for (int i = 0; i < 3; i++) {
             final int k = i;
-            vb[i] = btn(VL[i], cFld, cTx, 15);
+            vb[i] = btn(VL[i], cFld, cTx, 14); vb[i].setSingleLine(); vb[i].setPadding(0, 0, 0, 0);
             vb[i].setOnClickListener(new View.OnClickListener() { public void onClick(View v) { val = val.equals(VK[k]) ? "" : VK[k]; paintVal(); } });
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(52), 1);
             if (i > 0) p.leftMargin = dp(8);
@@ -233,22 +229,6 @@ public class JournalActivity extends Activity {
         } });
     }
 
-    void addChip(final String name) {
-        final TextView t = tv(name, 16, cTx, false);
-        t.setPadding(dp(16), dp(10), dp(16), dp(10));
-        t.setBackground(rr(cFld, 20));
-        t.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { cat = cat.equals(name) ? "" : name; paintChips(); } });
-        chips.add(t); flow.addView(t);
-    }
-
-    void paintChips() {
-        for (TextView t : chips) {
-            boolean on = t.getText().toString().equals(cat);
-            t.setBackground(rr(on ? ACC : cFld, 20));
-            t.setTextColor(on ? Color.WHITE : cTx);
-        }
-    }
-
     void paintVal() {
         for (int i = 0; i < 3; i++) {
             boolean on = val.equals(VK[i]);
@@ -277,7 +257,9 @@ public class JournalActivity extends Activity {
         try { m = Integer.parseInt(emin.getText().toString().trim()); } catch (Exception e) { /* ниже */ }
         if (m < 1 || m > 1440) { Toast.makeText(this, "Минут: от 1 до 1440", Toast.LENGTH_SHORT).show(); return; }
         final long end = System.currentTimeMillis(), st = end - m * 60000L;
-        final String ct = cat, v = val;
+        StringBuilder sbc = new StringBuilder();
+        for (AutoCompleteTextView a : tf) { String t = a.getText().toString().trim().replace(",", " "); if (t.length() > 0 && sbc.indexOf(t) < 0) sbc.append(sbc.length() > 0 ? ", " : "").append(t); }
+        final String ct = sbc.toString(), v = val;
         final Context c = getApplicationContext();
         final Activity me = this;
         new Thread(new Runnable() { public void run() {
