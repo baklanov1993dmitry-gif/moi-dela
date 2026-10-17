@@ -1,15 +1,18 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html отдаётся из кэша мгновенно и обновляется в фоне.
-const CACHE = "moidela-shell-v90";
+const CACHE = "moidela-shell-v91";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./manifest-journal.json", "./manifest-food.json", "./manifest-tasks.json", "./icon-journal-192.png", "./icon-food-192.png", "./icon-tasks-192.png", "./foods.json?v=4"];
 
 self.addEventListener("install", e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {})))));
+  // страница обязательна: если сеть подвела — установка не удаётся и остаётся прежний рабочий кэш (а не пустой)
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html"]).then(() => Promise.all(SHELL.map(u => c.add(u).catch(() => {}))))));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
+// нет ни сети, ни кэша — вместо «This site can't be reached» своя страничка, которая сама пробует снова
+const offlinePage = () => new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font:16px system-ui;background:#f6f7f9;color:#334;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center"><div><div style="font-size:42px">📡</div><p>Нет связи с сервером.<br>Пробую снова…</p><button onclick="location.reload()" style="padding:10px 18px;border-radius:20px;border:0;background:#2563eb;color:#fff;font-size:15px">Обновить</button></div><script>setTimeout(()=>location.reload(),3000)</script></body>', { headers: { "Content-Type": "text/html; charset=utf-8" } });
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
@@ -22,7 +25,10 @@ self.addEventListener("fetch", e => {
     const net = fetch(req).then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; });
     e.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => {
       if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
-      return net.catch(() => (req.mode === "navigate" ? caches.match("./index.html") : null) || Response.error());
+      return net.catch(async () => {
+        if (req.mode !== "navigate") return Response.error();
+        return (await caches.match("./index.html")) || (await caches.match("./")) || offlinePage();
+      });
     }));
     return;
   }

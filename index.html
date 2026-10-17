@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 12:30";
+const BUILD = "17.10 13:30";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2060,7 +2060,9 @@ const jrCSS = `
 .jr-tb:hover{border-color:var(--acc)}
 .jr-big{font-size:calc(15px*var(--z,1))!important;padding:12px 12px}
 .jr-go{width:100%;height:46px!important;margin-top:10px;font-size:calc(15px*var(--z,1))!important;font-weight:600}
-.jr-nav{display:flex;align-items:center;gap:6px;margin:0 0 8px}
+.jr-nav{display:flex;align-items:center;gap:4px;margin:0 0 10px;padding:4px;background:var(--card);border:1px solid var(--ln);border-radius:16px;box-shadow:var(--shadow)}.jr-nav .ibtn{width:44px;height:44px;color:var(--acc)}.jr-nav .jr-nl{font-size:calc(18px*var(--z,1))!important;font-weight:700;color:var(--acc)}.jr-ntd{padding:6px 12px;border-radius:14px;background:var(--acc);color:#fff;font-weight:600;font-size:calc(13px*var(--z,1));margin-right:4px}
+.jr-auto{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:10px 0;border-radius:14px;background:var(--card);border:1px dashed var(--acc)}
+.jr-czh{font-size:calc(13px*var(--z,1));opacity:.75;margin:2px 0 8px}.jr-czr2{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--ln)}.jr-czm{flex:1;min-width:0}.jr-czt i{font-style:normal;color:var(--sub);font-size:calc(12px*var(--z,1));margin-right:6px}.jr-czrow{display:flex;gap:6px;align-items:center;margin-top:6px}.jr-czrow .jr-czi{flex:1;min-width:0}.jr-czv{flex:0 0 34px;width:34px;height:34px;border-radius:17px;border:1px solid var(--ln);background:var(--card);opacity:.4;padding:0;font-size:15px}.jr-czv.on{opacity:1;border-color:var(--acc);box-shadow:inset 0 0 0 2px var(--acc)}.jr-czsticky{position:sticky;bottom:0;background:var(--solid);padding:8px 0}
 .jr-nl{position:relative;flex:1;text-align:center;font-weight:600;font-size:calc(15px*var(--z,1));padding:10px;border-radius:10px;cursor:pointer}
 .jr-nl:hover{background:var(--hov)}
 .jr-nl input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
@@ -2805,10 +2807,12 @@ select.inp option{color:#111}
 .lbl{font-size:calc(12px*var(--z,1));color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
 @media(max-width:760px){#toasts{bottom:100px!important}}
 .mtools{display:flex;gap:6px;padding:4px 14px 6px;align-items:stretch}
-.mt{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:40px;border-radius:10px;background:var(--card);box-shadow:var(--shadow);color:var(--tx);font-size:calc(14px*var(--z,1));font-weight:600;white-space:nowrap;min-width:0}
+.mt{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:38px;border-radius:19px;background:var(--card);border:1px solid var(--ln);box-shadow:none;color:var(--tx);font-size:calc(14px*var(--z,1));font-weight:600;white-space:nowrap;min-width:0}
 .mt span{overflow:hidden;text-overflow:ellipsis}.mt svg{flex-shrink:0;color:var(--sub)}
 .mt.on{background:var(--acc);color:#fff}.mt.on svg{color:#fff}
-.mt.rs{flex:0 0 44px}.mt.rs:disabled{opacity:.35}
+.mt.rs{flex:0 0 38px;width:38px;padding:0}
+.mhide{display:none!important}
+.mttl{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding-left:2px;color:var(--acc);font-weight:700;font-size:calc(21px*var(--z,1))}.mttl svg{flex-shrink:0}.mtn{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.mte{font-size:calc(20px*var(--z,1))}#app.hasbg .mttl{color:#fff}.mt.rs:disabled{opacity:.35}
 .nu-act{flex-wrap:nowrap!important;gap:6px}.nu-act .tool{flex:1;justify-content:center;padding-left:6px;padding-right:6px;white-space:nowrap;min-width:0}
 .mi.dueb{background:none;border:0;padding:2px 6px;margin:-2px -6px;border-radius:8px;font:inherit;color:inherit;cursor:pointer}.mi.dueb:active,.mi.dueb:hover{background:var(--inp)}
 .jr-ed{padding:14px!important}
@@ -2891,7 +2895,7 @@ function viewInfo() {
 function mtopHTML(vi, cnt) {
   if (!isMobile()) return "";
   if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
-  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null ? '<span class="mcnt">' + cnt + " активн.</span>" : "") + '<span style="flex:1"></span><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
+  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
 function lheadHTML() {
   if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
@@ -3048,7 +3052,7 @@ function mainHTML(items, done, vi) {
   const fr = freshTask(items), grid = !!PR.grid[view], showList = view.indexOf("list:") !== 0, sorted = sortItems((fr ? items.filter(t => t !== fr) : items).slice());
   const groups = groupItems(sorted.slice(0, ui.limit)), sc = PR.sort[view];
   if (fr) groups.unshift({ key: "~fresh", label: "Только что добавлено", items: [fr] });   // подвисает сверху независимо от фильтра/сортировки, пока не смените раздел
-  let h = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, items.length) + '<div class="mhead">' +
+  let h = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, items.length) + '<div class="mhead' + (isMobile() && view !== "search" ? " mhide" : "") + '">' +
     '<h1>' + (vi.emoji ? '<span style="font-size:calc(22px*var(--z,1))">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 22)) + "<span>" + esc(vi.name) + "</span></h1>" +
     (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
@@ -4031,11 +4035,12 @@ const jrUnval = () => Object.values(S.time_log).filter(l => !l.val && l.title &&
 function jrMarkHTML() {
   const J = jrState(), back = '<div class="jr-chips"><button class="jr-chip" data-a="jrmx">← К журналу</button></div>';
   if (!JV) return back + jrValSetup();
+  if (J.cz && !J.cz.sum) return back + jrCzHTML();
   const list = jrUnval().filter(l => !(J.mskip || {})[l.id]), fr = J.mfront && S.time_log[J.mfront] && !S.time_log[J.mfront].val ? S.time_log[J.mfront] : null, l = fr || list[0], total = jrUnval().length;
   if (!l) return back + '<div class="jr-sbox"><div class="jr-st">Всё размечено 🎉</div><div style="opacity:.8;font-size:13px">' + (total ? "Пропущено записей: " + total + '. <button class="linkbtn" data-a="jrmreset">Вернуть пропущенные</button>' : "Теперь в итогах недели есть настоящая картина.") + "</div></div>";
   if (J.mcur !== l.id) { J.mcur = l.id; J.mcat = l.cat || ""; }
   const d = jrDay(l), when = jrKind(l) === "p" ? "за день / период" : hm(minOf(l.start_at)) + "–" + (l.end_at ? hm(minOf(l.end_at)) : "…") + (l.end_at ? " · " + fmtDurM(Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000))) : "");
-  return back + '<div class="jr-sbox"><div class="jr-st">Разметка · осталось <b>' + total + '</b></div><div class="jr-mkw">' + esc(jrShort(d)) + " · " + when + '</div><div class="jr-mkt">' + esc(l.title) + "</div>" +
+  return back + jrAutoBar() + '<div class="jr-sbox"><div class="jr-st">Разметка · осталось <b>' + total + '</b></div><div class="jr-mkw">' + esc(jrShort(d)) + " · " + when + '</div><div class="jr-mkt">' + esc(l.title) + "</div>" +
     jrTagBox("jr-mcat", J.mcat, "mk") + jrTagList() + jrValBtns("", "jrmv", true) +
     '<div class="jr-czb"><button class="btn ghost" data-a="jrmundo">↶ Назад</button><button class="btn ghost" data-a="jrmskip">Пропустить</button></div></div>';
 }
@@ -4097,13 +4102,13 @@ function journalMainHTML(vi) {
   if (!J.hist && !byDay[J.vd]) body = '<div class="jr-empty">За этот день записей нет</div>';
   else if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет' + (all.length ? '<div style="margin-top:6px;font-size:calc(11.3px*var(--z,1))">последняя запись: ' + jrShort(all.map(jrDay).sort().pop()) + '</div><div style="margin-top:10px"><button class="btn ghost" data-a="jrper" data-v="all">Показать все записи</button></div>' : "") + "</div>";
   const vdd = parseISO(J.vd), vrel = J.vd === today0 ? "Сегодня" : J.vd === yest ? "Вчера" : J.vd === addDays(today0, 1) ? "Завтра" : WDS[vdd.getDay()];
-  const nav = '<div class="jr-nav"><button class="ibtn" data-a="jrdprev" title="Раньше">' + ic("arrowl", 22) + '</button><label class="jr-nl">' + (vrel === WDS[vdd.getDay()] ? vrel : vrel + ", " + WDS[vdd.getDay()]) + " " + vdd.getDate() + " " + MONS[vdd.getMonth()] + '<input type="date" id="jr-vd" value="' + J.vd + '"></label><button class="ibtn jr-nr" data-a="jrdnext" title="Позже">' + ic("arrowl", 22) + '</button></div>';
+  const nav = '<div class="jr-nav"><button class="ibtn" data-a="jrdprev" title="Раньше">' + ic("arrowl", 22) + '</button><label class="jr-nl">' + (vrel === WDS[vdd.getDay()] ? vrel : vrel + ", " + WDS[vdd.getDay()]) + " " + vdd.getDate() + " " + MONS[vdd.getMonth()] + '<input type="date" id="jr-vd" value="' + J.vd + '"></label><button class="ibtn jr-nr" data-a="jrdnext" title="Позже">' + ic("arrowl", 22) + '</button>' + (J.vd && J.vd !== todayISO() ? '<button class="jr-ntd" data-a="jrvtoday">Сегодня</button>' : "") + '</div>';
   const wheel = J.wh ? jrWheelHTML() : "";
   function jrMonthChips(all) { const m = {}; all.forEach(l => { const k = jrDay(l).slice(0, 7); m[k] = (m[k] || 0) + 1; }); const ks = Object.keys(m).sort().reverse(); let y = ""; return '<button class="jr-chip' + (!J.hm ? " on" : "") + '" data-a="jrmo" data-v="">Все</button>' + ks.map(k => { const yy = k.slice(0, 4), lab = MSH[+k.slice(5) - 1] + (yy !== new Date().getFullYear() + "" ? " " + yy.slice(2) : ""); return '<button class="jr-chip' + (J.hm === k ? " on" : "") + '" data-a="jrmo" data-v="' + k + '">' + lab + ' <small>' + m[k] + "</small></button>"; }).join(""); }
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : setup + nudge + add + '' + (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jran">📈 Аналитика</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
+    '<div class="msub">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jran">📈 Аналитика</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
@@ -4113,7 +4118,7 @@ function jrWheelHTML() {
 function jrInput(el) {
   const J = jrState();
   if (el.id === "jr-qi") { J.qi = el.value; const l = S.time_log[J.qt], dd = $("jr-dd"); if (l && dd) dd.innerHTML = jrDDHTML(l); return; }
-  const cz = /^jr-cz-(\d+)$/.exec(el.id); if (cz) { const it = J.cz && J.cz.items && J.cz.items[+cz[1]]; if (it) { it.cat = el.value; it.on = !!el.value.trim(); } return; }
+  const cz = /^jr-cz-(\d+)$/.exec(el.id); if (cz) { const it = J.cz && J.cz.items && J.cz.items[+cz[1]]; if (it) { it.cat = el.value; it.on = !!(el.value.trim() || it.val); } return; }
   const m = /^jr-(e-)?(\w+)$/.exec(el.id); if (!m) return;
   if (m[1]) { J.e[m[2]] = el.value; if (/^(date|d1|d2)$/.test(m[2])) render(); return; }
   J[m[2]] = el.value; if (m[2] === "date") J.st = null; if (m[2] === "vd") { if (!el.value) return; render(); return; }
@@ -4283,15 +4288,22 @@ function jrSummaryHTML() {
     '<button class="btn jr-go" data-a="jrmk">🏷 Разметка записей</button><button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' + aiBox(J.ai) + jrCzHTML();
 }
 const jrNoCat = () => Object.values(S.time_log).filter(l => !l.cat && l.title && !l.deleted).sort((a, b) => String(b.start_at || b.d1 || "").localeCompare(String(a.start_at || a.d1 || "")));
+const jrToMark = () => Object.values(S.time_log).filter(l => l.title && !l.deleted && jrDay(l) && (!l.cat || (JV && !l.val))).sort((a, b) => (jrDay(b) + (b.start_at || "")).localeCompare(jrDay(a) + (a.start_at || "")));
+function jrAutoBar() {
+  const n = jrToMark().length; if (!n) return "";
+  return '<div class="jr-auto"><span>Без разметки: <b>' + n + '</b></span><button class="btn" data-a="jrcz">🤖 Разметить автоматически</button></div>';
+}
 function jrCzHTML() {
-  const J = jrState(), c = J.cz, left = jrNoCat().length;
-  if (!c) return left ? '<div class="jr-sbox" style="margin-top:12px"><div class="jr-st">Категории</div><div style="font-size:13px;opacity:.8;margin:4px 0">Без категории: <b>' + left + '</b> записей — из-за этого разбор недели пустой. ИИ подберёт категории по тексту, ты проверишь и применишь.</div><button class="btn jr-go" style="margin-top:6px" data-a="jrcz">🏷 Разложить по категориям</button></div>' : "";
-  if (c.busy) return '<div class="jr-ai">Читаю записи и подбираю категории…</div>';
-  if (c.err) return '<div class="jr-ai">' + (c.err === "setup" ? "ИИ не подключён (см. AI_SETUP.md; функцию <b>analyze</b> нужно обновить до последней версии)." : "Не получилось: " + esc(c.err)) + '</div><div class="jr-czb"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcz">Повторить</button></div>';
+  const J = jrState(), c = J.cz, left = jrToMark().length;
+  if (!c) return left ? '<div class="jr-sbox" style="margin-top:12px"><div class="jr-st">Разметка</div><div style="font-size:13px;opacity:.8;margin:4px 0">Без разметки: <b>' + left + '</b> записей — из-за этого итоги неполные.</div><div class="jr-czb"><button class="btn" data-a="jrcz">🤖 Разметить автоматически</button></div></div>' : "";
+  const box = x => '<div class="jr-sbox jr-czbox">' + x + "</div>";
+  if (c.busy) return box('<div class="jr-st">🤖 Авторазметка</div><div class="jr-ai">Читаю записи и твои прошлые разметки…</div>');
+  if (c.err) return box('<div class="jr-st">🤖 Авторазметка</div><div class="jr-ai">' + (c.err === "setup" ? "ИИ не подключён (функция <b>analyze</b>)." : "Не получилось: " + esc(c.err)) + '</div><div class="jr-czb"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcz">Ещё раз</button></div>');
   const n = c.items.filter(i => i.on).length, cats = Object.keys(jrCatCount());
-  return '<div class="jr-sbox" style="margin-top:12px"><div class="jr-st">Предложенные категории</div><div style="font-size:12px;opacity:.7;margin-bottom:6px">Тапни галочку, чтобы исключить запись, или поправь категорию. Осталось без категории: ' + left + '</div>' +
-    c.items.map((it, i) => '<div class="jr-czr"><button class="jr-czc' + (it.on ? " on" : "") + '" data-a="jrczt" data-i="' + i + '">✓</button><div class="jr-czt">' + esc(it.title) + '</div><input class="inp jr-czi" id="jr-cz-' + i + '" list="jr-czl" value="' + esc(it.cat) + '"></div>').join("") +
-    '<datalist id="jr-czl">' + cats.map(x => '<option value="' + esc(x) + '">').join("") + '</datalist><div class="jr-czb"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcza">Применить (' + n + ')</button></div></div>';
+  const vb = (it, i) => JV ? [["u", "🟢"], ["n", "⚪"], ["x", "🔴"]].map(v => '<button class="jr-czv' + (it.val === v[0] ? " on" : "") + '" data-a="jrczv" data-i="' + i + '" data-v="' + v[0] + '">' + v[1] + "</button>").join("") : "";
+  return box('<div class="jr-st">🤖 Авторазметка · ' + c.items.length + ' зап.</div><div class="jr-czh">ИИ подобрал темы' + (JV ? " и оценку" : "") + ' по твоим прошлым разметкам. Поправь, что не так, сними галочку с лишнего — и «Применить».</div>' +
+    c.items.map((it, i) => '<div class="jr-czr2"><button class="jr-czc' + (it.on ? " on" : "") + '" data-a="jrczt" data-i="' + i + '">✓</button><div class="jr-czm"><div class="jr-czt"><i>' + esc(it.when) + "</i>" + esc(it.title) + '</div><div class="jr-czrow"><input class="inp jr-czi" id="jr-cz-' + i + '" list="jr-czl" placeholder="темы через запятую" value="' + esc(it.cat) + '">' + vb(it, i) + "</div></div></div>").join("") +
+    '<datalist id="jr-czl">' + cats.map(x => '<option value="' + esc(x) + '">').join("") + '</datalist><div class="jr-czb jr-czsticky"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcza">Применить (' + n + ')</button></div>');
 }
 function jrCatCount() { const o = {}; Object.values(S.time_log).forEach(l => { jrTagsOf(l.cat).forEach(t => { o[t] = (o[t] || 0) + 1; }); }); return o; }
 const jrValName = l => ({ u: "Полезное", n: "Нейтральное", x: "Бесполезное" })[l.val] || "";
@@ -4377,22 +4389,25 @@ Object.assign(acts, {
     aiCall("journal", { weeks, focus_week: m0 }).then(t => { J.ai = { text: t }; render(); }).catch(e => { J.ai = { err: e.message }; render(); });
   },
   jrcz() {
-    const J = jrState(), batch = jrNoCat().slice(0, 60); if (!batch.length) { J.cz = null; render(); return; }
-    const cc = jrCatCount(), cats = Object.keys(cc).sort((a, b) => cc[b] - cc[a]).slice(0, 40);
-    J.cz = { busy: true }; render();
+    const J = jrState(), batch = jrToMark().slice(0, 50); if (!batch.length) { J.cz = null; toast("Всё уже размечено 🎉"); render(); return; }
+    const cc = jrCatCount(), tags = Object.keys(cc).sort((a, b) => cc[b] - cc[a]).slice(0, 40);
+    const examples = Object.values(S.time_log).filter(l => l.cat && l.title && !l.deleted && (!JV || l.val)).sort((a, b) => (jrDay(b) + (b.start_at || "")).localeCompare(jrDay(a) + (a.start_at || ""))).slice(0, 30).map(l => ({ t: String(l.title).slice(0, 120), c: l.cat, v: l.val || undefined }));
+    const sum = !!J.sum; J.cz = { busy: true, sum }; render();
     const items = batch.map((l, i) => { const dm = l.end_at && l.start_at ? Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000) : null; return { i, t: String(l.title).slice(0, 140), m: dm }; });
-    aiCall("categorize", { cats, items }).then(t => {
+    aiCall("markup", { tags, examples, items }).then(t => {
       const mm = t.match(/\[[\s\S]*\]/); if (!mm) throw new Error("не разобрал ответ");
-      const arr = JSON.parse(mm[0]), map = {}; arr.forEach(x => { if (x && x.c) map[x.i] = String(x.c).trim().toLowerCase().slice(0, 30); });
-      J.cz = { items: batch.map((l, i) => ({ id: l.id, title: l.title, cat: map[i] || "", on: !!map[i] })) }; render();
-    }).catch(e => { J.cz = { err: e.message }; render(); });
+      const map = {}; JSON.parse(mm[0]).forEach(x => { if (x && x.i != null) map[+x.i] = x; });
+      J.cz = { sum, items: batch.map((l, i) => { const a = map[i] || {}, cat = l.cat || jrTagsOf(String(a.c || "").toLowerCase()).join(", "), val = l.val || (/^[unx]$/.test(a.v) ? a.v : ""); return { id: l.id, title: l.title, when: jrShort(jrDay(l)), cat, val, on: !!(cat || val) }; }) }; render();
+    }).catch(e => { J.cz = { err: e.message, sum }; render(); });
   },
   jrczt(a) { const c = jrState().cz, it = c && c.items && c.items[+a.dataset.i]; if (it) { it.on = !it.on; render(); } },
+  jrczv(a) { const c = jrState().cz, it = c && c.items && c.items[+a.dataset.i]; if (!it) return; const v = a.dataset.v; it.val = it.val === v ? "" : v; it.on = true; render(); },
   jrcza() {
     const J = jrState(), c = J.cz; if (!c || !c.items) return; let n = 0;
-    c.items.forEach(it => { const v = (it.cat || "").trim().toLowerCase(); if (it.on && v) { updLog(it.id, { cat: v }); n++; } });
-    J.cz = null; toast("Категорий проставлено: " + n); render();
+    c.items.forEach(it => { if (!it.on) return; const p = {}, v = jrTagsOf((it.cat || "").toLowerCase()).join(", "); if (v) p.cat = v; if (JV && it.val) p.val = it.val; if (Object.keys(p).length) { updLog(it.id, p); n++; } });
+    J.cz = null; const left = jrToMark().length; toast("Размечено: " + n + (left ? " · осталось " + left : "")); render();
   },
+  jrvtoday() { const J = jrState(); J.vd = todayISO(); J.date = null; J.st = null; render(); },
   jrczx() { jrState().cz = null; render(); },
   jrwcancel() { jrState().wh = null; render(); },
   jrwnow() { const J = jrState(), n = new Date(); J.wh.h = n.getHours(); J.wh.m = n.getMinutes(); const h = $("jr-wh-h"), m = $("jr-wh-m"); if (h) h.scrollTo({ top: J.wh.h * 34, behavior: "smooth" }); if (m) m.scrollTo({ top: J.wh.m * 34, behavior: "smooth" }); },
