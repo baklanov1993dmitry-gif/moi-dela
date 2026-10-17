@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       const lr = await fetch(base + "lists?select=id&id=eq." + b.list_id + "&user_id=eq." + uid, { headers: hd });
       if (lr.ok && (await lr.json())[0]) list_id = String(b.list_id);
     }
-    const t = { id: crypto.randomUUID(), user_id: uid, title, list_id, due: b.today ? ymdz(Date.now()) : null, note: b.note ? String(b.note).slice(0, 4000) : null, done: false };
+    const t = { id: crypto.randomUUID(), user_id: uid, title, list_id, due: b.today ? ymdz(Date.now()) : null, note: b.note ? String(b.note).slice(0, 4000) : "", done: false, parent_id: null, category: null, starred: false, my_day: false, my_day_date: null, steps: [], est_minutes: null, status: "active", remind_at: null, repeat_rule: null, files: [], plan_start: null, created_at: new Date().toISOString() };
     const r = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(t) });
     return r.ok ? ok({ ok: true, id: t.id }) : ok({ error: "db " + (await r.text()).slice(0, 200) }, 500);
   }
