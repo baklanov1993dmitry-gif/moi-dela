@@ -9,7 +9,7 @@ PWA одним файлом `index.html` + `sw.js`; бэкенд Supabase (ref `
 - Править точечно (Edit / python replace), файл целиком не читать и не выводить. Искать через grep, читать куски `sed -n`.
 - Скриншоты — только когда визуал под вопросом, маленькие (clip). Остальное проверять по DOM/тексту.
 - Перед пушем: `скрипт `tools_chk.py`: вынуть `<script>` блоки из index.html → `node --check`; `node --check sw.js`.
-- КАЖДЫЙ деплой: поднять `BUILD` в index.html и `build.txt` (ставить РЕАЛЬНОЕ местное время: `TZ=Asia/Novosibirsk date '+%d.%m %H:%M'`) и `CACHE` в sw.js (`moidela-shell-vNN`).
+- КАЖДЫЙ деплой: поднять `BUILD` в index.html и `build.txt` (ставить РЕАЛЬНОЕ местное время. В Linux: `TZ=Asia/Novosibirsk date '+%d.%m %H:%M'`. На Windows/Git Bash `TZ=` НЕ работает (молча даёт GMT, на 7 ч раньше) — там: `powershell -c "Get-Date -Format 'dd.MM HH:mm'"`; часовой пояс ПК = Новосибирск) и `CACHE` в sw.js (`moidela-shell-vNN`).
 - Тесты UI: Playwright (chromium `/opt/pw-browsers/chromium`), `python3 -m http.server 8773` в репо, `APP_CONFIG.TEST` → `window.__t` (S, ui, PR, render, goView…). Нужно `S.user={..}` и флаги localStorage `mytasks_full`, `mytasks_jx`, `mytasks_jv`.
 - Коммиты на `main`, пуш `git push origin HEAD:main`.
 
@@ -21,6 +21,8 @@ localStorage: `mytasks_full` (не lite), `mytasks_jx` (журнал time_log), 
 
 ## Сделано (кратко)
 Нативный слой Android (будильники с кнопками, виджеты, плитка, share-форма, синк каждые 5 мин), выбор способа напоминания, журнал (дата сверху, авторазметка: 3 выпадающие темы + 🟢⚪🔴), мобильная шапка списка (название сверху, фильтр/сортировка/группа показывают значения в кнопках), настройки на телефоне списком разделов, пилюли-кнопки на десктопе, потяни-для-обновления, SW с офлайн-страницей.
+
+Итоги журнала (неделя/месяц): сводка «одним взглядом» 🟢⚪🔴, глобальные цели (темы журнала + часов/нед), свои выводы и корректировки за период с напоминанием в следующем. Хранится в `user_settings` (ключи `jr:goals`, `jr:rev:<w|m>:<дата>`), миграция не нужна; синхронизация только при NX (таблицы «Питания»).
 
 ## Открытые вопросы
 - Иногда на телефоне мигает «This site can't be reached» — причина не найдена (см. sw.js, checkBuild без reg.update()). Нужны условия появления.

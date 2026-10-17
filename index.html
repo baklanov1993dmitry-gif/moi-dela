@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 16:37";
+const BUILD = "17.10 16:44";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2882,6 +2882,17 @@ select.inp option{color:#111}
 .jr-empty{padding:34px 10px}.jr-empty .jr-ei{font-size:30px;margin-bottom:8px;opacity:.7}.jr-empty .jr-hint{margin:6px 0 0}
 #app .jr-bot{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 0;justify-content:stretch}
 #app .jr-bot .btn{width:100%;min-height:44px;white-space:normal;text-align:center;line-height:1.25}
+/* итоги: цели, выводы, сводка */
+.jr-sp{margin:0 0 8px}
+#app .jr-gn{display:flex;gap:8px;margin:2px 0 6px}.jr-gn>div{flex:1;border-radius:12px;padding:10px 6px;text-align:center}.jr-gn b{display:block;font-size:calc(26px*var(--z,1));line-height:1.1}.jr-gn span{display:block;font-size:var(--fs-cap);color:var(--sub);margin-top:4px}
+.jr-gn .u{background:#e3f4ea;color:#1f7a4a}.jr-gn .n{background:#eceef1;color:#555}.jr-gn .x{background:#fbe5e3;color:#b3392f}
+.jr-gr{padding:10px 0;border-top:1px solid var(--ln)}.jr-grh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:var(--fs-body)}
+.jr-gb{height:10px;border-radius:5px;background:#e9ebee;overflow:hidden;margin:6px 0 2px}.jr-gb i{display:block;height:100%;background:var(--acc)}.jr-gb.ok i{background:#3aa76d}.jr-gb.mid i{background:#e0a21a}.jr-gb.low i{background:#d9534f}
+.jr-gadd{margin-top:10px;font-size:var(--fs-sec)}.jr-gadd summary{cursor:pointer;color:var(--acc);padding:6px 0}
+.jr-rl{display:block;font-size:var(--fs-sec);font-weight:600;margin:12px 0 4px}
+.jr-rv{width:100%;resize:vertical;font-size:var(--fs-sec);line-height:1.4;padding:10px 12px;font-family:inherit;border-radius:10px}
+.jr-prevc{background:rgba(224,162,26,.14);border-radius:10px;padding:10px 12px;font-size:var(--fs-sec);line-height:1.4}
+.jr-pv{padding:8px 0;border-top:1px solid var(--ln);font-size:var(--fs-sec)}.jr-pv b{display:block;margin-bottom:2px}
 .dropok{outline:2px dashed var(--acc);outline-offset:-3px}
 .gbody{margin-left:30px;border-left:2px solid var(--ln)}
 .gbody .chip{padding-left:14px}
@@ -4188,8 +4199,8 @@ function jrGuessCat(tx) {
   let best = null; for (const c in cn) if (!best || cn[c] > cn[best]) best = c;
   return best && cn[best] >= 2 && cn[best] / tot >= 0.6 ? best : null;
 }
-function jrWeekData(m0) {
-  const end = addDays(m0, 7), cat = {}, days = new Set(), val = { u: 0, n: 0, x: 0, none: 0 }, catx = {}; let tot = 0, n = 0;
+function jrWeekData(m0, end0) {
+  const end = end0 || addDays(m0, 7), cat = {}, days = new Set(), val = { u: 0, n: 0, x: 0, none: 0 }, catx = {}; let tot = 0, n = 0;
   Object.values(S.time_log).forEach(l => {
     const d = jrDay(l); if (!d || d < m0 || d >= end) return; days.add(d); n++;
     if (jrKind(l) === "t" && l.end_at) { const m = Math.max(0, Math.round((new Date(l.end_at) - new Date(l.start_at)) / 60000)), tg = jrTagsOf(l.cat); tot += m; const vk = l.val || "none"; val[vk] = (val[vk] || 0) + m; const sh = tg.length || 1; (tg.length ? tg : ["без категории"]).forEach(c => { cat[c] = (cat[c] || 0) + m / sh; if (l.val === "x") catx[c] = (catx[c] || 0) + m / sh; }); }
@@ -4318,16 +4329,68 @@ function jrAnalyticsHTML() {
     box("Дни недели", wdrows, "среднее за день, в который были записи") +
     box("Дробность и рекорды", '<div class="jr-ul" style="list-style:none;padding:0">Записей в день: <b>' + perDay.toFixed(1) + "</b> · медианная длина: <b>" + fmtDurM(med) + "</b> · короче 15 мин: <b>" + pc(A.short, A.nt) + "%</b><br>Самая длинная серия дней подряд: <b>" + mxs + "</b>" + (bd ? "<br>Самый полезный день: <b>" + jrShort(bd) + "</b> — " + fmtDurM(A.dayU[bd]) + " 🟢" : "") + "</div>");
 }
+/* ===== итоги: период (неделя/месяц), цели, выводы и корректировки ===== */
+const jrMonthShift = (iso, d) => { const b = iso || todayISO().slice(0, 8) + "01", dt = new Date(+b.slice(0, 4), +b.slice(5, 7) - 1 + d, 1); return isoLocal(dt); };
+function jrRange() {
+  const J = jrState();
+  if (J.sp === "m") {
+    const from = J.sm || todayISO().slice(0, 8) + "01", to = jrMonthShift(from, 1), pfrom = jrMonthShift(from, -1), mi = +from.slice(5, 7) - 1;
+    return { p: "m", from, to, pfrom, pto: from, n: Math.round((parseISO(to) - parseISO(from)) / 864e5), lab: MFULL[mi].charAt(0).toUpperCase() + MFULL[mi].slice(1) + " " + from.slice(0, 4) + (from === todayISO().slice(0, 8) + "01" ? " (этот месяц)" : "") };
+  }
+  const from = J.sw || jrMon(todayISO());
+  return { p: "w", from, to: addDays(from, 7), pfrom: addDays(from, -7), pto: from, n: 7, lab: jrShort(from) + " – " + jrShort(addDays(from, 6)) + (from === jrMon(todayISO()) ? " (эта неделя)" : "") };
+}
+const jrUS = (key, data) => { const id = huid((S.user ? S.user.id : "") + ":jr:" + key), r = S.user_settings[id]; if (data === undefined) return r && r.data || null; S.user_settings[id] = { id, key: "jr:" + key, data, created_at: (r && r.created_at) || nowISO() }; mark("user_settings", id, "u"); return data; };
+const jrGoals = () => { const d = jrUS("goals"); return d && d.goals || []; };
+const jrGoalsSave = gs => jrUS("goals", { goals: gs });
+const jrRevGet = (p, from) => jrUS("rev:" + p + ":" + from) || {};
+function jrRevSave(p, from, k, v) { const d = Object.assign({}, jrRevGet(p, from), { p, from }); d[k] = v; jrUS("rev:" + p + ":" + from, d); }
+function jrGoalMin(R, g) {
+  const tg = (g.tags || []).map(nrm); if (!tg.length) return 0; let m = 0;
+  Object.values(S.time_log).forEach(l => { const d = jrDay(l); if (!d || d < R.from || d >= R.to) return; const min = jrMinOf(l); if (min && jrTagsOf(l.cat).some(t => tg.indexOf(nrm(t)) >= 0)) m += min; });
+  return m;
+}
+function jrGlance(cur, R) {
+  if (!JV || !cur.tot) return "";
+  const v = cur.val, rated = v.u + v.n + v.x, P = k => rated ? Math.round(v[k] / rated * 100) : 0;
+  if (!rated) return '<div class="jr-sbox jr-gl"><div class="jr-st">Одним взглядом</div><div class="jr-hint">Оцените записи 🟢⚪🔴 в «🏷 Разметке» — здесь появится доля полезного.</div></div>';
+  return '<div class="jr-sbox jr-gl"><div class="jr-st">Одним взглядом</div><div class="jr-gn"><div class="u"><b>' + P("u") + '%</b><span>🟢 полезное<br>' + fmtDurM(v.u) + '</span></div><div class="n"><b>' + P("n") + '%</b><span>⚪ нейтральное<br>' + fmtDurM(v.n) + '</span></div><div class="x"><b>' + P("x") + '%</b><span>🔴 бесполезное<br>' + fmtDurM(v.x) + '</span></div></div>' +
+    (rated < cur.tot * 0.8 ? '<div class="jr-hint">Оценено только ' + Math.round(rated / cur.tot * 100) + "% записанного времени — доли считаются по оценённому.</div>" : "") + '</div>';
+}
+function jrGoalsHTML(R) {
+  const gs = jrGoals(), wk = R.n / 7; let tot = 0, onG = 0;
+  Object.values(S.time_log).forEach(l => { const d = jrDay(l); if (!d || d < R.from || d >= R.to) return; const m = jrMinOf(l); if (!m) return; tot += m; const t = jrTagsOf(l.cat).map(nrm); if (gs.some(g => (g.tags || []).some(x => t.indexOf(nrm(x)) >= 0))) onG += m; });
+  const rows = gs.map(g => {
+    const m = jrGoalMin(R, g), tgt = g.hpw ? g.hpw * 60 * wk : 0, pr = tgt ? Math.round(m / tgt * 100) : 0, cl = !tgt ? "" : pr >= 100 ? "ok" : pr >= 50 ? "mid" : "low";
+    return '<div class="jr-gr"><div class="jr-grh"><b>' + esc(g.name) + '</b><button class="jr-cx" data-a="jrgdel" data-id="' + esc(g.id) + '" title="Удалить цель">✕</button></div>' +
+      (tgt ? '<div class="jr-gb ' + cl + '"><i style="width:' + Math.min(100, pr) + '%"></i></div><div class="jr-hint">' + fmtDurM(m) + " из " + fmtDurM(Math.round(tgt)) + " (" + pr + "%)" + '</div>' : '<div class="jr-hint">' + fmtDurM(m) + (tot ? " · " + pc(m, tot) + "% записанного времени" : "") + '</div>') +
+      ((g.tags || []).length ? '<div class="jr-hint">Темы: ' + g.tags.map(esc).join(", ") + '</div>' : '<div class="jr-hint">Не привязаны темы — время не считается.</div>') + '</div>';
+  }).join("");
+  return '<div class="jr-sbox"><div class="jr-st">🎯 Глобальные цели</div>' +
+    (gs.length ? (tot ? '<div class="jr-hint" style="margin-top:0"><b>На цели ушло ' + pc(onG, tot) + '%</b> записанного времени (' + fmtDurM(onG) + ').</div>' : "") + rows : '<div class="jr-hint" style="margin-top:0">Добавьте 1–3 главные цели и привяжите к ним темы из журнала — здесь будет видно, двигаетесь ли вы к ним.</div>') +
+    '<details class="jr-gadd"' + (gs.length ? "" : " open") + '><summary>＋ Добавить цель</summary><div class="jr-f" style="margin-top:8px"><input id="jrg-n" class="inp" style="flex:1 1 100%" placeholder="Цель, например: Выучить английский" autocomplete="off"><input id="jrg-t" class="inp" style="flex:1 1 100%" placeholder="Темы журнала через запятую: английский, курсы" autocomplete="off"><input id="jrg-h" class="inp" style="flex:1 1 140px" inputmode="decimal" placeholder="Часов в неделю (необяз.)" autocomplete="off"><button class="btn" data-a="jrgadd">Добавить</button></div></details></div>';
+}
+function jrReviewHTML(R) {
+  const cur = jrRevGet(R.p, R.from), prv = jrRevGet(R.p, R.pfrom), nxt = R.p === "m" ? "следующий месяц" : "следующую неделю", pw = R.p === "m" ? "прошлом месяце" : "прошлой неделе";
+  const past = Object.values(S.user_settings).filter(r => r.key && r.key.indexOf("jr:rev:" + R.p + ":") === 0 && r.data && r.data.from !== R.from && (r.data.learn || r.data.change)).sort((a, b) => a.data.from < b.data.from ? 1 : -1).slice(0, 8);
+  const lbl = f => R.p === "m" ? MSH[+f.slice(5, 7) - 1] + " " + f.slice(0, 4) : jrShort(f) + " – " + jrShort(addDays(f, 6));
+  return '<div class="jr-sbox"><div class="jr-st">✍️ Мои выводы и корректировки</div>' +
+    (prv.change ? '<div class="jr-prevc"><b>Что вы решили изменить в ' + pw + ':</b><br>' + esc(prv.change).replace(/\n/g, "<br>") + '</div>' : "") +
+    '<label class="jr-rl">Выводы: что получилось, что нет и почему</label><textarea class="inp jr-rv" data-p="' + R.p + '" data-from="' + R.from + '" data-k="learn" rows="4" placeholder="Например: много времени ушло на соцсети вечером, зато утром успел главное">' + esc(cur.learn || "") + '</textarea>' +
+    '<label class="jr-rl">Что меняю на ' + nxt + '</label><textarea class="inp jr-rv" data-p="' + R.p + '" data-from="' + R.from + '" data-k="change" rows="3" placeholder="1–3 конкретных шага">' + esc(cur.change || "") + '</textarea>' +
+    '<div class="jr-hint">Сохраняется само, когда вы выходите из поля.' + (NX ? "" : " Синхронизация между устройствами заработает после настройки базы в «Питании».") + '</div>' +
+    (past.length ? '<details class="jr-gadd"><summary>Прошлые выводы (' + past.length + ')</summary>' + past.map(r => '<div class="jr-pv"><b>' + lbl(r.data.from) + '</b>' + (r.data.learn ? '<div>' + esc(r.data.learn).replace(/\n/g, "<br>") + '</div>' : "") + (r.data.change ? '<div class="jr-hint">→ ' + esc(r.data.change).replace(/\n/g, "<br>") + '</div>' : "") + '</div>').join("") + '</details>' : "") + '</div>';
+}
 function jrSummaryHTML() {
   const J = jrState(); if (!J.sw) J.sw = jrMon(todayISO());
-  const cur = jrWeekData(J.sw), prev = jrWeekData(addDays(J.sw, -7)), lab = jrShort(J.sw) + " – " + jrShort(addDays(J.sw, 6)) + (J.sw === jrMon(todayISO()) ? " (эта неделя)" : "");
+  const R = jrRange(), cur = jrWeekData(R.from, R.to), prev = jrWeekData(R.pfrom, R.pto), lab = R.lab;
   const cats = Object.keys(Object.assign({}, cur.cat, prev.cat)).sort((a, b) => (cur.cat[b] || 0) - (cur.cat[a] || 0)), mx = Math.max.apply(null, cats.map(c => Math.max(cur.cat[c] || 0, prev.cat[c] || 0)).concat([1]));
   const sg = d => d > 0 ? '<span class="jr-up">+' + fmtDurM(d) + "</span>" : d < 0 ? '<span class="jr-dn">−' + fmtDurM(-d) + "</span>" : "";
   const rows = cats.map(c => { const a = cur.cat[c] || 0, b = prev.cat[c] || 0; return '<div class="jr-sr"><div class="jr-sn">' + esc(c) + '</div><div class="jr-sb"><i style="width:' + (a / mx * 100) + '%"></i><u style="width:' + (b / mx * 100) + '%"></u></div><div class="jr-sv"><b>' + fmtDurM(a) + "</b> " + sg(a - b) + "</div></div>"; }).join("");
-  const el = Math.min(7, Math.max(1, Math.round((parseISO(todayISO()) - parseISO(J.sw)) / 864e5) + 1)), ins = [];
+  const el = Math.min(R.n, Math.max(1, Math.round((parseISO(todayISO()) - parseISO(R.from)) / 864e5) + 1)), ins = [];
   if (cur.tot) {
     const top = cats[0], sh = Math.round((cur.cat[top] || 0) / cur.tot * 100); ins.push("Больше всего времени — «" + top + "»: " + sh + "% (" + fmtDurM(cur.cat[top]) + ").");
-    if (prev.tot) ins.push("Записано всего " + fmtDurM(cur.tot) + (cur.tot >= prev.tot ? ", на " + fmtDurM(cur.tot - prev.tot) + " больше" : ", на " + fmtDurM(prev.tot - cur.tot) + " меньше") + " прошлой недели.");
+    if (prev.tot) ins.push("Записано всего " + fmtDurM(cur.tot) + (cur.tot >= prev.tot ? ", на " + fmtDurM(cur.tot - prev.tot) + " больше" : ", на " + fmtDurM(prev.tot - cur.tot) + " меньше") + (R.p === "m" ? ", чем в прошлом месяце." : ", чем на прошлой неделе."));
     let up = null, dn = null; cats.forEach(c => { const d = (cur.cat[c] || 0) - (prev.cat[c] || 0); if (prev.tot && d > 30 && (!up || d > up[1])) up = [c, d]; if (prev.tot && d < -30 && (!dn || d < dn[1])) dn = [c, d]; });
     if (up) ins.push("Выросло: «" + up[0] + "» (+" + fmtDurM(up[1]) + ")."); if (dn) ins.push("Просело: «" + dn[0] + "» (−" + fmtDurM(-dn[1]) + ").");
     const avg = cur.tot / Math.max(1, cur.days); ins.push("Записи есть в " + cur.days + " из " + el + " дней, в среднем " + fmtDurM(Math.round(avg)) + " в день" + (avg < 600 ? " — значит, часть дня не записана." : "."));
@@ -4338,11 +4401,12 @@ function jrSummaryHTML() {
       if (v.none / cur.tot > 0.2) ins.push("Без оценки " + Math.round(v.none / cur.tot * 100) + "% времени — открой «🏷 Разметка», это пара минут.");
     }
     const nc = cur.cat["без категории"] || 0; if (nc / cur.tot > 0.3) ins.push("Без категории " + Math.round(nc / cur.tot * 100) + "% времени — выводы будут точнее, если проставить категории.");
-  } else ins.push("За эту неделю записей со временем пока нет.");
-  return '<div class="jr-nav"><button class="ibtn" data-a="jrswp">' + ic("arrowl", 22) + '</button><div class="jr-nl" style="cursor:default">' + lab + '</div><button class="ibtn jr-nr" data-a="jrswn">' + ic("arrowl", 22) + "</button></div>" +
-    '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> эта неделя <u></u> прошлая</div></div>' +
-    '<div class="jr-sbox"><div class="jr-st">Выводы</div><ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul></div>" +
-    '<button class="btn jr-go" data-a="jrmk">🏷 Разметка записей</button><button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' + aiBox(J.ai) + jrCzHTML();
+  } else ins.push(R.p === "m" ? "За этот месяц записей со временем пока нет." : "За эту неделю записей со временем пока нет.");
+  return '<div class="jr-chips jr-sp"><button class="jr-chip' + (R.p === "w" ? " on" : "") + '" data-a="jrsp" data-v="w">Неделя</button><button class="jr-chip' + (R.p === "m" ? " on" : "") + '" data-a="jrsp" data-v="m">Месяц</button></div>' +
+    '<div class="jr-nav"><button class="ibtn" data-a="jrswp">' + ic("arrowl", 22) + '</button><div class="jr-nl" style="cursor:default">' + lab + '</div><button class="ibtn jr-nr" data-a="jrswn">' + ic("arrowl", 22) + "</button></div>" +
+    jrGlance(cur, R) + '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> ' + (R.p === "m" ? "этот месяц" : "эта неделя") + ' <u></u> ' + (R.p === "m" ? "прошлый" : "прошлая") + '</div></div>' + jrGoalsHTML(R) + jrReviewHTML(R) +
+    '<div class="jr-sbox"><div class="jr-st">Что видно по цифрам</div><ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul></div>" +
+    '<button class="btn jr-go" data-a="jrmk">🏷 Разметка записей</button>' + (R.p === "w" ? '<button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' : "") + aiBox(J.ai) + jrCzHTML();
 }
 const jrNoCat = () => Object.values(S.time_log).filter(l => !l.cat && l.title && !l.deleted).sort((a, b) => String(b.start_at || b.d1 || "").localeCompare(String(a.start_at || a.d1 || "")));
 const jrToMark = () => Object.values(S.time_log).filter(l => l.title && !l.deleted && jrDay(l) && (!l.cat || (JV && !l.val))).sort((a, b) => (jrDay(b) + (b.start_at || "")).localeCompare(jrDay(a) + (a.start_at || "")));
@@ -4448,8 +4512,14 @@ Object.assign(acts, {
   },
   jrnop() {},
   jrsum() { const J = jrState(); J.sum = !J.sum; J.ai = null; render(); },
-  jrswp() { const J = jrState(); J.sw = addDays(J.sw || jrMon(todayISO()), -7); J.ai = null; render(); },
-  jrswn() { const J = jrState(); J.sw = addDays(J.sw || jrMon(todayISO()), 7); J.ai = null; render(); },
+  jrswp() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, -1); else J.sw = addDays(J.sw || jrMon(todayISO()), -7); J.ai = null; render(); },
+  jrswn() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, 1); else J.sw = addDays(J.sw || jrMon(todayISO()), 7); J.ai = null; render(); },
+  jrsp(a) { const J = jrState(); J.sp = a.dataset.v === "m" ? "m" : "w"; J.ai = null; render(); },
+  jrgadd() {
+    const v = id => (document.getElementById(id) || {}).value || "", name = v("jrg-n").trim().slice(0, 60); if (!name) { toast("Введите название цели"); return; }
+    const gs = jrGoals().slice(); gs.push({ id: uid(), name, tags: jrTagsOf(v("jrg-t")), hpw: Math.max(0, +String(v("jrg-h")).replace(",", ".") || 0) }); jrGoalsSave(gs); render();
+  },
+  jrgdel(a) { const g = jrGoals().find(x => x.id === a.dataset.id); if (!g || !confirm("Удалить цель «" + g.name + "»?")) return; jrGoalsSave(jrGoals().filter(x => x.id !== g.id)); render(); },
   jrai() {
     const J = jrState(), m0 = J.sw || jrMon(todayISO()), weeks = [];
     for (let i = 3; i >= 0; i--) { const w = addDays(m0, -7 * i), d = jrWeekData(w); weeks.push({ week_from: w, minutes_by_category: d.cat, total_minutes: d.tot, days_with_records: d.days }); }
@@ -5014,6 +5084,7 @@ function init() {
     render();
   });
   app.addEventListener("change", e => {
+    if (e.target.classList && e.target.classList.contains("jr-rv")) { jrRevSave(e.target.dataset.p, e.target.dataset.from, e.target.dataset.k, e.target.value); return; }
     const id = e.target.id;
     const czE = e.target.closest && e.target.closest(".jr-czs");
     if (czE) {
