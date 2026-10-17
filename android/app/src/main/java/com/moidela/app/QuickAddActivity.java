@@ -7,19 +7,25 @@ import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.view.View;
 import android.view.WindowManager;
+import android.app.DatePickerDialog;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.DatePicker;
+import android.widget.Spinner;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class QuickAddActivity extends Activity {
     EditText et;
-    CheckBox cb;
-    String listId;
+    Spinner spList, spDue;
+    ArrayList<String> listIds = new ArrayList<>(), listNames = new ArrayList<>(), dueNames = new ArrayList<>();
+    String pickedDate = null;
 
     @Override protected void onCreate(Bundle s) {
         super.onCreate(s);
@@ -30,7 +36,7 @@ public class QuickAddActivity extends Activity {
             return;
         }
         Intent in = getIntent();
-        listId = in.getStringExtra("list");
+        String presetList = in.getStringExtra("list");
         et = new EditText(this);
         et.setHint("Что сделать?");
         et.setMinLines(2);
@@ -38,9 +44,37 @@ public class QuickAddActivity extends Activity {
             String t = in.getStringExtra(Intent.EXTRA_TEXT), sub = in.getStringExtra(Intent.EXTRA_SUBJECT);
             et.setText(sub != null && sub.length() > 0 && (t == null || !t.startsWith(sub)) ? sub + (t == null ? "" : "\n" + t) : (t == null ? "" : t));
         }
-        cb = new CheckBox(this);
-        cb.setText("На сегодня");
-        cb.setChecked(in.getBooleanExtra("today", false));
+        listIds.add(""); listNames.add("📥 Без списка");
+        try {
+            JSONArray a = new JSONObject(Store.p(this).getString("data", "{}")).optJSONArray("lists");
+            if (a != null) for (int i = 0; i < a.length(); i++) {
+                JSONObject l = a.optJSONObject(i);
+                listIds.add(l.optString("id")); listNames.add((l.isNull("icon") ? "" : l.optString("icon") + " ") + l.optString("name"));
+            }
+        } catch (Exception e) { /* только «без списка» */ }
+        spList = new Spinner(this);
+        spList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, listNames));
+        String want = presetList != null ? presetList : Store.p(this).getString("lastlist", "");
+        int pos = listIds.indexOf(want);
+        spList.setSelection(pos < 0 ? 0 : pos);
+        dueNames.add("Без срока"); dueNames.add("Сегодня"); dueNames.add("Завтра"); dueNames.add("Через неделю"); dueNames.add("Выбрать дату…");
+        spDue = new Spinner(this);
+        spDue.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, dueNames));
+        spDue.setSelection(in.getBooleanExtra("today", false) ? 1 : 0);
+        spDue.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(AdapterView<?> p, View v, int i, long id) {
+                if (i != 4) return;
+                java.util.Calendar c = java.util.Calendar.getInstance();
+                new DatePickerDialog(QuickAddActivity.this, new DatePickerDialog.OnDateSetListener() {
+                    public void onDateSet(DatePicker dp, int y, int m, int d) {
+                        pickedDate = String.format(java.util.Locale.US, "%04d-%02d-%02d", y, m + 1, d);
+                        dueNames.set(4, "📅 " + String.format(java.util.Locale.US, "%02d.%02d.%04d", d, m + 1, y));
+                        ((ArrayAdapter) spDue.getAdapter()).notifyDataSetChanged();
+                    }
+                }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH)).show();
+            }
+            public void onNothingSelected(AdapterView<?> p) {}
+        });
         Button ok = new Button(this);
         ok.setText("Добавить");
         LinearLayout l = new LinearLayout(this);
@@ -52,7 +86,10 @@ public class QuickAddActivity extends Activity {
         h.setTextSize(18);
         l.addView(h);
         l.addView(et);
-        l.addView(cb);
+        TextView l1 = new TextView(this); l1.setText("Список"); l1.setPadding(0, pd / 2, 0, 0); l.addView(l1);
+        l.addView(spList);
+        TextView l2 = new TextView(this); l2.setText("Срок"); l2.setPadding(0, pd / 2, 0, 0); l.addView(l2);
+        l.addView(spDue);
         l.addView(ok);
         setContentView(l);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
@@ -81,19 +118,29 @@ public class QuickAddActivity extends Activity {
         } else finish();
     }
 
+    String dueFor(int i) {
+        if (i == 0) return null;
+        if (i == 4) return pickedDate;
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.add(java.util.Calendar.DAY_OF_MONTH, i == 1 ? 0 : i == 2 ? 1 : 7);
+        return String.format(java.util.Locale.US, "%04d-%02d-%02d", c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH) + 1, c.get(java.util.Calendar.DAY_OF_MONTH));
+    }
+
     void submit() {
         final String text = et.getText().toString().trim();
         if (text.length() == 0) return;
-        final boolean today = cb.isChecked();
-        final String lid = listId;
+        final String lid = listIds.get(spList.getSelectedItemPosition());
+        final String due = dueFor(spDue.getSelectedItemPosition());
+        Store.p(this).edit().putString("lastlist", lid).apply();
         final android.content.Context c = getApplicationContext();
         new Thread(new Runnable() { public void run() {
             String res = null;
             try {
                 String first = text.split("\n", 2)[0], note = text.contains("\n") ? text.split("\n", 2)[1] : null;
-                JSONObject j = new JSONObject().put("title", first).put("today", today);
+                JSONObject j = new JSONObject().put("title", first);
+                if (due != null) j.put("due", due);
                 if (note != null) j.put("note", note);
-                if (lid != null) j.put("list_id", lid);
+                if (lid.length() > 0) j.put("list_id", lid);
                 res = Net.post(Store.api(c, "add", ""), j.toString());
             } catch (Exception e) { /* ниже покажем ошибку */ }
             final boolean good = res != null;

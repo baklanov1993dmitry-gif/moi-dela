@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 11:30";
+const BUILD = "17.10 12:30";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -334,9 +334,11 @@ const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
 let OR = (() => { try { return localStorage.getItem("mytasks_or") === "1"; } catch (e) { return false; } })();
 let RP = (() => { try { return localStorage.getItem("mytasks_rp") === "1"; } catch (e) { return false; } })();
-const tcols = () => TC.concat(OR ? ["ord"] : []).concat(RP ? ["remind_place"] : []);
+let RV = (() => { try { return localStorage.getItem("mytasks_rv") === "1"; } catch (e) { return false; } })();
+const tcols = () => TC.concat(OR ? ["ord"] : []).concat(RP ? ["remind_place"] : []).concat(RV ? ["remind_via"] : []);
 const COLS = { tasks: tcols(), lists: LC, time_log: GC, foods: ["id", "name", "kcal", "p", "f", "c", "portions", "barcode", "created_at"], food_log: ["id", "day", "t", "name", "grams", "kcal", "p", "f", "c", "food_id", "created_at"], weight_log: ["id", "day", "kg", "created_at"], user_settings: ["id", "key", "data", "created_at"] };
 function orSet(ok) { if (ok === OR) return; OR = ok; COLS.tasks = tcols(); try { localStorage.setItem("mytasks_or", ok ? "1" : "0"); } catch (e) {} }
+function rvSet(ok) { if (ok === RV) return; RV = ok; COLS.tasks = tcols(); try { localStorage.setItem("mytasks_rv", ok ? "1" : "0"); } catch (e) {} }
 function rpSet(ok) { if (ok === RP) return; RP = ok; COLS.tasks = tcols(); try { localStorage.setItem("mytasks_rp", ok ? "1" : "0"); } catch (e) {} }
 function toRow(tbl, o) {
   const r = {}; COLS[tbl].forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
@@ -437,6 +439,7 @@ async function loadAll() {
     while (flushing) await new Promise(r => setTimeout(r, 100));
     if (!OR) { try { const pr = await sb.from("tasks").select("ord").limit(1); if (!pr.error) orSet(true); } catch (e) {} }
     if (!RP) { try { const pr = await sb.from("tasks").select("remind_place").limit(1); if (!pr.error) rpSet(true); } catch (e) {} }
+    if (!RV) { try { const pr = await sb.from("tasks").select("remind_via").limit(1); if (!pr.error) rvSet(true); } catch (e) {} }
     const seq = flushSeq;
     const ls = await fetchAll("lists"), ts = await fetchAll("tasks", q => q.or("done.eq.false,parent_id.not.is.null,done_at.gte." + new Date(Date.now() - 2 * 864e5).toISOString()));   // выполненные старше 2 дней — только по запросу
     let lg = null; if (!isLite()) try { lg = await fetchAll("time_log"); } catch (e) { lg = null; }
@@ -1345,7 +1348,9 @@ function dtpHTML(p, t) {
     const tm = parseTimeText(D.time), hh = tm != null ? Math.floor(tm / 60) % 24 : 9, mi = tm != null ? tm % 60 : 0;
     const col = (id, n, st) => '<div class="dtw-col" id="' + id + '"><div class="dtw-p"></div>' + Array.from({ length: n }, (_, k) => '<div data-i="' + k + '">' + pad(k * st) + "</div>").join("") + '<div class="dtw-p"></div></div>';
     setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); if (e1) e1.scrollTop = hh * 40; if (e2) e2.scrollTop = mi * 40; dtwCol(D.wcol || "h"); }, 0);
-    h += '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24, 1) + "<b>:</b>" + col("dtw-m", 60, 1) + '<div class="dtw-sel"></div></div>' +
+    if (D.via === undefined) D.via = (t && t.remind_via) || "tg";
+    const via = (v, label) => '<button type="button" class="dq' + (D.via === v ? " on" : "") + '" data-a="dvia" data-v="' + v + '">' + label + "</button>";
+    h += (RV ? '<div class="dtp-tl" style="margin:2px 0 6px;text-align:center">Как напомнить</div><div class="dqrow big">' + via("tg", "💬 Telegram") + via("alarm", "⏰ Будильник") + via("both", "Оба") + "</div>" : "") + '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24, 1) + "<b>:</b>" + col("dtw-m", 60, 1) + '<div class="dtw-sel"></div></div>' +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
@@ -1443,6 +1448,7 @@ const dtpActs = {
     D.date = iso; const b = parseISO(iso); D.y = b.getFullYear(); D.m = b.getMonth(); keepTime(); render();
   },
   drtab(a) { const D = ui.dtp; if (!D) return; keepTime(); D.rtab = a.dataset.v; render(); },
+  dvia(a) { const D = ui.dtp; if (!D) return; keepTime(); D.via = a.dataset.v; render(); },
   drcal() { if (ui.dtp) { ui.dtp.rcal = !ui.dtp.rcal; render(); } },
   dloud() { const D = ui.dtp; if (!D) return; const t = S.tasks[dtpId()]; D.loud = !(D.loud != null ? D.loud : (t && /^⏰/.test(t.title))); render(); },
   dtime(a) { if (ui.dtp) { ui.dtp.time = a.dataset.v; render(); } },
@@ -1460,7 +1466,7 @@ const dtpActs = {
     if (parseTimeText(D.time) == null) return toast("Время нужно в виде 18:30 или 1830");
     const iso = dtpIso();
     if (Date.parse(iso) < Date.now() - 60000) return toast("Это время уже прошло — выберите позже");
-    patchTask(dtpId(), { remind_at: iso }); applyLoud(dtpId()); askNotify(); dtpDone();
+    patchTask(dtpId(), RV ? { remind_at: iso, remind_via: D.via && D.via !== "tg" ? D.via : null } : { remind_at: iso }); applyLoud(dtpId()); askNotify(); dtpDone();
   },
   dplace(a) { const id = a.dataset.v || null; patchTask(dtpId(), { remind_place: id }); if (id) { try { if (typeof Notification !== "undefined") askNotify(); } catch (e) {} toast("📍 Напомню в Telegram, когда окажешься рядом: " + placeName(id)); } dtpDone(); },
   dmap() { const id = dtpId(); dtpDone(); mapPick(id); },

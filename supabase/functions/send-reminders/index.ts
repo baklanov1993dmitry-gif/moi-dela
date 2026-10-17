@@ -39,13 +39,13 @@ Deno.serve(async (req) => {
     } catch (err) { console.error("webhook check " + (err as Error).message); }
     const now = new Date(), since = new Date(now.getTime() - 24 * 3600e3);
     const { data: tasks, error } = await sb.from("tasks")
-      .select("id,user_id,title,remind_at,remind_sent_for,due,list_id")
+      .select("id,user_id,title,remind_at,remind_sent_for,due,list_id,remind_via")
       .eq("done", false)
       .lte("remind_at", now.toISOString())
       .gt("remind_at", since.toISOString());
     if (error) { console.error("tasks: " + error.message); return new Response("tasks: " + error.message, { status: 500 }); }
 
-    const due = (tasks ?? []).filter((t) => !t.remind_sent_for || Date.parse(t.remind_sent_for) !== Date.parse(t.remind_at));
+    const due = (tasks ?? []).filter((t) => t.remind_via !== "alarm").filter((t) => !t.remind_sent_for || Date.parse(t.remind_sent_for) !== Date.parse(t.remind_at));
     console.log("due=" + due.length);
     if (!due.length) return new Response("ok: nothing due");
 
