@@ -1,5 +1,5 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html отдаётся из кэша мгновенно и обновляется в фоне.
-const CACHE = "moidela-shell-v108";
+const CACHE = "moidela-shell-v109";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./manifest-journal.json", "./manifest-food.json", "./manifest-tasks.json", "./icon-journal-192.png", "./icon-food-192.png", "./icon-tasks-192.png", "./foods.json?v=4"];
 
 self.addEventListener("install", e => {
@@ -11,6 +11,9 @@ self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
+// Chrome не разрешает отвечать на переход по ссылке ответом, который прошёл через редирект (Cloudflare Pages: /index.html → /): будет ERR_FAILED, то есть «This site can\'t be reached».
+// Поэтому любой такой ответ из кэша пересобираем в чистый (redirected=false) перед выдачей.
+const clean = async r => (r && r.redirected) ? new Response(await r.clone().blob(), { status: r.status, statusText: r.statusText, headers: r.headers }) : r;
 // нет ни сети, ни кэша — вместо «This site can't be reached» своя страничка, которая сама пробует снова
 const offlinePage = () => new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font:16px system-ui;background:#f6f7f9;color:#334;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center"><div><div style="font-size:42px">📡</div><p>Нет связи с сервером.<br>Пробую снова…</p><button onclick="location.reload()" style="padding:10px 18px;border-radius:20px;border:0;background:#2563eb;color:#fff;font-size:15px">Обновить</button></div><script>setTimeout(()=>location.reload(),3000)</script></body>', { headers: { "Content-Type": "text/html; charset=utf-8" } });
 self.addEventListener("fetch", e => {
@@ -22,12 +25,12 @@ self.addEventListener("fetch", e => {
   if (url.searchParams.has("fresh")) return;           // принудительно с сервера (обновление версии)      // метка версии — всегда с сервера
   const isShell = req.mode === "navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("index.html") || url.pathname.endsWith("manifest.json");
   if (isShell) {                                        // страница: мгновенно из кэша, свежая версия подтягивается в фоне (новый билд подхватит checkBuild)
-    const net = fetch(req).then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; });
+    const net = fetch(req).then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(async c => c.put(req, await clean(copy))); } return res; });
     e.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => {
-      if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
+      if (hit) { e.waitUntil(net.catch(() => {})); return clean(hit); }
       return net.catch(async () => {
         if (req.mode !== "navigate") return Response.error();
-        return (await caches.match("./index.html")) || (await caches.match("./")) || offlinePage();
+        return (await clean(await caches.match("./index.html"))) || (await clean(await caches.match("./"))) || offlinePage();
       });
     }));
     return;

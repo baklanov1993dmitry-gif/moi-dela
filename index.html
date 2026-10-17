@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 18:23";
+const BUILD = "17.10 20:53";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3034,6 +3034,7 @@ select.inp option{color:#111}
 .lsync{padding:0 16px 6px;font-size:calc(12px*var(--z,1));color:var(--sub)}
 #app.hasbg .mhead h1,#app.hasbg .mtop,#app.hasbg .msub{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.55)}
 .taskrow{-webkit-tap-highlight-color:transparent}
+.fabvv .fab{top:calc(var(--vvb) - 76px - env(safe-area-inset-bottom));bottom:auto}
 .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.4);z-index:30}
 .qa-back{position:fixed;left:0;right:0;top:0;bottom:0;padding-bottom:var(--kb,0px);background:rgba(0,0,0,.45);z-index:55;display:flex;align-items:flex-end}
 .qa{width:100%;background:var(--solid);color:var(--tx);border-radius:14px 14px 0 0;padding:10px 12px max(12px,env(safe-area-inset-bottom))}
@@ -5286,6 +5287,13 @@ function init() {
   if (window.visualViewport) {                          // шторка быстрого ввода поднимается над клавиатурой
     const kb = () => { const v = visualViewport; document.documentElement.style.setProperty("--kb", Math.max(0, innerHeight - v.height - v.offsetTop) + "px"); };
     visualViewport.addEventListener("resize", kb); visualViewport.addEventListener("scroll", kb);
+    // Плюсик «Добавить» привязан к НИЗУ ВИДИМОЙ области (а не к окну): при запуске/возврате в приложение на Android окно бывает на миг выше видимого — плюсик уезжал вниз и потом «возвращался»
+    const fabSync = () => { const v = window.visualViewport; if (!v) return; const de = document.documentElement; de.style.setProperty("--vvb", (v.offsetTop + v.height) + "px"); de.classList.add("fabvv"); };
+    const fabLater = () => { fabSync(); [150, 500, 1200, 2500].forEach(ms => setTimeout(fabSync, ms)); };
+    visualViewport.addEventListener("resize", fabSync); visualViewport.addEventListener("scroll", fabSync);
+    window.addEventListener("resize", fabLater); window.addEventListener("orientationchange", fabLater); window.addEventListener("pageshow", fabLater); window.addEventListener("focus", fabLater);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) fabLater(); });
+    fabLater();
   }
   document.addEventListener("pointerdown", () => { down = true; }, true);
   document.addEventListener("pointerup", () => { down = false; if (want) setTimeout(() => { if (want && !down) render(); }, 40); }, true);
@@ -5320,7 +5328,8 @@ async function checkBuild() {
     sessionStorage.setItem("moi_rl", v);
     try {   // кладём свежую страницу в кэш до перезагрузки — иначе SW отдаст старую
       const fr = await fetch("index.html?fresh=" + Date.now(), { cache: "no-store" });
-      if (fr.ok) for (const k of await caches.keys()) if (/^moidela-shell/.test(k)) { const c = await caches.open(k); await c.put("./index.html", fr.clone()); await c.put("./", fr.clone()); }
+      // ВАЖНО: кладём «чистую» копию (не redirected). Ответ после редиректа /index.html → / нельзя отдавать на переход по ссылке — Chrome покажет «This site can't be reached»
+      if (fr.ok) { const clean = new Response(await fr.blob(), { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }); for (const k of await caches.keys()) if (/^moidela-shell/.test(k)) { const c = await caches.open(k); await c.put("./index.html", clean.clone()); await c.put("./", clean.clone()); } }
     } catch (e) {}
     location.reload();
   } catch (e) {}
