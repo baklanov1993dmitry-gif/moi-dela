@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 14:19";
+const BUILD = "17.10 09:29";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2862,6 +2862,26 @@ select.inp option{color:#111}
 #toasts{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:min(380px,92vw)}
 .toast{background:#323130;color:#fff;border-radius:8px;padding:10px 12px;font-size:calc(13.5px*var(--z,1));display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .toast span{flex:1} .toast button{color:#9ec5ff;font-weight:600;white-space:nowrap} .toast .x{color:#bbb}
+
+/* шрифт для элементов вне #app (тост, «Отменить») */
+#toasts,#ubtn{font-family:var(--ff,"Segoe UI",system-ui,-apple-system,Roboto,sans-serif)}
+/* шкала размеров текста: подпись / вторичный / основной */
+#app{--fs-cap:calc(12px*var(--z,1));--fs-sec:calc(13.5px*var(--z,1));--fs-body:calc(15px*var(--z,1))}
+/* журнал: единая шкала */
+.jr-box,.jr-f .inp,.jr-chip,.jr-empty{font-size:var(--fs-sec)}
+.jr-prev,.jr-hint,.jr-tb i{font-size:var(--fs-cap)}
+.jr-box .linkbtn,.jr-day .linkbtn{font-size:var(--fs-sec);padding:6px 0}
+.jr-big,.jr-go{font-size:var(--fs-body)!important}
+.jr-vb{font-size:var(--fs-sec)!important;padding:12px 4px;min-width:0;white-space:nowrap}
+/* журнал: время, оценка, пустое состояние, нижние кнопки */
+.jr-tb{position:relative}
+.jr-tb::after{content:"▾";position:absolute;top:6px;right:10px;font-size:11px;color:var(--sub)}
+.jr-tb.ph{color:var(--sub);font-weight:500}
+.jr-tb.now{color:var(--acc)}
+.jr-vb.on{font-weight:600;border-width:2px}
+.jr-empty{padding:34px 10px}.jr-empty .jr-ei{font-size:30px;margin-bottom:8px;opacity:.7}.jr-empty .jr-hint{margin:6px 0 0}
+#app .jr-bot{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 0;justify-content:stretch}
+#app .jr-bot .btn{width:100%;min-height:44px;white-space:normal;text-align:center;line-height:1.25}
 .dropok{outline:2px dashed var(--acc);outline-offset:-3px}
 .gbody{margin-left:30px;border-left:2px solid var(--ln)}
 .gbody .chip{padding-left:14px}
@@ -4111,7 +4131,7 @@ function journalMainHTML(vi) {
       '<div class="jr-f" style="margin-top:6px"><button class="linkbtn" data-a="jrmode" data-v="t">← Обычная запись со временем</button></div></div>';
     else {
       const q = jrPlan();
-      add = '<div class="jr-box"><div class="jr-tr"><button class="jr-tb" data-a="jrwheel" data-k="st"><i>Начало</i>' + (q.st || "—:—") + '</button><span>→</span><button class="jr-tb" data-a="jrwheel" data-k="en"><i>Конец</i>' + (q.en || "сейчас") + '</button></div>' +
+      add = '<div class="jr-box"><div class="jr-tr"><button class="jr-tb' + (q.st ? "" : " ph") + '" data-a="jrwheel" data-k="st"><i>Начало</i>' + (q.st || "—:—") + '</button><span>→</span><button class="jr-tb' + (q.en ? "" : " now") + '" data-a="jrwheel" data-k="en"><i>Конец</i>' + (q.en || "сейчас") + '</button></div>' +
         (df !== today0 ? '<div class="jr-hint">Дата записи: ' + jrShort(df) + ' <button class="linkbtn" data-a="jrtoday">на сегодня</button></div>' : "") +
         '<div class="jr-f" style="margin-top:10px"><input id="jr-tx" class="inp jr-big" style="flex:1 1 100%;min-width:0" placeholder="Что делал?" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"></div>' +
         jrTagBox("jr-cat", J.cat, "add") + jrTagList() + (JV ? jrValBtns(J.val, "jrv") : jrValSetup()) +
@@ -4135,7 +4155,7 @@ function journalMainHTML(vi) {
     body += '<div class="jr-day"><span>' + rel + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + (dd.getFullYear() !== new Date().getFullYear() ? " " + dd.getFullYear() : "") + '</span><span class="jr-sum">' + (sum ? "записано " + fmtDurM(sum) : "") + (JX ? ' <button class="linkbtn" data-a="jrday" data-d="' + d + '" title="Дописать в этот день">＋ дописать</button>' : "") + "</span></div>" + arr.map(jrItem).join("");
   });
   if (days.length > shown.length) body += '<div style="text-align:center;padding:10px"><button class="btn ghost" data-a="jrmore">Показать ещё (' + (days.length - shown.length) + " дн.)</button></div>";
-  if (!J.hist && !byDay[J.vd]) body = '<div class="jr-empty">За этот день записей нет</div>';
+  if (!J.hist && !byDay[J.vd]) body = '<div class="jr-empty"><div class="jr-ei">📝</div>За этот день записей нет<div class="jr-hint">Запишите, что делали последний час</div></div>';
   else if (!shown.length) body = '<div style="text-align:center;padding:30px 10px;color:var(--sub)">За выбранный период записей нет' + (all.length ? '<div style="margin-top:6px;font-size:calc(11.3px*var(--z,1))">последняя запись: ' + jrShort(all.map(jrDay).sort().pop()) + '</div><div style="margin-top:10px"><button class="btn ghost" data-a="jrper" data-v="all">Показать все записи</button></div>' : "") + "</div>";
   const vdd = parseISO(J.vd), vrel = J.vd === today0 ? "Сегодня" : J.vd === yest ? "Вчера" : J.vd === addDays(today0, 1) ? "Завтра" : WDS[vdd.getDay()];
   const nav = '<div class="jr-nav"><button class="ibtn" data-a="jrdprev" title="Раньше">' + ic("arrowl", 22) + '</button><label class="jr-nl">' + (vrel === WDS[vdd.getDay()] ? vrel : vrel + ", " + WDS[vdd.getDay()]) + " " + vdd.getDate() + " " + MONS[vdd.getMonth()] + '<input type="date" id="jr-vd" value="' + J.vd + '"></label><button class="ibtn jr-nr" data-a="jrdnext" title="Позже">' + ic("arrowl", 22) + '</button>' + (J.vd && J.vd !== todayISO() ? '<button class="jr-ntd" data-a="jrvtoday">Сегодня</button>' : "") + '</div>';
@@ -4144,7 +4164,7 @@ function journalMainHTML(vi) {
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, 1, isMobile() ? '<button class="ibtn" data-a="jrxl" title="Excel">' + ic("dl", 20) + "</button>" + (JX ? '<button class="ibtn" data-a="jrimp" title="Импорт">' + ic("fplus", 20) + "</button>" : "") : "") + '<div class="mhead mhide"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub mhide-m">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jran">📈 Аналитика</button><button class="btn ghost" data-a="jrhist">История за все дни…</button></div>')) + "</div>" + wheel + "</div>";
+    '<div class="msub mhide-m">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + (J.hist ? "" : '<div class="jr-bot"><button class="btn ghost" data-a="jrmk">🏷 Разметка' + (JV && jrUnval().length ? " (" + jrUnval().length + ")" : "") + '</button><button class="btn ghost" data-a="jrsum">📊 Итоги недели</button><button class="btn ghost" data-a="jran">📈 Аналитика</button><button class="btn ghost" data-a="jrhist">История за все дни</button></div>')) + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: n }, (_, i) => "<div>" + pad2(i) + "</div>").join("") + '<div class="jr-wp"></div></div>';
