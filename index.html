@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 17:57";
+const BUILD = "17.10 18:09";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -698,17 +698,28 @@ function deleteTask(id) {
 }
 
 /* ----- файлы (Supabase Storage, приватный бакет attachments) ----- */
-async function uploadFile(file) {
-  const t = S.tasks[selId]; if (!t || !file) return;
+async function uploadFile(file, tid) {
+  const t = S.tasks[tid || selId]; if (!t || !file) return false;
   if (/^image\//.test(file.type)) file = await shrinkImage(file);
-  if (file.size > 10 * 1024 * 1024) return toast("Файл больше 10 МБ");
+  if (file.size > 20 * 1024 * 1024) { toast("«" + file.name + "» больше 20 МБ"); return false; }
   const ext = (file.name.match(/\.[A-Za-z0-9]{1,8}$/) || [""])[0], path = S.user.id + "/" + t.id + "/" + uid() + ext;
   toast("Загружаю «" + file.name + "»…");
   try {
     const r = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
-    if (r.error) return toast("Не загрузилось: " + (/bucket/i.test(r.error.message) ? "нет хранилища — выполните migration_v2.sql" : r.error.message));
-    upd(t.id, { files: (t.files || []).concat([{ name: file.name, path, size: file.size }]) }); render(); toast("Файл добавлен");
-  } catch (e) { toast("Не загрузилось: " + errText(e)); }
+    if (r.error) { toast("Не загрузилось: " + (/bucket/i.test(r.error.message) ? "нет хранилища — выполните migration_v2.sql" : /size|large|exceed/i.test(r.error.message) ? "файл слишком большой для хранилища" : r.error.message)); return false; }
+    const cur = S.tasks[t.id] || t; upd(t.id, { files: (cur.files || []).concat([{ name: file.name, path, size: file.size }]) }); render(); toast("Файл добавлен"); return true;
+  } catch (e) { toast("Не загрузилось: " + errText(e)); return false; }
+}
+async function fileTransfer(files) {   // файлы с компьютера без открытой задачи: новая задача в списке «Файлы» + вложения (личная «перекидка» на телефон)
+  files = [...files].filter(f => f && f.size >= 0); if (!files.length || !S.user) return;
+  let l = listsArr().find(x => /^файлы$/i.test(x.name));
+  if (!l) { l = { id: uid(), name: "Файлы", icon: "📎", position: listsArr().length, created_at: nowISO(), group_name: null, color: null }; S.lists[l.id] = l; mark("lists", l.id, "u"); }
+  const d = new Date(), z = n => String(n).padStart(2, "0");
+  const t = addTask({ list_id: l.id, title: (files.length === 1 ? files[0].name : "Файлы " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + ":" + z(d.getMinutes())).slice(0, 200) });
+  goView("list:" + l.id); render(); let n = 0;
+  for (const f of files) if (await uploadFile(f, t.id)) n++;
+  if (!n) { upd(t.id, {}); }
+  toast(n ? "Готово: " + n + " файл(ов) в списке «Файлы» — на телефоне они тоже будут" : "Ничего не загрузилось");
 }
 async function openFile(i) {
   const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
@@ -766,13 +777,16 @@ function shrinkImage(file) {   // скриншоты и фото ужимаем:
     im.onerror = () => { URL.revokeObjectURL(url); res(file); }; im.src = url;
   });
 }
-document.addEventListener("paste", e => {   // Ctrl+V с картинкой в буфере → вложение к открытой задаче
-  if (!S.user || !selId || !S.tasks[selId] || isLite()) return;
-  const cd = e.clipboardData; if (!cd) return; const f = [...(cd.files || [])].find(x => /^image\//.test(x.type)); if (!f) return;
+document.addEventListener("paste", e => {   // Ctrl+V: картинка/файл в буфере → вложение к открытой задаче (или в список «Файлы»)
+  if (!S.user || isLite()) return;
+  const cd = e.clipboardData; if (!cd) return; const fs = [...(cd.files || [])]; if (!fs.length) return;
   const tg = e.target, typing = tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.isContentEditable);
   if (typing && cd.getData("text/plain")) return;   // в поле + есть текст (копия из Excel и т.п.) — вставляем текст как обычно
+  const open = selId && S.tasks[selId];
+  if (!open && (typing || isMobile())) return;      // без открытой задачи — только если фокус не в поле ввода
   e.preventDefault(); const d = new Date(), z = n => String(n).padStart(2, "0");
-  uploadFile(new File([f], "Снимок " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + "-" + z(d.getMinutes()) + (/png$/.test(f.type) ? ".png" : /jpe?g$/.test(f.type) ? ".jpg" : ".png"), { type: f.type }));
+  const named = fs.map(f => (/^image\//.test(f.type) && (!f.name || /^image\.\w+$/i.test(f.name))) ? new File([f], "Снимок " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + "-" + z(d.getMinutes()) + (/jpe?g$/.test(f.type) ? ".jpg" : ".png"), { type: f.type }) : f);
+  if (open) { (async () => { for (const f of named) await uploadFile(f, selId); })(); } else fileTransfer(named);
 });
 const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
 
@@ -2856,6 +2870,7 @@ const CSS = `
 .dcard{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:6px;overflow:hidden;flex-shrink:0}
 .dcard.grow{flex:1 0 220px;display:flex;flex-direction:column;margin-bottom:0}
 .nfoot{display:none}
+body.dropfile::after{content:"Отпусти файл — он прикрепится к открытой задаче или попадёт в список «Файлы»";position:fixed;inset:10px;z-index:9998;border:3px dashed var(--acc);border-radius:16px;background:rgba(61,143,224,.10);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--acc);pointer-events:none;text-align:center;padding:20px}
 .imgrow{align-items:flex-start;gap:8px}.athumb{display:block;max-width:calc(100% - 36px);max-height:220px;border-radius:8px;object-fit:contain;background:var(--hov);cursor:zoom-in;min-height:40px;min-width:60px}.lbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out}.lbox img{max-width:94vw;max-height:90vh;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5)}.lbdl{position:absolute;right:16px;top:14px;color:#fff;background:rgba(255,255,255,.16);padding:7px 14px;border-radius:18px;font-size:14px;text-decoration:none}
 .dcard.grow{position:relative}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
 .nfull{position:fixed;left:0;right:0;top:0;bottom:0;z-index:58;background:var(--solid);display:flex;flex-direction:column}
@@ -3983,7 +3998,7 @@ const acts = {
   clrremind() { upd(selId, { remind_at: null }); render(); },
   clrrepeat() { upd(selId, { repeat_rule: null }); render(); },
   est(a) { const t = S.tasks[selId], v = +a.dataset.v; if (t) { upd(t.id, { est_minutes: t.est_minutes === v ? null : v }); render(); } },
-  pickfile() { const i = document.createElement("input"); i.type = "file"; i.onchange = () => uploadFile(i.files[0]); i.click(); },
+  pickfile() { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.onchange = async () => { for (const f of [...i.files]) await uploadFile(f); }; i.click(); },
   openfile(a) { openFile(+a.dataset.i); }, delfile(a, e) { e.stopPropagation(); if (confirm("Удалить файл?")) removeFile(+a.dataset.i); },
   pop(a, e) {
     const d = a.dataset, w = e._was;
@@ -5215,6 +5230,14 @@ function init() {
   /* перетаскивание задачи на список */
   app.addEventListener("dragstart", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r) { e.dataTransfer.setData("text/plain", ui.multi && ui.multi[r.dataset.id] && mIds().length > 1 ? mIds().join(",") : r.dataset.id); e.dataTransfer.effectAllowed = "move"; ui.dragId = r.dataset.id; } });
   app.addEventListener("dragend", () => { ui.dragId = null; document.querySelectorAll(".taskrow.dropb").forEach(x => x.classList.remove("dropb")); });
+  const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].indexOf("Files") >= 0;   // перетаскивание файлов С КОМПЬЮТЕРА (внутренние перетаскивания задач не трогаем)
+  document.addEventListener("dragover", e => { if (!S.user || isLite() || !hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); document.body.classList.add("dropfile"); }, true);
+  document.addEventListener("dragleave", e => { if (!e.relatedTarget) document.body.classList.remove("dropfile"); }, true);
+  document.addEventListener("drop", e => {
+    if (!S.user || isLite() || !hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); document.body.classList.remove("dropfile");
+    const fs = [...e.dataTransfer.files]; if (!fs.length) return;
+    if (selId && S.tasks[selId]) (async () => { for (const f of fs) await uploadFile(f, selId); })(); else fileTransfer(fs);
+  }, true);
   app.addEventListener("dragover", e => { if (e.target.closest && e.target.closest(".chip[data-lid]")) return; const r = e.target.closest && e.target.closest("#main .taskrow"); if (r && ui.dragId && r.dataset.id !== ui.dragId) { e.preventDefault(); document.querySelectorAll(".taskrow.dropb").forEach(x => { if (x !== r) x.classList.remove("dropb"); }); r.classList.add("dropb"); } });
   app.addEventListener("drop", e => { if (e.target.closest && e.target.closest(".chip[data-lid]")) return; const r = e.target.closest && e.target.closest("#main .taskrow"); if (r && ui.dragId && r.dataset.id !== ui.dragId) { e.preventDefault(); const d = ui.dragId; ui.dragId = null; ordDrop(d, r.dataset.id); } });
   app.addEventListener("dragover", e => { const c = e.target.closest && e.target.closest(".chip[data-lid]"); if (c) { e.preventDefault(); c.classList.add("dropok"); } });

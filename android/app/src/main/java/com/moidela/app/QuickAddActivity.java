@@ -37,6 +37,8 @@ public class QuickAddActivity extends Activity {
     byte[] imgBytes = null;
     String imgType = "image/jpeg", imgName = "Картинка";
     Bitmap imgBmp = null;
+    String fileErr = null;
+    String fileLabel = null;
 
     @Override protected void onCreate(Bundle s) {
         super.onCreate(s);
@@ -55,11 +57,13 @@ public class QuickAddActivity extends Activity {
             String t = in.getStringExtra(Intent.EXTRA_TEXT), sub = in.getStringExtra(Intent.EXTRA_SUBJECT);
             et.setText(sub != null && sub.length() > 0 && (t == null || !t.startsWith(sub)) ? sub + (t == null ? "" : "\n" + t) : (t == null ? "" : t));
         }
-        if (Intent.ACTION_SEND.equals(in.getAction()) && in.getType() != null && in.getType().startsWith("image/")) {
+        if (Intent.ACTION_SEND.equals(in.getAction()) && in.getParcelableExtra(Intent.EXTRA_STREAM) != null) {
             Uri u = (Uri) in.getParcelableExtra(Intent.EXTRA_STREAM);
-            if (u != null) loadImage(u, in.getType());
+            String mt = in.getType() != null ? in.getType() : getContentResolver().getType(u);
+            if (mt != null && mt.startsWith("image/") && !mt.contains("gif") && !mt.contains("svg")) loadImage(u, mt);
+            else loadFile(u, mt);
             if (imgBytes == null) {
-                Toast.makeText(this, "Не удалось прочитать картинку", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, fileErr != null ? fileErr : "Не удалось прочитать файл", Toast.LENGTH_LONG).show();
                 finish();
                 return;
             }
@@ -115,6 +119,14 @@ public class QuickAddActivity extends Activity {
             ip.setMargins(0, pd / 2, 0, pd / 2);
             l.addView(iv, ip);
             et.setHint("Что с этой картинкой сделать? (можно пусто)");
+        }
+        if (fileLabel != null) {
+            TextView fv = new TextView(this);
+            fv.setText("📎 " + fileLabel);
+            fv.setTextSize(15);
+            fv.setPadding(0, pd / 2, 0, pd / 2);
+            l.addView(fv);
+            et.setHint("Что с этим файлом сделать? (можно пусто)");
         }
         l.addView(et);
         TextView l1 = new TextView(this); l1.setText("Список"); l1.setPadding(0, pd / 2, 0, 0); l.addView(l1);
@@ -200,6 +212,44 @@ public class QuickAddActivity extends Activity {
         } catch (Throwable e) { imgBytes = null; }
     }
 
+    // любой файл из «Поделиться»: берём как есть (до 20 МБ), имя — из системы
+    void loadFile(Uri u, String mime) {
+        try {
+            String name = null;
+            long size = -1;
+            android.database.Cursor cu = getContentResolver().query(u, null, null, null, null);
+            if (cu != null) {
+                try {
+                    if (cu.moveToFirst()) {
+                        int ni = cu.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME), si = cu.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                        if (ni >= 0) name = cu.getString(ni);
+                        if (si >= 0 && !cu.isNull(si)) size = cu.getLong(si);
+                    }
+                } finally { cu.close(); }
+            }
+            if (size > 20L * 1024 * 1024) { fileErr = "Файл больше 20 МБ"; return; }
+            InputStream is = getContentResolver().openInputStream(u);
+            if (is == null) return;
+            ByteArrayOutputStream bo = new ByteArrayOutputStream(size > 0 ? (int) size : 65536);
+            byte[] buf = new byte[32768];
+            int n;
+            while ((n = is.read(buf)) > 0) {
+                bo.write(buf, 0, n);
+                if (bo.size() > 20 * 1024 * 1024) { is.close(); fileErr = "Файл больше 20 МБ"; return; }
+            }
+            is.close();
+            if (bo.size() == 0) return;
+            if (name == null || name.length() == 0) {
+                String p = u.getLastPathSegment();
+                name = p != null && p.length() > 0 ? p.substring(p.lastIndexOf('/') + 1) : "Файл";
+            }
+            imgBytes = bo.toByteArray();
+            imgType = mime != null && mime.length() > 0 ? mime : "application/octet-stream";
+            imgName = name;
+            fileLabel = name + " · " + (imgBytes.length > 1048576 ? String.format(java.util.Locale.US, "%.1f МБ", imgBytes.length / 1048576.0) : Math.max(1, imgBytes.length / 1024) + " КБ");
+        } catch (Throwable e) { imgBytes = null; }
+    }
+
     String dueFor(int i) {
         if (i == 0) return null;
         if (i == 4) return pickedDate;
@@ -212,7 +262,7 @@ public class QuickAddActivity extends Activity {
         String tx = et.getText().toString().trim();
         if (tx.length() == 0 && imgBytes != null) {
             java.util.Calendar cc = java.util.Calendar.getInstance();
-            tx = String.format(java.util.Locale.US, "Картинка %02d.%02d %02d:%02d", cc.get(java.util.Calendar.DAY_OF_MONTH), cc.get(java.util.Calendar.MONTH) + 1, cc.get(java.util.Calendar.HOUR_OF_DAY), cc.get(java.util.Calendar.MINUTE));
+            tx = fileLabel != null ? imgName : String.format(java.util.Locale.US, "Картинка %02d.%02d %02d:%02d", cc.get(java.util.Calendar.DAY_OF_MONTH), cc.get(java.util.Calendar.MONTH) + 1, cc.get(java.util.Calendar.HOUR_OF_DAY), cc.get(java.util.Calendar.MINUTE));
         }
         final String text = tx;
         if (text.length() == 0) return;
@@ -237,7 +287,7 @@ public class QuickAddActivity extends Activity {
                 }
             } catch (Exception e) { /* ниже покажем ошибку */ }
             final boolean good = res != null, fail = imgFail;
-            new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() { public void run() { Toast.makeText(c, !good ? "Нет связи — не добавилось" : fail ? "Дело добавлено, но картинка не загрузилась" : "Добавлено ✓", Toast.LENGTH_SHORT).show(); } });
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() { public void run() { Toast.makeText(c, !good ? "Нет связи — не добавилось" : fail ? "Дело добавлено, но файл не загрузился" : "Добавлено ✓", Toast.LENGTH_SHORT).show(); } });
             if (good) Sync.run(c);
         } }).start();
         finish();
