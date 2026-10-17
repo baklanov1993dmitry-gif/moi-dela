@@ -1,4 +1,4 @@
-// Supabase Edge Function: ИИ-разбор для «Мои дела». Секрет: ANTHROPIC_API_KEY
+// Supabase Edge Function: ИИ-разбор для «Мои дела». Секрет: GEMINI_API_KEY
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -24,15 +24,17 @@ SYS.nutrition_report = `Ты — клинически мыслящий нутр�
 Правила: не придумывай то, чего нет в данных; если дней записи мало или данные неполные — скажи это в начале; не ставь диагнозов и не назначай лекарства/добавки в дозах, при тревожных признаках (очень низкие ккал <1200, длительный сильный дефицит) мягко советуй врача/диетолога. Различай факты из данных и оценки.`;
 
 // Бесплатный разбор питания через Gemini API (тот же GEMINI_API_KEY, что у video)
-async function gemini(sys: string, body: string): Promise<string> {
+async function gemini(sys: string, body: string, search = false, label = "Данные (JSON):\n"): Promise<string> {
   const key = Deno.env.get("GEMINI_API_KEY"); if (!key) throw new Error("GEMINI_API_KEY не задан");
   const models = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i) as string[];
   let j: any = {}, lastErr = "";
   for (const model of models) {
-    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    const call = (withSearch: boolean) => fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
       method: "POST", headers: { "x-goog-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ model, input: [{ type: "text", text: sys + "\n\nДанные (JSON):\n" + body }] }),
+      body: JSON.stringify({ model, input: [{ type: "text", text: sys + "\n\n" + label + body }], ...(withSearch ? { tools: [{ type: "google_search" }] } : {}) }),
     });
+    let r = await call(search);
+    if (search && !r.ok && r.status === 400) r = await call(false);   // поиск не принят — отвечаем без него
     j = await r.json().catch(() => ({}));
     if (r.ok) { lastErr = ""; break; }
     lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
@@ -62,24 +64,9 @@ Deno.serve(async (req) => {
     if (!sys) return json({ error: "unknown kind" }, 400);
     const body = JSON.stringify(data ?? {});
     if (body.length > 20000) return json({ error: "too large" }, 413);
-    if (kind === "nutrition_report" || kind === "markup" || kind === "categorize") return json({ text: await gemini(sys, body) });   // бесплатно через Gemini
-    const key = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!key) return json({ error: "ANTHROPIC_API_KEY не задан" }, 500);
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: kind === "categorize" ? (Deno.env.get("ANTHROPIC_MODEL_FAST") || "claude-haiku-4-5") : (Deno.env.get("ANTHROPIC_MODEL") || "claude-sonnet-4-5"),
-        max_tokens: kind === "categorize" ? 3500 : kind === "nutrition_report" ? 2200 : kind === "food" ? 900 : 600,
-        system: sys,
-        ...(kind === "food" ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] } : {}),
-        messages: [{ role: "user", content: (kind === "categorize" ? "Данные (JSON):\n" + body : kind === "food" ? "Продукт/блюдо: " + String((data ?? {}).query ?? "").slice(0, 200) : "Данные (JSON):\n" + body) }],
-      }),
-    });
-    const j = await r.json();
-    if (!r.ok) return json({ error: j?.error?.message || "api error" }, 502);
-    const text = (j.content || []).map((c: { text?: string }) => c.text || "").join("").trim();
-    return json({ text });
+    // всё бесплатно через Gemini (Claude API не используется)
+    if (kind === "food") return json({ text: await gemini(sys, String((data ?? {}).query ?? "").slice(0, 200), true, "Продукт/блюдо: ") });
+    return json({ text: await gemini(sys, body) });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
