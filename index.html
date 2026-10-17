@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 17:19";
+const BUILD = "17.10 17:57";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -700,6 +700,7 @@ function deleteTask(id) {
 /* ----- файлы (Supabase Storage, приватный бакет attachments) ----- */
 async function uploadFile(file) {
   const t = S.tasks[selId]; if (!t || !file) return;
+  if (/^image\//.test(file.type)) file = await shrinkImage(file);
   if (file.size > 10 * 1024 * 1024) return toast("Файл больше 10 МБ");
   const ext = (file.name.match(/\.[A-Za-z0-9]{1,8}$/) || [""])[0], path = S.user.id + "/" + t.id + "/" + uid() + ext;
   toast("Загружаю «" + file.name + "»…");
@@ -711,6 +712,7 @@ async function uploadFile(file) {
 }
 async function openFile(i) {
   const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
+  if (isImg(f)) return viewImage(i);
   try {
     const r = await sb.storage.from("attachments").createSignedUrl(f.path, 120, { download: f.name });
     if (r.error || !r.data) return toast("Не удалось открыть файл");
@@ -722,6 +724,56 @@ async function removeFile(i) {
   try { await sb.storage.from("attachments").remove([f.path]); } catch (e) {}
   upd(t.id, { files: t.files.filter((x, k) => k !== i) }); render();
 }
+const isImg = f => /\.(png|jpe?g|gif|webp|bmp)$/i.test((f && f.name) || "");
+const IMGC = {};   // path → { url, exp } : подписанные ссылки на картинки (приватный бакет), живут ~50 минут
+const imgUrl = path => { const c = IMGC[path]; return c && c.exp > Date.now() ? c.url : ""; };
+function fileRowHTML(f, i) {
+  const del = '<button class="xbtn" data-a="delfile" data-i="' + i + '" title="Удалить">' + ic("trash", 15) + "</button>";
+  if (isImg(f)) return '<div class="drow imgrow" data-a="openfile" data-i="' + i + '"><img class="athumb" data-path="' + esc(f.path) + '" alt="' + esc(f.name) + '" title="' + esc(f.name) + '"' + (imgUrl(f.path) ? ' src="' + esc(imgUrl(f.path)) + '"' : "") + ">" + del + "</div>" + (setTimeout(imgHydrate, 0), "");
+  return '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + "</span></span>" + del + "</div>";
+}
+async function imgHydrate() {
+  const need = [...document.querySelectorAll("img.athumb[data-path]")].filter(im => !im.getAttribute("src")); if (!need.length || !sb) return;
+  const paths = [...new Set(need.map(im => im.dataset.path))];
+  try {
+    const r = await sb.storage.from("attachments").createSignedUrls(paths, 3600);
+    (r.data || []).forEach(x => { if (x && x.signedUrl && x.path) IMGC[x.path] = { url: x.signedUrl, exp: Date.now() + 50 * 60 * 1000 }; });
+    document.querySelectorAll("img.athumb[data-path]").forEach(im => { const u = imgUrl(im.dataset.path); if (u && !im.getAttribute("src")) im.src = u; });
+  } catch (e) {}
+}
+async function viewImage(i) {   // крупный просмотр поверх всего (Esc или клик — закрыть)
+  const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
+  let u = imgUrl(f.path); if (!u) { try { const r = await sb.storage.from("attachments").createSignedUrl(f.path, 3600); u = r.data && r.data.signedUrl; } catch (e) {} }
+  if (!u) return toast("Не удалось открыть картинку");
+  const o = document.createElement("div"); o.className = "lbox";
+  o.innerHTML = '<img src="' + esc(u) + '" alt=""><a class="lbdl" href="' + esc(u) + '" download="' + esc(f.name) + '" target="_blank" rel="noopener">Скачать</a>';
+  const close = () => { o.remove(); document.removeEventListener("keydown", kd, true); };
+  const kd = e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
+  o.addEventListener("click", e => { if (!e.target.closest(".lbdl")) close(); }); document.addEventListener("keydown", kd, true); document.body.appendChild(o);
+}
+function shrinkImage(file) {   // скриншоты и фото ужимаем: до 1600 px по длинной стороне, чтобы не забивать хранилище
+  return new Promise(res => {
+    if (!/^image\/(png|jpeg|webp|bmp)$/.test(file.type)) return res(file);
+    const im = new Image(), url = URL.createObjectURL(file);
+    im.onload = () => {
+      URL.revokeObjectURL(url); const k = Math.min(1, 1600 / Math.max(im.width, im.height));
+      if (k === 1 && file.size < 600 * 1024) return res(file);
+      const c = document.createElement("canvas"); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      const png = file.type === "image/png" && file.size < 2.5 * 1024 * 1024;   // небольшие PNG-скриншоты оставляем PNG (текст чёткий), остальное — JPEG
+      c.toBlob(b => { if (!b || b.size >= file.size) return res(file); const nm = file.name.replace(/\.[A-Za-z0-9]+$/, "") + (png ? ".png" : ".jpg"); res(new File([b], nm, { type: b.type })); }, png ? "image/png" : "image/jpeg", 0.88);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); res(file); }; im.src = url;
+  });
+}
+document.addEventListener("paste", e => {   // Ctrl+V с картинкой в буфере → вложение к открытой задаче
+  if (!S.user || !selId || !S.tasks[selId] || isLite()) return;
+  const cd = e.clipboardData; if (!cd) return; const f = [...(cd.files || [])].find(x => /^image\//.test(x.type)); if (!f) return;
+  const tg = e.target, typing = tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.isContentEditable);
+  if (typing && cd.getData("text/plain")) return;   // в поле + есть текст (копия из Excel и т.п.) — вставляем текст как обычно
+  e.preventDefault(); const d = new Date(), z = n => String(n).padStart(2, "0");
+  uploadFile(new File([f], "Снимок " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + "-" + z(d.getMinutes()) + (/png$/.test(f.type) ? ".png" : /jpe?g$/.test(f.type) ? ".jpg" : ".png"), { type: f.type }));
+});
 const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
 
 /* ----- уведомления и напоминания ----- */
@@ -2436,7 +2488,7 @@ function subDetailHTML(t) {
   return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + "</button></div>" : "") + '<div class="dscroll" id="dscroll">' + subCrumb(t) +
     '<div class="dcard"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + "</textarea></div></div>" +
     '<div class="dcard">' + '<div class="drow" data-a="pickfile">' + ic("clip", 18) + '<span class="dtx">Добавить файл</span></div>' +
-    (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" +
+    (t.files || []).map((f, i) => fileRowHTML(f, i)).join("") + "</div>" +
     '<div class="dcard"><textarea id="d-note" class="notearea" placeholder="Пояснение к подзадаче">' + esc(t.note || "") + "</textarea></div></div>" +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><span class="sp">Подзадача · планирование — на главной задаче</span><button class="ibtn" data-a="delTask" title="Удалить">' + ic("trash", 18) + "</button></div></div>";
 }
@@ -2804,6 +2856,7 @@ const CSS = `
 .dcard{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:6px;overflow:hidden;flex-shrink:0}
 .dcard.grow{flex:1 0 220px;display:flex;flex-direction:column;margin-bottom:0}
 .nfoot{display:none}
+.imgrow{align-items:flex-start;gap:8px}.athumb{display:block;max-width:calc(100% - 36px);max-height:220px;border-radius:8px;object-fit:contain;background:var(--hov);cursor:zoom-in;min-height:40px;min-width:60px}.lbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out}.lbox img{max-width:94vw;max-height:90vh;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5)}.lbdl{position:absolute;right:16px;top:14px;color:#fff;background:rgba(255,255,255,.16);padding:7px 14px;border-radius:18px;font-size:14px;text-decoration:none}
 .dcard.grow{position:relative}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
 .nfull{position:fixed;left:0;right:0;top:0;bottom:0;z-index:58;background:var(--solid);display:flex;flex-direction:column}
 .nfull .nh{display:flex;align-items:center;gap:12px;padding:12px 12px 8px;font-size:calc(18px*var(--z,1));flex-shrink:0}
@@ -3183,7 +3236,7 @@ function detailHTML(t) {
     (PR.myday ? row("sun", mine ? "В «Мой день»" : "Добавить в «Мой день»", 'data-a="tmyday"', mine ? "act" : "", mine ? "tmyday" : "") : "") + "</div>" +
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
-    ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" : "") +
+    ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => fileRowHTML(f, i)).join("") + "</div>" : "") +
     '<div class="dcard grow">' + (isMobile() ? "" : '<button class="nexp" data-a="notefull" title="Развернуть заметку на весь экран (Esc — закрыть)">⤢ Развернуть</button>') + '<textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
