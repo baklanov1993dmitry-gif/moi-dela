@@ -2,4 +2,10 @@
 <resources>
     <string name="app_name">Мои дела</string>
     <string name="asset_statements">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://moi-dela.pages.dev\"}}]</string>
+    <string name="sc_tasks_s">Дела</string>
+    <string name="sc_tasks_l">Мои дела</string>
+    <string name="sc_journal_s">Журнал</string>
+    <string name="sc_journal_l">Журнал</string>
+    <string name="sc_food_s">Питание</string>
+    <string name="sc_food_l">Питание</string>
 </resources>
