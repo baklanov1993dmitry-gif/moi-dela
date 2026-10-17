@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 12:34";
+const BUILD = "17.10 14:19";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4209,12 +4209,13 @@ async function videoSummary(id) {
   } catch (e) { PR.vtry = PR.vtry || {}; PR.vtry[id] = (PR.vtry[id] || 0) + 1; savePrefs(); toast("Не вышло: " + ((e && e.message) || e)); }
   delete VB[id]; render(); setTimeout(videoCatchup, 800);
 }
+let AI_LAST = "";
 async function aiCall(kind, data) {
   const ses = (await sb.auth.getSession()).data.session; if (!ses) throw new Error("Нет входа");
   const r = await fetch(cfg.url + "/functions/v1/analyze", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ses.access_token, apikey: cfg.key }, body: JSON.stringify({ kind, data }) });
   if (r.status === 404) throw new Error("setup");
   let j = {}; try { j = await r.json(); } catch (e) {}
-  if (!r.ok) throw new Error(j.error || "Ошибка " + r.status); return j.text || "";
+  if (!r.ok) throw new Error(j.error || "Ошибка " + r.status); AI_LAST = j.model || ""; return j.text || "";
 }
 const aiBox = a => !a ? "" : a.busy ? '<div class="jr-ai">Думаю над твоими записями…</div>' : a.err === "setup" ? '<div class="jr-ai">ИИ-разбор ещё не подключён. Нужна одноразовая настройка (файл <b>AI_SETUP.md</b> в проекте, 5 минут). Остальные итоги работают и без неё.</div>' : a.err ? '<div class="jr-ai">Не получилось: ' + esc(a.err) + "</div>" : '<div class="jr-ai">' + esc(a.text).replace(/\n/g, "<br>") + "</div>";
 function jrValBar(w) {
@@ -4348,7 +4349,7 @@ function jrCzHTML() {
   if (c.err) return box('<div class="jr-st">🤖 Авторазметка</div><div class="jr-ai">' + (c.err === "setup" ? "ИИ не подключён (функция <b>analyze</b>)." : "Не получилось: " + esc(c.err)) + '</div><div class="jr-czb"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcz">Ещё раз</button></div>');
   const n = c.items.filter(i => i.on).length, cats = Object.keys(jrCatCount());
   const vb = (it, i) => JV ? [["u", "🟢"], ["n", "⚪"], ["x", "🔴"]].map(v => '<button class="jr-czv' + (it.val === v[0] ? " on" : "") + '" data-a="jrczv" data-i="' + i + '" data-v="' + v[0] + '">' + v[1] + "</button>").join("") : "";
-  return box('<div class="jr-st">🤖 Авторазметка · ' + c.items.length + ' зап.</div><div class="jr-czh">ИИ подобрал темы' + (JV ? " и оценку" : "") + ' по твоим прошлым разметкам. Поправь, что не так, сними галочку с лишнего — и «Применить».</div>' +
+  return box('<div class="jr-st">🤖 Авторазметка · ' + c.items.length + ' зап.</div><div class="jr-czh">' + (c.model ? esc(c.model) + ' подобрал' : 'ИИ подобрал') + ' темы' + (JV ? " и оценку" : "") + ' по твоим прошлым разметкам. Поправь, что не так, сними галочку с лишнего — и «Применить».</div>' +
     c.items.map((it, i) => '<div class="jr-czr2"><button class="jr-czc' + (it.on ? " on" : "") + '" data-a="jrczt" data-i="' + i + '">✓</button><div class="jr-czm"><div class="jr-czt"><i>' + esc(it.when) + "</i>" + esc(it.title) + '</div><div class="jr-czrow"><div class="jr-czslots">' + czSlots(it, i, cats) + '</div><div class="jr-czvs">' + vb(it, i) + "</div></div></div></div>").join("") +
     '<div class="jr-czb jr-czsticky"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcza">Применить (' + n + ')</button></div>');
 }
@@ -4444,7 +4445,7 @@ Object.assign(acts, {
     aiCall("markup", { tags, examples, items }).then(t => {
       const mm = t.match(/\[[\s\S]*\]/); if (!mm) throw new Error("не разобрал ответ");
       const map = {}; JSON.parse(mm[0]).forEach(x => { if (x && x.i != null) map[+x.i] = x; });
-      J.cz = { sum, items: batch.map((l, i) => { const a = map[i] || {}, cat = l.cat || jrTagsOf(String(a.c || "").toLowerCase()).join(", "), val = l.val || (/^[unx]$/.test(a.v) ? a.v : ""); return { id: l.id, title: l.title, when: jrShort(jrDay(l)), cat, val, on: !!(cat || val) }; }) }; render();
+      J.cz = { sum, model: AI_LAST, items: batch.map((l, i) => { const a = map[i] || {}, cat = l.cat || jrTagsOf(String(a.c || "").toLowerCase()).join(", "), val = l.val || (/^[unx]$/.test(a.v) ? a.v : ""); return { id: l.id, title: l.title, when: jrShort(jrDay(l)), cat, val, on: !!(cat || val) }; }) }; render();
     }).catch(e => { J.cz = { err: e.message, sum }; render(); });
   },
   jrczt(a) { const c = jrState().cz, it = c && c.items && c.items[+a.dataset.i]; if (it) { it.on = !it.on; render(); } },
@@ -4907,7 +4908,7 @@ Object.assign(acts, {
     try {
       const t = await aiCall("food", { query: q }), m = t.match(/\{[\s\S]*\}/); if (!m) throw new Error("не разобрал ответ");
       const o = JSON.parse(m[0]), k = +o.kcal; if (!(k >= 0) || !o.name) throw new Error("ИИ не нашёл значения");
-      N.web = [{ n: unent(String(o.name)).slice(0, 90) + " (ИИ)", k: r1(k), p: r1(+o.protein || 0), f: r1(+o.fat || 0), c: r1(+o.carbs || 0), u: o.portion_g ? [[o.portion_name || "порция", +o.portion_g]] : [], web: true, bc: null }];
+      N.web = [{ n: unent(String(o.name)).slice(0, 90) + " (" + (AI_LAST || "ИИ") + ")", k: r1(k), p: r1(+o.protein || 0), f: r1(+o.fat || 0), c: r1(+o.carbs || 0), u: o.portion_g ? [[o.portion_name || "порция", +o.portion_g]] : [], web: true, bc: null }];
       N.wnote = String(o.note || "").slice(0, 160);
     } catch (e) { N.web = []; N.werr = e.message === "setup" ? "ИИ-поиск ещё не подключён (одноразовая настройка, см. AI_SETUP.md)" : "ИИ-поиск не сработал: " + e.message; }
     N.webBusy = false; render();

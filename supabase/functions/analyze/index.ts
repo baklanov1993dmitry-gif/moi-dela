@@ -24,10 +24,10 @@ SYS.nutrition_report = `Ты — клинически мыслящий нутр�
 Правила: не придумывай то, чего нет в данных; если дней записи мало или данные неполные — скажи это в начале; не ставь диагнозов и не назначай лекарства/добавки в дозах, при тревожных признаках (очень низкие ккал <1200, длительный сильный дефицит) мягко советуй врача/диетолога. Различай факты из данных и оценки.`;
 
 // Бесплатный разбор питания через Gemini API (тот же GEMINI_API_KEY, что у video)
-async function gemini(sys: string, body: string, search = false, label = "Данные (JSON):\n"): Promise<string> {
+async function gemini(sys: string, body: string, search = false, label = "Данные (JSON):\n"): Promise<{ text: string; model: string }> {
   const key = Deno.env.get("GEMINI_API_KEY"); if (!key) throw new Error("GEMINI_API_KEY не задан");
   const models = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i) as string[];
-  let j: any = {}, lastErr = "";
+  let j: any = {}, lastErr = "", used = "";
   for (const model of models) {
     const call = (withSearch: boolean) => fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
       method: "POST", headers: { "x-goog-api-key": key, "content-type": "application/json" },
@@ -36,7 +36,7 @@ async function gemini(sys: string, body: string, search = false, label = "Дан
     let r = await call(search);
     if (search && !r.ok && r.status === 400) r = await call(false);   // поиск не принят — отвечаем без него
     j = await r.json().catch(() => ({}));
-    if (r.ok) { lastErr = ""; break; }
+    if (r.ok) { lastErr = ""; used = model; break; }
     lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
     if (!/demand|overload|unavailable|try again|not found|no longer|quota|rate|permission|403|503|429|404/i.test(lastErr + r.status)) break;
   }
@@ -52,8 +52,9 @@ async function gemini(sys: string, body: string, search = false, label = "Дан
   grab(steps.length ? steps : j.outputs ?? j, parts);
   let text = parts.join("\n").trim(); if (!text && typeof j.output_text === "string") text = j.output_text;
   if (!text) throw new Error("пустой ответ: " + JSON.stringify(j).slice(0, 300));
-  return text;
+  return { text, model: used };
 }
+const nice = (m: string) => m.replace(/^gemini-/, "Gemini ").replace(/-/g, " ");
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 
 Deno.serve(async (req) => {
@@ -64,9 +65,10 @@ Deno.serve(async (req) => {
     if (!sys) return json({ error: "unknown kind" }, 400);
     const body = JSON.stringify(data ?? {});
     if (body.length > 20000) return json({ error: "too large" }, 413);
-    // всё бесплатно через Gemini (Claude API не используется)
-    if (kind === "food") return json({ text: await gemini(sys, String((data ?? {}).query ?? "").slice(0, 200), true, "Продукт/блюдо: ") });
-    return json({ text: await gemini(sys, body) });
+    // всё бесплатно через Gemini (Claude API не используется); подпись — какая нейронка ответила
+    const g = kind === "food" ? await gemini(sys, String((data ?? {}).query ?? "").slice(0, 200), true, "Продукт/блюдо: ") : await gemini(sys, body);
+    const model = nice(g.model), signed = kind === "nutrition" || kind === "nutrition_report" || kind === "journal";
+    return json({ text: signed ? g.text + "\n\n— 🤖 " + model : g.text, model });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
