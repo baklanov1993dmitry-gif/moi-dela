@@ -13,7 +13,18 @@ import org.json.JSONObject;
 
 final class Sync {
     /** Блокирующий: вызывать из фонового потока. Тянет задачи, ставит будильники, обновляет виджет. */
+    /** Цепочка пробуждений раз в ~5 минут: подхватывает напоминания, созданные в приложении. */
+    static void chain(Context c) {
+        if (!Store.linked(c)) return;
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        PendingIntent pi = PendingIntent.getBroadcast(c, 0, new Intent(c, BootReceiver.class).setAction("md.chain"), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        long at = System.currentTimeMillis() + 5 * 60 * 1000L;
+        try { am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi); }
+        catch (Throwable e) { try { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi); } catch (Throwable e2) { /* остаётся 15-минутная задача */ } }
+    }
+
     static void run(final Context c) {
+        try { chain(c); } catch (Throwable e) { /* не критично */ }
         try { run0(c); } catch (final Throwable e) {
             Store.p(c).edit().putString("err", String.valueOf(e)).apply();
             new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() { public void run() {
@@ -30,7 +41,7 @@ final class Sync {
             Store.p(c).edit().putString("data", body).apply();
             schedule(c, o.optJSONArray("rem"));
         } catch (Exception e) { /* кривой ответ — оставляем прежнее */ }
-        TodayWidget.refresh(c);
+        W.refreshAll(c);
     }
 
     static PendingIntent alarmPi(Context c, String id, String title, long at, int flags) {
@@ -52,7 +63,7 @@ final class Sync {
             String id = x.optString("id");
             if (at <= t + 2000 || id.length() < 8) continue;
             PendingIntent pi = alarmPi(c, id, x.optString("title"), at, PendingIntent.FLAG_UPDATE_CURRENT);
-            PendingIntent show = PendingIntent.getActivity(c, 0, TodayWidget.openApp(c), PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent show = PendingIntent.getActivity(c, 0, W.openApp(c), PendingIntent.FLAG_IMMUTABLE);
             try { am.setAlarmClock(new AlarmManager.AlarmClockInfo(at, show), pi); } catch (Exception e) { continue; }
             keep.add(id);
             if (now.length() > 0) now.append(',');

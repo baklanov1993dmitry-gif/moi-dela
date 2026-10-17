@@ -26,19 +26,25 @@ Deno.serve(async (req) => {
   const row = kr.ok ? (await kr.json())[0] : null; if (!row) return ok({ error: "forbidden" }, 403);
   const uid = row.user_id as string;
   fetch(base + "device_keys?id=eq." + row.id, { method: "PATCH", headers: hd, body: JSON.stringify({ last_seen: new Date().toISOString() }) }).catch(() => {});
-  if (a === "list") {   // что нужно телефону: будущие напоминания + задачи на сегодня (для виджета)
-    const today = ymdz(Date.now()), since = new Date(Date.now() - 3600e3).toISOString();
-    const q = (f: string) => fetch(base + "tasks?select=id,title,due,remind_at,my_day,my_day_date,starred,done&user_id=eq." + uid + "&done=eq.false&parent_id=is.null&" + f, { headers: hd }).then((r) => r.ok ? r.json() : []);
-    const [rem, day] = await Promise.all([
+  if (a === "list") {   // всё для телефона: задачи (виджет) + будущие напоминания (будильники) + списки
+    const since = new Date(Date.now() - 3600e3).toISOString();
+    const q = (f: string) => fetch(base + "tasks?select=id,title,due,remind_at,my_day,my_day_date,starred,list_id&user_id=eq." + uid + "&done=eq.false&parent_id=is.null&" + f, { headers: hd }).then((r) => r.ok ? r.json() : []);
+    const [rem, tasks, lists] = await Promise.all([
       q("remind_at=gt." + since + "&order=remind_at.asc&limit=200"),
-      q("or=(due.lte." + today + ",and(my_day.eq.true,my_day_date.eq." + today + "))&order=due.asc.nullslast&limit=40"),
+      q("order=due.asc.nullslast&limit=400"),
+      fetch(base + "lists?select=id,name,icon&user_id=eq." + uid + "&order=name.asc", { headers: hd }).then((r) => r.ok ? r.json() : []),
     ]);
-    return ok({ rem: (rem || []).map((x: any) => ({ ...x, at: Date.parse(x.remind_at) })), today: day, now: Date.now() });
+    return ok({ rem: (rem || []).map((x: any) => ({ ...x, at: Date.parse(x.remind_at) })), tasks, lists, today: ymdz(Date.now()), now: Date.now() });
   }
   if (a === "add") {   // быстрое добавление с телефона (плитка, «Поделиться»)
     let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
     const title = String(b.title || "").trim().slice(0, 500); if (!title) return ok({ error: "empty" }, 400);
-    const t = { id: crypto.randomUUID(), user_id: uid, title, due: b.today ? ymdz(Date.now()) : null, note: b.note ? String(b.note).slice(0, 4000) : null, done: false };
+    let list_id: string | null = null;
+    if (/^[0-9a-f-]{36}$/i.test(String(b.list_id || ""))) {
+      const lr = await fetch(base + "lists?select=id&id=eq." + b.list_id + "&user_id=eq." + uid, { headers: hd });
+      if (lr.ok && (await lr.json())[0]) list_id = String(b.list_id);
+    }
+    const t = { id: crypto.randomUUID(), user_id: uid, title, list_id, due: b.today ? ymdz(Date.now()) : null, note: b.note ? String(b.note).slice(0, 4000) : null, done: false };
     const r = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(t) });
     return r.ok ? ok({ ok: true, id: t.id }) : ok({ error: "db " + (await r.text()).slice(0, 200) }, 500);
   }

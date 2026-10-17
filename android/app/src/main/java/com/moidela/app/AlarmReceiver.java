@@ -42,7 +42,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         b.setSmallIcon(R.drawable.ic_tile).setContentTitle("⏰ Напоминание").setContentText(title == null ? "" : title)
             .setStyle(new Notification.BigTextStyle().bigText(title == null ? "" : title))
             .setAutoCancel(true).setCategory(Notification.CATEGORY_ALARM).setPriority(Notification.PRIORITY_MAX)
-            .setContentIntent(PendingIntent.getActivity(c, 0, TodayWidget.openApp(c), PendingIntent.FLAG_IMMUTABLE))
+            .setContentIntent(PendingIntent.getActivity(c, 0, W.openApp(c), PendingIntent.FLAG_IMMUTABLE))
             .addAction(0, "Готово", act(c, id, "done"))
             .addAction(0, "+1 час", act(c, id, "snooze"))
             .addAction(0, "Завтра", act(c, id, "tom"));

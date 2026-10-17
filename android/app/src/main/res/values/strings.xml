@@ -12,4 +12,6 @@
     <string name="sc_add_l">Добавить дело</string>
     <string name="tile_label">Новое дело</string>
     <string name="share_label">Добавить в «Мои дела»</string>
+    <string name="w_list_desc">Список задач: выбери, какой показывать. Кружок слева — отметить выполненным.</string>
+    <string name="w_quick_desc">Быстро записать дело текстом или голосом</string>
 </resources>

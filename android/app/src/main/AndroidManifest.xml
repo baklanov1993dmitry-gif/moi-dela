@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -56,10 +57,19 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".TodayWidget" android:exported="true" android:label="Мои дела · Сегодня">
+        <receiver android:name=".ListWidget" android:exported="true" android:label="Мои дела · Список">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_list" />
         </receiver>
+        <receiver android:name=".QuickWidget" android:exported="true" android:label="Мои дела · Записать">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick" />
+        </receiver>
+        <service android:name=".ListService" android:permission="android.permission.BIND_REMOTEVIEWS" android:exported="false" />
+        <activity android:name=".ListConfig" android:exported="true" android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" android:excludeFromRecents="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
+        </activity>
+        <activity android:name=".WidgetActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" android:noHistory="true" />
         <service android:name=".SyncJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false" />
         <service android:name=".QsTile" android:exported="true" android:label="@string/tile_label"
             android:icon="@drawable/ic_tile" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
