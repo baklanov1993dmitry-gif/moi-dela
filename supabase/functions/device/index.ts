@@ -49,6 +49,25 @@ Deno.serve(async (req) => {
     const r = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(t) });
     return r.ok ? ok({ ok: true, id: t.id }) : ok({ error: "db " + (await r.text()).slice(0, 200) }, 500);
   }
+  if (a === "up") {   // картинка к задаче с телефона («Поделиться» → Мои дела): тело — сырые байты, ?id=<задача>&name=<имя>
+    const tid = url.searchParams.get("id") || "";
+    if (!/^[0-9a-f-]{36}$/i.test(tid)) return ok({ error: "bad id" }, 400);
+    const ct = (req.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    const ext = ({ "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" } as Record<string, string>)[ct];
+    if (!ext) return ok({ error: "type" }, 415);
+    const bytes = new Uint8Array(await req.arrayBuffer());
+    if (!bytes.length || bytes.length > 8 * 1024 * 1024) return ok({ error: "size" }, 413);
+    const tr = await fetch(base + "tasks?select=id,files&id=eq." + tid + "&user_id=eq." + uid, { headers: hd });
+    const task = tr.ok ? (await tr.json())[0] : null; if (!task) return ok({ error: "no task" }, 404);
+    const path = uid + "/" + tid + "/" + crypto.randomUUID() + ext;
+    const ur = await fetch(SU + "/storage/v1/object/attachments/" + path, { method: "POST", headers: { apikey: sk, Authorization: "Bearer " + sk, "Content-Type": ct }, body: bytes });
+    if (!ur.ok) return ok({ error: "storage " + (await ur.text()).slice(0, 200) }, 500);
+    let nm = "Картинка"; try { nm = decodeURIComponent(url.searchParams.get("name") || "") || nm; } catch { /* оставим по умолчанию */ }
+    nm = nm.replace(/[\\/\r\n]/g, " ").replace(/\.[A-Za-z0-9]{1,5}$/, "").trim().slice(0, 80) || "Картинка";
+    const files = (Array.isArray(task.files) ? task.files : []).concat([{ name: nm + ext, path, size: bytes.length }]);
+    const pr = await fetch(base + "tasks?id=eq." + tid + "&user_id=eq." + uid, { method: "PATCH", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ files }) });
+    return pr.ok ? ok({ ok: true, path }) : ok({ error: "db " + (await pr.text()).slice(0, 200) }, 500);
+  }
   const id = url.searchParams.get("id") || "";
   if (["done", "snooze", "tom"].includes(a) && /^[0-9a-f-]{36}$/i.test(id)) {
     const tr = await fetch(base + "tasks?select=id&id=eq." + id + "&user_id=eq." + uid, { headers: hd });
