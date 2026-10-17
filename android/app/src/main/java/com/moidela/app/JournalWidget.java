@@ -34,8 +34,10 @@ public class JournalWidget extends AppWidgetProvider {
     static void refreshAll(Context c) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         for (int id : m.getAppWidgetIds(new ComponentName(c, JournalWidget.class))) update(c, m, id);
+        JournalNotif.update(c);
     }
     @Override public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
         for (int id : ids) update(c, m, id);
+        JournalNotif.enable(c);
     }
 }

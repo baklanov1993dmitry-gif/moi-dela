@@ -15,6 +15,7 @@ public class QsJournal extends TileService {
         t.updateTile();
     }
     @Override public void onClick() {
+        JournalNotif.enable(this);
         Intent i = new Intent(this, JournalActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         if (Build.VERSION.SDK_INT >= 34) startActivityAndCollapse(PendingIntent.getActivity(this, 1, i, PendingIntent.FLAG_IMMUTABLE));
         else startActivityAndCollapse(i);

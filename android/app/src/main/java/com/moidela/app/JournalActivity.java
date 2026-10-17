@@ -118,6 +118,7 @@ public class JournalActivity extends Activity {
         cMut = night ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B");
         cFld = night ? Color.parseColor("#2A3142") : Color.parseColor("#F1F5F9");
         final SharedPreferences sp = Store.p(this);
+        JournalNotif.enable(this);
         start = sp.getLong("jt_start", 0);
 
         FrameLayout shade = new FrameLayout(this);

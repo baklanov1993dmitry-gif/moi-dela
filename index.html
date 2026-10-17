@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 23:10";
+const BUILD = "17.10 23:17";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4154,8 +4154,8 @@ function jrWStep(col, d, abs) {
   const t = Math.max(0, Math.min(WC * n - 1, cur + delta)); J.wh[k] = ((t % n) + n) % n; el.scrollTo({ top: t * WR, behavior: "auto" });
 }
 function jrWCol(c) { const J = ui.jr; if (!J || !J.wh) return; J.wh.col = c; J.wh.buf = ""; ["h", "m"].forEach(k => { const e = $("jr-wh-" + k), l = $("jr-wl-" + k); if (e) { e.classList.toggle("act", k === c); const q = e.previousElementSibling; if (q) q.classList.toggle("on", k === c); } if (l) l.classList.toggle("act", k === c); }); }
-// пальцем: своя прокрутка с ускорением ×1.35 и инерцией, колонка не уезжает вбок
-const WGAIN = 1.35; let _wt = null;
+// пальцем: своя прокрутка с ускорением ×1.15 и инерцией, колонка не уезжает вбок
+const WGAIN = 1.15; let _wt = null;
 document.addEventListener("touchstart", e => { const c = e.target.closest && e.target.closest(".jr-wc"); if (!c || e.touches.length !== 1) return; cancelAnimationFrame(c._raf); const J = ui.jr; if (c.id.indexOf("dtw-") === 0) { if (ui.dtp) dtwCol(c.id === "dtw-h" ? "h" : "m"); } else if (J && J.wh) jrWCol(c.id === "jr-wh-h" ? "h" : "m"); _wt = { c, y: e.touches[0].clientY, t: performance.now(), v: 0 }; }, { passive: true });
 document.addEventListener("touchmove", e => { if (!_wt) return; if (e.cancelable) e.preventDefault(); const y = e.touches[0].clientY, now = performance.now(), dy = (_wt.y - y) * WGAIN, dt = Math.max(1, now - _wt.t); _wt.c.scrollTop += dy; _wt.v = 0.7 * _wt.v + 0.3 * (dy / dt); _wt.y = y; _wt.t = now; }, { passive: false });
 const wEnd = () => { if (!_wt) return; const c = _wt.c; let v = performance.now() - _wt.t > 90 ? 0 : _wt.v; _wt = null;
