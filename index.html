@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 15:40";
+const BUILD = "17.10 16:00";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2592,7 +2592,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .lacct{padding:10px 12px 8px 12px;border-bottom:1px solid var(--ln)}
 .lacc{gap:12px} .lacc .av{width:34px;height:34px;font-size:calc(14px*var(--z,1));font-weight:500}
 .lacc .lt b{font-size:calc(18px*var(--z,1));font-weight:500} .lacc .lt i{font-size:calc(16px*var(--z,1))}
-.lsync{padding:4px 16px 0}
+.lsync{padding:4px 16px 0!important;text-indent:0}
 .chip{height:50px;gap:16px;padding:0 18px 0 18px;font-size:calc(18px*var(--z,1))}
 .chip .em{width:24px;font-size:calc(20px*var(--z,1))} .chip .em svg{width:22px;height:22px}
 .chip .n{font-size:calc(17px*var(--z,1));color:var(--sub)}
@@ -2929,7 +2929,7 @@ function mtopHTML(vi, cnt, extra) {
 function lheadHTML() {
   if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
   const em = S.user ? S.user.email || "?" : "";
-  return '<div class="lacct"><button class="lacc" data-a="pop" data-p="acct"><span class="av">' + esc(em.slice(0, 2).toUpperCase()) + '</span><span class="lt"><b>' + esc(em.split("@")[0]) + "</b><i>" + esc(em) + "</i></span>" + ic("chevd", 14) + '</button><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="settings">' + ic("gear", 20) + '</button></div><div id="sync" class="lsync" data-a="sync"></div>';
+  return '<div class="lacct"><button class="lacc" data-a="pop" data-p="acct"><span class="av">' + esc(em.slice(0, 2).toUpperCase()) + '</span><span class="lt"><b>' + esc(em.split("@")[0]) + "</b></span>" + ic("chevd", 14) + '</button><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="settings">' + ic("gear", 20) + '</button></div><div id="sync" class="lsync" data-a="sync"></div>';
 }
 function qaHTML() {
   if (!ui.qa) return "";
