@@ -1,0 +1,14 @@
+project_id = "rjiuialimbrnbriqafjl"
+
+[functions.analyze]
+verify_jwt = true
+[functions.receipt]
+verify_jwt = true
+[functions.video]
+verify_jwt = true
+[functions.device]
+verify_jwt = false
+[functions.send-reminders]
+verify_jwt = false
+[functions.track]
+verify_jwt = false
