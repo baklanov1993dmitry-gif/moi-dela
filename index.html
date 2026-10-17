@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 15:10";
+const BUILD = "17.10 15:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2740,6 +2740,12 @@ const CSS = `
 .msub{padding:0 28px;font-size:calc(12.5px*var(--z,1));color:var(--sub)}
 .tool{display:inline-flex;align-items:center;gap:6px;color:var(--acc);padding:6px 10px;border-radius:4px;font-size:calc(13px*var(--z,1));border-bottom:2px solid transparent}
 .tool:hover{background:var(--hov)} .tool.on{border-bottom-color:var(--acc)}
+@media (min-width:761px){.mhead .tool{height:32px;padding:0 12px;border:1px solid var(--ln);border-radius:16px;border-bottom-width:1px;margin-left:6px}
+.mhead .tool.on{background:var(--hov);border-color:var(--acc)}
+.mhead .seg{display:inline-flex;margin-left:6px;border:1px solid var(--ln);border-radius:16px;overflow:hidden}
+.mhead .seg .tool{margin:0;border:0;border-radius:0;height:30px;padding:0 10px}
+.mhead .seg .tool.on{background:var(--acc);color:#fff}
+.mrow:has(.mrc:empty):has(.mchips:empty){display:none}}
 .sortbar{padding:6px 28px 0;display:flex;justify-content:flex-end}
 .mrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.mchips{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
 .sortchip{display:inline-flex;align-items:center;gap:6px;font-size:calc(12px*var(--z,1));font-weight:600;color:var(--tx)}
@@ -3079,9 +3085,9 @@ function mainHTML(items, done, vi) {
     '<h1>' + (vi.emoji ? '<span style="font-size:calc(22px*var(--z,1))">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 22)) + "<span>" + esc(vi.name) + "</span></h1>" +
     (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
-    (view !== "search" && !isMobile() ? '<button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1">' + ic("grid", 16) + '<span class="tg"> Сетка</span></button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0">' + ic("list", 16) + '<span class="tg"> Список</span></button>' +
+    (view !== "search" && !isMobile() ? '<span class="seg"><button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1" title="Сетка">' + ic("grid", 16) + '</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0" title="Список">' + ic("list", 16) + '</button></span>' +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" + fltBtns() : "") + "</div>" +
-    '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) + " · " : "") + items.length + ' активн.</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() : "");
+    '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) : "") + '</span><span class="mchips">' + (sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + fltBarHTML() + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() : "");
   if (view !== "search" && !isMobile()) h += addBarHTML();
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
