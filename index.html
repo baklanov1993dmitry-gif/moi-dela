@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 18:09";
+const BUILD = "17.10 18:23";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -707,7 +707,7 @@ async function uploadFile(file, tid) {
   try {
     const r = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
     if (r.error) { toast("Не загрузилось: " + (/bucket/i.test(r.error.message) ? "нет хранилища — выполните migration_v2.sql" : /size|large|exceed/i.test(r.error.message) ? "файл слишком большой для хранилища" : r.error.message)); return false; }
-    const cur = S.tasks[t.id] || t; upd(t.id, { files: (cur.files || []).concat([{ name: file.name, path, size: file.size }]) }); render(); toast("Файл добавлен"); return true;
+    const cur = S.tasks[t.id] || t; ui.st = undefined; upd(t.id, { files: (cur.files || []).concat([{ name: file.name, path, size: file.size }]) }); render(); toast("Файл добавлен"); return true;
   } catch (e) { toast("Не загрузилось: " + errText(e)); return false; }
 }
 async function fileTransfer(files) {   // файлы с компьютера без открытой задачи: новая задача в списке «Файлы» + вложения (личная «перекидка» на телефон)
@@ -733,7 +733,7 @@ async function openFile(i) {
 async function removeFile(i) {
   const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
   try { await sb.storage.from("attachments").remove([f.path]); } catch (e) {}
-  upd(t.id, { files: t.files.filter((x, k) => k !== i) }); render();
+  ui.st = undefined; upd(t.id, { files: t.files.filter((x, k) => k !== i) }); render();
 }
 const isImg = f => /\.(png|jpe?g|gif|webp|bmp)$/i.test((f && f.name) || "");
 const IMGC = {};   // path → { url, exp } : подписанные ссылки на картинки (приватный бакет), живут ~50 минут
@@ -788,7 +788,7 @@ document.addEventListener("paste", e => {   // Ctrl+V: картинка/файл
   const named = fs.map(f => (/^image\//.test(f.type) && (!f.name || /^image\.\w+$/i.test(f.name))) ? new File([f], "Снимок " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + "-" + z(d.getMinutes()) + (/jpe?g$/.test(f.type) ? ".jpg" : ".png"), { type: f.type }) : f);
   if (open) { (async () => { for (const f of named) await uploadFile(f, selId); })(); } else fileTransfer(named);
 });
-const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
+const fmtSize = b => b >= 1073741824 ? (b / 1073741824).toFixed(1).replace(/\.0$/, "").replace(".", ",") + " ГБ" : b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
 
 /* ----- уведомления и напоминания ----- */
 function toast(text, opt) {
@@ -2408,17 +2408,52 @@ async function bkRestore(id) {
   toast("✅ Восстановлено: " + n + " задач"); render();
 }
 const bkKind = k => ({ auto: "авто", manual: "вручную", "before-restore": "перед восстановлением" }[k] || k);
+/* ----- место в хранилище вложений: занято / свободно (считаем по вложениям ВСЕХ задач, включая завершённые) ----- */
+const stLimit = () => (+PR.stGB || 1) * 1024 * 1024 * 1024;   // бесплатный Supabase — 1 ГБ файлов; Pro — 100 ГБ
+async function stLoad() {
+  if (!sb || !S.user || (ui.st && ui.st.busy)) return; ui.st = { busy: true }; if (ui.settings) render();
+  try {
+    const rows = []; let filtered = true;
+    for (let from = 0; from < 20000; from += 1000) {
+      let q = sb.from("tasks").select("id,title,files").eq("user_id", S.user.id); if (filtered) q = q.neq("files", "[]");
+      let r = await q.range(from, from + 999);
+      if (r.error && filtered) { filtered = false; from -= 1000; continue; }   // фильтр по jsonb не принят — читаем всё и отбираем сами
+      if (r.error) throw r.error; (r.data || []).forEach(t => { if (Array.isArray(t.files) && t.files.length) rows.push(t); });
+      if (!r.data || r.data.length < 1000) break;
+    }
+    let total = 0, n = 0; const all = [];
+    rows.forEach(t => t.files.forEach(f => { const z = +f.size || 0; total += z; n++; all.push({ id: t.id, title: t.title, name: f.name, size: z }); }));
+    all.sort((a, b) => b.size - a.size); ui.st = { total, n, top: all.slice(0, 5), at: Date.now() };
+  } catch (e) { ui.st = { err: (e && e.message) || String(e) }; }
+  if (ui.settings) render();
+}
+function stHTML() {
+  if (ui.st === undefined && sb && S.user) { setTimeout(stLoad, 0); }
+  const st = ui.st || { busy: true }, lim = stLimit(), pct = st.total != null ? Math.min(100, st.total / lim * 100) : 0;
+  const col = pct > 90 ? "#d13438" : pct > 70 ? "#e8a317" : "var(--acc)";
+  const gbSel = '<select id="s-stlim" class="inp" style="max-width:190px;margin-top:6px">' + [[1, "Лимит 1 ГБ (Free)"], [8, "Лимит 8 ГБ"], [100, "Лимит 100 ГБ (Pro)"]].map(o => '<option value="' + o[0] + '"' + ((+PR.stGB || 1) === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+  let b = '<div class="lbl" style="margin-top:6px">Хранилище вложений</div>';
+  if (st.busy) b += '<div class="jr-hint">Считаю…</div>';
+  else if (st.err) b += '<div style="color:#f87171;font-size:calc(12px*var(--z,1));margin-top:6px">Не удалось посчитать: ' + esc(st.err) + "</div>";
+  else b += '<div style="margin-top:8px;height:12px;border-radius:7px;background:var(--hov);overflow:hidden"><div style="height:100%;width:' + Math.max(pct, st.total ? 1.5 : 0) + "%;background:" + col + '"></div></div>' +
+    '<div style="margin-top:8px;font-size:calc(14px*var(--z,1))"><b>Занято ' + fmtSize(st.total) + "</b> из " + fmtSize(lim) + " (" + (pct < 0.1 && st.total ? "<0,1" : pct.toFixed(1).replace(".", ",")) + "%) · <b>свободно " + fmtSize(Math.max(0, lim - st.total)) + "</b> · файлов: " + st.n + "</div>" +
+    (st.top.length ? '<div class="lbl" style="margin-top:10px">Самые тяжёлые</div><div style="border:1px solid var(--ln);border-radius:8px">' + st.top.map(f => '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ln);font-size:calc(13px*var(--z,1))"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(f.name) + '">' + esc(f.name) + '<br><span style="color:var(--sub);font-size:calc(11.5px*var(--z,1))">' + esc(f.title || "") + '</span></span><span style="color:var(--sub)">' + fmtSize(f.size) + "</span>" + (S.tasks[f.id] ? '<button class="btn ghost" style="padding:3px 10px" data-a="stopen" data-id="' + f.id + '">Открыть</button>' : "") + "</div>").join("") + "</div>" : "");
+  b += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><button class="btn ghost" data-a="stref">🔄 Пересчитать</button>' + gbSel + "</div>" +
+    '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">Считаются файлы и картинки, прикреплённые к задачам (включая завершённые). Лимит — по тарифу Supabase: на бесплатном 1 ГБ. Освободить место — удалить вложение (корзина в карточке задачи).</div>';
+  return b + '<div style="height:14px"></div>';
+}
 function bkHTML() {
   if (ui.bkList === undefined && sb && S.user) { ui.bkList = null; bkList(); }
   const c = bkCfg(), sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (String(cur) === String(o[0]) ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
   const L = ui.bkList || [];
-  return '<div class="lbl">Резервные копии</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + sel("s-bkf", c.freq, BKF) + sel("s-bkfile", c.file ? 1 : 0, [[0, "Файл на устройство: нет"], [1, "Файл на устройство: да (в «Загрузки»)"]]) + "</div>" +
+  return stHTML() + '<div class="lbl">Резервные копии</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + sel("s-bkf", c.freq, BKF) + sel("s-bkfile", c.file ? 1 : 0, [[0, "Файл на устройство: нет"], [1, "Файл на устройство: да (в «Загрузки»)"]]) + "</div>" +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="bkx">📊 Скачать Excel</button><button class="btn ghost" data-a="bkj">🧾 Скачать JSON</button><button class="btn ghost" data-a="bkn">📸 Сохранить копию сейчас</button></div>' +
     '<div style="margin-top:8px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Сохранить копию сейчас» кладёт копию в вашу базу (последние ' + BKKEEP + '; из списка ниже её можно восстановить) и, если выбрано «Файл на устройство: да», скачивает Excel на это устройство. Excel удобно читать, JSON нужен для полного восстановления.</div>' +
     (ui.bkErr ? '<div style="color:#f87171;font-size:calc(12px*var(--z,1));margin-top:6px">Ошибка копий: ' + esc(ui.bkErr) + "</div>" : "") +
     (L.length ? '<div style="margin-top:8px;border:1px solid var(--ln);border-radius:8px">' + L.slice(0, ui.bkAll ? BKKEEP : 5).map(b => { const d = new Date(b.created_at); return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ln);font-size:calc(13px*var(--z,1))"><span style="flex:1">' + isoLocal(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ' · ' + b.n_tasks + " задач · " + bkKind(b.kind) + '</span><button class="btn ghost" data-a="bkdl" data-id="' + b.id + '">Excel</button><button class="btn ghost" data-a="bkrs" data-id="' + b.id + '">Восстановить</button></div>'; }).join("") + (L.length > 5 && !ui.bkAll ? '<div class="pi" data-a="bkall" style="justify-content:center;color:var(--acc)">Показать все (' + L.length + ")</div>" : "") + "</div>" : "");
 }
 const bkActs = {
+  stref() { ui.st = undefined; stLoad(); }, stopen(a) { const id = a.dataset.id; if (S.tasks[id]) { ui.settings = false; selId = id; render(); } },
   bkx() { bkFileXlsx(); toast("📊 Excel скачан"); }, bkj() { bkFileJson(); toast("🧾 JSON скачан"); },
   async bkn() {
     showMsg("Сохраняю копию…", true); ui.bkErr = ""; await bkTick(true);
@@ -3320,10 +3355,10 @@ function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
   const sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
   const sec = (t, inner) => '<div class="lbl">' + t + "</div>" + inner;
-  const TABS = [["view", "🎨 Вид"], ["work", "🗓️ Дела"], ["notif", "🔔 Уведомления"], ["snd", "🔊 Звуки"]].concat(isMobile() ? [] : [["keys", "⌨️ Клавиши"]]).concat([["bk", "💾 Копии"], ["acc", "👤 Аккаунт"]]);
+  const TABS = [["view", "🎨 Вид"], ["work", "🗓️ Дела"], ["notif", "🔔 Уведомления"], ["snd", "🔊 Звуки"]].concat(isMobile() ? [] : [["keys", "⌨️ Клавиши"]]).concat([["bk", "💾 Данные"], ["acc", "👤 Аккаунт"]]);
   let b = "";
   const smenu = isMobile() && ui.smenu;
-  const SHINT = { view: "тема, цвет, шрифт", work: "рабочий день, Мой день", notif: "пуши, Android, будильник", snd: "звуки событий", bk: "резервные копии", acc: "почта, выход", keys: "" };
+  const SHINT = { view: "тема, цвет, шрифт", work: "рабочий день, Мой день", notif: "пуши, Android, будильник", snd: "звуки событий", bk: "место и резервные копии", acc: "почта, выход", keys: "" };
   if (smenu) b = '<div class="smenu">' + TABS.map(t => '<button class="smi" data-a="stab" data-v="' + t[0] + '"><span class="smt">' + t[1] + '</span><i>' + (SHINT[t[0]] || "") + '</i>' + ic("chevr", 16) + "</button>").join("") + '</div><div class="sub" style="margin:14px 4px;color:var(--sub);font-size:calc(12px*var(--z,1))">' + esc(S.user ? S.user.email : "") + " · сборка " + BUILD + "</div>";
   else if (tab === "view") b =
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
@@ -5136,6 +5171,7 @@ const changes = {
   "s-bkfile"(v) { bkSet({ file: v === "1" }); },
   "d-est"(v) { const x = parseEst(v); if (x !== null && isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч, 2д"); return; } if (selId) { upd(selId, { est_minutes: x || null }); renderSoon(); } },
   "s-stall"(v) { PR.stall = +v; savePrefs(); render(); },
+  "s-stlim"(v) { PR.stGB = +v; savePrefs(); render(); },
   "s-size"(v) { TH.size = v; saveTheme(); render(); },
   "s-tc"(v) { PR.tc = PR.tc || {}; PR.tc[view] = v; savePrefs(); render(); }
 };
