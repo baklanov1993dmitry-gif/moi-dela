@@ -13,7 +13,15 @@ import org.json.JSONObject;
 
 final class Sync {
     /** Блокирующий: вызывать из фонового потока. Тянет задачи, ставит будильники, обновляет виджет. */
-    static void run(Context c) {
+    static void run(final Context c) {
+        try { run0(c); } catch (final Throwable e) {
+            Store.p(c).edit().putString("err", String.valueOf(e)).apply();
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() { public void run() {
+                android.widget.Toast.makeText(c, "Синхронизация: " + e, android.widget.Toast.LENGTH_LONG).show(); } });
+        }
+    }
+
+    private static void run0(Context c) {
         if (!Store.linked(c)) return;
         String body = Net.get(Store.api(c, "list", ""));
         if (body == null) return;

@@ -10,11 +10,15 @@ import android.widget.Toast;
 public class LinkActivity extends Activity {
     @Override protected void onCreate(Bundle s) {
         super.onCreate(s);
+        try { init(); } catch (Throwable e) { Toast.makeText(this, "Ошибка подключения: " + e, Toast.LENGTH_LONG).show(); finish(); }
+    }
+
+    private void init() {
         Uri d = getIntent().getData();
         String k = d == null ? null : d.getQueryParameter("k"), b = d == null ? null : d.getQueryParameter("b");
         if (k == null || k.length() < 32 || b == null || !b.startsWith("https://")) { Toast.makeText(this, "Ссылка подключения не подошла", Toast.LENGTH_LONG).show(); finish(); return; }
         Store.p(this).edit().putString("key", k).putString("base", b).apply();
-        Sync.ensureJob(this);
+        try { Sync.ensureJob(this); } catch (Throwable e) { Toast.makeText(this, "Фоновая синхронизация: " + e, Toast.LENGTH_LONG).show(); }
         final android.content.Context c = getApplicationContext();
         new Thread(new Runnable() { public void run() { Sync.run(c); } }).start();
         Toast.makeText(this, "Телефон подключён ✓ будильники, виджет и плитка работают", Toast.LENGTH_LONG).show();
