@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 12:13";
+const BUILD = "17.10 12:34";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2076,7 +2076,7 @@ const jrCSS = `
 .jr-go{width:100%;height:46px!important;margin-top:10px;font-size:calc(15px*var(--z,1))!important;font-weight:600}
 .jr-nav{display:flex;align-items:center;gap:4px;margin:0 0 10px;padding:4px;background:var(--card);border:1px solid var(--ln);border-radius:16px;box-shadow:var(--shadow)}.jr-nav .ibtn{width:44px;height:44px;color:var(--acc)}.jr-nav .jr-nl{font-size:calc(18px*var(--z,1))!important;font-weight:700;color:var(--acc)}.jr-ntd{padding:6px 12px;border-radius:14px;background:var(--acc);color:#fff;font-weight:600;font-size:calc(13px*var(--z,1));margin-right:4px}
 .jr-auto{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:10px 0;border-radius:14px;background:var(--card);border:1px dashed var(--acc)}
-.jr-czh{font-size:calc(13px*var(--z,1));opacity:.75;margin:2px 0 8px}.jr-czr2{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--ln)}.jr-czm{flex:1;min-width:0}.jr-czt i{font-style:normal;color:var(--sub);font-size:calc(12px*var(--z,1));margin-right:6px}.jr-czrow{display:flex;gap:6px;align-items:center;margin-top:6px}.jr-czrow .jr-czi{flex:1;min-width:0}.jr-czv{flex:0 0 34px;width:34px;height:34px;border-radius:17px;border:1px solid var(--ln);background:var(--card);opacity:.4;padding:0;font-size:15px}.jr-czv.on{opacity:1;border-color:var(--acc);box-shadow:inset 0 0 0 2px var(--acc)}.jr-czsticky{position:sticky;bottom:0;background:var(--solid);padding:8px 0}
+.jr-czh{font-size:calc(13px*var(--z,1));opacity:.75;margin:2px 0 8px}.jr-czr2{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--ln)}.jr-czm{flex:1;min-width:0}.jr-czt i{font-style:normal;color:var(--sub);font-size:calc(12px*var(--z,1));margin-right:6px}.jr-czrow{display:flex;gap:6px;align-items:center;margin-top:6px}.jr-czrow .jr-czi{flex:1;min-width:0}.jr-czv{flex:0 0 34px;width:34px;height:34px;border-radius:17px;border:1px solid var(--ln);background:var(--card);opacity:.4;padding:0;font-size:15px}.jr-czv.on{opacity:1;border-color:var(--acc);box-shadow:inset 0 0 0 2px var(--acc)}.jr-czrow{flex-wrap:wrap}.jr-czslots{flex:1 1 280px;display:flex;gap:6px;min-width:0}.jr-czs{flex:1 1 0;min-width:0;height:38px;padding:0 6px;font-size:calc(14px*var(--z,1));text-overflow:ellipsis}.jr-czvs{display:flex;gap:6px;flex:0 0 auto}.jr-czsticky{position:sticky;bottom:0;background:var(--solid);padding:8px 0}
 .jr-nl{position:relative;flex:1;text-align:center;font-weight:600;font-size:calc(15px*var(--z,1));padding:10px;border-radius:10px;cursor:pointer}
 .jr-nl:hover{background:var(--hov)}
 .jr-nl input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
@@ -4329,6 +4329,17 @@ function jrAutoBar() {
   const n = jrToMark().length; if (!n) return "";
   return '<div class="jr-auto"><span>Без разметки: <b>' + n + '</b></span><button class="btn" data-a="jrcz">🤖 Разметить автоматически</button></div>';
 }
+const czCs = it => { if (!it.cs) { const a = jrTagsOf(String(it.cat || "").toLowerCase()).slice(0, 3); while (a.length < 3) a.push(""); it.cs = a; } return it.cs; };
+const czSync = it => { it.cat = czCs(it).filter(Boolean).join(", "); it.on = !!(it.cat || it.val); };
+function czSlots(it, i, cats) {
+  const cs = czCs(it);
+  return [0, 1, 2].map(k => {
+    const v = cs[k];
+    if (it.ed === k) return '<input class="inp jr-czs" id="jr-czn-' + i + "-" + k + '" data-i="' + i + '" data-k="' + k + '" placeholder="новая тема" value="' + esc(v) + '" maxlength="30" autocomplete="off" enterkeyhint="done">';
+    const opts = [""].concat(cats.slice(0, 60)); if (v && opts.indexOf(v) < 0) opts.splice(1, 0, v);
+    return '<select class="inp jr-czs" data-i="' + i + '" data-k="' + k + '">' + opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? " selected" : "") + ">" + (o ? esc(o) : "—") + "</option>").join("") + '<option value="__new">✎ своя…</option></select>';
+  }).join("");
+}
 function jrCzHTML() {
   const J = jrState(), c = J.cz, left = jrToMark().length;
   if (!c) return left ? '<div class="jr-sbox" style="margin-top:12px"><div class="jr-st">Разметка</div><div style="font-size:13px;opacity:.8;margin:4px 0">Без разметки: <b>' + left + '</b> записей — из-за этого итоги неполные.</div><div class="jr-czb"><button class="btn" data-a="jrcz">🤖 Разметить автоматически</button></div></div>' : "";
@@ -4338,8 +4349,8 @@ function jrCzHTML() {
   const n = c.items.filter(i => i.on).length, cats = Object.keys(jrCatCount());
   const vb = (it, i) => JV ? [["u", "🟢"], ["n", "⚪"], ["x", "🔴"]].map(v => '<button class="jr-czv' + (it.val === v[0] ? " on" : "") + '" data-a="jrczv" data-i="' + i + '" data-v="' + v[0] + '">' + v[1] + "</button>").join("") : "";
   return box('<div class="jr-st">🤖 Авторазметка · ' + c.items.length + ' зап.</div><div class="jr-czh">ИИ подобрал темы' + (JV ? " и оценку" : "") + ' по твоим прошлым разметкам. Поправь, что не так, сними галочку с лишнего — и «Применить».</div>' +
-    c.items.map((it, i) => '<div class="jr-czr2"><button class="jr-czc' + (it.on ? " on" : "") + '" data-a="jrczt" data-i="' + i + '">✓</button><div class="jr-czm"><div class="jr-czt"><i>' + esc(it.when) + "</i>" + esc(it.title) + '</div><div class="jr-czrow"><input class="inp jr-czi" id="jr-cz-' + i + '" list="jr-czl" placeholder="темы через запятую" value="' + esc(it.cat) + '">' + vb(it, i) + "</div></div></div>").join("") +
-    '<datalist id="jr-czl">' + cats.map(x => '<option value="' + esc(x) + '">').join("") + '</datalist><div class="jr-czb jr-czsticky"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcza">Применить (' + n + ')</button></div>');
+    c.items.map((it, i) => '<div class="jr-czr2"><button class="jr-czc' + (it.on ? " on" : "") + '" data-a="jrczt" data-i="' + i + '">✓</button><div class="jr-czm"><div class="jr-czt"><i>' + esc(it.when) + "</i>" + esc(it.title) + '</div><div class="jr-czrow"><div class="jr-czslots">' + czSlots(it, i, cats) + '</div><div class="jr-czvs">' + vb(it, i) + "</div></div></div></div>").join("") +
+    '<div class="jr-czb jr-czsticky"><button class="btn ghost" data-a="jrczx">Закрыть</button><button class="btn" data-a="jrcza">Применить (' + n + ')</button></div>');
 }
 function jrCatCount() { const o = {}; Object.values(S.time_log).forEach(l => { jrTagsOf(l.cat).forEach(t => { o[t] = (o[t] || 0) + 1; }); }); return o; }
 const jrValName = l => ({ u: "Полезное", n: "Нейтральное", x: "Бесполезное" })[l.val] || "";
@@ -4983,6 +4994,17 @@ function init() {
   });
   app.addEventListener("change", e => {
     const id = e.target.id;
+    const czE = e.target.closest && e.target.closest(".jr-czs");
+    if (czE) {
+      const c = jrState().cz, it = c && c.items && c.items[+czE.dataset.i], k = +czE.dataset.k; if (!it) return;
+      const cs = czCs(it);
+      if (czE.tagName === "SELECT") {
+        if (czE.value === "__new") { it.ed = k; cs[k] = ""; render(); setTimeout(() => { const x = $("jr-czn-" + czE.dataset.i + "-" + k); if (x) x.focus(); }, 30); return; }
+        cs[k] = czE.value;
+      } else cs[k] = jrTagsOf(czE.value.toLowerCase())[0] || czE.value.trim().toLowerCase();
+      for (let q = 0; q < 3; q++) if (q !== k && cs[q] && cs[q] === cs[k]) cs[q] = "";
+      it.ed = null; czSync(it); render(); return;
+    }
     if (id === "jr-jump") { const v = e.target.value; if (v) { const J = jrState(); J.vd = v; J.hist = false; J.an = false; render(); } return; }
     if (id === "jr-per") { jrState().per = e.target.value; jrState().lim = 40; render(); return; }
     if (id === "jr-file") { const f = e.target.files && e.target.files[0]; if (f) jrImport(f); e.target.value = ""; return; }
