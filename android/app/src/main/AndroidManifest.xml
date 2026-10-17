@@ -80,7 +80,7 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_journal" />
         </receiver>
         <activity android:name=".JournalActivity" android:exported="true" android:label="Журнал"
-            android:theme="@android:style/Theme.DeviceDefault.Dialog" android:excludeFromRecents="true" />
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" android:windowSoftInputMode="adjustResize" android:excludeFromRecents="true" />
         <service android:name=".QsJournal" android:exported="true" android:label="@string/tile_journal"
             android:icon="@drawable/ic_tile_jr" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>

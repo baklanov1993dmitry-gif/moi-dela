@@ -12,16 +12,23 @@ import java.util.Date;
 import java.util.Locale;
 
 public class JournalWidget extends AppWidgetProvider {
-    static String label(Context c) {
-        long st = Store.p(c).getLong("jt_start", 0);
-        if (st <= 0) return "▶  Журнал: начать";
-        return "⏱  с " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(st)) + " · остановить";
-    }
     static void update(Context c, AppWidgetManager m, int id) {
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_journal);
-        v.setTextViewText(R.id.j_text, label(c));
+        long st = Store.p(c).getLong("jt_start", 0);
+        String t = Store.p(c).getString("jt_title", "");
+        if (st <= 0) {
+            v.setInt(R.id.j_root, "setBackgroundResource", R.drawable.jw_idle);
+            v.setTextViewText(R.id.j_icon, "▶");
+            v.setTextViewText(R.id.j_text, "Журнал");
+            v.setTextViewText(R.id.j_sub, "Нажми, чтобы начать дело");
+        } else {
+            v.setInt(R.id.j_root, "setBackgroundResource", R.drawable.jw_run);
+            v.setTextViewText(R.id.j_icon, "■");
+            v.setTextViewText(R.id.j_text, t.length() > 0 ? t : "Идёт дело");
+            v.setTextViewText(R.id.j_sub, "с " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(st)) + " · нажми, чтобы записать");
+        }
         int fl = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
-        v.setOnClickPendingIntent(R.id.j_text, PendingIntent.getActivity(c, 5000 + id, new Intent(c, JournalActivity.class), fl));
+        v.setOnClickPendingIntent(R.id.j_root, PendingIntent.getActivity(c, 5000 + id, new Intent(c, JournalActivity.class), fl));
         m.updateAppWidget(id, v);
     }
     static void refreshAll(Context c) {
