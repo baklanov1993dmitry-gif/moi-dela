@@ -78,5 +78,23 @@ Deno.serve(async (req) => {
     const r = await fetch(SU + "/functions/v1/track?ra=1&id=" + id + "&a=" + a + "&sig=" + sig);   // та же логика, что у кнопок пуша (повторы и т.д.)
     return ok({ ok: r.ok }, r.ok ? 200 : 502);
   }
+  if (a === "jrc") {   // темы журнала для формы на телефоне: самые частые
+    const r = await fetch(base + "time_log?select=cat&user_id=eq." + uid + "&cat=not.is.null&order=created_at.desc&limit=400", { headers: hd });
+    const cnt: Record<string, number> = {};
+    if (r.ok) for (const x of await r.json()) if (x.cat) cnt[x.cat] = (cnt[x.cat] || 0) + 1;
+    return ok({ cats: Object.keys(cnt).sort((p, q) => cnt[q] - cnt[p]).slice(0, 12) });
+  }
+  if (a === "jr") {   // запись в журнал с телефона (таймер старт/стоп): title, start (мс), end (мс), cat, val = u|n|x
+    let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
+    const title = String(b.title || "").trim().slice(0, 500); if (!title) return ok({ error: "empty" }, 400);
+    const st = Number(b.start), en = Number(b.end);
+    if (!(st > 0) || !(en > st) || en - st > 24 * 3600e3) return ok({ error: "time" }, 400);
+    const row: any = { id: crypto.randomUUID(), user_id: uid, title, note: "", kind: "t", start_at: new Date(st).toISOString(), end_at: new Date(en).toISOString() };
+    const cat = String(b.cat || "").trim().slice(0, 60); if (cat) row.cat = cat;
+    if (["u", "n", "x"].includes(b.val)) row.val = b.val;
+    let r = await fetch(base + "time_log", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(row) });
+    if (!r.ok) { delete row.val; r = await fetch(base + "time_log", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(row) }); }   // колонки val ещё нет
+    return r.ok ? ok({ ok: true, id: row.id, noval: b.val && !row.val ? true : undefined }) : ok({ error: "db " + (await r.text()).slice(0, 200) }, 500);
+  }
   return ok({ error: "bad" }, 400);
 });
