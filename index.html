@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 17:15";
+const BUILD = "17.10 17:19";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1881,6 +1881,7 @@ function hkKey(e) {
   if (PR.keysOff) return;
   const tg = e.target, tag = tg && tg.tagName, typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (tg && tg.isContentEditable);
   if (typing) {
+    if (e.code === "Escape" && ui.noteFull) { e.preventDefault(); e.stopImmediatePropagation(); ui.noteFull = false; render(); return; }
     if (e.code === "Escape" && tg && (tg.id === "d-note" || tg.id === "d-title")) { e.preventDefault(); e.stopImmediatePropagation(); tg.blur(); }   // Esc в заметке: просто выйти из ввода, карточка остаётся
     else if (tg && tg.id === "newtask" && !e.ctrlKey && !e.metaKey && !e.isComposing) {   // поле «Добавить задачу»: срок и важность не печатая слов
       const q = ui.dd || (ui.dd = newDD());
@@ -2803,10 +2804,12 @@ const CSS = `
 .dcard{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:6px;overflow:hidden;flex-shrink:0}
 .dcard.grow{flex:1 0 220px;display:flex;flex-direction:column;margin-bottom:0}
 .nfoot{display:none}
+.dcard.grow{position:relative}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
 .nfull{position:fixed;left:0;right:0;top:0;bottom:0;z-index:58;background:var(--solid);display:flex;flex-direction:column}
 .nfull .nh{display:flex;align-items:center;gap:12px;padding:12px 12px 8px;font-size:calc(18px*var(--z,1));flex-shrink:0}
 .nfull .nh span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nfull textarea{flex:1;border:0;background:transparent;color:var(--tx);padding:14px 18px;font:inherit;font-size:calc(18px*var(--z,1));line-height:1.45;resize:none;outline:0}
+@media(min-width:900px){.nfull .nh,.nfull textarea,.nfull .nb{width:100%;max-width:1000px;margin-left:auto;margin-right:auto;box-sizing:border-box}.nfull textarea{font-size:calc(17px*var(--z,1));line-height:1.55}}
 .nfull .nb{border-top:1px solid var(--ln);padding:14px 18px max(14px,env(safe-area-inset-bottom));color:var(--sub);font-size:calc(14px*var(--z,1))}
 .dtitle{display:flex;gap:12px;align-items:flex-start;padding:10px 14px}
 .ttlinp{flex:1;background:transparent;border:0;color:var(--tx);font:inherit;font-weight:600;font-size:calc(16px*var(--z,1));resize:none;overflow:hidden;line-height:1.3;padding:0;min-width:0}
@@ -3181,11 +3184,11 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => '<div class="drow" data-a="openfile" data-i="' + i + '">' + ic("clip", 16) + '<span class="dtx">' + esc(f.name) + ' <span class="sub" style="color:var(--sub);font-size:calc(12px*var(--z,1))">' + fmtSize(f.size || 0) + '</span></span><button class="xbtn" data-a="delfile" data-i="' + i + '">' + ic("trash", 15) + "</button></div>").join("") + "</div>" : "") +
-    '<div class="dcard grow"><textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull">Открыть</button></div></div></div>' +
+    '<div class="dcard grow">' + (isMobile() ? "" : '<button class="nexp" data-a="notefull" title="Развернуть заметку на весь экран (Esc — закрыть)">⤢ Развернуть</button>') + '<textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
-  if (!ui.noteFull || !selId || !S.tasks[selId] || !isMobile()) return "";
+  if (!ui.noteFull || !selId || !S.tasks[selId]) return "";
   const t = S.tasks[selId];
   return '<div class="nfull"><div class="nh"><button class="ibtn" data-a="notefullclose">' + ic("arrowl", 22) + "</button><span>" + esc(t.title) + '</span></div><textarea id="d-note" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nb">Создано ' + esc(fmtShort(t.created_at)) + "</div></div>";
 }
