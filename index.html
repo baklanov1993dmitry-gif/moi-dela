@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 21:34";
+const BUILD = "18.10 21:54";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4064,30 +4064,24 @@ function ghostPlay(g) {
   else if (ui.vfade) { ui.vfade = 0; const m = $("main"); if (m && m.animate) m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" }); }
   else if (isMobile() && selId && selId !== lsel) { const r = $("right"); if (r && r.animate) {
     try { r.getAnimations().forEach(an => { if (an.animationName) an.cancel(); }); } catch (e) {}   // штатное «проявление» панели мешает раскрытию
-    if (window.__xopen) {   // карточка уже раскрывается (запущена до перерисовки) — только проявляем содержимое
-      window.__xopen = 0;
-    } else {
-    const o = g.openR, H = innerHeight; window.__openR = o || null;   // открытие как в To Do: строка раскрывается в карточку на весь экран, затем проявляется содержимое
-    xCard(o || { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 }, { left: 0, top: 0, width: innerWidth, height: H }, 210, 60, false);
-    const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(1)" }, { filter: "brightness(.86)" }], { duration: 210, easing: "ease-out" });
-    }
+    const mm = $("main"), E = "cubic-bezier(0,0,.2,1)";   // открытие задачи — как переход из меню в список: задача выезжает справа поверх списка, список уходит влево и темнеет
+    r.style.boxShadow = "-10px 0 28px rgba(0,0,0,.22)";
+    const a = r.animate([{ transform: "translateX(72%)" }, { transform: "translateX(0)" }], { duration: 250, easing: E });
+    a.onfinish = a.oncancel = () => { r.style.boxShadow = ""; };
+    if (mm && mm.animate) { const b2 = mm.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: E, fill: "forwards" }); b2.onfinish = () => b2.cancel(); }
   } }
 }
 /* ----- быстрые переходы: анимация стартует ДО тяжёлой перерисовки и идёт на видеочипе, поэтому не дёргается ----- */
 const after2 = f => requestAnimationFrame(() => requestAnimationFrame(f));
-function fastOpen(row, id) {
-  if (!isMobile() || selId || !row || !row.getBoundingClientRect) return false;
-  const o = row.getBoundingClientRect(), H = innerHeight; if (o.bottom <= 0 || o.top >= H) return false;
-  window.__openR = o; window.__xopen = performance.now();
-  xCard(o, { left: 0, top: 0, width: innerWidth, height: H }, 210, 60, false);
-  const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(1)" }, { filter: "brightness(.86)" }], { duration: 210, easing: "ease-out" });
-  selId = id; ui.left = false; after2(render); return true;
-}
-function fastClose() {
-  const r = $("right"); if (!isMobile() || !selId || !r || r.classList.contains("hide")) return false;
-  const H = innerHeight, o = window.__openR, to = o && o.bottom > 0 && o.top < H ? o : { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 };
-  r.style.visibility = "hidden"; xCard({ left: 0, top: 0, width: innerWidth, height: H }, to, 240, 60, true);
-  selId = null; window.__lsel = null; after2(render); return true;
+function fastOpen() { return false; }
+function fastClose() {   // закрытие задачи — как переход из списка в меню: задача уезжает вправо, под ней список возвращается на место и светлеет
+  const r = $("right"), m = $("main"); if (!isMobile() || !selId || !r || r.classList.contains("hide") || !r.animate) return false;
+  selId = null; window.__lsel = null;
+  const E = "cubic-bezier(.35,.1,.25,1)"; r.style.boxShadow = "-10px 0 28px rgba(0,0,0,.22)";
+  const a = r.animate([{ transform: "translateX(0)" }, { transform: "translateX(100%)" }], { duration: 240, easing: E, fill: "forwards" });
+  if (m && m.animate) m.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: E });
+  let fin = false; const end = () => { if (fin) return; fin = true; render(); };
+  a.onfinish = end; setTimeout(end, 400); return true;
 }
 function menuSlideOpen() {
   const m = $("main"), l = $("left"); if (!isMobile() || ui.left || !m || !l || !m.animate || selId) return false;
