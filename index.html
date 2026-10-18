@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 20:57";
+const BUILD = "18.10 21:07";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -81,7 +81,8 @@ const MONG = ["января", "февраля", "марта", "апреля", "�
 const parseISO = s => { const p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); };
 const addDays = (iso, n) => { const d = parseISO(iso); d.setDate(d.getDate() + n); return isoLocal(d); };
 let today = todayISO();
-const isMobile = () => window.innerWidth <= 760;
+let _vw = window.innerWidth; addEventListener("resize", () => { _vw = window.innerWidth; });   // ширина окна кэшируется: чтение innerWidth заставляет браузер пересчитывать раскладку
+const isMobile = () => _vw <= 760;
 const MONS = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."];
 const dateLong = d => WDS[d.getDay()] + ", " + d.getDate() + " " + MONG[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
 const nextMonday = () => addDays(today, ((8 - parseISO(today).getDay()) % 7) || 7);
@@ -3071,7 +3072,7 @@ const CSS = `
 .cards.grid .mi + .mi::before{display:none}
 .cards.grid .meta{gap:2px 12px}
 .taskrow{display:flex;gap:12px;align-items:flex-start;padding:var(--pad) 14px;background:var(--card);box-shadow:var(--shadow);border-radius:var(--rad);margin-bottom:var(--gap,3px);cursor:pointer;min-height:var(--rowh,48px);border:var(--cbd)}
-@media(hover:hover){.taskrow:hover{background:var(--hov)}} .taskrow.sel{background:var(--sel)}
+#list .taskrow{content-visibility:auto;contain-intrinsic-size:auto 58px} @media(hover:hover){.taskrow:hover{background:var(--hov)}} .taskrow.sel{background:var(--sel)}
 .rad{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--acc);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
 .rad:hover{background:var(--sel)} .rad.on{background:var(--acc)}
 .tbody{flex:1;min-width:0}
@@ -4003,9 +4004,13 @@ function xCard(A, B, dur, z, fadeEnd) {   // белая карточка, «пе
   d.style.cssText = "position:fixed;left:0;top:0;width:" + W + "px;height:" + H + "px;background:var(--solid,#fff);transform-origin:0 0;pointer-events:none;z-index:" + z + ";will-change:transform;box-shadow:0 2px 14px rgba(0,0,0,.12)";
   const tf = R => "translate(" + R.left + "px," + R.top + "px) scale(" + Math.max(.01, R.width / W) + "," + Math.max(.01, R.height / H) + ")";
   document.body.appendChild(d);
-  const kf = fadeEnd ? [{ transform: tf(A), opacity: 1 }, { transform: tf(B), opacity: 1, offset: .8 }, { transform: tf(B), opacity: 0 }] : [{ transform: tf(A) }, { transform: tf(B) }];
-  const an = d.animate(kf, { duration: dur, easing: "cubic-bezier(.3,0,.15,1)", fill: "forwards" });
-  const kill = () => d.remove(); an.onfinish = () => setTimeout(kill, fadeEnd ? 0 : 200); setTimeout(kill, dur + 800);
+  let an;
+  if (fadeEnd) an = d.animate([{ transform: tf(A), opacity: 1 }, { transform: tf(B), opacity: 1, offset: .8 }, { transform: tf(B), opacity: 0 }], { duration: dur, easing: "cubic-bezier(.3,0,.15,1)", fill: "forwards" });
+  else {   // раскрытие: карточка накрывает экран, под ней тем временем готовится задача; затем карточка тает — содержимое «проявляется»
+    an = d.animate([{ transform: tf(A) }, { transform: tf(B) }], { duration: dur, easing: "cubic-bezier(.3,0,.15,1)", fill: "forwards" });
+    d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 190, delay: dur + 40, easing: "ease-out", fill: "forwards" });
+  }
+  const kill = () => d.remove(); an.onfinish = () => setTimeout(kill, fadeEnd ? 0 : 260); setTimeout(kill, dur + 900);
 }
 function ghostGrab() {
   const g = [], add = (sel, kind) => { const e = document.querySelector(sel); if (e) g.push({ sel, kind, el: e.cloneNode(true), r: e.getBoundingClientRect() }); };
@@ -4026,7 +4031,7 @@ function ghostPlay(g) {
     if (x.kind === "slide") {   // закрытие задачи как в To Do: карточка плавно сжимается обратно в строку (только transform/opacity — без рывков)
       c.remove(); let rr = null; try { const rw = document.querySelector('#main .taskrow[data-id="' + lsel + '"]'); if (rw) rr = rw.getBoundingClientRect(); } catch (e) {}
       const H = innerHeight, to = rr && rr.bottom > 0 && rr.top < H ? rr : { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 };
-      xCard({ left: 0, top: 0, width: innerWidth, height: H }, to, 240, 26, true);
+      xCard({ left: 0, top: 0, width: innerWidth, height: H }, to, 240, 60, true);
       const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(.86)" }, { filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.3,0,.15,1)" });
       return;
     }
@@ -4059,11 +4064,40 @@ function ghostPlay(g) {
   else if (ui.vfade) { ui.vfade = 0; const m = $("main"); if (m && m.animate) m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" }); }
   else if (isMobile() && selId && selId !== lsel) { const r = $("right"); if (r && r.animate) {
     try { r.getAnimations().forEach(an => { if (an.animationName) an.cancel(); }); } catch (e) {}   // штатное «проявление» панели мешает раскрытию
-    const o = g.openR, H = innerHeight;   // открытие как в To Do: строка раскрывается в карточку на весь экран, затем проявляется содержимое
-    xCard(o || { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 }, { left: 0, top: 0, width: innerWidth, height: H }, 210, 19, false);
-    r.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 160, easing: "ease-out", fill: "backwards" });
+    if (window.__xopen) {   // карточка уже раскрывается (запущена до перерисовки) — только проявляем содержимое
+      window.__xopen = 0;
+    } else {
+    const o = g.openR, H = innerHeight; window.__openR = o || null;   // открытие как в To Do: строка раскрывается в карточку на весь экран, затем проявляется содержимое
+    xCard(o || { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 }, { left: 0, top: 0, width: innerWidth, height: H }, 210, 60, false);
     const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(1)" }, { filter: "brightness(.86)" }], { duration: 210, easing: "ease-out" });
+    }
   } }
+}
+/* ----- быстрые переходы: анимация стартует ДО тяжёлой перерисовки и идёт на видеочипе, поэтому не дёргается ----- */
+const after2 = f => requestAnimationFrame(() => requestAnimationFrame(f));
+function fastOpen(row, id) {
+  if (!isMobile() || selId || !row || !row.getBoundingClientRect) return false;
+  const o = row.getBoundingClientRect(), H = innerHeight; if (o.bottom <= 0 || o.top >= H) return false;
+  window.__openR = o; window.__xopen = performance.now();
+  xCard(o, { left: 0, top: 0, width: innerWidth, height: H }, 210, 60, false);
+  const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(1)" }, { filter: "brightness(.86)" }], { duration: 210, easing: "ease-out" });
+  selId = id; ui.left = false; after2(render); return true;
+}
+function fastClose() {
+  const r = $("right"); if (!isMobile() || !selId || !r || r.classList.contains("hide")) return false;
+  const H = innerHeight, o = window.__openR, to = o && o.bottom > 0 && o.top < H ? o : { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 };
+  r.style.visibility = "hidden"; xCard({ left: 0, top: 0, width: innerWidth, height: H }, to, 240, 60, true);
+  selId = null; window.__lsel = null; after2(render); return true;
+}
+function menuSlideOpen() {
+  const m = $("main"), l = $("left"); if (!isMobile() || ui.left || !m || !l || !m.animate || selId) return false;
+  ui.left = true; window.__lleft = true;
+  const ms = m.style; ms.display = "flex"; ms.zIndex = "30"; if (getComputedStyle(m).position === "static") ms.position = "relative"; paintLikeApp(m); ms.boxShadow = "-10px 0 28px rgba(0,0,0,.22)";
+  l.classList.remove("hide");
+  const a = m.animate([{ transform: "translateX(0)" }, { transform: "translateX(100%)" }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)", fill: "forwards" });
+  l.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)" });
+  let fin = false; const end = () => { if (fin) return; fin = true; render(); };
+  a.onfinish = end; setTimeout(end, 400); return true;
 }
 function render() {
   want = false;
@@ -4199,7 +4233,7 @@ function onBack() {
   if (hDepth > 0) hDepth--;
   if (innerBack()) { render(); return; }
   if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (mIds().length) mClear(); else if (ui.qa) ui.qa = null; else if (ui.settings) { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; }
-  else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) ui.left = true;
+  else if (selId) { if (fastClose()) return; selId = null; } else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) { if (menuSlideOpen()) return; ui.left = true; }
   render();
 }
 
@@ -4213,13 +4247,13 @@ const setDue = (id, v) => {
 };
 const acts = {
   view(a) { goView(a.dataset.v); render(); },
-  sel(a) { selId = a.dataset.id; ui.left = false; render(); },
-  close() { selId = null; render(); },
+  sel(a) { if (fastOpen(a.closest ? a.closest(".taskrow") : null, a.dataset.id)) return; selId = a.dataset.id; ui.left = false; render(); },
+  close() { if (fastClose()) return; selId = null; render(); },
   tog(a) { const t0 = S.tasks[a.dataset.id]; if (t0 && !t0.done) themeFx("done", a.closest(".taskrow")); toggleDone(a.dataset.id); render(); },
   star(a) { const t = S.tasks[a.dataset.id]; if (!t) return; upd(t.id, { starred: !t.starred }); render(); },
   more() { ui.limit += 300; render(); }, moredone() { ui.doneLimit += 50; render(); },
   showdone() { PR.showDone[view] = !PR.showDone[view]; savePrefs(); render(); if (PR.showDone[view] && !(ui.dOff && ui.dOff[dnKey()]) && view !== "myday") loadDone(); }, loaddone() { loadDone(); },
-  menu() { ui.left = !ui.left; render(); },
+  menu() { if (!ui.left && menuSlideOpen()) return; ui.left = !ui.left; render(); },
   rail() { if (innerWidth <= 760) { ui.left = false; } else PR.rail = !PR.rail; savePrefs(); render(); },
   wkrefresh() { wkLoad(true); render(); },
   gtoggle(a) { const g = a.dataset.g; PR.collapsed[g] = g === ARCH ? PR.collapsed[g] === false : !PR.collapsed[g]; savePrefs(); render(); },
