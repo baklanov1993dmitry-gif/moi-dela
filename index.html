@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 16:38";
+const BUILD = "18.10 17:06";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1713,6 +1713,11 @@ const dtpCSS = `
 .pop.dtl .dtp-t{font-size:calc(13px*var(--z,1));font-weight:600;text-align:center;margin:0 0 6px;padding:14px 0 12px;border-bottom:1px solid var(--ln)}
 .pop.dtl .dli{height:34px;padding:0 14px;gap:12px;font-size:calc(13px*var(--z,1))} .pop.dtl .dli svg{width:16px;height:16px;color:var(--tx)}
 .pop.dtl .dli .dr{font-size:calc(12px*var(--z,1))} .pop.dtl .psep{margin:6px 0}
+.pop.pin{animation:popexp .26s cubic-bezier(.2,.8,.2,1) both;transform-origin:top left}
+@keyframes popexp{from{clip-path:inset(0 0 100% 0 round 8px);opacity:.3}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1}}
+.popsrc{animation:popsrc .22s ease both;background:rgba(0,0,0,.07)!important}
+@keyframes popsrc{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.07)}}
+@media(prefers-reduced-motion:reduce){.pop.pin,.popsrc{animation:none}}
 .dtpb{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.4);z-index:59}
 @media(max-width:760px){.pop.dtp{left:8px!important;right:8px!important;top:calc(env(safe-area-inset-top) + 52px)!important;bottom:auto!important;transform:none;width:auto;border-radius:18px;max-height:calc(100dvh - 70px);overflow-y:auto;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.35)}.cal-d{height:46px;font-size:calc(16px*var(--z,1))}.cal-w span{font-size:calc(13.5px*var(--z,1))}.cal-n{height:44px;width:48px}.cal-t{font-size:calc(17px*var(--z,1))}.dq{padding:12px 8px;font-size:calc(14.5px*var(--z,1))}}
 .dtp-h{font-size:calc(23px*var(--z,1));font-weight:800;text-align:center;margin:2px 0 2px}
@@ -3517,10 +3522,11 @@ function popHTML() {
     case "acct": h = '<div class="ptext"><b>' + esc(S.user ? S.user.email : "") + "</b>" + (isLite() ? '<br><small style="opacity:.65">Режим: только задачи</small>' : "") + "</div>" + it("settings", "Настройки") + it("export", "Скачать копию (JSON)") + '<div class="psep"></div>' + it("logout", "Выйти", "", "danger"); break;
     case "help": h = '<div class="ptitle">Умный ввод</div><div class="ptext"><b>завтра, послезавтра, сегодня</b><br><b>в пятницу</b>, <b>через 3 дня</b>, <b>25.12</b><br><b>в 18:00</b> — напоминание<br><b>каждый день</b>, <b>по будням</b>, <b>ежемесячно</b><br><b>~30м</b>, <b>1.5ч</b> — сколько займёт<br><b>#зал</b> — в список (или категория)<br><b>!</b> — важное</div><div class="psep"></div><div class="ptitle">Клавиши</div><div class="ptext">Enter — добавить · Esc — закрыть панель<br>ПКМ по задаче — быстрое меню<br>Перетащите задачу на список в левой панели</div>'; break;
   }
+  const first = !p.shown; p.shown = true;
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
   const dt = p.type === "due" || p.type === "remind";
   const lst = p.type === "due" && ui.dtp && !ui.dtp.cal;
-  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && isMobile() ? " mm" : "") + '" id="pop" style="left:' + x + "px;" + (lst && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (lst ? "!important" : "")) + '">' + h + "</div>";
+  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && isMobile() ? " mm" : "") + (first ? " pin" : "") + '" id="pop" style="left:' + x + "px;" + (lst && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (lst ? "!important" : "")) + '">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
@@ -4222,7 +4228,8 @@ const acts = {
     const d = a.dataset, w = e._was;
     if (w && w.type === d.p && (w.id || w.g || "") === (d.id || d.g || "")) { closePop(); render(); return; }
     const r = a.getBoundingClientRect();
-    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (ui.qa && isMobile()) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); render();   // из быстрого ввода меню — над полем ввода, а не вверху экрана
+    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (ui.qa && isMobile()) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); render();
+    try { const el = document.querySelector('[data-a="pop"][data-p="' + d.p + '"]' + (d.id ? '[data-id="' + d.id + '"]' : "")); if (el) el.classList.add("popsrc"); } catch (e) {}   // место, куда тапнули, затеняется, пока меню открыто   // из быстрого ввода меню — над полем ввода, а не вверху экрана
   },
   pa(a) {
     const d = a.dataset, k = d.k, id = d.id, v = d.v, p = ui.pop || {}, t = id && S.tasks[id], l = id && S.lists[id];
