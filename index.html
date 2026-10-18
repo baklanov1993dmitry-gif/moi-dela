@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 12:23";
+const BUILD = "18.10 12:24";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -215,7 +215,7 @@ function applyTheme() {
 
 
 /* ----- анимации тем (закрытие задачи); включаются в Настройках ----- */
-function fxClone(row) { const r = row.getBoundingClientRect(), c = row.cloneNode(true); c.removeAttribute("data-a"); c.removeAttribute("id"); c.style.cssText += ";position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;margin:0;z-index:9000;pointer-events:none;box-sizing:border-box;overflow:hidden"; ($("app") || document.body).appendChild(c); return { c, r }; }
+function fxClone(row) { const r = row.getBoundingClientRect(), c = row.cloneNode(true); c.removeAttribute("data-a"); c.removeAttribute("id"); c.style.cssText += ";position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;margin:0;z-index:9000;pointer-events:none;box-sizing:border-box;overflow:hidden"; const cs = getComputedStyle(row); c.style.background = "linear-gradient(" + cs.backgroundColor + "," + cs.backgroundColor + "), #fff"; c.style.color = cs.color; c.style.fontFamily = cs.fontFamily; c.style.fontSize = cs.fontSize; c.style.border = cs.border; c.style.borderRadius = cs.borderRadius; c.style.boxShadow = cs.boxShadow; c.style.padding = cs.padding; c.style.display = "flex"; c.style.alignItems = "flex-start"; c.style.gap = cs.gap; document.body.appendChild(c); return { c, r }; }
 function fxWeb(row) {
   const { c, r } = fxClone(row), W = innerWidth, sx = W + 8, sy = -8, ns = "http://www.w3.org/2000/svg", T = THEMES[TH.theme] || {}, col = T.dark ? "#ffffff" : "#1b2a5e";
   const sv = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path"), g = document.createElementNS(ns, "path");
@@ -274,7 +274,7 @@ const FXF = { web: fxWeb, flash: fxFlash, bubbles: fxBubbles, neon: fxNeon };
 function themeFx(kind, row, force) {
   const T = THEMES[TH.theme]; if (!T || !T.fx || !row || !row.getBoundingClientRect) return;
   if (!force && (TH.fx === false || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches))) return;
-  const f = FXF[T.fx]; if (f) { try { f(row); } catch (e) {} }
+  const f = FXF[T.fx]; if (f) { try { f(row); return true; } catch (e) {} }
 }
 
 /* ----- иконки (линейные, 24x24) ----- */
@@ -1775,8 +1775,9 @@ const uxActs = {
     const id = a.dataset.id, t = S.tasks[id], row = a.closest(".taskrow");
     if (!t) return;
     const willDone = !t.done;
+    const fxd = willDone && row ? themeFx("done", row) : false;   // анимация темы (клон строки живёт в body и переживает render)
     toggleDone(id);
-    if (willDone && row && !CFG0.TEST) { row.classList.add("fin"); a.classList.add("on"); setTimeout(render, 260); } else render();
+    if (fxd) { row.style.visibility = "hidden"; a.classList.add("on"); setTimeout(render, 120); } else if (willDone && row && !CFG0.TEST) { row.classList.add("fin"); a.classList.add("on"); setTimeout(render, 260); } else render();
   },
   postp(a, e) { if (e && e.stopPropagation) e.stopPropagation(); postpone(a.dataset.id, a.dataset.v); render(); }
 };
