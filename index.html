@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 19:02";
+const BUILD = "18.10 18:58";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1722,6 +1722,8 @@ const dtpCSS = `
 @media(prefers-reduced-motion:reduce){.qa-back.qin,.qa-back.qin .qa{animation:none}}
 .pop.pin{animation:popexp .38s cubic-bezier(.22,.9,.3,1) both;transform-origin:top left}
 .pop.pin.up{animation-name:popexpup;transform-origin:bottom left}
+.pop.pin.mid{animation-name:popmid;transform-origin:center}
+@keyframes popmid{0%{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
 @keyframes popexpup{0%{clip-path:inset(70% 0 0 0 round 10px);opacity:0;transform:translateY(14px) scale(.97)}40%{opacity:.85}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1;transform:none}}
 
 @keyframes popexp{0%{clip-path:inset(0 0 70% 0 round 10px);opacity:0;transform:translateY(-10px) scale(.97)}40%{opacity:.85}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1;transform:none}}
@@ -3549,7 +3551,7 @@ function popHTML() {
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
   const mob = isMobile(), dt = p.type === "due" || p.type === "remind" || (p.type === "repeat" && mob);
   const lst = (p.type === "due" && ui.dtp && !ui.dtp.cal) || (p.type === "repeat" && mob), anc = lst || (mob && p.type === "remind");
-  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
+  return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((innerHeight - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
@@ -4021,7 +4023,6 @@ function render() {
   if (!kept) app.innerHTML = html;
   applyTheme();
   try { ghostPlay(gh); } catch (e) {}
-  try { if (ui.qa && window.visualViewport && innerHeight - visualViewport.height - visualViewport.offsetTop > 80) { const qi = $("qa-input"); if (qi && document.activeElement !== qi) qi.focus({ preventScroll: true }); } } catch (e) {}   // клавиатура не закрывается при открытии меню срока — шторка и меню не прыгают
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
@@ -4276,7 +4277,7 @@ const acts = {
     const d = a.dataset, w = e._was;
     if (w && w.type === d.p && (w.id || w.g || "") === (d.id || d.g || "")) { closePop(); render(); return; }
     const r = a.getBoundingClientRect();
-    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (isMobile() && (d.p === "due" || d.p === "repeat" || d.p === "remind")) { const need = { due: 330, repeat: 450, remind: 500 }[d.p]; if (ui.qa || r.bottom + need > innerHeight) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); else ui.pop.y = Math.min(r.bottom + 4, innerHeight - 120); } render();
+    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (isMobile() && (d.p === "due" || d.p === "repeat" || d.p === "remind")) { const need = { due: 330, repeat: 450, remind: 500 }[d.p]; if (ui.qa) { ui.pop.mid = need; } else if (r.bottom + need > innerHeight) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); else ui.pop.y = Math.min(r.bottom + 4, innerHeight - 120); } render();
     try { const el = document.querySelector('[data-a="pop"][data-p="' + d.p + '"]' + (d.id ? '[data-id="' + d.id + '"]' : "")); if (el) el.classList.add("popsrc"); } catch (e) {}   // место, куда тапнули, затеняется, пока меню открыто   // из быстрого ввода меню — над полем ввода, а не вверху экрана
   },
   pa(a) {
