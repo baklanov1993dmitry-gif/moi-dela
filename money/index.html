@@ -225,7 +225,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .bt b{font-size:1.5em}
 .brw{display:flex;gap:10px;align-items:center;width:100%;padding:8px 0;border-top:1px solid var(--ln);text-align:left}.brw:first-of-type{border-top:0}.brw .ci{width:32px;height:32px;flex:none}.brw .bm{flex:1;min-width:0}.brw .l1{display:flex;justify-content:space-between;gap:8px}.brw .l1 b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brw .l2{font-size:.82em;color:var(--sub)}
 .chg{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.chg span{display:flex;align-items:center;gap:8px}.chg:first-of-type{border-top:0}
-.chip{white-space:nowrap}.chips .chip{padding:6px 11px;font-size:.82em}
+.chip{white-space:nowrap}.wch{display:flex;gap:5px;margin-bottom:6px;overflow-x:auto}.wch .chip{padding:4px 10px;font-size:.8em}.itr{display:flex;gap:5px;margin-bottom:6px;align-items:center}.itr select{flex:1;min-width:0;padding:5px 6px;border-radius:10px;background:var(--card);color:var(--tx);border:1px solid color-mix(in srgb,var(--tx) 14%,transparent);font-size:.8em}.itr .in{margin:0;padding:6px 10px;font-size:.85em;flex:1.3;min-width:0}.itr button{padding:5px 9px;border-radius:10px;background:var(--card);font-size:.95em;flex:none}.chips .chip{padding:6px 11px;font-size:.82em}
 table.hm td{background-color:transparent}
 .rrow{padding:8px 0;border-top:1px solid var(--ln)}.rrow:first-of-type{border-top:0}.rrow .r1{display:flex;gap:6px}.rrow .r2{display:flex;gap:6px;margin-top:6px}
 .rrow .in{margin:0;padding:8px 10px;font-size:14px}.rrow .rn{flex:1;min-width:0}.rrow .ra{width:92px;text-align:right;flex:none}.rrow select{flex:1;min-width:0}.rrow .rx{flex:none;width:38px;color:var(--sub);font-size:18px}
@@ -621,7 +621,7 @@ function budBody() {
 const WINS = [[30, "30 дн"], [90, "3 мес"], [180, "6 мес"], [365, "год"], [0, "всё"]];
 const winOf = n => +n > 0 ? [Date.now() - n * 864e5, Date.now() + 864e5] : [0, Infinity];
 const winLbl = n => (WINS.find(x => x[0] === +n) || WINS[1])[1];
-const winChips = (act, cur) => '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + WINS.map(w => '<button class="chip' + (+cur === w[0] ? " on" : "") + '" data-a="' + act + '" data-v="' + w[0] + '">' + w[1] + "</button>").join("") + "</div>";
+const winChips = (act, cur) => '<div class="wch">' + WINS.map(w => '<button class="chip' + (+cur === w[0] ? " on" : "") + '" data-a="' + act + '" data-v="' + w[0] + '">' + w[1] + "</button>").join("") + "</div>";
 const prcN = () => PR.prcN != null ? +PR.prcN : 90, nutN = () => PR.nutN != null ? +PR.nutN : 30;
 function prcRows(B) { return PRICES.filter(r => { const t = +new Date(r.ts); return t >= B[0] && t < B[1]; }); }
 function prcSum() { const sm = PRC.summary(PRC.groups(prcRows(winOf(prcN())))); return sm ? "инфляция " + ppct(sm.med) : (PRICES.length ? "мало данных" : ""); }
@@ -654,15 +654,27 @@ function itmGroups(B, mode) {
 }
 function itmSum() { const L = itmGroups(winOf(itmN()), PR.itmM || "w"); return L.length ? L.length + " товаров" : ""; }
 function itmBody() {
-  const n = itmN(), mode = PR.itmM || "w", srt = PR.itmS || "s", L = itmGroups(winOf(n), mode);
-  let o = winChips("itmset", n) + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="chip' + (mode === "w" ? " on" : "") + '" data-a="itmmode" data-v="w">По слову</button><button class="chip' + (mode === "e" ? " on" : "") + '" data-a="itmmode" data-v="e">По точному названию</button><span style="flex:1"></span><button class="chip' + (srt === "s" ? " on" : "") + '" data-a="itmsrt" data-v="s">По сумме</button><button class="chip' + (srt === "n" ? " on" : "") + '" data-a="itmsrt" data-v="n">По числу</button></div>';
-  if (!L.length) return o + '<div class="sub">За период нет трат с названиями товаров в заметках.</div>';
+  const n = itmN(), mode = PR.itmM || "w", srt = PR.itmS || "s", q = nzI(ui.itmQ || "");
+  const opt = (v, cur, t) => '<option value="' + v + '"' + (String(v) === String(cur) ? " selected" : "") + ">" + t + "</option>";
+  let o = '<div class="itr"><select data-sel="itmset">' + WINS.map(w => opt(w[0], n, w[0] ? "за " + w[1] : "всё время")).join("") + '</select><select data-sel="itmmode">' + opt("w", mode, "по слову") + opt("e", mode, "по названию") + '</select><select data-sel="itmsrt">' + opt("s", srt, "по сумме") + opt("n", srt, "по числу") + '</select></div><div class="itr"><input class="in" id="im-q" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="🔍 Найти товар: сколько раз и на сколько" value="' + esc(ui.itmQ || "") + '"><button data-a="renopen" title="Переименовать товары">✏️ Названия</button></div><div id="im-l">' + itmList(n, mode, srt, q) + "</div>";
+  return o;
+}
+function itmList(n, mode, srt, q) {
+  const B = winOf(n);
+  let o = "";
+  if (q) {   // точный подсчёт по подстроке среди всех товаров периода
+    const ws = q.split(" ").filter(Boolean); let c = 0, sm = 0, kn = 0; const txs_ = new Set();
+    allItems().forEach(it => { const t = +new Date(it.ts); if (t < B[0] || t >= B[1] || !ws.every(w => it.k.includes(w))) return; c++; txs_.add(it.tx); if (it.amt != null) { sm += it.amt; kn++; } });
+    o += c ? '<div class="pr" style="margin:2px 0 6px"><span><b>«' + esc(q) + '»</b>: ' + c + " раз" + (kn ? " · ≈" + fm(sm / kn) + " за раз" : "") + '</span><b class="exp">' + (kn < c ? "≥" : "") + fm(sm) + '</b></div><button class="btn g" data-a="itmgo" data-q="' + esc(q) + '" style="width:100%;margin-bottom:6px;padding:6px">Показать все покупки (' + txs_.size + ")</button>" : '<div class="sub" style="padding:6px 0">Не нашлось за период</div>';
+    return o;
+  }
+  const L = itmGroups(B, mode);
+  if (!L.length) return '<div class="sub">За период нет трат с названиями товаров в заметках.</div>';
   L.sort((a, b) => srt === "n" ? b.n - a.n || b.sum - a.sum : b.sum - a.sum || b.n - a.n);
-  const lim = ui.itmAll ? 400 : 15, tot = L.reduce((a, g) => a + g.sum, 0);
-  o += '<div class="sub" style="font-size:.8em;margin-bottom:4px">Покупок товара · сумма · средняя цена. Нажми на товар, чтобы увидеть все покупки. «≥» значит, что в части записей несколько товаров сразу и их цену не разделить.</div>';
-  o += L.slice(0, lim).map(g => '<button class="sub-r" data-a="itmgo" data-q="' + esc(mode === "w" ? g.k : g.k) + '" style="padding-left:4px"><span class="t" style="flex:1"><b>' + esc(g.name) + '</b><br><span class="sub" style="font-size:.8em">' + g.n + " раз" + (g.known ? " · ≈" + fm(g.avg) + " за раз" : "") + '</span></span><span class="exp">' + (g.known < g.n ? "≥" : "") + fm(g.sum) + "</span></button>").join("");
-  if (L.length > lim) o += '<button class="btn g" data-a="itmall" style="width:100%;margin-top:6px">Показать все (' + L.length + ")</button>"; else if (ui.itmAll && L.length > 15) o += '<button class="btn g" data-a="itmall" style="width:100%;margin-top:6px">Свернуть</button>';
-  return o + '<button class="btn" data-a="renopen" style="width:100%;margin-top:10px">✏️ Привести названия в порядок</button>';
+  const lim = ui.itmAll ? 400 : 15;
+  o += L.slice(0, lim).map(g => '<button class="sub-r" data-a="itmgo" data-q="' + esc(g.k) + '" style="padding-left:4px;padding-top:5px;padding-bottom:5px"><span class="t" style="flex:1"><b>' + esc(g.name) + '</b> <span class="sub" style="font-size:.8em">' + g.n + "× " + (g.known ? "· ≈" + fm(g.avg) : "") + '</span></span><span class="exp">' + (g.known < g.n ? "≥" : "") + fm(g.sum) + "</span></button>").join("");
+  if (L.length > lim) o += '<button class="btn g" data-a="itmall" style="width:100%;margin-top:6px;padding:6px">Показать все (' + L.length + ")</button>"; else if (ui.itmAll && L.length > 15) o += '<button class="btn g" data-a="itmall" style="width:100%;margin-top:6px;padding:6px">Свернуть</button>';
+  return o + '<div class="sub" style="font-size:.72em;margin-top:6px">≥ — в части записей несколько товаров сразу, их цену не разделить.</div>';
 }
 /* ---- массовое переименование товаров в заметках ---- */
 function renList(s) {
@@ -869,10 +881,10 @@ function listHTML() {
   return topBar(!ui.q) + '<input class="in" id="q" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Поиск по заметке, категории, сумме" value="' + esc(ui.q) + '"><div id="qres">' + listBody() + "</div>";
 }
 function listBody() {
-  let arr = ui.q ? txs.slice() : rgTx();
+  let arr = ui.q ? (ui.qd > 0 ? txs.filter(t => +new Date(t.ts) >= Date.now() - ui.qd * 864e5) : txs.slice()) : rgTx();
   let qst = null; if (ui.q) { const f = searchFn(ui.q); arr = arr.filter(f); qst = { n: arr.length, e: sumBy(arr, t => t.kind === "exp" ? t.amount : 0), i: sumBy(arr, t => t.kind === "exp" ? 0 : t.amount) }; }
   arr.sort((a, b) => b.ts.localeCompare(a.ts)); const lim = ui.q ? 200 : 600, more = arr.length - lim; arr = arr.slice(0, lim);
-  let h = "" + (qst ? '<div class="sub" style="padding:2px 4px 6px;font-size:.85em">Найдено: ' + qst.n + (qst.e ? " · расходы " + fmN(qst.e) : "") + (qst.i ? " · доходы " + fmN(qst.i) : "") + "</div>" : "") + (!ui.q ? '<div class="sub" style="padding:0 4px 6px;font-size:.78em">Можно искать несколько слов сразу, а ещё: &gt;1000, &lt;500, 100-500</div>' : ""), cur = "", buf = [];
+  let h = "" + (qst ? '<div class="sub" style="padding:2px 4px 6px;font-size:.85em">' + (ui.qd > 0 ? '<button class="chip on" data-a="qdclr" style="padding:2px 8px;font-size:.9em">за ' + winLbl(ui.qd) + " ✕</button> " : "") + "Найдено: " + qst.n + (qst.e ? " · расходы " + fmN(qst.e) : "") + (qst.i ? " · доходы " + fmN(qst.i) : "") + "</div>" : "") + (!ui.q ? '<div class="sub" style="padding:0 4px 6px;font-size:.78em">Можно искать несколько слов сразу, а ещё: &gt;1000, &lt;500, 100-500</div>' : ""), cur = "", buf = [];
   const groups = []; arr.forEach(t => { const dk = dayKey(new Date(t.ts)); if (dk !== cur) { cur = dk; groups.push({ dk, items: [] }); } groups[groups.length - 1].items.push(t); });
   groups.forEach(g => { const d = new Date(g.dk + "T12:00"), s = sumBy(g.items, t => t.kind === "exp" ? -t.amount : t.amount); h += '<div class="day"><span>' + WD[d.getDay()] + ", " + d.getDate() + " " + MONS_S[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "") + "</span>" + (ui.q ? "" : "<span>" + fm(s) + "</span>") + "</div>" + g.items.map(t => ui.q ? txRowQ(t, ui.q.toLowerCase()) : txRow(t)).join(""); });
   if (!groups.length) h += '<div class="empty">Операций нет</div>'; if (more > 0) h += '<div class="empty">…и ещё ' + more + " (уточни поиск)</div>";
@@ -942,7 +954,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 40 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 41 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1239,7 +1251,13 @@ function sheetHTML() {
 function login() {
   $("app").innerHTML = '<div style="padding:60px 24px;max-width:380px;margin:auto"><h1 style="margin:0 0 6px">💸 Траты</h1><p class="sub" style="margin:0 0 20px">Тот же вход, что и в «Моих делах»</p><input class="in" id="l-e" type="email" placeholder="Email" autocomplete="username"><input class="in" id="l-p" type="password" placeholder="Пароль" autocomplete="current-password"><button class="btn" style="width:100%;margin-top:8px" data-a="login">Войти</button><div id="l-m" class="exp" style="margin-top:10px"></div></div>';
 }
+function fixCatIcons() {
+  const nm = c => String(c.name || "").toLowerCase(), key = c => String(c.icon || "").replace(/\uFE0F/g, "");
+  const out = cats.filter(c => c.kind === "exp" && !c.archived && /вне дома|кафе|ресторан/.test(nm(c)));
+  out.forEach(c => { const same = cats.some(o => o.id !== c.id && o.kind === c.kind && !o.archived && key(o) === key(c)); if (!same) return; const used = new Set(cats.filter(o => o.id !== c.id).map(key)); const pick = ["🍽️", "☕", "🍺", "🍎"].find(e => !used.has(e.replace(/\uFE0F/g, ""))); if (pick) upCat(Object.assign({}, c, { icon: pick })); });
+}
 function render() {
+  if (cats.length && !PR.icfix) { PR.icfix = 1; savePR(); try { fixCatIcons(); } catch (e) {} }
   if (!user) { login(); return; }
   const scr = ui.tab === "more" ? moreHTML() : pageHTML(0);
   const keep = $("main") && ui._lt === ui.tab ? $("main").scrollTop : 0; ui._lt = ui.tab;
@@ -1258,7 +1276,7 @@ const PC = new Map();
 function pageHTML(d) {   // HTML страницы (с кэшем): соседние месяцы строятся заранее в простое
   const sv = ui.rg; if (d) { ui.rg = Object.assign({}, sv); rgShift(d); }
   try {
-    const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), ui.ng || "", ui.itmAll ? 1 : 0, txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
+    const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), ui.ng || "", ui.itmAll ? 1 : 0, ui.qd || 0, ui.itmQ || "", txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
     let h = PC.get(key); if (h != null) return h;
     h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : ui.tab === "bud" ? budScreen() : statsHTML();
     PC.set(key, h); if (PC.size > 14) PC.delete(PC.keys().next().value); return h;
@@ -1394,7 +1412,7 @@ let IMP = null;
 /* ============ события ============ */
 const A = {
   none() {}, nop() {},
-  tab(a) { ui.tab = a.dataset.v; ui.q = ""; ui.set = "main"; ui.menu = false; render(); },
+  tab(a) { ui.tab = a.dataset.v; ui.q = ""; ui.qd = 0; ui.set = "main"; ui.menu = false; render(); },
   menu() { ui.menu = !ui.menu; render(); }, menuclose() { ui.menu = false; render(); },
   rgmode(a) { ui.sheet.mode = ui.sheet.mode === a.dataset.v ? "" : a.dataset.v; render(); },
   setday() { const v = $("rg-d").value; if (!v) return; ui.rg = { t: "d", a: +new Date(v + "T12:00") }; ui.sheet = null; render(); },
@@ -1405,7 +1423,7 @@ const A = {
   kindtog() { ui.kind = ui.kind === "exp" ? "inc" : "exp"; render(); },
   viewtog() { ui.view = ui.view === "list" ? "ring" : "list"; render(); },
   catopen(a) { const id = a.dataset.id; ui.open[id] = !ui.open[id]; render(); },
-  search() { ui.tab = "list"; ui.q = " "; ui.q = ""; render(); setTimeout(() => { const q = $("q"); if (q) q.focus(); }, 50); },
+  search() { ui.qd = 0; ui.tab = "list"; ui.q = " "; ui.q = ""; render(); setTimeout(() => { const q = $("q"); if (q) q.focus(); }, 50); },
   pick(a) { openTx({ kind: a.dataset.v, cat: null }); },
   txback() { const s = ui.sheet; if (s && s.step === "cat") { s.step = "kb"; render(); } else { ui.sheet = null; render(); } },
   crare() { ui.sheet.rare = !ui.sheet.rare; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); },
@@ -1478,7 +1496,8 @@ const A = {
   setext() { ui.set = "ext"; render(); },
   nutg(a) { ui.ng = ui.ng === a.dataset.v ? null : a.dataset.v; render(); },
   itmset(a) { PR.itmN = +a.dataset.v; savePR(); render(); }, itmmode(a) { PR.itmM = a.dataset.v; savePR(); render(); }, itmsrt(a) { PR.itmS = a.dataset.v; savePR(); render(); }, itmall() { ui.itmAll = !ui.itmAll; render(); },
-  itmgo(a) { ui.tab = "list"; ui.q = a.dataset.q || ""; ui.set = "main"; ui.menu = false; render(); },
+  itmgo(a) { ui.tab = "list"; ui.q = a.dataset.q || ""; ui.qd = itmN(); ui.set = "main"; ui.menu = false; render(); },
+  qdclr() { ui.qd = 0; const r = $("qres"); if (r) r.innerHTML = listBody(); render(); },
   renopen() { ui.sheet = { type: "ren", q: "", sel: {}, name: "" }; render(); },
   rntog(a) { const s = ui.sheet, k = a.dataset.k; if (s.sel[k]) delete s.sel[k]; else { s.sel[k] = 1; const nn = $("rn-n"); if (nn && !nn.value) { const it = allItems().filter(x => x.k === k).pop(); if (it) { nn.value = it.name; s.name = it.name; } } } renRefresh(); },
   rnall() { const s = ui.sheet; (s._vis || []).forEach(k => s.sel[k] = 1); renRefresh(); }, rnnone() { ui.sheet.sel = {}; renRefresh(); }, rnapply() { renApply(); },
@@ -1553,7 +1572,8 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
-document.addEventListener("input", e => { if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
+document.addEventListener("change", e => { const sel = e.target.dataset && e.target.dataset.sel; if (!sel) return; const v = e.target.value; if (sel === "itmset") PR.itmN = +v; else if (sel === "itmmode") PR.itmM = v; else if (sel === "itmsrt") PR.itmS = v; else return; savePR(); render(); });
+document.addEventListener("input", e => { if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "rn-q" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.q = e.target.value; renRefresh(); return; } if (e.target.id === "rn-n" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.name = e.target.value; return; } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
