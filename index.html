@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 19:16";
+const BUILD = "18.10 20:25";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1941,6 +1941,8 @@ function mApply(k, a) {
     const v = ($("m-date") || {}).value; if (!v) { ui.undo = null; return; }
     T.forEach(t => setDueKeepRemind(t, v)); toast("Срок: " + dateLong(parseISO(v)) + " · " + noun);
   } else if (k === "clear") { T.forEach(t => upd(t.id, { due: null })); toast("Срок убран · " + noun);
+  } else if (k === "all") { visIds().forEach(id => { ui.multi[id] = 1; }); ui.undo = null; closePop(); render(); return;
+  } else if (k === "copy") { T.forEach(t => addTask({ list_id: t.list_id, title: t.title, due: t.due, category: t.category, starred: t.starred, note: t.note, est_minutes: t.est_minutes, repeat_rule: t.repeat_rule, steps: (t.steps || []).map(x => ({ t: x.t, d: false })) })); toast("Скопировано: " + noun); mClear();
   } else if (k === "done") { T.forEach(t => { if (!t.done) toggleDone(t.id); }); toast("Выполнено: " + noun + " (Ctrl+Z — отмена)"); mClear();
   } else if (k === "myday") { const all = T.every(t => inMyDay(t)); T.forEach(t => setMyDay(t.id, !all)); toast(all ? "Убрано из «Мой день»" : "Добавлено в «Мой день»");
   } else if (k === "star") { const all = T.every(t => t.starred); T.forEach(t => upd(t.id, { starred: !all })); toast(all ? "Отметка снята" : "Отмечено важным");
@@ -1955,6 +1957,7 @@ Object.assign(uxActs, {
   mact(a) { mApply(a.dataset.k, a); },
   mpop(a) { const r = a.getBoundingClientRect(); ui.pop = { type: a.dataset.t, id: "", x: r.left, y: Math.max(10, r.top - 340) }; render(); },
   mclear() { mClear(); render(); },
+  mmore(a) { const r = a.getBoundingClientRect(); ui.pop = { type: "mctx", id: "", x: innerWidth - 270, y: r.bottom + 4 }; render(); },
   mpick(a) { ui.pop = { type: "mtolist", id: "", x: ui.pop ? ui.pop.x : 200, y: ui.pop ? ui.pop.y : 200 }; render(); }
 });
 function multiBarHTML() {
@@ -1965,11 +1968,11 @@ function multiBarHTML() {
 function multiPopHTML(type, mi) {
   const d1 = parseISO(today), d2 = parseISO(addDays(today, 1)), d3 = parseISO(nextMonday()), n = mIds().length;
   const item = (k, label, extra, cls, r) => mi(k, label, extra, cls, r);
-  if (type === "mctx") return '<div class="ptitle">Выбрано задач: ' + n + "</div>" +
+  if (type === "mctx") return (isMobile() ? '<div class="pi" data-a="mact" data-k="all">Выбрать все</div>' : "") + '<div class="ptitle">Выбрано задач: ' + n + "</div>" +
     item("today", "Сегодня", "", "", WDS[d1.getDay()]) + item("tom", "Завтра", "", "", WDS[d2.getDay()]) + item("week", "Следующая неделя", "", "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) +
     '<div class="pi" data-a="mpop" data-t="mshift">Сдвинуть на N дней / выбрать дату…</div>' + item("clear", "Убрать срок") + '<div class="psep"></div>' +
     (PR.myday ? item("myday", "В «Мой день» / убрать") : "") + item("star", "Важно: поставить / снять") + '<div class="pi" data-a="mpick">Переместить в список…</div>' +
-    item("done", "Отметить выполненными") + '<div class="psep"></div>' + item("del", "Удалить", "", "danger");
+    item("copy", "Копировать") + item("done", "Отметить выполненными") + '<div class="psep"></div>' + item("del", "Удалить", "", "danger");
   if (type === "mtolist") return '<div class="ptitle">Переместить в список (' + n + ")</div>" + listsArr().map(l => item("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), 'data-v="' + l.id + '"')).join("");
   const q = (n2, u, lab) => '<button type="button" class="dq" data-a="mact" data-k="shiftq" data-n="' + n2 + '" data-u="' + u + '">' + lab + "</button>";
   return '<div class="ptitle">Сдвинуть срок · ' + n + ' шт.</div><div class="mrow"><input id="m-n" type="number" step="1" value="1" inputmode="numeric"><select id="m-u"><option value="d">дней</option><option value="wd">раб. дней</option><option value="w">недель</option></select><button type="button" class="dq on" data-a="mact" data-k="shift">Сдвинуть</button></div>' +
@@ -2220,7 +2223,12 @@ function desktopInit(app) {
   document.addEventListener("keydown", hkKey, true);
   app.addEventListener("mousedown", e => { if (e.shiftKey && !isMobile() && e.target.closest && e.target.closest(".taskrow")) e.preventDefault(); }, true);
   app.addEventListener("click", e => {
-    if (isMobile()) return;
+    if (isMobile()) {   // режим выбора: тап по задаче ставит/снимает отметку
+      if (!mIds().length) return;
+      const r = e.target.closest && e.target.closest("#main .taskrow"); if (!r) return;
+      e.stopPropagation(); e.preventDefault(); if (Date.now() - (ui.mLP || 0) < 700) return;
+      const id = r.dataset.id; if (ui.multi[id]) delete ui.multi[id]; else ui.multi[id] = 1; render(); return;
+    }
     const r = e.target.closest && e.target.closest(".taskrow"); if (!r || e.target.closest(".rad,.star,button")) return;
     const id = r.dataset.id;
     if (e.ctrlKey || e.metaKey) {
@@ -2262,6 +2270,8 @@ function desktopInit(app) {
 }
 const mCSS = `
 .taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
+.mtop.msb{background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
+.mtop.msb .mcnt{color:#fff} .mcnt{font-size:calc(19px*var(--z,1));font-weight:600;margin-left:6px}
 .mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
 .mbar button{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 12px;cursor:pointer;font-size:inherit}
 .mbar button:hover{background:var(--hov)} .mbar .mx{color:var(--sub);padding:6px 10px}
@@ -3217,8 +3227,8 @@ select.inp option{color:#111}
 .mtop{display:flex;align-items:center;gap:2px;padding:8px 8px 0;color:var(--tx);flex-shrink:0}
 .mtop .ibtn{width:42px;height:42px}
 .searchbox.mob{flex:1;max-width:none;margin:0}
-.searchbox.mob input{background:var(--card);color:var(--tx);border:1px solid var(--ln);height:40px;border-radius:20px}
-.searchbox.mob .ic{color:var(--sub)}
+.searchbox.mob input{background:var(--card);color:var(--tx);border:1px solid var(--ln);height:46px;border-radius:23px;font-size:calc(18.5px*var(--z,1));padding-left:42px}
+.searchbox.mob .ic{color:var(--sub);left:16px;width:20px;height:20px}
 .mdtop{padding:8px 8px 0;flex-shrink:0}
 .lacct{display:flex;align-items:center;gap:4px;padding:14px 10px 4px}
 .lacc{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left}
@@ -3280,6 +3290,7 @@ function viewInfo() {
 }
 function mtopHTML(vi, cnt, extra) {
   if (!isMobile()) return "";
+  if (mIds().length && view !== "journal" && view !== "food") return '<div class="mtop msb"><button class="ibtn" data-a="mclear" title="Снять выделение">' + ic("x", 22) + '</button><span class="mcnt">' + mIds().length + '</span><span style="flex:1"></span><button class="ibtn" data-a="mmore" title="Действия">' + ic("dotsv", 22) + "</button></div>";
   if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
   return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + (extra || "") + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
@@ -3467,7 +3478,7 @@ function mainHTML(items, done, vi) {
       else if (more) h += '<button class="btn ghost" data-a="loaddone" style="width:100%;margin:6px 0">' + (ui.dBusy ? "Загружаю…" : (ui.dOff && ui.dOff[k] ? "Загрузить ещё из архива" : "Загрузить выполненные из архива")) + "</button>";
     }
   }
-  return h + multiBarHTML() + "</div>" + (isMobile() && view !== "search" && !ui.left && !selId ? '<button class="fab" data-a="qaopen" title="Добавить задачу">' + ic("plus", 28) + "</button>" : "") + "</div>";
+  return h + multiBarHTML() + "</div>" + (isMobile() && view !== "search" && !ui.left && !selId && !mIds().length ? '<button class="fab" data-a="qaopen" title="Добавить задачу">' + ic("plus", 28) + "</button>" : "") + "</div>";
 }
 const fmtPlan = iso => { const d = new Date(iso); return d.getDate() + " " + MONS[d.getMonth()] + ", " + hm(d.getHours() * 60 + d.getMinutes()); };
 let lastDetail = null, lastSettings = false;
@@ -3551,7 +3562,7 @@ function popHTML() {
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
   const mob = isMobile(), dt = p.type === "due" || p.type === "remind" || (p.type === "repeat" && mob);
   const lst = (p.type === "due" && ui.dtp && !ui.dtp.cal) || (p.type === "repeat" && mob), anc = lst || (mob && p.type === "remind");
-  return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((Math.max(window.__fullH || 0, innerHeight) - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
+  return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "mctx" && mob ? " mtp" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((Math.max(window.__fullH || 0, innerHeight) - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
@@ -3986,23 +3997,30 @@ function morphKeep(o, n, keep, nk) {
 /* ----- плавность: закрывающиеся окна/панели «растворяются» вместо мгновенного исчезновения ----- */
 function ghostGrab() {
   const g = [], add = (sel, kind) => { const e = document.querySelector(sel); if (e) g.push({ sel, kind, el: e.cloneNode(true), r: e.getBoundingClientRect() }); };
-  add("#pop", "pop"); add(".qa-back:not([data-ghost])", "qa"); if (isMobile() && selId) add("#right", "slide");
+  add("#pop", "pop"); add(".qa-back:not([data-ghost])", "qa"); if (isMobile() && selId) add("#right", "slide"); if (isMobile()) add("#left:not(.hide)", "lslide");
   return g;
 }
 function ghostPlay(g) {
   const lsel = window.__lsel; window.__lsel = selId;
+  const prevL = window.__lleft; window.__lleft = ui.left; let lMoved = false;
   g.forEach(x => {
     if (document.querySelector(x.sel)) return;   // осталось на месте — не прячем
     const c = x.el, r = x.r; c.setAttribute("data-ghost", "1"); c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
     const st = c.style; st.setProperty("pointer-events", "none"); st.setProperty("z-index", "9000"); st.setProperty("margin", "0");
     if (x.kind !== "qa") { st.setProperty("position", "fixed"); st.setProperty("left", r.left + "px", "important"); st.setProperty("top", r.top + "px", "important"); st.setProperty("right", "auto", "important"); st.setProperty("bottom", "auto", "important"); st.setProperty("width", r.width + "px"); st.setProperty("height", r.height + "px"); st.setProperty("transform", "none", "important"); }
     document.body.appendChild(c);
-    const kf = x.kind === "slide" ? [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(32px)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
-    const an = c.animate(kf, { duration: x.kind === "pop" ? 150 : 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+    const kf = x.kind === "lslide" ? [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(-38%)" }] : x.kind === "slide" ? [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(32px)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
+    const an = c.animate(kf, { duration: x.kind === "pop" ? 150 : x.kind === "lslide" ? 320 : 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
     if (x.kind === "qa") { const q = c.querySelector(".qa"); if (q) q.animate([{ transform: "translateY(0)" }, { transform: "translateY(28px)" }], { duration: 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); }
     an.onfinish = () => c.remove(); setTimeout(() => c.remove(), 600);
   });
-  if (ui.vfade) { ui.vfade = 0; const m = $("main"); if (m && m.animate) m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" }); }
+  if (isMobile() && prevL !== undefined && prevL !== ui.left && !selId) {   // меню ↔ список: меню уезжает влево, список заезжает справа (и наоборот)
+    ui.vfade = 0; lMoved = true;
+    if (ui.left) { const l = $("left"); if (l && l.animate) l.animate([{ opacity: .3, transform: "translateX(-38%)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 320, easing: "cubic-bezier(.2,.8,.2,1)" }); }
+    else { const m = $("main"); if (m && m.animate) m.animate([{ opacity: .3, transform: "translateX(34%)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 320, easing: "cubic-bezier(.2,.8,.2,1)" }); }
+  }
+  if (lMoved) {}
+  else if (ui.vfade) { ui.vfade = 0; const m = $("main"); if (m && m.animate) m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" }); }
   else if (isMobile() && selId && selId !== lsel) { const r = $("right"); if (r && r.animate) r.animate([{ opacity: 0, transform: "translateX(28px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 240, easing: "cubic-bezier(.2,.8,.2,1)" }); }
 }
 function render() {
@@ -4113,7 +4131,7 @@ function exportJson() {
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
 let hDepth = 0, hSkip = 0;
-const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (mIds().length ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() { return innerLayers0() + (ui.settings && !ui.smenu ? 1 : 0); }   // подраздел настроек — свой слой «Назад»
 function innerLayers0() {
   if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
@@ -4138,14 +4156,14 @@ function onBack() {
   if (hSkip > 0) { hSkip--; return; }
   if (hDepth > 0) hDepth--;
   if (innerBack()) { render(); return; }
-  if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (ui.qa) ui.qa = null; else if (ui.settings) { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; }
+  if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (mIds().length) mClear(); else if (ui.qa) ui.qa = null; else if (ui.settings) { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; }
   else if (selId) selId = null; else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) ui.left = true;
   render();
 }
 
 /* ----- действия по клику ----- */
 const closePop = () => { ui.pop = null; ui.dtp = null; };
-const goView = v => { if (v !== view) ui.vfade = 1; view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
+const goView = v => { if (v !== view) { ui.vfade = 1; mClear(); } view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
 const patchTask = (id, o) => { const d = draftOf(id); if (d) Object.assign(d, o); else upd(id, o); };
 const setDue = (id, v) => {
   const map = { today: today, tom: addDays(today, 1), week: nextMonday(), clear: null };
@@ -5471,6 +5489,10 @@ function init() {
     if (gh) { e.preventDefault(); if (!isMobile()) { ui.pop = { type: "gmenu", id: null, g: gh.dataset.g, x: e.clientX, y: e.clientY }; render(); } return; }
     if (!r && !c) return;
     if (c && !r && isMobile()) { e.preventDefault(); return; }
+    if (r && isMobile() && S.user && r.closest("#main") && !ui.qa) {   // долгий тап по задаче — выделение (как в To Do), а не меню задачи
+      e.preventDefault(); const id = r.dataset.id; if (ui.multi[id]) delete ui.multi[id]; else ui.multi[id] = 1;
+      ui.mLP = Date.now(); selId = null; try { navigator.vibrate && navigator.vibrate(12); } catch (x) {} render(); return;
+    }
     e.preventDefault();
     ui.pop = r ? { type: "ctx", id: r.dataset.id, x: e.clientX, y: e.clientY } : { type: "listmenu", id: c.dataset.lid, x: e.clientX, y: e.clientY };
     render();
