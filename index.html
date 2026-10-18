@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 15:22";
+const BUILD = "18.10 15:36";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2093,25 +2093,45 @@ const SND_PACKS = {   // каждая нота: [частота Гц, сдвиг
   bell: { n: "Колокольчик", done: [[1047, 0, .5, "triangle", .4], [2093, 0, .3, "sine", .12], [1568, .12, .65, "triangle", .35]], add: [[1319, 0, .35, "triangle", .35]], del: [[392, 0, .32, "triangle", .4, 196]], remind: [[1047, 0, .6, "triangle", .4], [1047, .45, .6, "triangle", .4], [1047, .9, .85, "triangle", .4]] },
   click: { n: "Щелчки", done: [[1500, 0, .04, "square", .1], [2200, .05, .07, "square", .1]], add: [[1200, 0, .04, "square", .09]], del: [[300, 0, .08, "square", .1, 120]], remind: [[1800, 0, .05, "square", .1], [1800, .13, .05, "square", .1], [1800, .26, .05, "square", .1]] }
 };
-/* звуки по темам: ноты как выше + шум [центр.частота, сдвиг, длит., "noise", громк., частота в конце] */
-const Nz = (f, t, d, v, f2) => [f, t, d, "noise", v, f2];
+/* звуки по темам — приближены к реальным: шум через фильтры (волна, шелест, ветер), инharmonic-партиалы (колокольчики, стекло, гонг), «блуп» капли, птица, чайка */
+const Nz = (f, t, d, v, f2, o) => [f, t, d, "noise", v, f2, o || {}];
+const bell = (f, t, v, d, rt, am) => (rt || [1, 2.76, 5.4, 8.9]).map((r, i) => [f * r, t, (d || 1.3) / (i * .7 + 1), "sine", v * (am || [1, .5, .25, .12])[i]]);
+const glass = (f, t, v) => bell(f, t, v, .55, [1, 2.32, 4.25, 6.63], [1, .6, .35, .2]);
+const mbox = (f, t, v) => bell(f, t, v, .7, [1, 3, 6.2], [1, .35, .12]);
+const marimba = (f, t, v) => [[f, t, .38, "sine", v], [f * 4, t, .09, "sine", v * .4], [f * 9.2, t, .03, "sine", v * .12]];
+const piano = (f, t, v, d) => [[f, t, d || 1, "sine", v], [f * 2, t, (d || 1) * .7, "sine", v * .4], [f * 3, t, (d || 1) * .5, "sine", v * .2], [f * 4, t, (d || 1) * .35, "sine", v * .1]];
+const bowl = (f, t, v) => [[f, t, 2.2, "sine", v, null, null, .05], [f * 2.71, t, 1.4, "sine", v * .4, null, null, .05], [f * 5.15, t, .8, "sine", v * .15, null, null, .05]];
+const gong = (f, t, v) => [1, 1.47, 2.09, 2.56, 3.4].map((r, i) => [f * r, t, 2.2 / (i * .5 + 1), "sine", v * [1, .6, .4, .3, .15][i], null, null, .015]);
+const bloop = (f, t, v) => [[f, t, .1, "sine", v, f * 2.6], [f * 2, t, .06, "sine", v * .3, f * 4]];
+const bird = (t, v) => [[2600, t, .1, "sine", v, null, [[.5, 3900], [1, 3000]]], [2700, t + .13, .09, "sine", v * .8, null, [[.5, 4000], [1, 3100]]]];
+const gull = (t, v) => [[1500, t, .55, "sine", v, null, [[.15, 2500], [.5, 1700]], .03], [3000, t, .55, "sine", v * .3, null, [[.15, 5000], [.5, 3400]], .03]];
+const drum = (t, v) => [[160, t, .24, "sine", v, 50], Nz(300, t, .08, v * .6, 120, { f: "lp", q: .5 })];
+const knock = (t, v) => [[700, t, .06, "sine", v, 350], [1400, t, .03, "sine", v * .3, 700]];
+const cricket = (t, v) => [0, 1, 2].map(i => [4400, t + i * .035, .02, "sine", v]);
+const pop = (t, v) => [[700, t, .06, "sine", v, 180], Nz(2500, t, .02, v * .5, 1500, { q: .6 })];
+const crackle = (t, d, n, f, v, hp) => { const r = []; for (let i = 0; i < n; i++) r.push(Nz(f * (.7 + Math.random() * .8), t + Math.random() * d, .012 + Math.random() * .02, v * (.4 + Math.random() * .6), 0, { f: hp ? "hp" : "bp", q: .7 })); return r; };
+const wave = (t, d, v) => [Nz(250, t, d, v, 1600, { a: d * .55, f: "lp", k: "brown", q: .7 }), Nz(5200, t + d * .25, d * .8, v * .3, 3500, { a: d * .45, f: "hp", k: "white", q: .5 })];
+const wash = (t, d, v) => [Nz(1500, t, d, v, 200, { a: d * .12, f: "lp", k: "brown", q: .7 })];
+const wind = (t, d, v) => [Nz(600, t, d, v, 1300, { a: d * .5, f: "bp", k: "pink", q: .6 })];
+const swish = (t, f1, f2, d, v) => Nz(f1, t, d, v, f2, { f: "bp", q: 2.2, a: d * .3 });
+const L = (...a) => [].concat(...a);
 const THEME_SND = {
-  web: { n: "Паутина", done: [Nz(3200, 0, .13, .55, 700), [150, .08, .14, "sine", .5, 70], Nz(1800, .09, .06, .25, 900)], add: [Nz(500, 0, .1, .45, 2600)], del: [Nz(2200, 0, .22, .45, 300), [120, .1, .15, "sine", .4, 60]], remind: [Nz(3200, 0, .12, .5, 700), Nz(3200, .3, .12, .5, 700), Nz(3200, .6, .12, .5, 700), [150, .68, .2, "sine", .5, 70]] },
-  paper: { n: "Бумага", done: [Nz(5000, 0, .1, .4, 2500), Nz(4000, .09, .09, .3, 6000), [1200, .17, .05, "triangle", .2]], add: [Nz(4500, 0, .09, .35, 2500)], del: [Nz(3500, 0, .05, .45, 1500), Nz(3000, .06, .05, .45, 1200), Nz(2500, .13, .06, .4, 900)], remind: [[1300, 0, .05, "triangle", .35], [1300, .16, .05, "triangle", .35], [1300, .32, .05, "triangle", .35]] },
-  sky: { n: "Небо", done: [[1319, 0, .5, "sine", .35], [1760, .1, .7, "sine", .3], [2349, .2, .8, "sine", .15]], add: [[1047, 0, .4, "sine", .3]], del: [[880, 0, .4, "sine", .3, 330]], remind: [[523, 0, .4, "sine", .4], [659, .18, .4, "sine", .4], [784, .36, .4, "sine", .4], [1047, .54, .7, "sine", .4]] },
-  mint: { n: "Мята", done: [[1200, 0, .09, "sine", .45, 600], [698, .09, .22, "sine", .4], [880, .17, .3, "sine", .4]], add: [[1200, 0, .09, "sine", .4, 600]], del: [[800, 0, .16, "sine", .4, 250]], remind: [[1200, 0, .09, "sine", .45, 600], [1200, .3, .09, "sine", .45, 600], [1200, .6, .09, "sine", .45, 600], [880, .7, .4, "sine", .4]] },
-  lavender: { n: "Лаванда", done: [[880, 0, .7, "triangle", .3], [1108, .1, .7, "triangle", .28], [1318, .2, .9, "triangle", .28]], add: [[988, 0, .5, "triangle", .3]], del: [[440, 0, .5, "triangle", .3, 220]], remind: [[880, 0, .6, "triangle", .35], [1108, .35, .6, "triangle", .35], [1318, .7, .9, "triangle", .35]] },
-  peach: { n: "Закат", done: [[523, 0, .3, "triangle", .45], [784, .1, .4, "triangle", .45]], add: [[659, 0, .25, "triangle", .4]], del: [[300, 0, .3, "triangle", .4, 150]], remind: [[523, 0, .25, "triangle", .45], [659, .25, .25, "triangle", .45], [784, .5, .5, "triangle", .45]] },
-  forest: { n: "Лес", done: [[400, 0, .09, "sine", .5, 1200], [500, .12, .08, "sine", .45, 1500], Nz(2500, .13, .05, .12, 4000)], add: [[450, 0, .09, "sine", .45, 1300]], del: [[900, 0, .2, "sine", .45, 250]], remind: [[400, 0, .09, "sine", .5, 1200], [400, .25, .09, "sine", .5, 1200], [400, .5, .09, "sine", .5, 1200], [600, .6, .3, "sine", .4]] },
-  dusk: { n: "Сумерки", done: [[392, 0, 1, "sine", .4], [588, .02, .9, "sine", .25], [196, 0, 1.1, "sine", .3]], add: [[523, 0, .6, "sine", .3]], del: [[196, 0, .6, "sine", .4, 98]], remind: [[392, 0, 1, "sine", .45], [392, .8, 1, "sine", .45], [392, 1.6, 1.3, "sine", .45]] },
-  honey: { n: "Мёд", done: [[1568, 0, .12, "sine", .35], [2093, .06, .14, "sine", .3], [2637, .12, .3, "sine", .28], Nz(7000, 0, .3, .08, 9000)], add: [[1760, 0, .1, "sine", .3]], del: [[523, 0, .3, "sine", .35, 262]], remind: [[2093, 0, .15, "sine", .4], [2637, .2, .15, "sine", .4], [2093, .5, .15, "sine", .4], [2637, .7, .4, "sine", .4]] },
-  berry: { n: "Ягода", done: [[200, 0, .13, "sawtooth", .15, 1200], [1760, .1, .09, "square", .1], [2349, .17, .12, "square", .08]], add: [[1400, 0, .05, "square", .1]], del: [[800, 0, .2, "sawtooth", .15, 100]], remind: [[200, 0, .13, "sawtooth", .17, 1200], [200, .3, .13, "sawtooth", .17, 1200], [200, .6, .13, "sawtooth", .17, 1200], [1760, .72, .25, "square", .1]] },
-  lime: { n: "Лайм", done: [[300, 0, .07, "sine", .5, 900], [1500, .07, .05, "triangle", .25], [1000, .13, .1, "sine", .35]], add: [[350, 0, .07, "sine", .45, 900]], del: [[600, 0, .18, "sine", .45, 150]], remind: [[300, 0, .07, "sine", .5, 900], [300, .22, .07, "sine", .5, 900], [300, .44, .07, "sine", .5, 900], [1000, .55, .2, "sine", .4]] },
-  ocean: { n: "Океан", done: [Nz(300, 0, .55, .3, 1600), Nz(1600, .45, .45, .22, 300), [523, .2, .5, "sine", .25]], add: [[900, 0, .12, "sine", .35, 600]], del: [Nz(1500, 0, .4, .3, 250)], remind: [[220, 0, .8, "sine", .45, 330], [220, .9, .8, "sine", .45, 330], Nz(300, 0, .8, .15, 1200)] },
-  cotton: { n: "Сахарная вата", done: [[1047, 0, .12, "triangle", .35], [1319, .06, .12, "triangle", .35], [1568, .12, .12, "triangle", .35], [2093, .18, .3, "triangle", .3]], add: [[1568, 0, .12, "triangle", .3]], del: [[784, 0, .3, "triangle", .35, 392]], remind: [[1047, 0, .1, "triangle", .4], [1319, .1, .1, "triangle", .4], [1568, .2, .1, "triangle", .4], [1047, .5, .1, "triangle", .4], [1319, .6, .1, "triangle", .4], [1568, .7, .3, "triangle", .4]] },
-  rose: { n: "Роза", done: [[784, 0, .5, "sine", .3], [988, .12, .55, "sine", .28], [1175, .24, .8, "sine", .26]], add: [[880, 0, .35, "sine", .28]], del: [[330, 0, .4, "sine", .3, 165]], remind: [[784, 0, .6, "sine", .38], [988, 0, .6, "sine", .32], [784, .7, .6, "sine", .38], [988, .7, .6, "sine", .32], [1175, 1.4, 1, "sine", .38]] },
-  ice: { n: "Лёд", done: [[2093, 0, .3, "sine", .3], [2637, .05, .3, "sine", .25], Nz(8000, 0, .08, .3, 5000)], add: [[2349, 0, .1, "sine", .25]], del: [[1000, 0, .25, "triangle", .3, 300], Nz(7000, 0, .1, .3, 3000)], remind: [[2093, 0, .25, "sine", .4], [2637, .2, .25, "sine", .4], [2093, .45, .25, "sine", .4], [2637, .65, .4, "sine", .4]] },
-  sand: { n: "Пустыня", done: [Nz(800, 0, .4, .28, 1400), [196, .05, .18, "triangle", .5, 150]], add: [[262, 0, .1, "triangle", .45, 200]], del: [Nz(1200, 0, .4, .3, 250)], remind: [[196, 0, .2, "triangle", .55, 150], [196, .3, .2, "triangle", .55, 150], [196, .6, .2, "triangle", .55, 150], [262, .75, .3, "triangle", .5, 200]] }
+  web: { n: "Паутина", done: L([swish(0, 900, 4500, .09, 1.2)], [[330, .07, .5, "triangle", .3, 300], [660, .07, .3, "sine", .12, 600], [120, .08, .14, "sine", .5, 60]]), add: [swish(0, 700, 3500, .08, .8)], del: L([swish(0, 4000, 600, .14, 1)], crackle(.1, .12, 5, 4500, .3, 1)), remind: L([0, .35, .7].map(t => [swish(t, 900, 4500, .09, 1.2), [330, t + .07, .4, "triangle", .35, 300]]).flat()) },
+  paper: { n: "Бумага", done: L(crackle(0, .25, 10, 4500, .8, 1), [[1800, .27, .03, "triangle", .15]]), add: crackle(0, .1, 5, 4500, .7, 1), del: crackle(0, .5, 24, 3000, 1, 1), remind: L(knock(0, .6), knock(.2, .6), knock(.4, .6)) },
+  sky: { n: "Небо", done: L(bell(1568, 0, .2, 1.4), bell(2093, .15, .2, 1.4), bell(2637, .3, .15, 1.6)), add: bell(1760, 0, .22, .8), del: bell(988, 0, .22, 1), remind: L(bell(1568, 0, .22, 1.2), bell(2093, .2, .22, 1.2), bell(1319, .4, .22, 1.2), bell(2349, .6, .22, 1.2), bell(1760, .8, .22, 1.6)) },
+  mint: { n: "Мята", done: L(bloop(500, 0, .5), bloop(750, .13, .45)), add: bloop(600, 0, .45), del: bloop(300, 0, .5), remind: L(bloop(500, 0, .5), bloop(500, .3, .5), bloop(500, .6, .5), bloop(800, .75, .5)) },
+  lavender: { n: "Лаванда", done: bowl(528, 0, .35), add: bowl(660, 0, .3), del: bowl(330, 0, .35), remind: L(bowl(528, 0, .4), bowl(528, 1, .4), bowl(528, 2, .4)) },
+  peach: { n: "Закат", done: L(marimba(523, 0, .5), marimba(784, .12, .5)), add: marimba(659, 0, .45), del: marimba(262, 0, .5), remind: L(marimba(523, 0, .5), marimba(659, .2, .5), marimba(784, .4, .5), marimba(1047, .6, .5)) },
+  forest: { n: "Лес", done: L(bird(0, .35), bird(.3, .3), crackle(0, .4, 6, 3500, .25)), add: bird(0, .35), del: L([Nz(2500, 0, .02, 1.2, 0, { f: "hp", q: .6 }), [180, 0, .08, "sine", .5, 90]]), remind: L(bird(0, .45), bird(.45, .45), bird(.9, .45)) },
+  dusk: { n: "Сумерки", done: gong(147, 0, .35), add: L(cricket(0, .12), cricket(.2, .12), cricket(.4, .12)), del: gong(110, 0, .35), remind: L(gong(147, 0, .5), gong(147, 1, .5), gong(147, 2, .5)) },
+  honey: { n: "Мёд", done: L(mbox(1047, 0, .25), mbox(1319, .13, .25), mbox(1568, .26, .25), mbox(2093, .39, .25)), add: mbox(1568, 0, .28), del: L(mbox(784, 0, .28), mbox(659, .15, .28)), remind: L(mbox(1319, 0, .3), mbox(1568, .2, .3), mbox(2093, .4, .3), mbox(1319, .9, .3), mbox(1568, 1.1, .3), mbox(2093, 1.3, .3)) },
+  berry: { n: "Ягода", done: L(pop(0, .7), pop(.16, .6), bloop(500, .3, .35)), add: pop(0, .6), del: [Nz(800, 0, .18, .8, 200, { f: "lp", q: .7 })], remind: L(pop(0, .8), pop(.2, .8), pop(.4, .8), pop(.6, .8)) },
+  lime: { n: "Лайм", done: L(pop(0, .7), crackle(.03, .45, 34, 6500, .5, 1), bloop(600, .4, .3)), add: L(pop(0, .5), crackle(0, .15, 10, 6500, .4, 1)), del: crackle(0, .4, 22, 3500, .5, 1), remind: L(pop(0, .8), crackle(.03, .3, 22, 6500, .5, 1), pop(.5, .8), crackle(.53, .3, 22, 6500, .5, 1)) },
+  ocean: { n: "Океан", done: wave(0, 1.5, 1.4), add: L(bloop(700, 0, .4), [Nz(3000, .02, .12, .3, 1500, { f: "hp", k: "white" })]), del: wash(0, 1, 1.4), remind: L(wave(0, 1.3, 1.2), gull(.5, .4), gull(1.2, .4)) },
+  cotton: { n: "Сахарная вата", done: L(glass(1047, 0, .22), glass(1319, .08, .22), glass(1568, .16, .22), glass(2093, .24, .22)), add: glass(1568, 0, .25), del: glass(784, 0, .3), remind: L(glass(1047, 0, .28), glass(1319, .1, .28), glass(1568, .2, .28), glass(1047, .6, .28), glass(1319, .7, .28), glass(1568, .8, .28)) },
+  rose: { n: "Роза", done: L(piano(659, 0, .4), piano(784, .1, .4), piano(988, .2, .4, 1.4)), add: piano(784, 0, .4, .7), del: piano(330, 0, .45, .9), remind: L(piano(659, 0, .45), piano(784, 0, .45), piano(988, 0, .45, 1.2), piano(659, .9, .45), piano(784, .9, .45), piano(1175, .9, .45, 1.4)) },
+  ice: { n: "Лёд", done: L(glass(2349, 0, .25), glass(3136, .07, .22)), add: glass(2637, 0, .22), del: L(crackle(0, .3, 14, 7000, .5, 1), glass(1000, .2, .25)), remind: L(glass(2349, 0, .3), glass(3136, .25, .3), glass(2349, .5, .3), glass(3136, .75, .3)) },
+  sand: { n: "Пустыня", done: L(wind(0, .8, 1.1), drum(.1, .5)), add: drum(0, .45), del: [Nz(1300, 0, .5, 1, 300, { a: .06, f: "bp", k: "pink", q: .6 })], remind: L(drum(0, .6), drum(.3, .6), drum(.6, .6)) }
 };
 THEME_SND.webl = THEME_SND.web;
 const sndPackOf = c => c.pack === "theme" ? (THEME_SND[(THEMES[TH.theme] || {}).snd || TH.theme] || SND_PACKS.soft) : SND_PACKS[c.pack];
@@ -2126,19 +2146,21 @@ function snd(ev, force) {
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     if (!sndAC) sndAC = new AC(); if (sndAC.state === "suspended") sndAC.resume();
     const notes = sndPackOf(c)[ev]; if (!notes || !c.vol) return;
-    const out = sndAC.createGain(); out.gain.value = c.vol / 100 * .7; out.connect(sndAC.destination);
+    const out = sndAC.createGain(), cmp = sndAC.createDynamicsCompressor(); out.gain.value = c.vol / 100 * .7; out.connect(cmp); cmp.connect(sndAC.destination);   // компрессор — чтобы наложение нот не хрипело
     const t0 = sndAC.currentTime + .01;
     notes.forEach(n => {
-      if (n[3] === "noise") {   // шум через полосовой фильтр с «скольжением»: шелест, всплеск, нить
-        const len = Math.ceil(sndAC.sampleRate * n[2]) + 1000, buf = sndAC.createBuffer(1, len, sndAC.sampleRate), dd = buf.getChannelData(0); for (let i = 0; i < len; i++) dd[i] = Math.random() * 2 - 1;
-        const src = sndAC.createBufferSource(), f = sndAC.createBiquadFilter(), v = sndAC.createGain(), s = t0 + n[1], e = s + n[2];
-        src.buffer = buf; f.type = "bandpass"; f.Q.value = 1.1; f.frequency.setValueAtTime(n[0], s); if (n[5]) f.frequency.exponentialRampToValueAtTime(n[5], e);
-        v.gain.setValueAtTime(.0001, s); v.gain.exponentialRampToValueAtTime(n[4], s + .015); v.gain.exponentialRampToValueAtTime(.0001, e);
+      if (n[3] === "noise") {   // шум (white/pink/brown) через фильтр с «скольжением» и плавным нарастанием
+        const op = n[6] || {}, len = Math.ceil(sndAC.sampleRate * n[2]) + 1000, buf = sndAC.createBuffer(1, len, sndAC.sampleRate), dd = buf.getChannelData(0), k = op.k || "white";
+        let b0 = 0, b1 = 0, b2 = 0, br = 0;
+        for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; if (k === "brown") { br = (br + .02 * w) / 1.02; dd[i] = br * 3.5; } else if (k === "pink") { b0 = .99765 * b0 + w * .099046; b1 = .963 * b1 + w * .2965164; b2 = .57 * b2 + w * 1.0526913; dd[i] = (b0 + b1 + b2 + w * .1848) * .25; } else dd[i] = w; }
+        const src = sndAC.createBufferSource(), f = sndAC.createBiquadFilter(), v = sndAC.createGain(), s = t0 + n[1], e = s + n[2], at = Math.min(op.a || .012, n[2] * .8);
+        src.buffer = buf; f.type = op.f === "lp" ? "lowpass" : op.f === "hp" ? "highpass" : "bandpass"; f.Q.value = op.q || 1.1; f.frequency.setValueAtTime(n[0], s); if (n[5]) f.frequency.exponentialRampToValueAtTime(n[5], e);
+        v.gain.setValueAtTime(.0001, s); v.gain.exponentialRampToValueAtTime(n[4], s + at); v.gain.exponentialRampToValueAtTime(.0001, e);
         src.connect(f); f.connect(v); v.connect(out); src.start(s); src.stop(e + .03); return;
       }
       const o = sndAC.createOscillator(), v = sndAC.createGain(), s = t0 + n[1], e = s + n[2];
-      o.type = n[3]; o.frequency.setValueAtTime(n[0], s); if (n[5]) o.frequency.exponentialRampToValueAtTime(n[5], e);
-      v.gain.setValueAtTime(.0001, s); v.gain.exponentialRampToValueAtTime(n[4], s + .01); v.gain.exponentialRampToValueAtTime(.0001, e);
+      o.type = n[3]; o.frequency.setValueAtTime(n[0], s); if (n[5]) o.frequency.exponentialRampToValueAtTime(n[5], e); if (n[6]) n[6].forEach(p => o.frequency.linearRampToValueAtTime(p[1], s + p[0] * n[2]));
+      v.gain.setValueAtTime(.0001, s); v.gain.exponentialRampToValueAtTime(n[4], s + (n[7] || .01)); v.gain.exponentialRampToValueAtTime(.0001, e);
       o.connect(v); v.connect(out); o.start(s); o.stop(e + .03);
     });
   } catch (x) {}
