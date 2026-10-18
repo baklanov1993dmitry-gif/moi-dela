@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 18:58";
+const BUILD = "18.10 19:01";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3551,7 +3551,7 @@ function popHTML() {
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
   const mob = isMobile(), dt = p.type === "due" || p.type === "remind" || (p.type === "repeat" && mob);
   const lst = (p.type === "due" && ui.dtp && !ui.dtp.cal) || (p.type === "repeat" && mob), anc = lst || (mob && p.type === "remind");
-  return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((innerHeight - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
+  return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((Math.max(window.__fullH || 0, innerHeight) - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
@@ -5551,6 +5551,7 @@ function init() {
     e.preventDefault(); const ids = e.dataTransfer.getData("text/plain").split(",").filter(x => S.tasks[x]);
     if (ids.length) { mSnap(ids); ids.forEach(id => upd(id, { list_id: c.dataset.lid })); toast("Перенесено в «" + S.lists[c.dataset.lid].name + "»" + (ids.length > 1 ? " · " + ids.length + " шт." : "")); if (ids.length > 1) mClear(); render(); }
   });
+  window.__fullH = innerHeight; window.__fullW = innerWidth; addEventListener("resize", () => { if (innerWidth !== window.__fullW) { window.__fullW = innerWidth; window.__fullH = 0; } window.__fullH = Math.max(window.__fullH || 0, innerHeight); });   // полная высота окна без клавиатуры — для центрирования меню
   if (window.visualViewport) {                          // шторка быстрого ввода поднимается над клавиатурой
     const kb = () => { const v = visualViewport; document.documentElement.style.setProperty("--kb", Math.max(0, innerHeight - v.height - v.offsetTop) + "px"); };
     visualViewport.addEventListener("resize", kb); visualViewport.addEventListener("scroll", kb);
