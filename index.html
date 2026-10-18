@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 20:52";
+const BUILD = "18.10 20:57";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3071,7 +3071,7 @@ const CSS = `
 .cards.grid .mi + .mi::before{display:none}
 .cards.grid .meta{gap:2px 12px}
 .taskrow{display:flex;gap:12px;align-items:flex-start;padding:var(--pad) 14px;background:var(--card);box-shadow:var(--shadow);border-radius:var(--rad);margin-bottom:var(--gap,3px);cursor:pointer;min-height:var(--rowh,48px);border:var(--cbd)}
-.taskrow:hover{background:var(--hov)} .taskrow.sel{background:var(--sel)}
+@media(hover:hover){.taskrow:hover{background:var(--hov)}} .taskrow.sel{background:var(--sel)}
 .rad{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--acc);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
 .rad:hover{background:var(--sel)} .rad.on{background:var(--acc)}
 .tbody{flex:1;min-width:0}
@@ -3998,6 +3998,15 @@ function morphKeep(o, n, keep, nk) {
 function paintLikeApp(el) {   // скользящая панель должна иметь тот же фон (обои), что и приложение, иначе просвечивает меню под ней
   try { const cs = getComputedStyle($("app")), st = el.style; st.backgroundImage = cs.backgroundImage; st.backgroundSize = cs.backgroundSize; st.backgroundPosition = cs.backgroundPosition; st.backgroundRepeat = cs.backgroundRepeat; st.backgroundColor = cs.backgroundColor; st.backgroundAttachment = "scroll"; if (cs.backgroundImage === "none" && /rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor)) { const bs = getComputedStyle(document.body); st.backgroundColor = /rgba\(0, 0, 0, 0\)|transparent/.test(bs.backgroundColor) ? "#fff" : bs.backgroundColor; } } catch (e) {}
 }
+function xCard(A, B, dur, z, fadeEnd) {   // белая карточка, «перетекающая» из прямоугольника A в B (scale/translate — работает на видеоускорителе)
+  const W = innerWidth, H = innerHeight, d = document.createElement("div");
+  d.style.cssText = "position:fixed;left:0;top:0;width:" + W + "px;height:" + H + "px;background:var(--solid,#fff);transform-origin:0 0;pointer-events:none;z-index:" + z + ";will-change:transform;box-shadow:0 2px 14px rgba(0,0,0,.12)";
+  const tf = R => "translate(" + R.left + "px," + R.top + "px) scale(" + Math.max(.01, R.width / W) + "," + Math.max(.01, R.height / H) + ")";
+  document.body.appendChild(d);
+  const kf = fadeEnd ? [{ transform: tf(A), opacity: 1 }, { transform: tf(B), opacity: 1, offset: .8 }, { transform: tf(B), opacity: 0 }] : [{ transform: tf(A) }, { transform: tf(B) }];
+  const an = d.animate(kf, { duration: dur, easing: "cubic-bezier(.3,0,.15,1)", fill: "forwards" });
+  const kill = () => d.remove(); an.onfinish = () => setTimeout(kill, fadeEnd ? 0 : 200); setTimeout(kill, dur + 800);
+}
 function ghostGrab() {
   const g = [], add = (sel, kind) => { const e = document.querySelector(sel); if (e) g.push({ sel, kind, el: e.cloneNode(true), r: e.getBoundingClientRect() }); };
   add("#pop", "pop"); add(".qa-back:not([data-ghost])", "qa"); if (isMobile() && !selId && window.__lsel) add("#right:not(.hide)", "slide");
@@ -4014,13 +4023,12 @@ function ghostPlay(g) {
     if (x.kind !== "qa") { st.setProperty("position", "fixed"); st.setProperty("left", r.left + "px", "important"); st.setProperty("top", r.top + "px", "important"); st.setProperty("right", "auto", "important"); st.setProperty("bottom", "auto", "important"); st.setProperty("width", r.width + "px"); st.setProperty("height", r.height + "px"); st.setProperty("transform", "none"); }
     if (x.kind === "mslide" || x.kind === "slide") paintLikeApp(c);
     document.body.appendChild(c);
-    if (x.kind === "slide") {   // закрытие задачи как в To Do: содержимое гаснет, карточка сжимается обратно в строку списка
-      const W = innerWidth, H = innerHeight; let rr = null; try { const rw = document.querySelector('#main .taskrow[data-id="' + lsel + '"]'); if (rw) rr = rw.getBoundingClientRect(); } catch (e) {}
-      Array.prototype.forEach.call(c.children, ch => { ch.style.opacity = "0"; });
-      const to = rr && rr.bottom > 0 && rr.top < H ? "inset(" + Math.max(0, rr.top - r.top) + "px " + Math.max(0, r.right - rr.right) + "px " + Math.max(0, r.bottom - rr.bottom) + "px " + Math.max(0, rr.left - r.left) + "px round 14px)" : "inset(" + (H * 0.45) + "px 12px " + (H * 0.45) + "px 12px round 14px)";
-      const a2 = c.animate([{ clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1 }, { clipPath: to, opacity: 1, offset: .85 }, { clipPath: to, opacity: 0 }], { duration: 200, delay: 20, easing: "cubic-bezier(.3,0,.2,1)", fill: "forwards" });
-      const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(.86)" }, { filter: "brightness(1)" }], { duration: 230, easing: "ease-out" });
-      a2.onfinish = () => c.remove(); setTimeout(() => c.remove(), 700); return;
+    if (x.kind === "slide") {   // закрытие задачи как в To Do: карточка плавно сжимается обратно в строку (только transform/opacity — без рывков)
+      c.remove(); let rr = null; try { const rw = document.querySelector('#main .taskrow[data-id="' + lsel + '"]'); if (rw) rr = rw.getBoundingClientRect(); } catch (e) {}
+      const H = innerHeight, to = rr && rr.bottom > 0 && rr.top < H ? rr : { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 };
+      xCard({ left: 0, top: 0, width: innerWidth, height: H }, to, 240, 26, true);
+      const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(.86)" }, { filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.3,0,.15,1)" });
+      return;
     }
     const kf = x.kind === "lslide" ? [{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .25 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }] : x.kind === "mslide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }] : x.kind === "slide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
     const an = c.animate(kf, { duration: x.kind === "pop" ? 130 : x.kind === "lslide" ? 250 : x.kind === "mslide" ? 240 : 200, easing: x.kind === "lslide" ? "cubic-bezier(0,0,.2,1)" : x.kind === "mslide" ? "cubic-bezier(.35,.1,.25,1)" : "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
@@ -4037,11 +4045,11 @@ function ghostPlay(g) {
       const sh = "-10px 0 28px rgba(0,0,0,.22)", done = () => { ms.display = ""; ms.zIndex = z; ms.position = p; ms.background = ""; ms.boxShadow = ""; if (!ui.left) { const L = $("left"); if (L) L.classList.add("hide"); } };
       let a;
       if (ui.left) {
-        a = m.animate([{ transform: "translateX(0)", boxShadow: sh }, { transform: "translateX(100%)", boxShadow: sh }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)", fill: "forwards" });
+        ms.boxShadow = sh; a = m.animate([{ transform: "translateX(0)" }, { transform: "translateX(100%)" }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)", fill: "forwards" });
         l.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)" });
         a.onfinish = a.oncancel = () => { done(); try { a.cancel(); } catch (e) {} };
       } else {
-        a = m.animate([{ transform: "translateX(72%)", boxShadow: sh }, { transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,0)" }], { duration: 250, easing: "cubic-bezier(0,0,.2,1)" });
+        ms.boxShadow = sh; a = m.animate([{ transform: "translateX(72%)" }, { transform: "translateX(0)" }], { duration: 250, easing: "cubic-bezier(0,0,.2,1)" });
         l.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: "cubic-bezier(0,0,.2,1)", fill: "forwards" });
         a.onfinish = a.oncancel = () => { done(); try { l.getAnimations().forEach(x => x.cancel()); } catch (e) {} };
       }
@@ -4051,10 +4059,9 @@ function ghostPlay(g) {
   else if (ui.vfade) { ui.vfade = 0; const m = $("main"); if (m && m.animate) m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" }); }
   else if (isMobile() && selId && selId !== lsel) { const r = $("right"); if (r && r.animate) {
     try { r.getAnimations().forEach(an => { if (an.animationName) an.cancel(); }); } catch (e) {}   // штатное «проявление» панели мешает раскрытию
-    const o = g.openR, rr = r.getBoundingClientRect();   // открытие задачи как в To Do: строка «раскрывается» в весь экран, потом проявляется содержимое
-    const from = o ? "inset(" + Math.max(0, o.top - rr.top) + "px " + Math.max(0, rr.right - o.right) + "px " + Math.max(0, rr.bottom - o.bottom) + "px " + Math.max(0, o.left - rr.left) + "px round 14px)" : "inset(40% 12px 40% 12px round 14px)";
-    r.animate([{ clipPath: from }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], { duration: 210, easing: "cubic-bezier(.3,0,.15,1)" });
-    Array.prototype.forEach.call(r.children, (ch, i) => ch.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 140 + Math.min(i, 3) * 30, easing: "ease-out", fill: "backwards" }));
+    const o = g.openR, H = innerHeight;   // открытие как в To Do: строка раскрывается в карточку на весь экран, затем проявляется содержимое
+    xCard(o || { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 }, { left: 0, top: 0, width: innerWidth, height: H }, 210, 19, false);
+    r.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 160, easing: "ease-out", fill: "backwards" });
     const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(1)" }, { filter: "brightness(.86)" }], { duration: 210, easing: "ease-out" });
   } }
 }
