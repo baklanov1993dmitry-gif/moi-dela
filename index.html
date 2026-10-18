@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 19:01";
+const BUILD = "18.10 19:06";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4016,6 +4016,7 @@ function render() {
   today = todayISO();
   if (!selId) lastDetail = null; if (!ui.settings) lastSettings = false;
   if (pendingOpen && S.tasks[pendingOpen]) { selId = pendingOpen; pendingOpen = null; ui.left = false; }
+  const kbKeep = !!(ui.qa && document.activeElement && document.activeElement.id === "qa-input");   // клавиатура была открыта — не закрываем
   const gh = ghostGrab();   // «призраки» уходящих элементов — чтобы закрытие было плавным, а не мгновенным
   const html = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : appHTML());
   let kept = false;   // поиск: поле ввода остаётся живым (не теряем клавиатуру/композицию), перерисовывается всё вокруг
@@ -4023,6 +4024,7 @@ function render() {
   if (!kept) app.innerHTML = html;
   applyTheme();
   try { ghostPlay(gh); } catch (e) {}
+  try { if (kbKeep && ui.qa) { const qi = $("qa-input"); if (qi && document.activeElement !== qi) { qi.focus({ preventScroll: true }); const L = qi.value.length; qi.setSelectionRange(L, L); } } } catch (e) {}
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
@@ -4277,7 +4279,7 @@ const acts = {
     const d = a.dataset, w = e._was;
     if (w && w.type === d.p && (w.id || w.g || "") === (d.id || d.g || "")) { closePop(); render(); return; }
     const r = a.getBoundingClientRect();
-    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (isMobile() && (d.p === "due" || d.p === "repeat" || d.p === "remind")) { const need = { due: 330, repeat: 450, remind: 500 }[d.p]; if (ui.qa) { ui.pop.mid = need; } else if (r.bottom + need > innerHeight) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); else ui.pop.y = Math.min(r.bottom + 4, innerHeight - 120); } render();
+    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (isMobile() && (d.p === "due" || d.p === "repeat" || d.p === "remind")) { const need = { due: 330, repeat: 450, remind: 500 }[d.p]; if (ui.qa || r.bottom + need > innerHeight) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); else ui.pop.y = Math.min(r.bottom + 4, innerHeight - 120); } render();
     try { const el = document.querySelector('[data-a="pop"][data-p="' + d.p + '"]' + (d.id ? '[data-id="' + d.id + '"]' : "")); if (el) el.classList.add("popsrc"); } catch (e) {}   // место, куда тапнули, затеняется, пока меню открыто   // из быстрого ввода меню — над полем ввода, а не вверху экрана
   },
   pa(a) {
@@ -5551,6 +5553,7 @@ function init() {
     e.preventDefault(); const ids = e.dataTransfer.getData("text/plain").split(",").filter(x => S.tasks[x]);
     if (ids.length) { mSnap(ids); ids.forEach(id => upd(id, { list_id: c.dataset.lid })); toast("Перенесено в «" + S.lists[c.dataset.lid].name + "»" + (ids.length > 1 ? " · " + ids.length + " шт." : "")); if (ids.length > 1) mClear(); render(); }
   });
+  addEventListener("mousedown", e => { if (ui.qa && e.target.closest && e.target.closest(".qa") && !e.target.closest("#qa-input")) e.preventDefault(); });   // тап по кнопкам шторки не снимает фокус с поля
   window.__fullH = innerHeight; window.__fullW = innerWidth; addEventListener("resize", () => { if (innerWidth !== window.__fullW) { window.__fullW = innerWidth; window.__fullH = 0; } window.__fullH = Math.max(window.__fullH || 0, innerHeight); });   // полная высота окна без клавиатуры — для центрирования меню
   if (window.visualViewport) {                          // шторка быстрого ввода поднимается над клавиатурой
     const kb = () => { const v = visualViewport; document.documentElement.style.setProperty("--kb", Math.max(0, innerHeight - v.height - v.offsetTop) + "px"); };
