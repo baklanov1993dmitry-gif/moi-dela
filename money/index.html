@@ -625,6 +625,72 @@ const winChips = (act, cur) => '<div style="display:flex;gap:6px;flex-wrap:wrap;
 const prcN = () => PR.prcN != null ? +PR.prcN : 90, nutN = () => PR.nutN != null ? +PR.nutN : 30;
 function prcRows(B) { return PRICES.filter(r => { const t = +new Date(r.ts); return t >= B[0] && t < B[1]; }); }
 function prcSum() { const sm = PRC.summary(PRC.groups(prcRows(winOf(prcN())))); return sm ? "инфляция " + ppct(sm.med) : (PRICES.length ? "мало данных" : ""); }
+/* ---- покупки по товарам: сколько раз и на какую сумму ---- */
+const nzI = x => String(x || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+const SPLITN = /\s*,\s+|\s+,\s*|;|\n/, PFX = /^[^:·,\d]{2,30}?\s*[:·]\s+/;
+let ITX = { v: -1, p: -1, L: [] };
+function allItems() {
+  if (ITX.v === txv && ITX.p === PRICES.length) return ITX.L;
+  const by = new Map(); PRICES.forEach(r => { if (r.tx_id) (by.get(r.tx_id) || by.set(r.tx_id, []).get(r.tx_id)).push(r); });
+  const L = [];
+  txs.forEach(t => {
+    if (t.kind !== "exp" || !t.note) return;
+    const parts = String(t.note).replace(PFX, "").split(SPLITN).map(p => p.trim()).filter(p => p.length >= 2 && !/^\d+([.,]\d+)?$/.test(p));
+    const single = parts.length === 1, pr = by.get(t.id) || [];
+    parts.forEach(p => { let a = single ? +t.amount : null; if (a == null && pr.length) { const k = PRC.key(p), r = k && pr.find(x => PRC.key(x.name) === k); if (r && r.amount > 0) a = +r.amount; } L.push({ tx: t.id, ts: t.ts, name: p, k: nzI(p), amt: a }); });
+  });
+  ITX = { v: txv, p: PRICES.length, L }; return L;
+}
+const itmN = () => PR.itmN != null ? +PR.itmN : 90;
+function itmGroups(B, mode) {
+  const m = new Map(), tsB = t => { const x = +new Date(t); return x >= B[0] && x < B[1]; };
+  allItems().forEach(it => {
+    if (!tsB(it.ts)) return;
+    let k = it.k; if (mode === "w") { const w = (k.match(/^[a-zа-я]{3,}/) || [k])[0]; k = w; }
+    const g = m.get(k) || { k, n: 0, sum: 0, known: 0, txs: new Set(), names: {} };
+    g.n++; if (it.amt != null) { g.sum += it.amt; g.known++; } g.txs.add(it.tx); g.names[it.name] = (g.names[it.name] || 0) + 1; m.set(k, g);
+  });
+  return [...m.values()].map(g => { const top = Object.entries(g.names).sort((a, b) => b[1] - a[1])[0][0]; g.name = mode === "w" ? top.replace(/^\s*([A-Za-zА-Яа-яЁё]+).*$/, "$1") : top; g.name = g.name.charAt(0).toUpperCase() + g.name.slice(1); g.avg = g.known ? g.sum / g.known : 0; return g; });
+}
+function itmSum() { const L = itmGroups(winOf(itmN()), PR.itmM || "w"); return L.length ? L.length + " товаров" : ""; }
+function itmBody() {
+  const n = itmN(), mode = PR.itmM || "w", srt = PR.itmS || "s", L = itmGroups(winOf(n), mode);
+  let o = winChips("itmset", n) + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="chip' + (mode === "w" ? " on" : "") + '" data-a="itmmode" data-v="w">По слову</button><button class="chip' + (mode === "e" ? " on" : "") + '" data-a="itmmode" data-v="e">По точному названию</button><span style="flex:1"></span><button class="chip' + (srt === "s" ? " on" : "") + '" data-a="itmsrt" data-v="s">По сумме</button><button class="chip' + (srt === "n" ? " on" : "") + '" data-a="itmsrt" data-v="n">По числу</button></div>';
+  if (!L.length) return o + '<div class="sub">За период нет трат с названиями товаров в заметках.</div>';
+  L.sort((a, b) => srt === "n" ? b.n - a.n || b.sum - a.sum : b.sum - a.sum || b.n - a.n);
+  const lim = ui.itmAll ? 400 : 15, tot = L.reduce((a, g) => a + g.sum, 0);
+  o += '<div class="sub" style="font-size:.8em;margin-bottom:4px">Покупок товара · сумма · средняя цена. Нажми на товар, чтобы увидеть все покупки. «≥» значит, что в части записей несколько товаров сразу и их цену не разделить.</div>';
+  o += L.slice(0, lim).map(g => '<button class="sub-r" data-a="itmgo" data-q="' + esc(mode === "w" ? g.k : g.k) + '" style="padding-left:4px"><span class="t" style="flex:1"><b>' + esc(g.name) + '</b><br><span class="sub" style="font-size:.8em">' + g.n + " раз" + (g.known ? " · ≈" + fm(g.avg) + " за раз" : "") + '</span></span><span class="exp">' + (g.known < g.n ? "≥" : "") + fm(g.sum) + "</span></button>").join("");
+  if (L.length > lim) o += '<button class="btn g" data-a="itmall" style="width:100%;margin-top:6px">Показать все (' + L.length + ")</button>"; else if (ui.itmAll && L.length > 15) o += '<button class="btn g" data-a="itmall" style="width:100%;margin-top:6px">Свернуть</button>';
+  return o + '<button class="btn" data-a="renopen" style="width:100%;margin-top:10px">✏️ Привести названия в порядок</button>';
+}
+/* ---- массовое переименование товаров в заметках ---- */
+function renList(s) {
+  const m = new Map(); allItems().forEach(it => { const e = m.get(it.k) || { k: it.k, n: 0, text: it.name, last: 0 }; e.n++; const t = +new Date(it.ts); if (t >= e.last) { e.last = t; e.text = it.name; } m.set(it.k, e); });
+  let L = [...m.values()]; const ws = nzI(s.q).split(" ").filter(Boolean); if (ws.length) L = L.filter(e => ws.every(w => e.k.includes(w)));
+  return L.sort((a, b) => a.k < b.k ? -1 : 1);
+}
+function renRows(s) {
+  const L = renList(s); s._vis = L.map(e => e.k);
+  if (!L.length) return '<div class="sub" style="padding:8px 0">Ничего не нашлось</div>';
+  return L.slice(0, 300).map(e => '<button class="xrow" data-a="rntog" data-k="' + esc(e.k) + '"><span style="font-size:1.2em">' + (s.sel[e.k] ? "☑" : "☐") + '</span><div class="xm"><div>' + esc(e.text) + '</div></div><span class="sub">' + e.n + "×</span></button>").join("") + (L.length > 300 ? '<div class="sub" style="padding:6px">…ещё ' + (L.length - 300) + ", уточни поиск</div>" : "");
+}
+function renHTML(s) {
+  const n = Object.keys(s.sel).length;
+  return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">✏️ Названия товаров</h2><div class="sub" style="font-size:.85em;margin-bottom:6px">Найди варианты (например, «молок»), отметь нужные и впиши правильное название. Оно заменится во всех выбранных записях, остальные товары в той же заметке не пострадают.</div><input class="in" id="rn-q" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="🔍 Найти товар" value="' + esc(s.q || "") + '"><div style="max-height:34vh;overflow:auto;margin-top:4px" id="rn-l">' + renRows(s) + '</div><div style="display:flex;gap:8px;margin:8px 0 4px"><button class="btn g" style="flex:1" data-a="rnall">Выбрать найденные</button><button class="btn g" style="flex:1" data-a="rnnone">Снять все</button></div><input class="in" id="rn-n" autocomplete="off" placeholder="Правильное название, например Молоко Томское 1.4л" value="' + esc(s.name || "") + '"><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" data-a="rnapply" id="rn-b">Переименовать: ' + n + '</button><button class="btn g" data-a="shclose">Закрыть</button></div></div></div>';
+}
+function renRefresh() { const s = ui.sheet; if (!s) return; const l = $("rn-l"); if (l) l.innerHTML = renRows(s); const b = $("rn-b"); if (b) b.textContent = "Переименовать: " + Object.keys(s.sel).length; }
+function renApply() {
+  const s = ui.sheet, nm = ($("rn-n") ? $("rn-n").value : s.name || "").trim(), sel = s.sel; if (!nm) { toast("Впиши новое название"); return; } if (!Object.keys(sel).length) { toast("Отметь, что переименовать"); return; }
+  let cnt = 0, nt = 0;
+  txs.slice().forEach(t => {
+    if (t.kind !== "exp" || !t.note) return;
+    const pm = String(t.note).match(PFX), pre = pm ? pm[0] : "", body = String(t.note).slice(pre.length), tk = body.split(/(\s*,\s+|\s+,\s*|;|\n)/); let ch = 0;
+    for (let i = 0; i < tk.length; i += 2) if (sel[nzI(tk[i])]) { tk[i] = nm; ch++; }
+    if (ch) { const note = pre + tk.join(""); if (note !== t.note) { upTx(Object.assign({}, t, { note })); nt++; } cnt += ch; }
+  });
+  saveLocal(); ui.sheet = null; render(); toast(cnt ? "Переименовано: " + cnt + " в " + nt + " записях" : "Ничего не изменилось");
+}
 function prcBody() {
   const n = prcN(), B = winOf(n), rows = prcRows(B), gs = PRC.groups(rows), sm = PRC.summary(gs), chips = winChips("prcset", n);
   if (!PRICES.length) return '<div class="sub">Цен пока нет. Они копятся из чеков, а старые можно подтянуть из заметок.</div><button class="btn g" data-a="gopr" style="width:100%;margin-top:8px">Открыть справочник цен</button>';
@@ -671,7 +737,7 @@ function nutSum() { if (!window.FOOD) return ""; const r = nutAn(nutN()); return
 function nutList(g) {
   if (ui.ng !== g.id) return "";
   if (!g.items.length) return '<div class="sub" style="padding:6px 8px;font-size:.85em">За период покупок в этой группе нет.</div>';
-  return g.items.slice().sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 80).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '" style="padding-left:12px"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="exp">' + fm(t.amount) + "</span></button>"; }).join("") + (g.items.length > 80 ? '<div class="sub" style="padding:4px 8px;font-size:.8em">…и ещё ' + (g.items.length - 80) + "</div>" : "");
+  return g.items.slice().sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 1500).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '" style="padding-left:12px"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="exp">' + fm(t.amount) + "</span></button>"; }).join("") + (g.items.length > 1500 ? '<div class="sub" style="padding:4px 8px;font-size:.8em">…и ещё ' + (g.items.length - 1500) + "</div>" : "");
 }
 function nutBody() {
   const n = nutN(), r = nutAn(n), col = { good: "inc", mid: "am", bad: "exp", na: "sub" }[r.verdict.k];
@@ -800,10 +866,13 @@ function txRow(t) {
   return '<button class="row" data-a="edit" data-id="' + t.id + '"><div class="ci">' + ic(c.icon, c.color) + '</div><div class="t"><b>' + esc(c.name) + "</b>" + (t.note ? "<small>" + esc(t.note) + "</small>" : "") + '</div><div class="a ' + t.kind + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amount) + "</div></button>";
 }
 function listHTML() {
+  return topBar(!ui.q) + '<input class="in" id="q" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Поиск по заметке, категории, сумме" value="' + esc(ui.q) + '"><div id="qres">' + listBody() + "</div>";
+}
+function listBody() {
   let arr = ui.q ? txs.slice() : rgTx();
   let qst = null; if (ui.q) { const f = searchFn(ui.q); arr = arr.filter(f); qst = { n: arr.length, e: sumBy(arr, t => t.kind === "exp" ? t.amount : 0), i: sumBy(arr, t => t.kind === "exp" ? 0 : t.amount) }; }
   arr.sort((a, b) => b.ts.localeCompare(a.ts)); const lim = ui.q ? 200 : 600, more = arr.length - lim; arr = arr.slice(0, lim);
-  let h = topBar(!ui.q) + '<input class="in" id="q" autocomplete="off" placeholder="Поиск по заметке, категории, сумме" value="' + esc(ui.q) + '">' + (qst ? '<div class="sub" style="padding:2px 4px 6px;font-size:.85em">Найдено: ' + qst.n + (qst.e ? " · расходы " + fmN(qst.e) : "") + (qst.i ? " · доходы " + fmN(qst.i) : "") + "</div>" : "") + (!ui.q ? '<div class="sub" style="padding:0 4px 6px;font-size:.78em">Можно искать несколько слов сразу, а ещё: &gt;1000, &lt;500, 100-500</div>' : ""), cur = "", buf = [];
+  let h = "" + (qst ? '<div class="sub" style="padding:2px 4px 6px;font-size:.85em">Найдено: ' + qst.n + (qst.e ? " · расходы " + fmN(qst.e) : "") + (qst.i ? " · доходы " + fmN(qst.i) : "") + "</div>" : "") + (!ui.q ? '<div class="sub" style="padding:0 4px 6px;font-size:.78em">Можно искать несколько слов сразу, а ещё: &gt;1000, &lt;500, 100-500</div>' : ""), cur = "", buf = [];
   const groups = []; arr.forEach(t => { const dk = dayKey(new Date(t.ts)); if (dk !== cur) { cur = dk; groups.push({ dk, items: [] }); } groups[groups.length - 1].items.push(t); });
   groups.forEach(g => { const d = new Date(g.dk + "T12:00"), s = sumBy(g.items, t => t.kind === "exp" ? -t.amount : t.amount); h += '<div class="day"><span>' + WD[d.getDay()] + ", " + d.getDate() + " " + MONS_S[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "") + "</span>" + (ui.q ? "" : "<span>" + fm(s) + "</span>") + "</div>" + g.items.map(t => ui.q ? txRowQ(t, ui.q.toLowerCase()) : txRow(t)).join(""); });
   if (!groups.length) h += '<div class="empty">Операций нет</div>'; if (more > 0) h += '<div class="empty">…и ещё ' + more + " (уточни поиск)</div>";
@@ -833,6 +902,7 @@ function statsHTML() {
   const first = txs.length ? Math.min(...txs.map(x => +new Date(x.ts))) : Date.now(), s0 = Math.max(B[0], first), e0 = Math.min(B[1], Date.now() + 864e5), days = Math.max(1, Math.ceil((e0 - s0) / 864e5));
   let h = topBar(true) + '<div class="kp"><div><small>Расходы</small><b class="exp">' + fm(exp) + "</b></div><div><small>В день</small><b>" + fm(exp / days) + "</b></div><div><small>Покупок</small><b>" + ex.length + "</b></div><div><small>Средний чек</small><b>" + fm(ex.length ? exp / ex.length : 0) + "</b></div></div>";
   h += acc("nut", "🥗", "Рацион и питание", nutSum(), nutBody);
+  h += acc("itm", "🛒", "Покупки по товарам", itmSum(), itmBody);
   h += acc("prc", "📈", "Цены на продукты", prcSum(), prcBody);
   h += acc("avg", "📈", "Средние траты", avgSum(), avgBody);
   if (!arr.length) return h + '<div class="empty">Нет данных за период</div>';
@@ -872,7 +942,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 39 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 40 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1103,6 +1173,7 @@ function sheetHTML() {
     return '<div class="ov" data-a="rcpcback"><div class="sheet rcp" data-a="nop"><h2 style="margin:0 0 8px">' + (s.all ? "Категория для всех без категории" : "Категория") + '</h2><input class="in" id="rc-q" autocomplete="off" placeholder="🔍 Найти категорию по слову" value="' + esc(s.q || "") + '"><div class="rl" id="rc-l" style="margin-top:6px">' + rcpcList(s.q) + '</div><div style="display:flex;gap:8px;margin-top:6px">' + (s.all ? "" : '<button class="btn g" style="flex:1" data-a="rcpick" data-id="">Без категории</button>') + '<button class="btn g" style="flex:1" data-a="rcpcback">Назад</button></div></div></div>';
   }
   if (s.type === "pback") return pbHTML(s);
+  if (s.type === "ren") return renHTML(s);
   if (s.type === "due") {
     const l = dueList(); if (!l.length) return ""; const x = l[0], c = catOf(x.r.cat), dd = new Date(x.d.ds + "T12:00");
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>🔁 ' + esc(x.r.note || c.name) + '</h2><div class="sub" style="margin-bottom:8px">' + c.name + " · " + dd.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) + (l.length > 1 ? " · ещё " + (l.length - 1) : "") + '</div><input class="in" id="d-amt" inputmode="decimal" placeholder="Сумма, ₽" value="' + esc(x.r.amt) + '"><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" data-a="duego">Записать</button><button class="btn g" data-a="dueskip">Пропустить</button></div></div></div>';
@@ -1187,7 +1258,7 @@ const PC = new Map();
 function pageHTML(d) {   // HTML страницы (с кэшем): соседние месяцы строятся заранее в простое
   const sv = ui.rg; if (d) { ui.rg = Object.assign({}, sv); rgShift(d); }
   try {
-    const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), ui.ng || "", txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
+    const key = [ui.tab, ui.view, ui.kind, ui.q, JSON.stringify(ui.rg), JSON.stringify(ui.open), ui.ng || "", ui.itmAll ? 1 : 0, txv, new Date().getDate(), JSON.stringify(PR), cats.map(c => c.id + c.name + c.icon + c.color + c.lim + (c.archived ? 1 : 0)).join(), JSON.stringify(EXT).length].join("|");
     let h = PC.get(key); if (h != null) return h;
     h = ui.tab === "home" ? homeHTML() : ui.tab === "list" ? listHTML() : ui.tab === "bud" ? budScreen() : statsHTML();
     PC.set(key, h); if (PC.size > 14) PC.delete(PC.keys().next().value); return h;
@@ -1406,6 +1477,11 @@ const A = {
   rnames() { PR.rn = PR.rn === false; savePR(); render(); },
   setext() { ui.set = "ext"; render(); },
   nutg(a) { ui.ng = ui.ng === a.dataset.v ? null : a.dataset.v; render(); },
+  itmset(a) { PR.itmN = +a.dataset.v; savePR(); render(); }, itmmode(a) { PR.itmM = a.dataset.v; savePR(); render(); }, itmsrt(a) { PR.itmS = a.dataset.v; savePR(); render(); }, itmall() { ui.itmAll = !ui.itmAll; render(); },
+  itmgo(a) { ui.tab = "list"; ui.q = a.dataset.q || ""; ui.set = "main"; ui.menu = false; render(); },
+  renopen() { ui.sheet = { type: "ren", q: "", sel: {}, name: "" }; render(); },
+  rntog(a) { const s = ui.sheet, k = a.dataset.k; if (s.sel[k]) delete s.sel[k]; else { s.sel[k] = 1; const nn = $("rn-n"); if (nn && !nn.value) { const it = allItems().filter(x => x.k === k).pop(); if (it) { nn.value = it.name; s.name = it.name; } } } renRefresh(); },
+  rnall() { const s = ui.sheet; (s._vis || []).forEach(k => s.sel[k] = 1); renRefresh(); }, rnnone() { ui.sheet.sel = {}; renRefresh(); }, rnapply() { renApply(); },
   prcset(a) { PR.prcN = +a.dataset.v; savePR(); render(); }, nutset(a) { PR.nutN = +a.dataset.v; savePR(); render(); },
   sugpick(a) {
     const s = ui.sheet, e = (SUGX.cur || [])[+a.dataset.i], inp = $("s-note"); if (!s || !e || !inp) return;
@@ -1477,7 +1553,8 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
-document.addEventListener("input", e => { if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { ui.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
+document.addEventListener("input", e => { if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
+  if (e.target.id === "rn-q" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.q = e.target.value; renRefresh(); return; } if (e.target.id === "rn-n" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.name = e.target.value; return; } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
     rread(); const sh = ui.sheet;
