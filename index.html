@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 12:18";
+const BUILD = "18.10 12:23";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -163,6 +163,21 @@ const THEMES = {
   ice:      { n: "Лёд", bg: "linear-gradient(160deg,#b6ecff,#e6f9ff 55%,#ffffff)", l: "rgba(255,255,255,.6)", m: "rgba(255,255,255,.25)", r: "rgba(255,255,255,.75)", card: "rgba(255,255,255,.7)", tx: "#0c3446", sub: "#4a7c90", acc: "#0891b2", hd: "#066f8a", font: "sys", rad: "28px", sh: "0 8px 24px rgba(8,145,178,.2)", bd: "1px solid rgba(255,255,255,.95)" },
   sand:     { n: "Пустыня", bg: "#ecd7ad", l: "#e1c795", m: "#ecd7ad", r: "#e1c795", card: "#fbf1da", tx: "#40290f", sub: "#85673c", ln: "rgba(110,70,20,.35)", acc: "#c2410c", hd: "#7c3f12", font: "pal", rad: "8px", sh: "none", bd: "2px dashed #c4a063", tw: "600" }
 };
+/* свои орнаменты тем (оригинальные, без чужих персонажей) */
+{
+  const SV = x => 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" ' + x + '</svg>').replace(/'/g, "%27") + '")';
+  let hx = "", st = "", lf = "";
+  [[250,40,34],[310,75,26],[200,90,22],[285,125,30],[340,25,18],[235,140,16]].forEach(h => { let p = ""; for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i + Math.PI / 6; p += (i ? "L" : "M") + (h[0] + h[2] * Math.cos(a)).toFixed(1) + " " + (h[1] + h[2] * Math.sin(a)).toFixed(1); } hx += '<path d="' + p + 'Z" fill="#f0a500" fill-opacity=".14" stroke="#b97a00" stroke-opacity=".35" stroke-width="1.6"/>'; });
+  [[300,50,26,"#c2185b"],[240,110,15,"#7b1fa2"],[345,120,10,"#c2185b"],[190,45,9,"#7b1fa2"],[330,175,7,"#c2185b"]].forEach(q => { const [x, y, r, c] = q; st += '<path d="M' + x + " " + (y - r) + "Q" + x + " " + y + " " + (x + r) + " " + y + "Q" + x + " " + y + " " + x + " " + (y + r) + "Q" + x + " " + y + " " + (x - r) + " " + y + "Q" + x + " " + y + " " + x + " " + (y - r) + 'Z" fill="' + c + '" fill-opacity=".28"/>'; });
+  [[300,40,-30],[255,95,-55],[325,110,-10],[215,60,-70],[280,160,-40]].forEach(l => { lf += '<path transform="translate(' + l[0] + " " + l[1] + ") rotate(" + l[2] + ')" d="M0 0Q18 -22 0 -50Q-18 -22 0 0Z" fill="#2e7d32" fill-opacity=".2" stroke="#2e7d32" stroke-opacity=".35" stroke-width="1.4"/>'; });
+  [[210,170,7],[235,150,4],[190,140,5],[345,70,6]].forEach(b => { lf += '<circle cx="' + b[0] + '" cy="' + b[1] + '" r="' + b[2] + '" fill="none" stroke="#2e7d32" stroke-opacity=".4" stroke-width="1.4"/>'; });
+  THEMES.honey.img = SV('viewBox="0 0 380 200">' + hx);
+  THEMES.berry.img = SV('viewBox="0 0 380 200">' + st);
+  THEMES.forest.img = SV('viewBox="0 0 380 200">' + lf);
+  let sk = "M0 150V110h20V90h18v20h14V70h26v40h12V95h16v15h22V55h24v55h14V85h18v25h26V60h16v50h20V100h18v50Z";
+  let w = ""; for (let x = 0; x < 6; x++) w += '<rect x="' + (24 + x * 50) + '" y="' + (90 + (x % 3) * 8) + '" width="4" height="4" fill="#ffd54f" fill-opacity=".75"/>';
+  THEMES.webl.img2 = SV('viewBox="0 0 316 150" preserveAspectRatio="none"><path d="' + sk + '" fill="#1b2a5e" fill-opacity=".16"/>' + w);
+}
 if (!THEMES[TH.theme]) { TH.theme = "classic"; TH.accent = THEMES.classic.acc; TH.font = THEMES.classic.font; }   // удалённые темы → классика
 const FONTS = { sys: '"Segoe UI",system-ui,-apple-system,Roboto,sans-serif', serif: "Georgia,'Times New Roman',serif", mono: "ui-monospace,'Courier New',Consolas,monospace", round: "'Trebuchet MS','Nunito',system-ui,sans-serif", hum: "Candara,Calibri,'Gill Sans',system-ui,sans-serif", narrow: "'Arial Narrow',Bahnschrift,'Roboto Condensed',Arial,sans-serif", pal: "'Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif" };
 const ZOOMS = { s: .93, s2: .97, n: 1, n2: 1.03, l: 1.06, l2: 1.1, xl: 1.15, xxl: 1.22 };   // мягкие шаги: ~3–4% на ступень
@@ -191,7 +206,7 @@ function applyTheme() {
   Object.keys(v).forEach(k => app.style.setProperty(k, v[k]));
   const tc = (PR.tc || {})[view], mn = $("main"); if (mn) { if (tc) { mn.style.setProperty("--tx", tc); mn.style.color = tc; } else { mn.style.removeProperty("--tx"); mn.style.color = ""; } }
   if (hasBg) { app.style.backgroundImage = 'url("' + TH.bg.replace(/["\\\n]/g, "") + '")'; app.style.backgroundSize = "cover"; app.style.backgroundPosition = "center"; }
-  else if (T.img) { app.style.backgroundImage = T.img + "," + T.bg; app.style.backgroundSize = "min(360px,80vw), cover"; app.style.backgroundPosition = "right top, center"; app.style.backgroundRepeat = "no-repeat"; }
+  else if (T.img) { const two = !!T.img2; app.style.backgroundImage = T.img + "," + (two ? T.img2 + "," : "") + T.bg; app.style.backgroundSize = "min(360px,80vw)," + (two ? "100% min(150px,22vh)," : "") + "cover"; app.style.backgroundPosition = "right top," + (two ? "left bottom," : "") + "center"; app.style.backgroundRepeat = "no-repeat"; }
   else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; app.style.backgroundRepeat = ""; }
   app.classList.toggle("glass", !!TH.glass); app.classList.toggle("hasbg", hasBg);
   document.body.style.background = d ? "#0f172a" : "#faf9f8";
