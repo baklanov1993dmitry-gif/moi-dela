@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 17:06";
+const BUILD = "18.10 17:16";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1534,7 +1534,7 @@ function dtpHTML(p, t) {
     setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); const mid = Math.floor(WC / 2); if (e1) { e1.scrollTop = (mid * 24 + hh) * WR; jrWFx(e1); } if (e2) { e2.scrollTop = (mid * 60 + mi) * WR; jrWFx(e2); } dtwCol(D.wcol || "h"); }, 0);
     if (D.via === undefined) D.via = (t && t.remind_via) || "tg";
     const via = (v, label) => '<button type="button" class="dq' + (D.via === v ? " on" : "") + '" data-a="dvia" data-v="' + v + '">' + label + "</button>";
-    h += (RV ? '<div class="dtp-tl" style="margin:2px 0 6px;text-align:center">Как напомнить</div><div class="dqrow big">' + via("tg", "💬 Telegram") + via("alarm", "⏰ Будильник") + via("both", "Оба") + "</div>" : "") + '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24) + "<b>:</b>" + col("dtw-m", 60) + "</div>" +
+    h += (RV ? '<div class="dqrow big" style="margin-top:8px">' + via("tg", "💬 Telegram") + via("alarm", "⏰ Будильник") + via("both", "Оба") + "</div>" : "") + '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24) + "<b>:</b>" + col("dtw-m", 60) + "</div>" +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
     h += '<div class="dtp-btns" style="margin-top:10px">' + (t && t.due ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438;flex:1">Убрать срок</button>' : "") + '<button type="button" class="btn ghost" data-a="dtpclose" style="flex:1">Закрыть</button></div>';
@@ -1629,10 +1629,14 @@ const dtpActs = {
   dday(a) {
     const D = ui.dtp; if (!D) return; const iso = dtpDay(a.dataset.v);
     if (D.mode === "due") { setDue(dtpId(), iso); return dtpDone(); }
-    D.date = iso; const b = parseISO(iso); D.y = b.getFullYear(); D.m = b.getMonth(); keepTime(); render();
+    D.date = iso; const b = parseISO(iso); D.y = b.getFullYear(); D.m = b.getMonth(); keepTime();
+    if (!D.rcal && D.rtab !== "place" && a.parentNode && a.parentNode.querySelector('[data-a="drcal"]')) {   // напоминание: меняем на месте, без перерисовки — колёса не дёргаются
+      a.parentNode.querySelectorAll(".dq").forEach(x => x.classList.toggle("on", x === a)); const sm = document.querySelector(".dtp-sum"); if (sm) sm.textContent = dtpSum(); return;
+    }
+    render();
   },
   drtab(a) { const D = ui.dtp; if (!D) return; keepTime(); D.rtab = a.dataset.v; render(); },
-  dvia(a) { const D = ui.dtp; if (!D) return; keepTime(); D.via = a.dataset.v; render(); },
+  dvia(a) { const D = ui.dtp; if (!D) return; keepTime(); D.via = a.dataset.v; a.parentNode.querySelectorAll(".dq").forEach(x => x.classList.toggle("on", x === a)); },
   drcal() { if (ui.dtp) { ui.dtp.rcal = !ui.dtp.rcal; render(); } },
   dloud() { const D = ui.dtp; if (!D) return; const t = S.tasks[dtpId()]; D.loud = !(D.loud != null ? D.loud : (t && /^⏰/.test(t.title))); render(); },
   dtime(a) { if (ui.dtp) { ui.dtp.time = a.dataset.v; render(); } },
@@ -1714,10 +1718,20 @@ const dtpCSS = `
 .pop.dtl .dli{height:34px;padding:0 14px;gap:12px;font-size:calc(13px*var(--z,1))} .pop.dtl .dli svg{width:16px;height:16px;color:var(--tx)}
 .pop.dtl .dli .dr{font-size:calc(12px*var(--z,1))} .pop.dtl .psep{margin:6px 0}
 .pop.pin{animation:popexp .26s cubic-bezier(.2,.8,.2,1) both;transform-origin:top left}
+.pop.pin.up{animation-name:popexpup;transform-origin:bottom left}
+@keyframes popexpup{from{clip-path:inset(100% 0 0 0 round 8px);opacity:.3}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1}}
+
 @keyframes popexp{from{clip-path:inset(0 0 100% 0 round 8px);opacity:.3}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1}}
 .popsrc{animation:popsrc .22s ease both;background:rgba(0,0,0,.07)!important}
 @keyframes popsrc{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.07)}}
 @media(prefers-reduced-motion:reduce){.pop.pin,.popsrc{animation:none}}
+.pop.dtl .pi{height:52px;padding:0 18px;gap:16px;font-size:calc(17px*var(--z,1))} .pop.dtl .ptitle{padding:10px 18px 0} .pop.dtl .pform{padding:6px 18px 10px} .pop.rep{max-height:72vh;overflow:auto}
+body .pop.rmd{padding:10px 14px 12px!important;border-radius:14px!important;box-shadow:0 8px 28px rgba(0,0,0,.28)!important;max-height:80vh!important}
+body .pop.rmd .dtp-h{font-size:calc(18px*var(--z,1));margin:0}body .pop.rmd .dtp-s{margin:0 0 8px;font-size:calc(12px*var(--z,1))}
+body .pop.rmd .dtp-tabs{margin:0 0 8px}body .pop.rmd .dtp-tab{padding:7px 6px;font-size:calc(13.5px*var(--z,1))}
+body .pop.rmd .dqrow.big .dq{padding:9px 6px;font-size:calc(14px*var(--z,1));border-radius:10px}
+body .pop.rmd .jr-wc{font-size:21px}body .pop.rmd .dtp-time{margin-top:6px;padding-top:4px}body .pop.rmd .dtp-sum{margin:6px 0 6px;font-size:calc(13.5px*var(--z,1))}
+body .pop.rmd .btn{height:40px;font-size:calc(15px*var(--z,1))}
 .dtpb{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.4);z-index:59}
 @media(max-width:760px){.pop.dtp{left:8px!important;right:8px!important;top:calc(env(safe-area-inset-top) + 52px)!important;bottom:auto!important;transform:none;width:auto;border-radius:18px;max-height:calc(100dvh - 70px);overflow-y:auto;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.35)}.cal-d{height:46px;font-size:calc(16px*var(--z,1))}.cal-w span{font-size:calc(13.5px*var(--z,1))}.cal-n{height:44px;width:48px}.cal-t{font-size:calc(17px*var(--z,1))}.dq{padding:12px 8px;font-size:calc(14.5px*var(--z,1))}}
 .dtp-h{font-size:calc(23px*var(--z,1));font-weight:800;text-align:center;margin:2px 0 2px}
@@ -1738,7 +1752,7 @@ const dtpCSS = `
 .dli{display:flex;align-items:center;gap:14px;width:100%;padding:11px 16px;text-align:left;font:inherit;font-size:calc(15px*var(--z,1));color:var(--tx)}
 .dli:hover{background:var(--hov)} .dli .dlx{flex:1;white-space:nowrap} .dli .dr{color:var(--sub);font-size:calc(12.5px*var(--z,1))} .dli svg{color:var(--sub);flex-shrink:0}
 @media(max-width:760px){.dli{padding:14px 18px;font-size:calc(16px*var(--z,1))}}
-.dq{padding:9px 10px;border-radius:10px;background:var(--inp);border:1px solid var(--ln);font-size:calc(13.5px*var(--z,1));flex:1;text-align:center;white-space:nowrap}
+.dq{transition:background-color .22s ease,color .22s ease,border-color .22s ease;padding:9px 10px;border-radius:10px;background:var(--inp);border:1px solid var(--ln);font-size:calc(13.5px*var(--z,1));flex:1;text-align:center;white-space:nowrap}
 .dq.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .cal-h{display:flex;align-items:center;margin:12px 0 4px}.cal-t{flex:1;text-align:center;font-weight:600}
 .cal-n{width:40px;height:36px;border-radius:10px;font-size:calc(22px*var(--z,1));line-height:1;color:var(--tx)}.cal-n:active{background:var(--inp)}
@@ -3524,9 +3538,9 @@ function popHTML() {
   }
   const first = !p.shown; p.shown = true;
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
-  const dt = p.type === "due" || p.type === "remind";
-  const lst = p.type === "due" && ui.dtp && !ui.dtp.cal;
-  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && isMobile() ? " mm" : "") + (first ? " pin" : "") + '" id="pop" style="left:' + x + "px;" + (lst && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (lst ? "!important" : "")) + '">' + h + "</div>";
+  const mob = isMobile(), dt = p.type === "due" || p.type === "remind" || (p.type === "repeat" && mob);
+  const lst = (p.type === "due" && ui.dtp && !ui.dtp.cal) || (p.type === "repeat" && mob), anc = lst || (mob && p.type === "remind");
+  return (dt ? '<div class="dtpb"' + (lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
@@ -4228,7 +4242,7 @@ const acts = {
     const d = a.dataset, w = e._was;
     if (w && w.type === d.p && (w.id || w.g || "") === (d.id || d.g || "")) { closePop(); render(); return; }
     const r = a.getBoundingClientRect();
-    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (ui.qa && isMobile()) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); render();
+    ui.pop = { type: d.p, id: d.id || null, g: d.g || null, x: r.left, y: r.bottom + 4 }; if (isMobile() && (d.p === "due" || d.p === "repeat" || d.p === "remind")) { const need = { due: 330, repeat: 450, remind: 500 }[d.p]; if (ui.qa || r.bottom + need > innerHeight) ui.pop.bot = Math.max(8, innerHeight - r.top + 6); else ui.pop.y = Math.min(r.bottom + 4, innerHeight - 120); } render();
     try { const el = document.querySelector('[data-a="pop"][data-p="' + d.p + '"]' + (d.id ? '[data-id="' + d.id + '"]' : "")); if (el) el.classList.add("popsrc"); } catch (e) {}   // место, куда тапнули, затеняется, пока меню открыто   // из быстрого ввода меню — над полем ввода, а не вверху экрана
   },
   pa(a) {
