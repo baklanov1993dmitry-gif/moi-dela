@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 15:14";
+const BUILD = "18.10 15:22";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2093,7 +2093,29 @@ const SND_PACKS = {   // каждая нота: [частота Гц, сдвиг
   bell: { n: "Колокольчик", done: [[1047, 0, .5, "triangle", .4], [2093, 0, .3, "sine", .12], [1568, .12, .65, "triangle", .35]], add: [[1319, 0, .35, "triangle", .35]], del: [[392, 0, .32, "triangle", .4, 196]], remind: [[1047, 0, .6, "triangle", .4], [1047, .45, .6, "triangle", .4], [1047, .9, .85, "triangle", .4]] },
   click: { n: "Щелчки", done: [[1500, 0, .04, "square", .1], [2200, .05, .07, "square", .1]], add: [[1200, 0, .04, "square", .09]], del: [[300, 0, .08, "square", .1, 120]], remind: [[1800, 0, .05, "square", .1], [1800, .13, .05, "square", .1], [1800, .26, .05, "square", .1]] }
 };
-const sndCfg = () => { const c = PR.snd || {}; return { on: !!c.on, vol: c.vol == null ? 60 : c.vol, pack: SND_PACKS[c.pack] ? c.pack : "soft", ev: Object.assign({}, SND_EV_DEF, c.ev || {}) }; };
+/* звуки по темам: ноты как выше + шум [центр.частота, сдвиг, длит., "noise", громк., частота в конце] */
+const Nz = (f, t, d, v, f2) => [f, t, d, "noise", v, f2];
+const THEME_SND = {
+  web: { n: "Паутина", done: [Nz(3200, 0, .13, .55, 700), [150, .08, .14, "sine", .5, 70], Nz(1800, .09, .06, .25, 900)], add: [Nz(500, 0, .1, .45, 2600)], del: [Nz(2200, 0, .22, .45, 300), [120, .1, .15, "sine", .4, 60]], remind: [Nz(3200, 0, .12, .5, 700), Nz(3200, .3, .12, .5, 700), Nz(3200, .6, .12, .5, 700), [150, .68, .2, "sine", .5, 70]] },
+  paper: { n: "Бумага", done: [Nz(5000, 0, .1, .4, 2500), Nz(4000, .09, .09, .3, 6000), [1200, .17, .05, "triangle", .2]], add: [Nz(4500, 0, .09, .35, 2500)], del: [Nz(3500, 0, .05, .45, 1500), Nz(3000, .06, .05, .45, 1200), Nz(2500, .13, .06, .4, 900)], remind: [[1300, 0, .05, "triangle", .35], [1300, .16, .05, "triangle", .35], [1300, .32, .05, "triangle", .35]] },
+  sky: { n: "Небо", done: [[1319, 0, .5, "sine", .35], [1760, .1, .7, "sine", .3], [2349, .2, .8, "sine", .15]], add: [[1047, 0, .4, "sine", .3]], del: [[880, 0, .4, "sine", .3, 330]], remind: [[523, 0, .4, "sine", .4], [659, .18, .4, "sine", .4], [784, .36, .4, "sine", .4], [1047, .54, .7, "sine", .4]] },
+  mint: { n: "Мята", done: [[1200, 0, .09, "sine", .45, 600], [698, .09, .22, "sine", .4], [880, .17, .3, "sine", .4]], add: [[1200, 0, .09, "sine", .4, 600]], del: [[800, 0, .16, "sine", .4, 250]], remind: [[1200, 0, .09, "sine", .45, 600], [1200, .3, .09, "sine", .45, 600], [1200, .6, .09, "sine", .45, 600], [880, .7, .4, "sine", .4]] },
+  lavender: { n: "Лаванда", done: [[880, 0, .7, "triangle", .3], [1108, .1, .7, "triangle", .28], [1318, .2, .9, "triangle", .28]], add: [[988, 0, .5, "triangle", .3]], del: [[440, 0, .5, "triangle", .3, 220]], remind: [[880, 0, .6, "triangle", .35], [1108, .35, .6, "triangle", .35], [1318, .7, .9, "triangle", .35]] },
+  peach: { n: "Закат", done: [[523, 0, .3, "triangle", .45], [784, .1, .4, "triangle", .45]], add: [[659, 0, .25, "triangle", .4]], del: [[300, 0, .3, "triangle", .4, 150]], remind: [[523, 0, .25, "triangle", .45], [659, .25, .25, "triangle", .45], [784, .5, .5, "triangle", .45]] },
+  forest: { n: "Лес", done: [[400, 0, .09, "sine", .5, 1200], [500, .12, .08, "sine", .45, 1500], Nz(2500, .13, .05, .12, 4000)], add: [[450, 0, .09, "sine", .45, 1300]], del: [[900, 0, .2, "sine", .45, 250]], remind: [[400, 0, .09, "sine", .5, 1200], [400, .25, .09, "sine", .5, 1200], [400, .5, .09, "sine", .5, 1200], [600, .6, .3, "sine", .4]] },
+  dusk: { n: "Сумерки", done: [[392, 0, 1, "sine", .4], [588, .02, .9, "sine", .25], [196, 0, 1.1, "sine", .3]], add: [[523, 0, .6, "sine", .3]], del: [[196, 0, .6, "sine", .4, 98]], remind: [[392, 0, 1, "sine", .45], [392, .8, 1, "sine", .45], [392, 1.6, 1.3, "sine", .45]] },
+  honey: { n: "Мёд", done: [[1568, 0, .12, "sine", .35], [2093, .06, .14, "sine", .3], [2637, .12, .3, "sine", .28], Nz(7000, 0, .3, .08, 9000)], add: [[1760, 0, .1, "sine", .3]], del: [[523, 0, .3, "sine", .35, 262]], remind: [[2093, 0, .15, "sine", .4], [2637, .2, .15, "sine", .4], [2093, .5, .15, "sine", .4], [2637, .7, .4, "sine", .4]] },
+  berry: { n: "Ягода", done: [[200, 0, .13, "sawtooth", .15, 1200], [1760, .1, .09, "square", .1], [2349, .17, .12, "square", .08]], add: [[1400, 0, .05, "square", .1]], del: [[800, 0, .2, "sawtooth", .15, 100]], remind: [[200, 0, .13, "sawtooth", .17, 1200], [200, .3, .13, "sawtooth", .17, 1200], [200, .6, .13, "sawtooth", .17, 1200], [1760, .72, .25, "square", .1]] },
+  lime: { n: "Лайм", done: [[300, 0, .07, "sine", .5, 900], [1500, .07, .05, "triangle", .25], [1000, .13, .1, "sine", .35]], add: [[350, 0, .07, "sine", .45, 900]], del: [[600, 0, .18, "sine", .45, 150]], remind: [[300, 0, .07, "sine", .5, 900], [300, .22, .07, "sine", .5, 900], [300, .44, .07, "sine", .5, 900], [1000, .55, .2, "sine", .4]] },
+  ocean: { n: "Океан", done: [Nz(300, 0, .55, .3, 1600), Nz(1600, .45, .45, .22, 300), [523, .2, .5, "sine", .25]], add: [[900, 0, .12, "sine", .35, 600]], del: [Nz(1500, 0, .4, .3, 250)], remind: [[220, 0, .8, "sine", .45, 330], [220, .9, .8, "sine", .45, 330], Nz(300, 0, .8, .15, 1200)] },
+  cotton: { n: "Сахарная вата", done: [[1047, 0, .12, "triangle", .35], [1319, .06, .12, "triangle", .35], [1568, .12, .12, "triangle", .35], [2093, .18, .3, "triangle", .3]], add: [[1568, 0, .12, "triangle", .3]], del: [[784, 0, .3, "triangle", .35, 392]], remind: [[1047, 0, .1, "triangle", .4], [1319, .1, .1, "triangle", .4], [1568, .2, .1, "triangle", .4], [1047, .5, .1, "triangle", .4], [1319, .6, .1, "triangle", .4], [1568, .7, .3, "triangle", .4]] },
+  rose: { n: "Роза", done: [[784, 0, .5, "sine", .3], [988, .12, .55, "sine", .28], [1175, .24, .8, "sine", .26]], add: [[880, 0, .35, "sine", .28]], del: [[330, 0, .4, "sine", .3, 165]], remind: [[784, 0, .6, "sine", .38], [988, 0, .6, "sine", .32], [784, .7, .6, "sine", .38], [988, .7, .6, "sine", .32], [1175, 1.4, 1, "sine", .38]] },
+  ice: { n: "Лёд", done: [[2093, 0, .3, "sine", .3], [2637, .05, .3, "sine", .25], Nz(8000, 0, .08, .3, 5000)], add: [[2349, 0, .1, "sine", .25]], del: [[1000, 0, .25, "triangle", .3, 300], Nz(7000, 0, .1, .3, 3000)], remind: [[2093, 0, .25, "sine", .4], [2637, .2, .25, "sine", .4], [2093, .45, .25, "sine", .4], [2637, .65, .4, "sine", .4]] },
+  sand: { n: "Пустыня", done: [Nz(800, 0, .4, .28, 1400), [196, .05, .18, "triangle", .5, 150]], add: [[262, 0, .1, "triangle", .45, 200]], del: [Nz(1200, 0, .4, .3, 250)], remind: [[196, 0, .2, "triangle", .55, 150], [196, .3, .2, "triangle", .55, 150], [196, .6, .2, "triangle", .55, 150], [262, .75, .3, "triangle", .5, 200]] }
+};
+THEME_SND.webl = THEME_SND.web;
+const sndPackOf = c => c.pack === "theme" ? (THEME_SND[(THEMES[TH.theme] || {}).snd || TH.theme] || SND_PACKS.soft) : SND_PACKS[c.pack];
+const sndCfg = () => { const c = PR.snd || {}; return { on: !!c.on, vol: c.vol == null ? 60 : c.vol, pack: SND_PACKS[c.pack] || c.pack === "theme" ? c.pack : "theme", ev: Object.assign({}, SND_EV_DEF, c.ev || {}) }; };
 const sndSet = p => { PR.snd = Object.assign(sndCfg(), p); savePrefs(); };
 let sndAC = null; const sndLast = {};
 function snd(ev, force) {
@@ -2103,10 +2125,17 @@ function snd(ev, force) {
     const now = Date.now(); if (!force && sndLast[ev] && now - sndLast[ev] < 250) return; sndLast[ev] = now;   // пакетное удаление/выполнение — один звук
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     if (!sndAC) sndAC = new AC(); if (sndAC.state === "suspended") sndAC.resume();
-    const notes = SND_PACKS[c.pack][ev]; if (!notes || !c.vol) return;
+    const notes = sndPackOf(c)[ev]; if (!notes || !c.vol) return;
     const out = sndAC.createGain(); out.gain.value = c.vol / 100 * .7; out.connect(sndAC.destination);
     const t0 = sndAC.currentTime + .01;
     notes.forEach(n => {
+      if (n[3] === "noise") {   // шум через полосовой фильтр с «скольжением»: шелест, всплеск, нить
+        const len = Math.ceil(sndAC.sampleRate * n[2]) + 1000, buf = sndAC.createBuffer(1, len, sndAC.sampleRate), dd = buf.getChannelData(0); for (let i = 0; i < len; i++) dd[i] = Math.random() * 2 - 1;
+        const src = sndAC.createBufferSource(), f = sndAC.createBiquadFilter(), v = sndAC.createGain(), s = t0 + n[1], e = s + n[2];
+        src.buffer = buf; f.type = "bandpass"; f.Q.value = 1.1; f.frequency.setValueAtTime(n[0], s); if (n[5]) f.frequency.exponentialRampToValueAtTime(n[5], e);
+        v.gain.setValueAtTime(.0001, s); v.gain.exponentialRampToValueAtTime(n[4], s + .015); v.gain.exponentialRampToValueAtTime(.0001, e);
+        src.connect(f); f.connect(v); v.connect(out); src.start(s); src.stop(e + .03); return;
+      }
       const o = sndAC.createOscillator(), v = sndAC.createGain(), s = t0 + n[1], e = s + n[2];
       o.type = n[3]; o.frequency.setValueAtTime(n[0], s); if (n[5]) o.frequency.exponentialRampToValueAtTime(n[5], e);
       v.gain.setValueAtTime(.0001, s); v.gain.exponentialRampToValueAtTime(n[4], s + .01); v.gain.exponentialRampToValueAtTime(.0001, e);
@@ -2118,7 +2147,7 @@ function sndHTML() {
   const c = sndCfg(), sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
   return '<label class="swrow" style="margin-top:10px"><input type="checkbox" class="sw" id="s-sndon"' + (c.on ? " checked" : "") + "> Звуки включены</label>" +
     '<div class="lbl">Громкость: ' + c.vol + "%</div>" + '<input type="range" id="s-vol" min="0" max="100" step="5" value="' + c.vol + '" style="width:100%">' +
-    '<div class="lbl">Набор звуков</div>' + sel("s-pack", c.pack, Object.keys(SND_PACKS).map(k => [k, SND_PACKS[k].n])) +
+    '<div class="lbl">Набор звуков</div>' + sel("s-pack", c.pack, [["theme", "🎨 По теме оформления"]].concat(Object.keys(SND_PACKS).map(k => [k, SND_PACKS[k].n]))) +
     '<div class="lbl">Когда играть</div>' + SND_EV.map(e => '<div class="hkrow"><label class="swrow" style="flex:1;margin:0"><input type="checkbox" class="sw" id="s-snd-' + e[0] + '"' + (c.ev[e[0]] ? " checked" : "") + "> " + e[1] + '</label><button class="hkr" data-a="sndplay" data-k="' + e[0] + '" title="Послушать" style="font-size:calc(14px*var(--z,1))">▶ послушать</button></div>').join("") +
     '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Настройка хранится на этом устройстве: на телефоне и на компьютере звуки включаются отдельно. Звук напоминания играет, пока приложение открыто; звук пуш-уведомлений в фоне задаёт сама система (Android / Windows).</div>';
 }
@@ -4123,7 +4152,7 @@ const acts = {
   closeSettings() { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; render(); },
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
   stab(a) { ui.stab = a.dataset.v; ui.smenu = false; render(); },
-  theme(a) { const T = THEMES[a.dataset.v]; TH.theme = a.dataset.v; if (T) { TH.accent = T.acc; TH.font = T.font; } PR.tc = {}; TH.nolc = 1; savePrefs(); saveTheme(); render(); },   // смена темы снимает свои цвета текста — берём цвета темы
+  theme(a) { const T = THEMES[a.dataset.v]; TH.theme = a.dataset.v; if (T) { TH.accent = T.acc; TH.font = T.font; } PR.tc = {}; TH.nolc = 1; savePrefs(); saveTheme(); render(); try { if (sndCfg().on && sndCfg().pack === "theme") snd("done", true); } catch (e) {} },   // смена темы снимает свои цвета текста — берём цвета темы
   fxtest() {
     let r = document.querySelector('#list .taskrow:not(.sub)'), tmp = null;
     if (!r || ui.settings || r.getBoundingClientRect().width < 50 || r.getBoundingClientRect().top > innerHeight) {   // в настройках списка нет — показываем на демо-строке
