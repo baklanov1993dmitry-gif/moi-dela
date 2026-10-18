@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 15:49";
+const BUILD = "18.10 16:27";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2798,11 +2798,11 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .subadd input{flex:1;min-width:0;border:0;background:transparent;color:var(--tx);font-size:calc(13.5px*var(--z,1));outline:0;font-family:inherit}
 @media(max-width:760px){
 .kids{padding:2px 8px 4px 40px}
-#list{padding:0 8px 100px} .sortbar{padding:8px 8px 4px} .sugg{margin:0 8px 8px}
+#list{padding:10px 8px 100px} .sortbar{padding:8px 8px 4px} .sugg{margin:0 8px 8px}
 .mhead{padding:4px 16px 0} .mhead h1{font-size:calc(30px*var(--z,1));font-weight:600}
 .msub{padding:0 16px 4px;font-size:calc(15px*var(--z,1))}
 .sortchip{background:var(--card);box-shadow:var(--shadow);border-radius:4px;padding:9px 12px;font-size:calc(15px*var(--z,1));font-weight:500}
-.taskrow{align-items:center;gap:12px;padding:10px 14px 10px 16px;margin-bottom:3px;border-radius:4px;min-height:60px}
+.taskrow{align-items:center;gap:12px;padding:10px 14px 10px 16px;margin-bottom:4px;border-radius:14px;min-height:60px} .tnode.has{border-radius:14px}
 .tnode.has{margin-bottom:3px;border-radius:4px}
 .rad{width:24px;height:24px;border-width:2px;border-color:var(--sub);margin-top:0}
 .rad.on{border-color:var(--acc)} .rad svg{width:15px;height:15px}
@@ -4382,7 +4382,7 @@ function jrPrevText() {
   const dl = q.day !== todayISO() ? "за " + WDS[parseISO(q.day).getDay()] + " " + parseISO(q.day).getDate() + "." + pad2(parseISO(q.day).getMonth() + 1) + " · " : "";
   if (!q.en) return dl + q.st + " – сейчас" + (q.day === todayISO() ? " · " + fmtDurM(jrDM(q.st, nowHM())) : "");
   if (!q.st) return "Укажи начало";
-  const dm = jrDM(q.st, q.en); return dm ? dl + q.st + "–" + q.en + " · " + fmtDurM(dm) : "Начало и конец совпадают";
+  const dm = jrDM(q.st, q.en); return dm ? (q.en < q.st && dm > 720 ? "⚠ Конец раньше начала: " + q.st + "–" + q.en : dl + q.st + "–" + q.en + " · " + fmtDurM(dm)) : "Начало и конец совпадают";
 }
 function jrList() {
   const J = jrState(), all = Object.values(S.time_log).filter(l => jrDay(l));
@@ -4808,6 +4808,7 @@ Object.assign(acts, {
     if (!q.st) { toast("Укажи начало"); return; }
     if (!q.en) { if (q.day === todayISO()) q.en = nowHM(); else { toast("Укажи конец записи"); return; } }
     const dm = jrDM(q.st, q.en); if (!dm) { toast("Начало и конец совпадают"); return; }
+    if (q.en < q.st && dm > 720) { toast("Конец раньше начала — проверь время (иначе выйдет " + fmtDurM(dm) + ")"); return; }   // переход через полночь допускаем только до 12 ч
     const s = jrDate(q.day, q.st), e = new Date(s.getTime() + dm * 60000);
     const gc = jrGuessCat(q.tx); const ct = jrCleanTag(J.cat) || gc; addLog(Object.assign({ title: q.tx, kind: "t", start_at: s.toISOString(), end_at: e.toISOString() }, ct ? { cat: ct } : {}, JV && J.val ? { val: J.val } : {}));
     J.cat = ""; J.val = ""; J.tx = ""; { const x0 = $("jr-tx"); if (x0) x0.value = ""; } J.en = ""; J.vd = q.day; J.date = q.day; J.st = isoLocal(e) === q.day ? hm(e.getHours() * 60 + e.getMinutes()) : null;
@@ -4826,6 +4827,7 @@ Object.assign(acts, {
     else {
       if (!e.date || !e.st || !e.en) { toast("Нужны дата, начало и конец"); return; }
       const dm = jrDM(e.st, e.en); if (!dm) { toast("Начало и конец совпадают"); return; }
+      if (e.en < e.st && dm > 720) { toast("Конец раньше начала — проверь время (иначе выйдет " + fmtDurM(dm) + ")"); return; }
       const s = jrDate(e.date, e.st); updLog(l.id, Object.assign({ title: tx, start_at: s.toISOString(), end_at: new Date(s.getTime() + dm * 60000).toISOString(), cat: jrCleanTag(e.cat) || null }, JV ? { val: e.val || null } : {}));
     }
     J.edit = null; toast("Сохранено"); render();
