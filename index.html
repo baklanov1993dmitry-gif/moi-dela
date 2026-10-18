@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 15:36";
+const BUILD = "18.10 15:49";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2867,7 +2867,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .lacc{gap:12px} .lacc .av{width:34px;height:34px;font-size:calc(14px*var(--z,1));font-weight:500}
 .lacc .lt b{font-size:calc(18px*var(--z,1));font-weight:500} .lacc .lt i{font-size:calc(16px*var(--z,1))}
 .lsync{padding:4px 16px 0!important;text-indent:0}
-.chip{height:50px;gap:16px;padding:0 18px 0 18px;font-size:calc(18px*var(--z,1))}
+.chip{height:50px;gap:16px;padding:0 18px 0 18px;font-size:calc(19.5px*var(--z,1));font-weight:500;color:var(--tx)}
 .chip .em{width:24px;font-size:calc(20px*var(--z,1))} .chip .em svg{width:22px;height:22px}
 .chip .n{font-size:calc(17px*var(--z,1));color:var(--sub)}
 .chip.on::before{top:10px;bottom:10px}
@@ -2883,7 +2883,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .qchips::-webkit-scrollbar{display:none}
 .qchip{border:0;background:transparent;padding:10px 12px;border-radius:8px;gap:8px;font-size:calc(17px*var(--z,1));color:var(--sub)} .qchip svg{width:22px;height:22px}
 .qchip.on{background:var(--sel);color:var(--acc)}
-.lfoot{border-top:0;padding-right:10px} .lfoot .chip{font-size:calc(18px*var(--z,1))}
+.lfoot{border-top:0;padding-right:10px} .lfoot .chip{font-size:calc(19.5px*var(--z,1))}
 }
 `;
 
