@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 21:54";
+const BUILD = "18.10 22:18";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4068,7 +4068,7 @@ function ghostPlay(g) {
     r.style.boxShadow = "-10px 0 28px rgba(0,0,0,.22)";
     const a = r.animate([{ transform: "translateX(72%)" }, { transform: "translateX(0)" }], { duration: 250, easing: E });
     a.onfinish = a.oncancel = () => { r.style.boxShadow = ""; };
-    if (mm && mm.animate) { const b2 = mm.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: E, fill: "forwards" }); b2.onfinish = () => b2.cancel(); }
+    if (mm && mm.animate) { paintLikeApp(mm); const b2 = mm.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: E, fill: "forwards" }); b2.onfinish = b2.oncancel = () => { mm.style.background = ""; b2.cancel(); }; }
   } }
 }
 /* ----- быстрые переходы: анимация стартует ДО тяжёлой перерисовки и идёт на видеочипе, поэтому не дёргается ----- */
@@ -4079,7 +4079,7 @@ function fastClose() {   // закрытие задачи — как перех�
   selId = null; window.__lsel = null;
   const E = "cubic-bezier(.35,.1,.25,1)"; r.style.boxShadow = "-10px 0 28px rgba(0,0,0,.22)";
   const a = r.animate([{ transform: "translateX(0)" }, { transform: "translateX(100%)" }], { duration: 240, easing: E, fill: "forwards" });
-  if (m && m.animate) m.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: E });
+  if (m && m.animate) { paintLikeApp(m); const b3 = m.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: E }); b3.onfinish = b3.oncancel = () => { m.style.background = ""; }; }
   let fin = false; const end = () => { if (fin) return; fin = true; render(); };
   a.onfinish = end; setTimeout(end, 400); return true;
 }
