@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 16:27";
+const BUILD = "18.10 16:38";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -127,13 +127,15 @@ if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {}; if (!P.time_log) P.time_
 ["foods", "food_log", "weight_log", "user_settings"].forEach(k => { if (!P[k]) P[k] = {}; });
 let TH = Object.assign({ v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", size: "l", glass: false }, jget(LSK.theme, {}));
 if (TH.v !== 2) TH = { v: 2, theme: "classic", accent: "#2564cf", bg: "", font: "sys", dens: "normal", size: "l", glass: false };
+if (!TH.sz3) { if (TH.sz2 || innerWidth > 760) TH.size = { s: "n", s2: "n2", n: "l", n2: "l2", l: "xl", l2: "xl", xl: "xl", xxl: "xl" }[TH.size] || TH.size; TH.sz3 = 1; try { jset(LSK.theme, TH); } catch (e) {} }   // новая шкала размеров: диапазон смещён к мелким, прежний выбор сохраняет тот же размер
 if (innerWidth <= 760 && !TH.sz2) { TH.size = "n"; TH.sz2 = 1; try { jset(LSK.theme, TH); } catch (e) {} } /* телефон: базовый размер подогнан под To Do */
 const PR = Object.assign({ sort: {}, group: {}, grid: {}, collapsed: {}, showDone: {}, rail: false, dayStart: 8, dayEnd: 17, reserve: 25 }, jget(LSK.prefs, {}));
 const savePrefs = () => jset(LSK.prefs, PR);
-let view = jget(LSK.view, "planned"), prevView = "planned", selId = null;
+let view = jget(LSK.view, "all"), prevView = "all", selId = null;
+if (view === "planned") view = "all";   // вкладку «Запланировано» убрали
 try { const _ap = new URLSearchParams(location.search).get("app"); if (_ap === "journal" || _ap === "food") view = _ap; else if (_ap === "tasks" && (view === "journal" || view === "food")) view = "planned"; } catch (e) {}   // три ярлыка: ?app=journal|food|tasks
-const HOME = () => PR.myday ? "myday" : "planned";
-if (view === "myday" && !PR.myday) view = "planned";
+const HOME = () => PR.myday ? "myday" : "all";
+if (view === "myday" && !PR.myday) view = "all";
 const ui = { qa: null, msearch: false, left: false, settings: false, limit: 300, doneLimit: 30, msg: "", msgOk: true, busy: false, q: "", pop: null, sugg: false, alerts: [], gcol: {}, day: null, dsheet: null };
 let sync = { state: "ok", msg: "" };
 let rt = null, flushing = false, flushSeq = 0, loading = false, flushTimer = null, retryTimer = null, persistTimer = null, lastLoad = 0;
@@ -180,7 +182,7 @@ const THEMES = {
 }
 if (!THEMES[TH.theme]) { TH.theme = "classic"; TH.accent = THEMES.classic.acc; TH.font = THEMES.classic.font; }   // удалённые темы → классика
 const FONTS = { sys: '"Segoe UI",system-ui,-apple-system,Roboto,sans-serif', serif: "Georgia,'Times New Roman',serif", mono: "ui-monospace,'Courier New',Consolas,monospace", round: "'Trebuchet MS','Nunito',system-ui,sans-serif", hum: "Candara,Calibri,'Gill Sans',system-ui,sans-serif", narrow: "'Arial Narrow',Bahnschrift,'Roboto Condensed',Arial,sans-serif", pal: "'Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif" };
-const ZOOMS = { s: .93, s2: .97, n: 1, n2: 1.03, l: 1.06, l2: 1.1, xl: 1.15, xxl: 1.22 };   // мягкие шаги: ~3–4% на ступень
+const ZOOMS = { xs: .78, s: .84, s2: .89, n: .93, n2: .97, l: 1, l2: 1.04, xl: 1.08 };   // мягкие шаги: ~3–4% на ступень
 const DENS = { compact: ["6px", "13px"], normal: ["10px", "14px"], cozy: ["14px", "15px"] };
 const TCOLORS = ["#111111", "#1e3a8a", "#14532d", "#7c2d12", "#581c87", "#7f1d1d", "#ffffff", "#fef3c7", "#bfdbfe", "#bbf7d0", "#fbcfe8"];
 const ACCENTS = ["#2564cf", "#0063b1", "#038387", "#498205", "#c19c00", "#ca5010", "#d13438", "#e3008c", "#8764b8", "#6366f1", "#69797e"];
@@ -1967,7 +1969,7 @@ const HK = [
   ["new_task", "Новая задача (поле ввода)", "KeyN"],
   ["search", "Поиск", "Slash"],
   ["go_myday", "Перейти: Мой день", "Alt+Digit1"],
-  ["go_planned", "Перейти: Запланировано", "Alt+Digit2"],
+  ["go_planned", "Перейти: Все задачи", "Alt+Digit2"],
   ["go_all", "Перейти: Все задачи", "Alt+Digit3"],
   ["go_week", "Перейти: Итоги недели", "Alt+Digit4"],
   ["help", "Открыть эту вкладку (шпаргалку)", "Shift+Slash"]
@@ -2021,7 +2023,7 @@ function hkRun(a) {
     case "new_task": { const i = $("newtask"); if (i) { i.focus(); return true; } if (acts.qaopen) { acts.qaopen(); return true; } return false; }
     case "search": { const q = $("q"); if (!q) return false; q.focus(); q.select(); return true; }
     case "go_myday": if (!PR.myday) { toast("Раздел «Мой день» выключен: Настройки → Дела"); return true; } goView("myday"); render(); return true;
-    case "go_planned": goView("planned"); render(); return true;
+    case "go_planned": goView("all"); render(); return true;
     case "go_all": goView("all"); render(); return true;
     case "go_week": goView("week"); render(); return true;
     case "help": ui.settings = true; ui.stab = "keys"; ui.msg = ""; closePop(); render(); return true;
@@ -3374,7 +3376,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") + sm("planned", "cal", "Запланировано", c.planned, "#107c10") +
+    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -3534,7 +3536,7 @@ function settingsHTML() {
     ((THEMES[TH.theme] || {}).fx ? sec("Анимации темы", sel("s-fx", TH.fx === false ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]]) + '<button class="btn ghost" data-a="fxtest" style="margin-top:8px">▶ Показать анимацию</button><div class="jr-hint" style="margin-top:6px">Сейчас — при закрытии задачи. У каждой темы своя: Паутина — нить-выстрел и унос, Лёд — заморозка, Роза — лепестки и т. д.') : "") +
     sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (curAccent() === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" + (view.indexOf("list:") === 0 && S.lists[view.slice(5)] && S.lists[view.slice(5)].color ? '<div class="jr-hint" style="margin-top:6px">У списка «' + esc(S.lists[view.slice(5)].name) + '» свой цвет — выбор здесь поменяет и его.</div>' : "")) +
     sec("Цвет текста — только для «" + esc(viewInfo().name) + "»", '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button data-a="tcolor" data-v="" style="height:30px;padding:0 10px;border-radius:15px;border:3px solid ' + (!(PR.tc || {})[view] ? "var(--tx)" : "var(--ln)") + ';background:transparent;color:var(--tx);font-size:12px">авто</button>' + TCOLORS.map(c => '<button data-a="tcolor" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + ((PR.tc || {})[view] === c ? "var(--acc)" : "rgba(128,128,128,.45)") + '"></button>').join("") + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sub)">свой <input type="color" id="s-tc" value="' + ((PR.tc || {})[view] || "#323130") + '" style="width:34px;height:30px;padding:0;border:0;background:none"></label></div><div class="jr-hint" style="margin-top:6px">Действует на текст в этом списке (у каждого списка и раздела свой). Остальные не меняются.</div>') +
-    sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["s2", "Чуть мельче"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупнее"], ["l2", "Ещё крупнее"], ["xl", "Крупный"], ["xxl", "Очень крупный"]])) +
+    sec("Размер текста", sel("s-size", TH.size, [["xs", "Очень мелкий"], ["s", "Мелкий"], ["s2", "Чуть мельче"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупнее"], ["l2", "Ещё крупнее"], ["xl", "Крупный"]])) +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
     sec("Фон-картинка", '<div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn ghost bgpick">' + ic("img", 18) + " " + (isMobile() ? "Выбрать из галереи" : "Выбрать файл с компьютера") + '<input type="file" id="s-bgfile" accept="image/*" hidden></label>' + (TH.bg ? '<button class="btn ghost" data-a="bgclear">Убрать фон</button>' : "") + "</div>" + (TH.bg ? '<div class="bgprev" style="background-image:url(\'' + TH.bg.replace(/['"\\\n]/g, "") + '\')"></div>' : "")) +
@@ -3916,7 +3918,7 @@ function ritMaybe() {
 }
 function appHTML() {
   if (view.indexOf("list:") === 0 && !S.lists[view.slice(5)]) view = HOME();
-  if (view === "myday" && !PR.myday) view = "planned";
+  if (view === "myday" && !PR.myday) view = "all";
   if (view === "search" && !ui.q) view = prevView || HOME();
   if (selId && !S.tasks[selId]) selId = null;
   const c = { myday: 0, starred: 0, someday: 0, all: 0, planned: 0 }, items = [], done = [];
@@ -3952,7 +3954,7 @@ function morphKeep(o, n, keep, nk) {
 }
 function render() {
   want = false;
-  if (isLite()) { if (view === "journal" || view === "food" || view.indexOf("team") === 0) view = "planned"; if (ui.trk) ui.trk = false; }
+  if (isLite()) { if (view === "journal" || view === "food" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
   try { updBadge(); } catch (e) {}
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
@@ -5433,7 +5435,7 @@ function init() {
     if (id === "jr-per") { jrState().per = e.target.value; jrState().lim = 40; render(); return; }
     if (id === "jr-file") { const f = e.target.files && e.target.files[0]; if (f) jrImport(f); e.target.value = ""; return; }
     if (id === "s-rit") { PR.ritOff = !e.target.checked; savePrefs(); render(); return; }
-    if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView("planned"); render(); return; }
+    if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView("all"); render(); return; }
     if (id === "s-bgfile") { const f = e.target.files && e.target.files[0]; if (f) bgFromFile(f); return; }
     if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); render(); return; }
     if (id === "s-keyson") { PR.keysOff = !e.target.checked; savePrefs(); render(); return; }
