@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 12:24";
+const BUILD = "18.10 12:30";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -146,22 +146,22 @@ function persistSoon() { clearTimeout(persistTimer); persistTimer = setTimeout(w
 /* ----- темы ----- */
 const THEMES = {
   classic:  { n: "Классика (как в To Do)", bg: "#faf9f8", l: "#ffffff", m: "#faf9f8", r: "#ffffff", tx: "#292827", sel: "#eff6fc", acc: "#2564cf", font: "sys", rad: "4px", sh: "0 0.3px 0.9px rgba(0,0,0,.1),0 1.6px 3.6px rgba(0,0,0,.1)", bd: "0 solid transparent", gap: "8px", rowh: "52px" },
-  paper:    { n: "Бумага", bg: "#f3e9d2", l: "#ecdfc0", m: "#f3e9d2", r: "#ecdfc0", card: "#fffbef", tx: "#3b2f1e", sub: "#7a6a50", ln: "rgba(90,60,20,.22)", acc: "#8b4513", hd: "#5c3a1e", font: "serif", rad: "2px", sh: "none", bd: "1px solid #cdb98c", tw: "600" },
-  sky:      { n: "Небо", bg: "linear-gradient(160deg,#a8d0ff,#d9e7ff 60%,#f1f6ff)", l: "rgba(255,255,255,.55)", m: "rgba(255,255,255,.2)", r: "rgba(255,255,255,.7)", card: "rgba(255,255,255,.78)", acc: "#1d6bf3", hd: "#1553c7", font: "round", rad: "20px", sh: "0 6px 20px rgba(29,107,243,.18)", bd: "1px solid rgba(255,255,255,.9)" },
-  mint:     { n: "Мята", bg: "#d9f2e4", l: "#c6ead6", m: "#d9f2e4", r: "#c6ead6", card: "#ffffff", tx: "#16372a", sub: "#4d7564", acc: "#0b9a6a", hd: "#0a7a55", font: "hum", rad: "14px", sh: "0 3px 10px rgba(11,154,106,.16)", bd: "0 solid transparent" },
-  lavender: { n: "Лаванда", bg: "#e6dcfb", l: "#d8caf6", m: "#e6dcfb", r: "#d8caf6", card: "#ffffff", tx: "#2a1d4d", sub: "#6b5b96", acc: "#7b3fe4", hd: "#5b2bb8", font: "round", rad: "24px", sh: "0 4px 14px rgba(123,63,228,.2)", bd: "0 solid transparent" },
-  peach:    { n: "Закат", bg: "linear-gradient(160deg,#ffc9a8,#ffb3c6 70%,#f6a6d6)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#4a1d1d", sub: "#8a4a4a", acc: "#e8470c", hd: "#c2260c", font: "hum", rad: "16px", sh: "0 6px 18px rgba(200,70,50,.22)", bd: "1px solid rgba(255,255,255,.8)" },
+  paper:    { n: "Бумага", fx: "plane", bg: "#f3e9d2", l: "#ecdfc0", m: "#f3e9d2", r: "#ecdfc0", card: "#fffbef", tx: "#3b2f1e", sub: "#7a6a50", ln: "rgba(90,60,20,.22)", acc: "#8b4513", hd: "#5c3a1e", font: "serif", rad: "2px", sh: "none", bd: "1px solid #cdb98c", tw: "600" },
+  sky:      { n: "Небо", fx: "clouds", bg: "linear-gradient(160deg,#a8d0ff,#d9e7ff 60%,#f1f6ff)", l: "rgba(255,255,255,.55)", m: "rgba(255,255,255,.2)", r: "rgba(255,255,255,.7)", card: "rgba(255,255,255,.78)", acc: "#1d6bf3", hd: "#1553c7", font: "round", rad: "20px", sh: "0 6px 20px rgba(29,107,243,.18)", bd: "1px solid rgba(255,255,255,.9)" },
+  mint:     { n: "Мята", fx: "leaves", bg: "#d9f2e4", l: "#c6ead6", m: "#d9f2e4", r: "#c6ead6", card: "#ffffff", tx: "#16372a", sub: "#4d7564", acc: "#0b9a6a", hd: "#0a7a55", font: "hum", rad: "14px", sh: "0 3px 10px rgba(11,154,106,.16)", bd: "0 solid transparent" },
+  lavender: { n: "Лаванда", fx: "stars", bg: "#e6dcfb", l: "#d8caf6", m: "#e6dcfb", r: "#d8caf6", card: "#ffffff", tx: "#2a1d4d", sub: "#6b5b96", acc: "#7b3fe4", hd: "#5b2bb8", font: "round", rad: "24px", sh: "0 4px 14px rgba(123,63,228,.2)", bd: "0 solid transparent" },
+  peach:    { n: "Закат", fx: "sun", bg: "linear-gradient(160deg,#ffc9a8,#ffb3c6 70%,#f6a6d6)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#4a1d1d", sub: "#8a4a4a", acc: "#e8470c", hd: "#c2260c", font: "hum", rad: "16px", sh: "0 6px 18px rgba(200,70,50,.22)", bd: "1px solid rgba(255,255,255,.8)" },
   forest: { n: "Лес", fx: "bubbles", bg: "linear-gradient(160deg,#b7e4b4,#d9f0b8 60%,#f1fbd9)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#14361f", sub: "#4d7a5a", acc: "#2f855a", hd: "#1f6b44", font: "hum", rad: "16px", sh: "0 6px 18px rgba(47,133,90,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(47,133,90,.13)" },
-  dusk: { n: "Сумерки", bg: "linear-gradient(160deg,#c6b5ff,#e3b8f2 60%,#f9c9e6)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#2d1b52", sub: "#6d5a9a", acc: "#7c3aed", hd: "#5b21b6", font: "round", rad: "18px", sh: "0 6px 18px rgba(124,58,237,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(124,58,237,.13)" },
+  dusk: { n: "Сумерки", fx: "moon", bg: "linear-gradient(160deg,#c6b5ff,#e3b8f2 60%,#f9c9e6)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#2d1b52", sub: "#6d5a9a", acc: "#7c3aed", hd: "#5b21b6", font: "round", rad: "18px", sh: "0 6px 18px rgba(124,58,237,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(124,58,237,.13)" },
   honey: { n: "Мёд", fx: "flash", bg: "linear-gradient(160deg,#ffe08a,#ffd0a0 60%,#ffe9c7)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#451a03", sub: "#8a5a1f", acc: "#b45309", hd: "#92400e", font: "hum", rad: "14px", sh: "0 6px 18px rgba(180,120,9,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(217,119,6,.13)" },
   berry: { n: "Ягода", fx: "neon", bg: "linear-gradient(160deg,#ffa8c5,#f0a9e6 60%,#cdb4ff)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#4a0d2b", sub: "#8a3d63", acc: "#be185d", hd: "#9d174d", font: "hum", rad: "20px", sh: "0 6px 18px rgba(190,24,93,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(190,24,93,.13)" },
-  lime: { n: "Лайм", bg: "linear-gradient(160deg,#dcf99a,#b8f0b0 60%,#a2ecd0)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#23360a", sub: "#5a7a30", acc: "#4d7c0f", hd: "#3f6212", font: "sys", rad: "12px", sh: "0 6px 18px rgba(77,124,15,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(77,124,15,.13)" },
-  ocean: { n: "Океан", bg: "linear-gradient(160deg,#8fe0df,#9bc8f5 60%,#b9b6f5)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#082f3d", sub: "#3f7283", acc: "#0e7490", hd: "#155e75", font: "round", rad: "22px", sh: "0 6px 18px rgba(14,116,144,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(14,116,144,.13)" },
-  cotton: { n: "Сахарная вата", bg: "linear-gradient(160deg,#ffd1e3,#d7e0ff 60%,#c9f3ee)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#3b1d36", sub: "#7d5a73", acc: "#e11d74", hd: "#be185d", font: "round", rad: "24px", sh: "0 6px 18px rgba(225,29,116,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(225,29,116,.13)" },
+  lime: { n: "Лайм", fx: "citrus", bg: "linear-gradient(160deg,#dcf99a,#b8f0b0 60%,#a2ecd0)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#23360a", sub: "#5a7a30", acc: "#4d7c0f", hd: "#3f6212", font: "sys", rad: "12px", sh: "0 6px 18px rgba(77,124,15,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(77,124,15,.13)" },
+  ocean: { n: "Океан", fx: "waves", bg: "linear-gradient(160deg,#8fe0df,#9bc8f5 60%,#b9b6f5)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#082f3d", sub: "#3f7283", acc: "#0e7490", hd: "#155e75", font: "round", rad: "22px", sh: "0 6px 18px rgba(14,116,144,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(14,116,144,.13)" },
+  cotton: { n: "Сахарная вата", fx: "hearts", bg: "linear-gradient(160deg,#ffd1e3,#d7e0ff 60%,#c9f3ee)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#3b1d36", sub: "#7d5a73", acc: "#e11d74", hd: "#be185d", font: "round", rad: "24px", sh: "0 6px 18px rgba(225,29,116,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(225,29,116,.13)" },
   webl:     { n: "Паутина", fx: "web", bg: "linear-gradient(165deg,#e6edff,#f5efff 55%,#ffe4e9)", img: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 320 320%27 width=%27320%27 height=%27320%27%3E%3Cpath d=%27M320 0L320.0 336.0M320 0L233.0 324.6M320 0L152.0 291.0M320 0L82.4 237.6M320 0L29.0 168.0M320 0L-4.6 87.0M320 0L-16.0 0.0M320.0 45.0Q315.1 37.2 308.4 43.5Q305.7 34.6 297.5 39.0Q297.2 29.7 288.2 31.8Q290.3 22.8 281.0 22.5Q285.4 14.3 276.5 11.6Q282.8 4.9 275.0 0.0M320.0 90.0Q310.2 74.3 296.7 86.9Q291.3 69.2 275.0 77.9Q274.4 59.5 256.4 63.6Q260.5 45.6 242.1 45.0Q250.8 28.7 233.1 23.3Q245.7 9.8 230.0 0.0M320.0 140.0Q304.8 115.6 283.8 135.2Q275.4 107.7 250.0 121.2Q249.0 92.5 221.0 99.0Q227.5 71.0 198.8 70.0Q212.3 44.6 184.8 36.2Q204.4 15.2 180.0 0.0M320.0 195.0Q298.8 161.0 269.5 188.4Q257.9 150.0 222.5 168.9Q221.1 128.8 182.1 137.9Q191.2 98.9 151.1 97.5Q170.0 62.1 131.6 50.5Q159.0 21.2 125.0 0.0M320.0 255.0Q292.3 210.6 254.0 246.3Q238.7 196.2 192.5 220.8Q190.7 168.5 139.7 180.3Q151.5 129.3 99.2 127.5Q123.8 81.3 73.7 66.0Q109.4 27.7 65.0 0.0%27 fill=%27none%27 stroke=%27%2314204a%27 stroke-opacity=%27.2%27 stroke-width=%271.4%27 stroke-linecap=%27round%27/%3E%3C/svg%3E")', l: "rgba(255,255,255,.6)", m: "rgba(255,255,255,.25)", r: "rgba(255,255,255,.75)", card: "rgba(255,255,255,.9)", tx: "#14204a", sub: "#51608f", ln: "rgba(20,32,74,.15)", acc: "#d3192f", hd: "#b01226", font: "round", rad: "14px", sh: "0 6px 18px rgba(20,32,74,.14)", bd: "1px solid rgba(20,32,74,.12)" },
-  rose:     { n: "Роза", bg: "#fde0ea", l: "#fbcfdd", m: "#fde0ea", r: "#fbcfdd", card: "#fff8fb", tx: "#4a1a2c", sub: "#8c4a63", ln: "rgba(180,60,100,.25)", acc: "#d6246e", hd: "#b01a57", font: "pal", rad: "12px", sh: "0 2px 8px rgba(214,36,110,.14)", bd: "1px solid #f4a6c1" },
-  ice:      { n: "Лёд", bg: "linear-gradient(160deg,#b6ecff,#e6f9ff 55%,#ffffff)", l: "rgba(255,255,255,.6)", m: "rgba(255,255,255,.25)", r: "rgba(255,255,255,.75)", card: "rgba(255,255,255,.7)", tx: "#0c3446", sub: "#4a7c90", acc: "#0891b2", hd: "#066f8a", font: "sys", rad: "28px", sh: "0 8px 24px rgba(8,145,178,.2)", bd: "1px solid rgba(255,255,255,.95)" },
-  sand:     { n: "Пустыня", bg: "#ecd7ad", l: "#e1c795", m: "#ecd7ad", r: "#e1c795", card: "#fbf1da", tx: "#40290f", sub: "#85673c", ln: "rgba(110,70,20,.35)", acc: "#c2410c", hd: "#7c3f12", font: "pal", rad: "8px", sh: "none", bd: "2px dashed #c4a063", tw: "600" }
+  rose:     { n: "Роза", fx: "petals", bg: "#fde0ea", l: "#fbcfdd", m: "#fde0ea", r: "#fbcfdd", card: "#fff8fb", tx: "#4a1a2c", sub: "#8c4a63", ln: "rgba(180,60,100,.25)", acc: "#d6246e", hd: "#b01a57", font: "pal", rad: "12px", sh: "0 2px 8px rgba(214,36,110,.14)", bd: "1px solid #f4a6c1" },
+  ice:      { n: "Лёд", fx: "snow", bg: "linear-gradient(160deg,#b6ecff,#e6f9ff 55%,#ffffff)", l: "rgba(255,255,255,.6)", m: "rgba(255,255,255,.25)", r: "rgba(255,255,255,.75)", card: "rgba(255,255,255,.7)", tx: "#0c3446", sub: "#4a7c90", acc: "#0891b2", hd: "#066f8a", font: "sys", rad: "28px", sh: "0 8px 24px rgba(8,145,178,.2)", bd: "1px solid rgba(255,255,255,.95)" },
+  sand:     { n: "Пустыня", fx: "sand", bg: "#ecd7ad", l: "#e1c795", m: "#ecd7ad", r: "#e1c795", card: "#fbf1da", tx: "#40290f", sub: "#85673c", ln: "rgba(110,70,20,.35)", acc: "#c2410c", hd: "#7c3f12", font: "pal", rad: "8px", sh: "none", bd: "2px dashed #c4a063", tw: "600" }
 };
 /* свои орнаменты тем (оригинальные, без чужих персонажей) */
 {
@@ -217,28 +217,31 @@ function applyTheme() {
 /* ----- анимации тем (закрытие задачи); включаются в Настройках ----- */
 function fxClone(row) { const r = row.getBoundingClientRect(), c = row.cloneNode(true); c.removeAttribute("data-a"); c.removeAttribute("id"); c.style.cssText += ";position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;margin:0;z-index:9000;pointer-events:none;box-sizing:border-box;overflow:hidden"; const cs = getComputedStyle(row); c.style.background = "linear-gradient(" + cs.backgroundColor + "," + cs.backgroundColor + "), #fff"; c.style.color = cs.color; c.style.fontFamily = cs.fontFamily; c.style.fontSize = cs.fontSize; c.style.border = cs.border; c.style.borderRadius = cs.borderRadius; c.style.boxShadow = cs.boxShadow; c.style.padding = cs.padding; c.style.display = "flex"; c.style.alignItems = "flex-start"; c.style.gap = cs.gap; document.body.appendChild(c); return { c, r }; }
 function fxWeb(row) {
-  const { c, r } = fxClone(row), W = innerWidth, sx = W + 8, sy = -8, ns = "http://www.w3.org/2000/svg", T = THEMES[TH.theme] || {}, col = T.dark ? "#ffffff" : "#1b2a5e";
-  const sv = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path"), g = document.createElementNS(ns, "path");
-  sv.setAttribute("style", "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:9100;pointer-events:none;overflow:visible");
-  p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", "2.2"); p.setAttribute("stroke-linecap", "round"); p.setAttribute("stroke-opacity", ".92");
-  let d = ""; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; d += "M0 0L" + (Math.cos(a) * 20).toFixed(1) + " " + (Math.sin(a) * 20).toFixed(1); } [8, 15].forEach(rr => { for (let i = 0; i <= 8; i++) { const a = i * Math.PI / 4; d += (i ? "L" : "M") + (Math.cos(a) * rr).toFixed(1) + " " + (Math.sin(a) * rr).toFixed(1); } });
-  g.setAttribute("d", d); g.setAttribute("fill", "none"); g.setAttribute("stroke", col); g.setAttribute("stroke-width", "1.4"); g.style.opacity = "0";
-  sv.appendChild(p); sv.appendChild(g); document.body.appendChild(sv);
-  const draw = (ex, ey) => { p.setAttribute("d", "M" + sx + " " + sy + " Q" + ((sx + ex) / 2 + 20) + " " + ((sy + ey) / 2 + 50) + " " + ex + " " + ey); g.setAttribute("transform", "translate(" + ex + "," + ey + ")"); };
-  const tx = r.right - 26, ty = r.top + r.height / 2, t0 = performance.now(); let phase = 1, an = null;
+  const { c, r } = fxClone(row), W = innerWidth, ns = "http://www.w3.org/2000/svg", col = "#1b2a5e", y = r.top + r.height / 2, sx = W - 30, tx = r.left + 24, L = sx - tx;
+  const sv = document.createElementNS(ns, "svg"); sv.setAttribute("style", "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:9100;pointer-events:none;overflow:visible");
+  // нитемёт справа (оригинальный значок-прибор)
+  const gun = document.createElementNS(ns, "g"); gun.innerHTML = '<rect x="0" y="-11" width="36" height="22" rx="8" fill="#e11d48"/><rect x="-8" y="-5" width="12" height="10" rx="3" fill="#1b2a5e"/><circle cx="22" cy="0" r="5" fill="#fff" fill-opacity=".9"/><circle cx="22" cy="0" r="2" fill="#1b2a5e"/>';
+  gun.setAttribute("transform", "translate(" + (W + 6) + "," + y + ")"); sv.appendChild(gun);
+  const p = document.createElementNS(ns, "path"); p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", "2.4"); p.setAttribute("stroke-linecap", "round");
+  p.setAttribute("stroke-dasharray", L + " " + L); p.setAttribute("stroke-dashoffset", L); sv.appendChild(p);
+  const g = document.createElementNS(ns, "path"); let d = ""; for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4; d += "M0 0L" + (Math.cos(an) * 20).toFixed(1) + " " + (Math.sin(an) * 20).toFixed(1); }
+  [8, 15].forEach(rr => { for (let i = 0; i <= 8; i++) { const an = i * Math.PI / 4; d += (i ? "L" : "M") + (Math.cos(an) * rr).toFixed(1) + " " + (Math.sin(an) * rr).toFixed(1); } });
+  g.setAttribute("d", d); g.setAttribute("fill", "none"); g.setAttribute("stroke", col); g.setAttribute("stroke-width", "1.5"); g.style.opacity = "0"; g.style.transformBox = "fill-box"; g.style.transformOrigin = "center"; sv.appendChild(g);
+  document.body.appendChild(sv);
+  const path = ex => { p.setAttribute("d", "M" + sx + " " + y + "Q" + ((sx + ex) / 2) + " " + (y + 5) + " " + ex + " " + y); g.setAttribute("transform", "translate(" + ex + "," + y + ")"); };
+  path(tx); const t0 = performance.now(); let ph = 0, shift = 0, T1 = 380, T2 = 260, T3 = 750;
+  gun.animate([{ transform: "translate(" + (W + 6) + "px," + y + "px)" }, { transform: "translate(" + (W - 34) + "px," + y + "px)" }], { duration: 220, fill: "forwards", easing: "ease-out" });
   const end = () => { c.remove(); sv.remove(); };
   const tick = now => {
-    if (phase === 1) {
-      const k = Math.min(1, (now - t0) / 300), e = 1 - Math.pow(1 - k, 3); draw(sx + (tx - sx) * e, sy + (ty - sy) * e);
-      if (k >= 1) { phase = 2; g.style.opacity = "1"; an = c.animate([{ transform: "translate(0,0) rotate(0deg)", opacity: 1 }, { transform: "translate(-16px,0) rotate(-1.2deg)", opacity: 1, offset: .16 }, { transform: "translate(" + (W - r.left + 60) + "px," + (-r.top * .7) + "px) rotate(7deg) scale(.8)", opacity: .15 }], { duration: 640, easing: "cubic-bezier(.5,0,.9,.4)", fill: "forwards" }); }
-      if (an) an.playbackRate = .5;
-      requestAnimationFrame(tick);
-    } else {
-      const b = c.getBoundingClientRect(); draw(b.right - 26 * .8, b.top + b.height / 2);
-      if (an.playState === "finished") return end(); requestAnimationFrame(tick);
-    }
+    const t = now - t0;
+    if (t < 220) { } else if (t < 220 + T1) { const k = (t - 220) / T1; p.setAttribute("stroke-dashoffset", L * (1 - (1 - Math.pow(1 - k, 2)))); }
+    else if (t < 220 + T1 + T2) { p.setAttribute("stroke-dashoffset", 0); if (ph < 1) { ph = 1; g.style.opacity = "1"; g.animate([{ transform: "scale(.2)", opacity: 0 }, { transform: "scale(1.5)", opacity: 1, offset: .5 }, { transform: "scale(1)", opacity: 1 }], { duration: T2, easing: "ease-out" }); c.style.textDecoration = "line-through"; } }
+    else if (t < 220 + T1 + T2 + 150) { }
+    else if (t < 220 + T1 + T2 + 150 + T3) { const k = (t - 220 - T1 - T2 - 150) / T3, e = k * k; shift = (W - r.left + 20) * e; c.style.transform = "translateX(" + shift + "px)"; c.style.opacity = String(1 - Math.max(0, k - .75) * 3); path(tx + shift); gun.style.opacity = String(1 - Math.max(0, k - .6) * 2.5); }
+    else return end();
+    requestAnimationFrame(tick);
   };
-  requestAnimationFrame(tick); setTimeout(end, 4000);
+  requestAnimationFrame(tick); setTimeout(end, 3500);
 }
 function fxFlash(row) {
   const { c } = fxClone(row), sh = document.createElement("div");
@@ -270,7 +273,21 @@ function fxNeon(row) {
     an.playbackRate = .5; an.onfinish = () => b.remove(); setTimeout(() => b.remove(), 4500);
   }
 }
-const FXF = { web: fxWeb, flash: fxFlash, bubbles: fxBubbles, neon: fxNeon };
+function fxEmo(row, em, mode, n) {
+  const { c, r } = fxClone(row), W = innerWidth;
+  const ex = { up: [{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-70px) scale(.96)", opacity: 0 }], fall: [{ transform: "translateY(0) rotate(0)", opacity: 1 }, { transform: "translateY(90px) rotate(4deg)", opacity: 0 }], right: [{ transform: "translateX(0)", opacity: 1 }, { transform: "translateX(" + (W - r.left) + "px) rotate(3deg)", opacity: 0 }], shrink: [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.6) rotate(-6deg)", opacity: 0, filter: "blur(2px)" }], freeze: [{ opacity: 1, filter: "none" }, { opacity: 1, filter: "grayscale(1) brightness(1.3) hue-rotate(180deg)", offset: .4 }, { opacity: 0, transform: "scale(1.04)", filter: "brightness(2)" }], plane: [{ transform: "translate(0,0) scale(1) rotate(0)", opacity: 1 }, { transform: "translate(" + (W * .5) + "px,-140px) scale(.25) rotate(-18deg)", opacity: 0 }] }[mode] || [];
+  const a = c.animate(ex, { duration: 1100, easing: "ease-in", fill: "forwards" }); a.onfinish = () => c.remove(); setTimeout(() => c.remove(), 3000);
+  for (let i = 0; i < (n || 14); i++) {
+    const b = document.createElement("div"); b.textContent = em[i % em.length];
+    b.style.cssText = "position:fixed;z-index:9100;pointer-events:none;font-size:" + (14 + Math.random() * 14) + "px;left:" + (r.left + Math.random() * r.width) + "px;top:" + (r.top + r.height * Math.random()) + "px";
+    document.body.appendChild(b);
+    const dx = (Math.random() - .5) * 90, dy = mode === "up" || mode === "freeze" ? -(50 + Math.random() * 80) : (mode === "right" || mode === "plane" ? (Math.random() - .5) * 60 : 60 + Math.random() * 120), dxx = mode === "right" ? 120 + Math.random() * 160 : dx;
+    const an = b.animate([{ transform: "translate(0,0) rotate(0) scale(.5)", opacity: 0 }, { opacity: 1, offset: .15 }, { transform: "translate(" + dxx + "px," + dy + "px) rotate(" + ((Math.random() - .5) * 240) + "deg) scale(1)", opacity: 0 }], { duration: 1200 + Math.random() * 800, delay: Math.random() * 250, easing: "ease-out", fill: "both" });
+    an.onfinish = () => b.remove(); setTimeout(() => b.remove(), 3500);
+  }
+}
+const FXF = { web: fxWeb, flash: fxFlash, bubbles: fxBubbles, neon: fxNeon,
+  plane: r => fxEmo(r, ["✉️", "📄"], "plane", 8), clouds: r => fxEmo(r, ["☁️", "🕊️"], "up", 10), leaves: r => fxEmo(r, ["🍃", "🌿"], "fall", 14), stars: r => fxEmo(r, ["✨", "⭐", "🌟"], "up", 16), sun: r => fxEmo(r, ["☀️", "🌅", "✨"], "up", 10), moon: r => fxEmo(r, ["🌙", "⭐", "✨"], "shrink", 14), citrus: r => fxEmo(r, ["🍋", "🍏", "💦"], "shrink", 12), waves: r => fxEmo(r, ["🌊", "🐚", "🫧"], "right", 14), hearts: r => fxEmo(r, ["💖", "🍬", "🎀"], "up", 14), petals: r => fxEmo(r, ["🌸", "🌺"], "fall", 16), snow: r => fxEmo(r, ["❄️", "✨"], "freeze", 14), sand: r => fxEmo(r, ["🌵", "🏜️", "·"], "right", 16) };
 function themeFx(kind, row, force) {
   const T = THEMES[TH.theme]; if (!T || !T.fx || !row || !row.getBoundingClientRect) return;
   if (!force && (TH.fx === false || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches))) return;
