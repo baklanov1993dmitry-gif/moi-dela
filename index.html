@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 12:30";
+const BUILD = "18.10 12:41";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -229,15 +229,15 @@ function fxWeb(row) {
   g.setAttribute("d", d); g.setAttribute("fill", "none"); g.setAttribute("stroke", col); g.setAttribute("stroke-width", "1.5"); g.style.opacity = "0"; g.style.transformBox = "fill-box"; g.style.transformOrigin = "center"; sv.appendChild(g);
   document.body.appendChild(sv);
   const path = ex => { p.setAttribute("d", "M" + sx + " " + y + "Q" + ((sx + ex) / 2) + " " + (y + 5) + " " + ex + " " + y); g.setAttribute("transform", "translate(" + ex + "," + y + ")"); };
-  path(tx); const t0 = performance.now(); let ph = 0, shift = 0, T1 = 380, T2 = 260, T3 = 750;
-  gun.animate([{ transform: "translate(" + (W + 6) + "px," + y + "px)" }, { transform: "translate(" + (W - 34) + "px," + y + "px)" }], { duration: 220, fill: "forwards", easing: "ease-out" });
+  path(tx); const t0 = performance.now(); let ph = 0, shift = 0, T1 = 240, T2 = 180, T3 = 520;
+  gun.animate([{ transform: "translate(" + (W + 6) + "px," + y + "px)" }, { transform: "translate(" + (W - 34) + "px," + y + "px)" }], { duration: 150, fill: "forwards", easing: "ease-out" });
   const end = () => { c.remove(); sv.remove(); };
   const tick = now => {
     const t = now - t0;
-    if (t < 220) { } else if (t < 220 + T1) { const k = (t - 220) / T1; p.setAttribute("stroke-dashoffset", L * (1 - (1 - Math.pow(1 - k, 2)))); }
-    else if (t < 220 + T1 + T2) { p.setAttribute("stroke-dashoffset", 0); if (ph < 1) { ph = 1; g.style.opacity = "1"; g.animate([{ transform: "scale(.2)", opacity: 0 }, { transform: "scale(1.5)", opacity: 1, offset: .5 }, { transform: "scale(1)", opacity: 1 }], { duration: T2, easing: "ease-out" }); c.style.textDecoration = "line-through"; } }
-    else if (t < 220 + T1 + T2 + 150) { }
-    else if (t < 220 + T1 + T2 + 150 + T3) { const k = (t - 220 - T1 - T2 - 150) / T3, e = k * k; shift = (W - r.left + 20) * e; c.style.transform = "translateX(" + shift + "px)"; c.style.opacity = String(1 - Math.max(0, k - .75) * 3); path(tx + shift); gun.style.opacity = String(1 - Math.max(0, k - .6) * 2.5); }
+    if (t < 150) { } else if (t < 150 + T1) { const k = (t - 150) / T1; p.setAttribute("stroke-dashoffset", L * (1 - (1 - Math.pow(1 - k, 2)))); }
+    else if (t < 150 + T1 + T2) { p.setAttribute("stroke-dashoffset", 0); if (ph < 1) { ph = 1; g.style.opacity = "1"; g.animate([{ transform: "scale(.2)", opacity: 0 }, { transform: "scale(1.5)", opacity: 1, offset: .5 }, { transform: "scale(1)", opacity: 1 }], { duration: T2, easing: "ease-out" }); c.style.textDecoration = "line-through"; } }
+    else if (t < 150 + T1 + T2 + 80) { }
+    else if (t < 150 + T1 + T2 + 80 + T3) { const k = (t - 150 - T1 - T2 - 80) / T3, e = k * k; shift = (W - r.left + 20) * e; c.style.transform = "translateX(" + shift + "px)"; c.style.opacity = String(1 - Math.max(0, k - .75) * 3); path(tx + shift); gun.style.opacity = String(1 - Math.max(0, k - .6) * 2.5); }
     else return end();
     requestAnimationFrame(tick);
   };
@@ -3479,7 +3479,7 @@ function settingsHTML() {
   if (smenu) b = '<div class="smenu">' + TABS.map(t => '<button class="smi" data-a="stab" data-v="' + t[0] + '"><span class="smt">' + t[1] + '</span><i>' + (SHINT[t[0]] || "") + '</i>' + ic("chevr", 16) + "</button>").join("") + '</div><div class="sub" style="margin:14px 4px;color:var(--sub);font-size:calc(12px*var(--z,1))">' + esc(S.user ? S.user.email : "") + " · сборка " + BUILD + "</div>";
   else if (tab === "view") b =
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
-    ((THEMES[TH.theme] || {}).fx ? sec("Анимации темы", sel("s-fx", TH.fx === false ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]]) + '<button class="btn ghost" data-a="fxtest" style="margin-top:8px">▶ Показать анимацию</button><div class="jr-hint" style="margin-top:6px">Сейчас — при закрытии задачи. Паутина: выстрел паутиной и смахивание · Готэм: вспышка · Болото: пузырьки · Неон: мерцание и искры.</div>') : "") +
+    ((THEMES[TH.theme] || {}).fx ? sec("Анимации темы", sel("s-fx", TH.fx === false ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]]) + '<button class="btn ghost" data-a="fxtest" style="margin-top:8px">▶ Показать анимацию</button><div class="jr-hint" style="margin-top:6px">Сейчас — при закрытии задачи. У каждой темы своя: Паутина — нить-выстрел и унос, Лёд — заморозка, Роза — лепестки и т. д.') : "") +
     sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (curAccent() === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" + (view.indexOf("list:") === 0 && S.lists[view.slice(5)] && S.lists[view.slice(5)].color ? '<div class="jr-hint" style="margin-top:6px">У списка «' + esc(S.lists[view.slice(5)].name) + '» свой цвет — выбор здесь поменяет и его.</div>' : "")) +
     sec("Цвет текста — только для «" + esc(viewInfo().name) + "»", '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button data-a="tcolor" data-v="" style="height:30px;padding:0 10px;border-radius:15px;border:3px solid ' + (!(PR.tc || {})[view] ? "var(--tx)" : "var(--ln)") + ';background:transparent;color:var(--tx);font-size:12px">авто</button>' + TCOLORS.map(c => '<button data-a="tcolor" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + ((PR.tc || {})[view] === c ? "var(--acc)" : "rgba(128,128,128,.45)") + '"></button>').join("") + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sub)">свой <input type="color" id="s-tc" value="' + ((PR.tc || {})[view] || "#323130") + '" style="width:34px;height:30px;padding:0;border:0;background:none"></label></div><div class="jr-hint" style="margin-top:6px">Действует на текст в этом списке (у каждого списка и раздела свой). Остальные не меняются.</div>') +
     sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["s2", "Чуть мельче"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупнее"], ["l2", "Ещё крупнее"], ["xl", "Крупный"], ["xxl", "Очень крупный"]])) +
@@ -4121,7 +4121,15 @@ const acts = {
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
   stab(a) { ui.stab = a.dataset.v; ui.smenu = false; render(); },
   theme(a) { const T = THEMES[a.dataset.v]; TH.theme = a.dataset.v; if (T) { TH.accent = T.acc; TH.font = T.font; } PR.tc = {}; TH.nolc = 1; savePrefs(); saveTheme(); render(); },   // смена темы снимает свои цвета текста — берём цвета темы
-  fxtest() { const r = document.querySelector('#list .taskrow:not(.sub)'); if (r) themeFx('done', r, true); else toast('Нет задачи для показа'); },
+  fxtest() {
+    let r = document.querySelector('#list .taskrow:not(.sub)'), tmp = null;
+    if (!r || ui.settings || r.getBoundingClientRect().width < 50 || r.getBoundingClientRect().top > innerHeight) {   // в настройках списка нет — показываем на демо-строке
+      tmp = document.createElement("div"); tmp.className = "taskrow"; const w = Math.min(innerWidth - 32, 420);
+      tmp.style.cssText = "position:fixed;left:" + (innerWidth - w) / 2 + "px;top:" + Math.round(innerHeight * .3) + "px;width:" + w + "px;z-index:8000;background:#fff;color:#222;padding:14px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18);display:flex;align-items:center;gap:12px;font-size:16px";
+      tmp.innerHTML = '<div class="rad" style="flex:none"></div><span>Пример задачи</span>'; document.body.appendChild(tmp); r = tmp;
+    }
+    themeFx("done", r, true); if (tmp) setTimeout(() => tmp.remove(), 60);
+  },
   tcolor(a) { PR.tc = PR.tc || {}; if (a.dataset.v) PR.tc[view] = a.dataset.v; else delete PR.tc[view]; savePrefs(); render(); },
   accent(a) {
     TH.accent = a.dataset.v; TH.nolc = 0; const l = view.indexOf("list:") === 0 && S.lists[view.slice(5)];
