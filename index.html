@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 18:45";
+const BUILD = "18.10 19:02";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3230,6 +3230,10 @@ select.inp option{color:#111}
 .fabvv .fab{top:calc(var(--vvb) - 76px - env(safe-area-inset-bottom));bottom:auto}
 .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.4);z-index:30}
 .qa-back{position:fixed;left:0;right:0;top:0;bottom:0;padding-bottom:var(--kb,0px);background:rgba(0,0,0,.45);z-index:55;display:flex;align-items:flex-end}
+.qa-back{transition:padding-bottom .2s ease-out}
+button:not(.fab):not(.qsend){transition:background-color .2s ease,color .2s ease,border-color .2s ease,opacity .2s ease}
+.taskrow{transition:background-color .2s ease,box-shadow .2s ease,opacity .25s ease}
+.chip{transition:background-color .2s ease,color .2s ease,border-color .2s ease}
 .qa{width:100%;background:var(--solid);color:var(--tx);border-radius:14px 14px 0 0;padding:10px 12px max(12px,env(safe-area-inset-bottom))}
 .qrow{display:flex;align-items:center;gap:12px;padding:6px 4px 10px}
 .qrow input{flex:1;background:transparent;border:0;color:var(--tx);font-size:calc(17px*var(--z,1));height:42px;min-width:0}
@@ -4017,6 +4021,7 @@ function render() {
   if (!kept) app.innerHTML = html;
   applyTheme();
   try { ghostPlay(gh); } catch (e) {}
+  try { if (ui.qa && window.visualViewport && innerHeight - visualViewport.height - visualViewport.offsetTop > 80) { const qi = $("qa-input"); if (qi && document.activeElement !== qi) qi.focus({ preventScroll: true }); } } catch (e) {}   // клавиатура не закрывается при открытии меню срока — шторка и меню не прыгают
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
