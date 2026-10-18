@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 21:07";
+const BUILD = "18.10 21:34";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1721,13 +1721,13 @@ const dtpCSS = `
 .qa-back.qin{animation:qbin .16s ease-out} .qa-back.qin .qa{animation:qsl .2s cubic-bezier(.2,.8,.2,1)}
 @keyframes qbin{from{background:rgba(0,0,0,0)}} @keyframes qsl{from{transform:translateY(46px);opacity:.3}}
 @media(prefers-reduced-motion:reduce){.qa-back.qin,.qa-back.qin .qa{animation:none}}
-.pop.pin{animation:popexp .2s cubic-bezier(.22,.9,.3,1) both;transform-origin:top left}
-.pop.pin.up{animation-name:popexpup;transform-origin:bottom left}
+.pop.pin{animation:popexp .13s cubic-bezier(.2,.8,.2,1) both;transform-origin:top center}
+.pop.pin.up{animation-name:popexpup;transform-origin:bottom center}
 .pop.pin.mid{animation-name:popmid;transform-origin:center}
 @keyframes popmid{0%{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
-@keyframes popexpup{0%{clip-path:inset(70% 0 0 0 round 10px);opacity:0;transform:translateY(14px) scale(.97)}40%{opacity:.85}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1;transform:none}}
+@keyframes popexpup{0%{opacity:0;transform:translateY(10px) scale(.95,.72)}to{opacity:1;transform:none}}
 
-@keyframes popexp{0%{clip-path:inset(0 0 70% 0 round 10px);opacity:0;transform:translateY(-10px) scale(.97)}40%{opacity:.85}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1;transform:none}}
+@keyframes popexp{0%{opacity:0;transform:translateY(-10px) scale(.95,.72)}to{opacity:1;transform:none}}
 .popsrc{animation:popsrc .06s ease both;background:rgba(0,0,0,.07)!important}
 @keyframes popsrc{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.07)}}
 @media(prefers-reduced-motion:reduce){.pop.pin,.popsrc{animation:none}}
@@ -3563,7 +3563,7 @@ function popHTML() {
   const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
   const mob = isMobile(), dt = p.type === "due" || p.type === "remind" || (p.type === "repeat" && mob);
   const lst = (p.type === "due" && ui.dtp && !ui.dtp.cal) || (p.type === "repeat" && mob), anc = lst || (mob && p.type === "remind");
-  return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc ? ' style="background:rgba(0,0,0,.12)"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "mctx" && mob ? " mtp" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((Math.max(window.__fullH || 0, innerHeight) - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
+  return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc && !ui.qa ? ' style="background:rgba(0,0,0,.12)"' : anc ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "mctx" && mob ? " mtp" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((Math.max(window.__fullH || 0, innerHeight) - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
 }
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
@@ -4035,8 +4035,8 @@ function ghostPlay(g) {
       const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(.86)" }, { filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.3,0,.15,1)" });
       return;
     }
-    const kf = x.kind === "lslide" ? [{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .25 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }] : x.kind === "mslide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }] : x.kind === "slide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
-    const an = c.animate(kf, { duration: x.kind === "pop" ? 130 : x.kind === "lslide" ? 250 : x.kind === "mslide" ? 240 : 200, easing: x.kind === "lslide" ? "cubic-bezier(0,0,.2,1)" : x.kind === "mslide" ? "cubic-bezier(.35,.1,.25,1)" : "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+    const kf = x.kind === "lslide" ? [{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .25 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }] : x.kind === "mslide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }] : x.kind === "slide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : x.kind === "pop" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
+    const an = c.animate(kf, { duration: x.kind === "pop" ? 160 : x.kind === "lslide" ? 250 : x.kind === "mslide" ? 240 : 200, easing: x.kind === "lslide" ? "cubic-bezier(0,0,.2,1)" : x.kind === "mslide" ? "cubic-bezier(.35,.1,.25,1)" : "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
     if (x.kind === "qa") { const q = c.querySelector(".qa"); if (q) q.animate([{ transform: "translateY(0)" }, { transform: "translateY(28px)" }], { duration: 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); }
     an.onfinish = () => c.remove(); setTimeout(() => c.remove(), 600);
   });
