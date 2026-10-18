@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "17.10 23:17";
+const BUILD = "18.10 11:52";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -158,13 +158,17 @@ const THEMES = {
   lime: { n: "Лайм", bg: "linear-gradient(160deg,#dcf99a,#b8f0b0 60%,#a2ecd0)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#23360a", sub: "#5a7a30", acc: "#4d7c0f", hd: "#3f6212", font: "sys", rad: "12px", sh: "0 6px 18px rgba(77,124,15,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(77,124,15,.13)" },
   ocean: { n: "Океан", bg: "linear-gradient(160deg,#8fe0df,#9bc8f5 60%,#b9b6f5)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#082f3d", sub: "#3f7283", acc: "#0e7490", hd: "#155e75", font: "round", rad: "22px", sh: "0 6px 18px rgba(14,116,144,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(14,116,144,.13)" },
   cotton: { n: "Сахарная вата", bg: "linear-gradient(160deg,#ffd1e3,#d7e0ff 60%,#c9f3ee)", l: "rgba(255,255,255,.5)", m: "rgba(255,255,255,.15)", r: "rgba(255,255,255,.65)", card: "rgba(255,255,255,.82)", tx: "#3b1d36", sub: "#7d5a73", acc: "#e11d74", hd: "#be185d", font: "round", rad: "24px", sh: "0 6px 18px rgba(225,29,116,.22)", bd: "1px solid rgba(255,255,255,.8)", hov: "rgba(225,29,116,.13)" },
+  web:      { n: "Паутина", dark: 1, bg: "linear-gradient(165deg,#0a1235,#12205a 55%,#3a0f24)", img: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 320 320%27 width=%27320%27 height=%27320%27%3E%3Cpath d=%27M320 0L320.0 336.0M320 0L233.0 324.6M320 0L152.0 291.0M320 0L82.4 237.6M320 0L29.0 168.0M320 0L-4.6 87.0M320 0L-16.0 0.0M320.0 45.0Q315.1 37.2 308.4 43.5Q305.7 34.6 297.5 39.0Q297.2 29.7 288.2 31.8Q290.3 22.8 281.0 22.5Q285.4 14.3 276.5 11.6Q282.8 4.9 275.0 0.0M320.0 90.0Q310.2 74.3 296.7 86.9Q291.3 69.2 275.0 77.9Q274.4 59.5 256.4 63.6Q260.5 45.6 242.1 45.0Q250.8 28.7 233.1 23.3Q245.7 9.8 230.0 0.0M320.0 140.0Q304.8 115.6 283.8 135.2Q275.4 107.7 250.0 121.2Q249.0 92.5 221.0 99.0Q227.5 71.0 198.8 70.0Q212.3 44.6 184.8 36.2Q204.4 15.2 180.0 0.0M320.0 195.0Q298.8 161.0 269.5 188.4Q257.9 150.0 222.5 168.9Q221.1 128.8 182.1 137.9Q191.2 98.9 151.1 97.5Q170.0 62.1 131.6 50.5Q159.0 21.2 125.0 0.0M320.0 255.0Q292.3 210.6 254.0 246.3Q238.7 196.2 192.5 220.8Q190.7 168.5 139.7 180.3Q151.5 129.3 99.2 127.5Q123.8 81.3 73.7 66.0Q109.4 27.7 65.0 0.0%27 fill=%27none%27 stroke=%27white%27 stroke-opacity=%27.2%27 stroke-width=%271.3%27 stroke-linecap=%27round%27/%3E%3C/svg%3E")', l: "rgba(7,12,36,.74)", m: "rgba(7,12,36,.32)", r: "rgba(9,16,46,.82)", card: "rgba(22,36,96,.8)", tx: "#eef2ff", sub: "#9fb0e6", ln: "rgba(150,175,255,.2)", acc: "#e0263b", hd: "#ff6577", font: "round", rad: "14px", sh: "0 6px 18px rgba(0,0,0,.4)", bd: "1px solid rgba(150,175,255,.18)" },
+  gotham:   { n: "Готэм", dark: 1, bg: "linear-gradient(165deg,#0b0b0e,#17171d 60%,#26210a)", l: "rgba(10,10,13,.8)", m: "rgba(10,10,13,.35)", r: "rgba(14,14,18,.85)", card: "rgba(28,28,34,.88)", tx: "#f1f1f3", sub: "#a2a2ad", ln: "rgba(255,255,255,.14)", acc: "#f2b705", hd: "#ffd24a", font: "narrow", rad: "6px", sh: "0 6px 18px rgba(0,0,0,.55)", bd: "1px solid rgba(255,255,255,.1)" },
+  swamp:    { n: "Болото", dark: 1, bg: "linear-gradient(165deg,#0c1d12,#16301c 55%,#2b2a0e)", l: "rgba(8,22,12,.76)", m: "rgba(8,22,12,.32)", r: "rgba(10,28,15,.82)", card: "rgba(24,56,32,.8)", tx: "#eaf7df", sub: "#9cc79a", ln: "rgba(170,230,150,.2)", acc: "#8bc34a", hd: "#b6e36b", font: "hum", rad: "18px", sh: "0 6px 18px rgba(0,0,0,.45)", bd: "1px solid rgba(170,230,150,.16)" },
+  neon:     { n: "Неон-город", dark: 1, bg: "linear-gradient(165deg,#0d0826,#1b0f45 55%,#3a0d46)", l: "rgba(10,6,32,.76)", m: "rgba(10,6,32,.32)", r: "rgba(14,8,42,.84)", card: "rgba(36,20,88,.82)", tx: "#f3eeff", sub: "#b4a3ee", ln: "rgba(190,150,255,.22)", acc: "#e91e9c", hd: "#ff6fc6", font: "round", rad: "16px", sh: "0 6px 20px rgba(233,30,156,.22)", bd: "1px solid rgba(190,150,255,.2)" },
   rose:     { n: "Роза", bg: "#fde0ea", l: "#fbcfdd", m: "#fde0ea", r: "#fbcfdd", card: "#fff8fb", tx: "#4a1a2c", sub: "#8c4a63", ln: "rgba(180,60,100,.25)", acc: "#d6246e", hd: "#b01a57", font: "pal", rad: "12px", sh: "0 2px 8px rgba(214,36,110,.14)", bd: "1px solid #f4a6c1" },
   ice:      { n: "Лёд", bg: "linear-gradient(160deg,#b6ecff,#e6f9ff 55%,#ffffff)", l: "rgba(255,255,255,.6)", m: "rgba(255,255,255,.25)", r: "rgba(255,255,255,.75)", card: "rgba(255,255,255,.7)", tx: "#0c3446", sub: "#4a7c90", acc: "#0891b2", hd: "#066f8a", font: "sys", rad: "28px", sh: "0 8px 24px rgba(8,145,178,.2)", bd: "1px solid rgba(255,255,255,.95)" },
   sand:     { n: "Пустыня", bg: "#ecd7ad", l: "#e1c795", m: "#ecd7ad", r: "#e1c795", card: "#fbf1da", tx: "#40290f", sub: "#85673c", ln: "rgba(110,70,20,.35)", acc: "#c2410c", hd: "#7c3f12", font: "pal", rad: "8px", sh: "none", bd: "2px dashed #c4a063", tw: "600" }
 };
 if (!THEMES[TH.theme]) { TH.theme = "classic"; TH.accent = THEMES.classic.acc; TH.font = THEMES.classic.font; }   // удалённые темы → классика
 const FONTS = { sys: '"Segoe UI",system-ui,-apple-system,Roboto,sans-serif', serif: "Georgia,'Times New Roman',serif", mono: "ui-monospace,'Courier New',Consolas,monospace", round: "'Trebuchet MS','Nunito',system-ui,sans-serif", hum: "Candara,Calibri,'Gill Sans',system-ui,sans-serif", narrow: "'Arial Narrow',Bahnschrift,'Roboto Condensed',Arial,sans-serif", pal: "'Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif" };
-const ZOOMS = { s: .9, n: 1, n2: 1.07, l: 1.15, l2: 1.22, xl: 1.3, xxl: 1.5 };
+const ZOOMS = { s: .93, s2: .97, n: 1, n2: 1.03, l: 1.06, l2: 1.1, xl: 1.15, xxl: 1.22 };   // мягкие шаги: ~3–4% на ступень
 const DENS = { compact: ["6px", "13px"], normal: ["10px", "14px"], cozy: ["14px", "15px"] };
 const TCOLORS = ["#111111", "#1e3a8a", "#14532d", "#7c2d12", "#581c87", "#7f1d1d", "#ffffff", "#fef3c7", "#bfdbfe", "#bbf7d0", "#fbcfe8"];
 const ACCENTS = ["#2564cf", "#0063b1", "#038387", "#498205", "#c19c00", "#ca5010", "#d13438", "#e3008c", "#8764b8", "#6366f1", "#69797e"];
@@ -175,7 +179,7 @@ const shade = (h, f) => { const c = hexRgb(h).map(x => Math.max(0, Math.min(255,
 function curAccent() { if (view.indexOf("list:") === 0) { const l = S.lists[view.slice(5)]; if (l && l.color) return l.color; } return TH.accent; }
 function applyTheme() {
   const app = $("app"); if (!app) return;
-  const T = THEMES[TH.theme] || THEMES.classic, d = 0, hasBg = !!TH.bg, dn = DENS[TH.dens] || DENS.normal, acc = curAccent();
+  const T = THEMES[TH.theme] || THEMES.classic, d = T.dark ? 1 : 0, hasBg = !!TH.bg, dn = DENS[TH.dens] || DENS.normal, acc = curAccent();
   const v = {
     "--bg": T.bg, "--tx": T.tx || "#323130", "--sub": T.sub || "#605e5c", "--rad": T.rad || "6px", "--gap": T.gap || "3px", "--rowh": T.rowh || "48px", "--cbd": T.bd || "0 solid transparent", "--tw": T.tw || "400",
     "--ln": T.ln || "rgba(0,0,0,.1)", "--card": hasBg ? "rgba(255,255,255,.9)" : (T.card || "#ffffff"),
@@ -190,7 +194,8 @@ function applyTheme() {
   Object.keys(v).forEach(k => app.style.setProperty(k, v[k]));
   const tc = (PR.tc || {})[view], mn = $("main"); if (mn) { if (tc) { mn.style.setProperty("--tx", tc); mn.style.color = tc; } else { mn.style.removeProperty("--tx"); mn.style.color = ""; } }
   if (hasBg) { app.style.backgroundImage = 'url("' + TH.bg.replace(/["\\\n]/g, "") + '")'; app.style.backgroundSize = "cover"; app.style.backgroundPosition = "center"; }
-  else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; }
+  else if (T.img) { app.style.backgroundImage = T.img + "," + T.bg; app.style.backgroundSize = "min(360px,80vw), cover"; app.style.backgroundPosition = "right top, center"; app.style.backgroundRepeat = "no-repeat"; }
+  else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; app.style.backgroundRepeat = ""; }
   app.classList.toggle("glass", !!TH.glass); app.classList.toggle("hasbg", hasBg);
   document.body.style.background = d ? "#0f172a" : "#faf9f8";
   const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = shade(acc, d ? -0.35 : -0.08);
@@ -586,7 +591,7 @@ const draftOf = id => id === "__qa" ? ui.qa : id === "__dd" ? ui.dd : null;
 function addBarHTML() {
   const q = ui.dd || (ui.dd = newDD()), di = dueInfo({ due: q.due, done: false });
   const chip = (svg, label, attrs, on, title) => '<button type="button" class="achip' + (on ? " on" : "") + '" ' + attrs + ' title="' + title + '">' + ic(svg, 16) + (label ? "<span>" + label + "</span>" : "") + "</button>";
-  return '<form id="addform" class="addbar v2"><div class="arow">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" enterkeyhint="send" placeholder="Добавить задачу" value="' + esc(q.text || "") + '"></div>' +
+  return '<form id="addform" class="addbar v2"><div class="arow">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" name="new_task_text" data-lpignore="true" data-form-type="other" enterkeyhint="send" placeholder="Добавить задачу" value="' + esc(q.text || "") + '"></div>' +
     '<div class="achips">' +
     chip("cal", di ? di.txt : "Срок", 'data-a="pop" data-p="due" data-id="__dd"', !!q.due, "Срок выполнения (Alt+1…7, Alt+0 — убрать)") +
     chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "", 'data-a="pop" data-p="remind" data-id="__dd"', !!q.remind_at, "Напомнить") +
@@ -605,7 +610,7 @@ function submitQA() {
   const inp = $("qa-input"), raw = inp ? inp.value.trim() : ""; if (!raw) return;
   createFromText(raw, ui.qa);
   ui.qa = { due: null, remind_at: null, repeat_rule: null, my: false, starred: false }; ui.qaText = "";
-  toast("Добавлено"); render(); const i = $("qa-input"); if (i) i.focus();
+  ui.qa = null; toast("Добавлено"); render(); try { if (document.activeElement) document.activeElement.blur(); } catch (e) {}   // панель закрываем, клавиатуру убираем
 }
 
 /* ----- сортировка и группировка ----- */
@@ -3110,7 +3115,7 @@ function qaHTML() {
   if (!ui.qa) return "";
   const q = ui.qa, di = dueInfo({ due: q.due, done: false });
   const chip = (svg, label, attrs, on) => '<button type="button" class="qchip ' + (on ? "on" : "") + '" ' + attrs + ">" + ic(svg, 16) + "<span>" + label + "</span></button>";
-  return '<div class="qa-back" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="done" autocomplete="off" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '"><button class="qsend' + ((ui.qaText || "").trim() ? " on" : "") + '" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
+  return '<div class="qa-back" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" name="qa_task_text" data-lpignore="true" data-form-type="other" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '"><button class="qsend' + ((ui.qaText || "").trim() ? " on" : "") + '" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
     chip("cal", di ? di.txt : "Задать дату выполнения", 'data-a="pop" data-p="due" data-id="__qa"', !!q.due) +
     chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "Напомнить", 'data-a="pop" data-p="remind" data-id="__qa"', !!q.remind_at) +
     chip("repeat", q.repeat_rule ? esc(repeatText(q.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="__qa"', !!q.repeat_rule) +
@@ -3382,7 +3387,7 @@ function settingsHTML() {
     sec("Тема", '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div>") +
     sec("Акцентный цвет (у списков может быть свой)", '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (curAccent() === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>" + (view.indexOf("list:") === 0 && S.lists[view.slice(5)] && S.lists[view.slice(5)].color ? '<div class="jr-hint" style="margin-top:6px">У списка «' + esc(S.lists[view.slice(5)].name) + '» свой цвет — выбор здесь поменяет и его.</div>' : "")) +
     sec("Цвет текста — только для «" + esc(viewInfo().name) + "»", '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button data-a="tcolor" data-v="" style="height:30px;padding:0 10px;border-radius:15px;border:3px solid ' + (!(PR.tc || {})[view] ? "var(--tx)" : "var(--ln)") + ';background:transparent;color:var(--tx);font-size:12px">авто</button>' + TCOLORS.map(c => '<button data-a="tcolor" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + ((PR.tc || {})[view] === c ? "var(--acc)" : "rgba(128,128,128,.45)") + '"></button>').join("") + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sub)">свой <input type="color" id="s-tc" value="' + ((PR.tc || {})[view] || "#323130") + '" style="width:34px;height:30px;padding:0;border:0;background:none"></label></div><div class="jr-hint" style="margin-top:6px">Действует на текст в этом списке (у каждого списка и раздела свой). Остальные не меняются.</div>') +
-    sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупный"], ["l2", "Ещё крупнее"], ["xl", "Очень крупный"], ["xxl", "Огромный"]])) +
+    sec("Размер текста", sel("s-size", TH.size, [["s", "Мелкий"], ["s2", "Чуть мельче"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупнее"], ["l2", "Ещё крупнее"], ["xl", "Крупный"], ["xxl", "Очень крупный"]])) +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="lbl">Шрифт</div>' + sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]]) +
     '</div><div><div class="lbl">Плотность</div>' + sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]) + "</div></div>" +
     sec("Фон-картинка", '<div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn ghost bgpick">' + ic("img", 18) + " " + (isMobile() ? "Выбрать из галереи" : "Выбрать файл с компьютера") + '<input type="file" id="s-bgfile" accept="image/*" hidden></label>' + (TH.bg ? '<button class="btn ghost" data-a="bgclear">Убрать фон</button>' : "") + "</div>" + (TH.bg ? '<div class="bgprev" style="background-image:url(\'' + TH.bg.replace(/['"\\\n]/g, "") + '\')"></div>' : "")) +
@@ -4154,8 +4159,8 @@ function jrWStep(col, d, abs) {
   const t = Math.max(0, Math.min(WC * n - 1, cur + delta)); J.wh[k] = ((t % n) + n) % n; el.scrollTo({ top: t * WR, behavior: "auto" });
 }
 function jrWCol(c) { const J = ui.jr; if (!J || !J.wh) return; J.wh.col = c; J.wh.buf = ""; ["h", "m"].forEach(k => { const e = $("jr-wh-" + k), l = $("jr-wl-" + k); if (e) { e.classList.toggle("act", k === c); const q = e.previousElementSibling; if (q) q.classList.toggle("on", k === c); } if (l) l.classList.toggle("act", k === c); }); }
-// пальцем: своя прокрутка с ускорением ×1.15 и инерцией, колонка не уезжает вбок
-const WGAIN = 1.15; let _wt = null;
+// пальцем: своя прокрутка с ускорением ×1.25 и инерцией, колонка не уезжает вбок
+const WGAIN = 1.25; let _wt = null;
 document.addEventListener("touchstart", e => { const c = e.target.closest && e.target.closest(".jr-wc"); if (!c || e.touches.length !== 1) return; cancelAnimationFrame(c._raf); const J = ui.jr; if (c.id.indexOf("dtw-") === 0) { if (ui.dtp) dtwCol(c.id === "dtw-h" ? "h" : "m"); } else if (J && J.wh) jrWCol(c.id === "jr-wh-h" ? "h" : "m"); _wt = { c, y: e.touches[0].clientY, t: performance.now(), v: 0 }; }, { passive: true });
 document.addEventListener("touchmove", e => { if (!_wt) return; if (e.cancelable) e.preventDefault(); const y = e.touches[0].clientY, now = performance.now(), dy = (_wt.y - y) * WGAIN, dt = Math.max(1, now - _wt.t); _wt.c.scrollTop += dy; _wt.v = 0.7 * _wt.v + 0.3 * (dy / dt); _wt.y = y; _wt.t = now; }, { passive: false });
 const wEnd = () => { if (!_wt) return; const c = _wt.c; let v = performance.now() - _wt.t > 90 ? 0 : _wt.v; _wt = null;
