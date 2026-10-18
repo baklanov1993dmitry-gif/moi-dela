@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 19:06";
+const BUILD = "18.10 19:11";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -5553,10 +5553,23 @@ function init() {
     e.preventDefault(); const ids = e.dataTransfer.getData("text/plain").split(",").filter(x => S.tasks[x]);
     if (ids.length) { mSnap(ids); ids.forEach(id => upd(id, { list_id: c.dataset.lid })); toast("Перенесено в «" + S.lists[c.dataset.lid].name + "»" + (ids.length > 1 ? " · " + ids.length + " шт." : "")); if (ids.length > 1) mClear(); render(); }
   });
-  addEventListener("mousedown", e => { if (ui.qa && e.target.closest && e.target.closest(".qa") && !e.target.closest("#qa-input")) e.preventDefault(); });   // тап по кнопкам шторки не снимает фокус с поля
+  addEventListener("mousedown", e => { if (ui.qa && e.target.closest && !e.target.closest("input,textarea,select")) e.preventDefault(); });   // тап по кнопкам шторки не снимает фокус с поля
   window.__fullH = innerHeight; window.__fullW = innerWidth; addEventListener("resize", () => { if (innerWidth !== window.__fullW) { window.__fullW = innerWidth; window.__fullH = 0; } window.__fullH = Math.max(window.__fullH || 0, innerHeight); });   // полная высота окна без клавиатуры — для центрирования меню
   if (window.visualViewport) {                          // шторка быстрого ввода поднимается над клавиатурой
-    const kb = () => { const v = visualViewport; document.documentElement.style.setProperty("--kb", Math.max(0, innerHeight - v.height - v.offsetTop) + "px"); };
+    let kbPrev = 0, kbT = 0;
+    const kb = () => {
+      const v = visualViewport, h = Math.max(0, innerHeight - v.height - v.offsetTop);
+      document.documentElement.style.setProperty("--kb", h + "px");
+      if (kbPrev > 80 && h < 20 && ui.qa) {           // клавиатуру свернули (кнопка «назад») — как в To Do: меню закрывается, а шторка ввода — тоже
+        clearTimeout(kbT); kbT = setTimeout(() => {
+          if (!ui.qa) return;
+          const v2 = visualViewport; if (innerHeight - v2.height - v2.offsetTop > 20) return;
+          if (ui.pop) { closePop(); render(); const qi = $("qa-input"); if (qi) qi.focus(); }
+          else { ui.qa = null; render(); }
+        }, 220);
+      }
+      kbPrev = h;
+    };
     visualViewport.addEventListener("resize", kb); visualViewport.addEventListener("scroll", kb);
     // Плюсик «Добавить» привязан к НИЗУ ВИДИМОЙ области (а не к окну): при запуске/возврате в приложение на Android окно бывает на миг выше видимого — плюсик уезжал вниз и потом «возвращался»
     const fabSync = () => { const v = window.visualViewport; if (!v) return; const de = document.documentElement; de.style.setProperty("--vvb", (v.offsetTop + v.height) + "px"); de.classList.add("fabvv"); };
