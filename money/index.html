@@ -225,7 +225,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .bt b{font-size:1.5em}
 .brw{display:flex;gap:10px;align-items:center;width:100%;padding:8px 0;border-top:1px solid var(--ln);text-align:left}.brw:first-of-type{border-top:0}.brw .ci{width:32px;height:32px;flex:none}.brw .bm{flex:1;min-width:0}.brw .l1{display:flex;justify-content:space-between;gap:8px}.brw .l1 b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brw .l2{font-size:.82em;color:var(--sub)}
 .chg{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--ln)}.chg span{display:flex;align-items:center;gap:8px}.chg:first-of-type{border-top:0}
-.chip{white-space:nowrap}.wch{display:flex;gap:5px;margin-bottom:6px;overflow-x:auto}.wch .chip{padding:4px 10px;font-size:.8em}.itr{display:flex;gap:5px;margin-bottom:6px;align-items:center}.itr select{flex:1;min-width:0;padding:5px 6px;border-radius:10px;background:var(--card);color:var(--tx);border:1px solid color-mix(in srgb,var(--tx) 14%,transparent);font-size:.8em}.itr .in{margin:0;padding:6px 10px;font-size:.85em;flex:1.3;min-width:0}.itr button{padding:5px 9px;border-radius:10px;background:var(--card);font-size:.95em;flex:none}.chips .chip{padding:6px 11px;font-size:.82em}
+.chip{white-space:nowrap}.chips.cp{flex-wrap:nowrap;overflow-x:auto;gap:5px}.chips.cp .chip{padding:4px 10px;font-size:.8em}.wch{display:flex;gap:5px;margin-bottom:6px;overflow-x:auto}.wch .chip{padding:4px 10px;font-size:.8em}.itr{display:flex;gap:5px;margin-bottom:6px;align-items:center}.itr select{flex:1;min-width:0;padding:5px 6px;border-radius:10px;background:var(--card);color:var(--tx);border:1px solid color-mix(in srgb,var(--tx) 14%,transparent);font-size:.8em}.itr .in{margin:0;padding:6px 10px;font-size:.85em;flex:1.3;min-width:0}.itr button{padding:5px 9px;border-radius:10px;background:var(--card);font-size:.95em;flex:none}.chips .chip{padding:6px 11px;font-size:.82em}
 table.hm td{background-color:transparent}
 .rrow{padding:8px 0;border-top:1px solid var(--ln)}.rrow:first-of-type{border-top:0}.rrow .r1{display:flex;gap:6px}.rrow .r2{display:flex;gap:6px;margin-top:6px}
 .rrow .in{margin:0;padding:8px 10px;font-size:14px}.rrow .rn{flex:1;min-width:0}.rrow .ra{width:92px;text-align:right;flex:none}.rrow select{flex:1;min-width:0}.rrow .rx{flex:none;width:38px;color:var(--sub);font-size:18px}
@@ -590,8 +590,8 @@ function budRows(am) {
 function budBody() {
   const am = anchorMonth(), cur = am === mk(new Date()), ms = monthSums(), dim = daysIn(am), day = cur ? new Date().getDate() : dim, f = day / dim, N = PR.normN || 6, md = bmode(), capOn = md === "cap" && PR.cap > 0, cp = md === "cap" ? capPlan(am) : null, sp = monTot(ms, am);
   const chip = (a, v, l, on) => '<button class="chip' + (on ? " on" : "") + '" data-a="' + a + '" data-v="' + v + '">' + l + "</button>";
-  let h = '<div class="chips" style="margin:0 0 8px">' + [["norm", "по норме"], ["cap", "потолок"], ["off", "выкл."]].map(x => chip("bmode", x[0], x[1], md === x[0])).join("") + "</div>";
-  if (md === "norm") h += '<div class="chips" style="margin:0 0 10px"><span class="sub" style="align-self:center;font-size:.8em">норма — среднее за</span>' + [3, 6, 12].map(n => chip("normn", n, n + " мес.", N === n)).join("") + "</div>";
+  let h = '<div class="chips cp" style="margin:0 0 6px">' + [["norm", "по норме"], ["cap", "потолок"], ["off", "выкл."]].map(x => chip("bmode", x[0], x[1], md === x[0])).join("") + "</div>";
+  if (md === "norm") h += '<div class="chips cp" style="margin:0 0 6px"><span class="sub" style="align-self:center;font-size:.8em;white-space:nowrap">норма — среднее за</span>' + [3, 6, 12].map(n => chip("normn", n, n + " мес.", N === n)).join("") + "</div>";
   const totNorm = (() => { let t = 0; cats.filter(c => c.kind === "exp" && !c.archived).forEach(c => { const n = normOf(c.id, am); if (n) t += n.avg; }); return t; })();
   if (md === "cap") {
     h += '<div class="capin"><input class="in" id="cap-v" inputmode="decimal" placeholder="Потолок трат на месяц, ₽" value="' + (PR.cap || "") + '"><button class="btn" data-a="capset">Задать</button></div>';
@@ -678,14 +678,14 @@ function itmList(n, mode, srt, q) {
 }
 /* ---- массовое переименование товаров в заметках ---- */
 function renList(s) {
-  const m = new Map(); allItems().forEach(it => { const e = m.get(it.k) || { k: it.k, n: 0, text: it.name, last: 0 }; e.n++; const t = +new Date(it.ts); if (t >= e.last) { e.last = t; e.text = it.name; } m.set(it.k, e); });
+  const m = new Map(); allItems().forEach(it => { const e = m.get(it.k) || { k: it.k, n: 0, text: it.name, last: 0, a: [], lp: null }; e.n++; const t = +new Date(it.ts); if (t >= e.last) { e.last = t; e.text = it.name; if (it.amt != null) e.lp = it.amt; } if (it.amt != null) e.a.push(it.amt); m.set(it.k, e); });
   let L = [...m.values()]; const ws = nzI(s.q).split(" ").filter(Boolean); if (ws.length) L = L.filter(e => ws.every(w => e.k.includes(w)));
   return L.sort((a, b) => a.k < b.k ? -1 : 1);
 }
 function renRows(s) {
   const L = renList(s); s._vis = L.map(e => e.k);
   if (!L.length) return '<div class="sub" style="padding:8px 0">Ничего не нашлось</div>';
-  return L.slice(0, 300).map(e => '<button class="xrow" data-a="rntog" data-k="' + esc(e.k) + '"><span style="font-size:1.2em">' + (s.sel[e.k] ? "☑" : "☐") + '</span><div class="xm"><div>' + esc(e.text) + '</div></div><span class="sub">' + e.n + "×</span></button>").join("") + (L.length > 300 ? '<div class="sub" style="padding:6px">…ещё ' + (L.length - 300) + ", уточни поиск</div>" : "");
+  return L.slice(0, 300).map(e => '<button class="xrow" data-a="rntog" data-k="' + esc(e.k) + '"><span style="font-size:1.2em">' + (s.sel[e.k] ? "☑" : "☐") + '</span><div class="xm"><div>' + esc(e.text) + '</div></div><span class="sub" style="text-align:right;white-space:nowrap">' + e.n + "× · " + (e.a.length ? (Math.min(...e.a) === Math.max(...e.a) ? fm(e.a[0]) : fm(Math.min(...e.a)) + "–" + fm(Math.max(...e.a))) + (e.lp != null ? "<br>посл. " + fm(e.lp) : "") : "цена —") + "</span></button>").join("") + (L.length > 300 ? '<div class="sub" style="padding:6px">…ещё ' + (L.length - 300) + ", уточни поиск</div>" : "");
 }
 function renHTML(s) {
   const n = Object.keys(s.sel).length;
@@ -785,7 +785,7 @@ function avgMonths(spec, am) {
 function avgBody() {
   const am = anchorMonth(), ms = monthSums(), yrs = [...new Set(Object.keys(ms).map(m => m.slice(0, 4)))].sort().reverse().slice(0, 4), spec = PR.avg || "m6";
   const chip = (v, l) => '<button class="chip' + (spec === v ? " on" : "") + '" data-a="avgset" data-v="' + v + '">' + l + "</button>";
-  let h = '<div class="chips" style="margin:0 0 6px">' + [3, 6, 12].map(n => chip("m" + n, n + " мес.")).join("") + yrs.map(y => chip("y" + y, y)).join("") + "</div>";
+  let h = '<div class="chips cp" style="margin:0 0 6px">' + [3, 6, 12].map(n => chip("m" + n, n + " мес.")).join("") + yrs.map(y => chip("y" + y, y)).join("") + "</div>";
   const mons = avgMonths(spec, am); if (!mons.length) return h + '<div class="sub">Пока нет полных месяцев для сравнения.</div>';
   const tot = {}; let all = 0; mons.forEach(m => Object.entries(ms[m] || {}).forEach(([c, v]) => { tot[c] = (tot[c] || 0) + v; all += v; }));
   const rows = Object.entries(tot).map(([c, v]) => ({ c: catOf(c === "_" ? null : c), id: c, a: v / mons.length })).sort((a, b) => b.a - a.a), mx = rows.length ? rows[0].a : 1, curTot = monTot(ms, am);
@@ -864,7 +864,7 @@ function homeHTML() {
   const pill = '<div class="brow' + (ring ? "" : " stk") + '"><button class="lb" data-a="' + (ring ? "qtpl" : "viewtog") + '">' + (ring ? UI.bolt : UI.lines) + '</button><button class="pill" data-a="viewtog" style="background:' + (bal >= 0 ? "var(--inc)" : "var(--expc)") + '">Баланс ' + fmH(bal) + '</button><button class="lb" data-a="' + (ring ? "qbud" : "kindtog") + '" style="color:' + (ring ? "var(--inc)" : K === "exp" ? "var(--expc)" : "var(--inc)") + '">' + (ring ? UI.gauge : UI.tag) + "</button></div>";
   let body;
   if (ring) body = ringHTML(items, tot, exp, inc, K) + pill;
-  else body = pill + nutNote() + ('' + srtRow("list") + (catOrder(items.map(x => ({ c: x.cat, v: x.v, n: x.n, x, b: K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null })), mkey).map(o => { const x = o.x, id = x.cat.id || "_", op = ui.open[id], bb = o.b, bst = bb && bb.kind !== "closed" ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null, cld = bb && bb.kind === "closed"; return '<button class="crow' + (cld ? " cld" : "") + (isCur ? " cur" : " cmp") + '" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + (K === "exp" && fixM(mkey)[x.cat.id] ? '<span class="lkb">🔒</span>' : "") + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="ar">' + (cld ? '<span class="a ' + K + '">' + fmN(x.v) + '</span><span class="ck">✔</span>' : bb ? '<span class="fr" style="' + frStyle(x.v / (bb.v || 1)) + '">' + fmN(x.v) + " / " + fmN(bb.v) + "</span>" : '<span class="a ' + K + '">' + fmH(x.v) + "</span>") + "</span></button>" + (op ? '<div class="grpst"></div>' + arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") + '<div class="grpend"></div>' : ""); }).join("") || '<div class="empty">За период операций нет</div>'));
+  else body = pill + nutNote() + ('' + srtRow("list") + (catOrder(items.map(x => ({ c: x.cat, v: x.v, n: x.n, x, b: K === "exp" && ui.rg.t === "m" && x.cat.id ? budgetOf(x.cat, mk(new Date(rgBounds(ui.rg)[0]))) : null })), mkey).map(o => { const x = o.x, id = x.cat.id || "_", op = ui.open[id], bb = o.b, bst = bb && bb.kind !== "closed" ? budState(x.v, bb, mk(new Date(rgBounds(ui.rg)[0]))) : null, cld = bb && bb.kind === "closed"; return '<button class="crow' + (cld ? " cld" : "") + (isCur ? " cur" : " cmp") + '" data-a="catopen" data-id="' + id + '"><span class="chev' + (op ? " up" : "") + '">' + UI.chev + '</span><div class="ci">' + ic(x.cat.icon, x.cat.color, 36) + (K === "exp" && fixM(mkey)[x.cat.id] ? '<span class="lkb">🔒</span>' : "") + '</div><b><span class="tn">' + esc(x.cat.name) + '</span><span class="bd">' + x.n + '</span></b><span class="ar">' + (cld ? '<span class="a ' + K + '">' + fmN(x.v) + '</span><span class="ck">✔</span>' : bb ? '<span class="fr" style="' + frStyle(x.v / (bb.v || 1)) + '">' + fmN(x.v) + " / " + fmN(bb.v) + "</span>" : '<span class="a ' + K + '">' + fmH(x.v) + "</span>") + "</span></button>" + (op ? '<div class="grpst"></div>' + arr.filter(t => t.kind === K && (t.category_id || "_") === id).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 3000).map(t => { const d = new Date(t.ts); return '<button class="sub-r" data-a="edit" data-id="' + t.id + '"><span class="sub">' + d.getDate() + " " + MONS_S[d.getMonth()] + '</span><span class="t">' + esc(t.note || "—") + '</span><span class="' + K + '">' + fm(t.amount) + "</span></button>"; }).join("") + '<div class="grpend"></div>' : ""); }).join("") || '<div class="empty">За период операций нет</div>'));
   return topBar(true) + body + '<div style="height:160px"></div><div class="fab"><button class="fb m" data-a="pick" data-v="exp"></button><button class="fb p" data-a="pick" data-v="inc"></button></div>';
 }
 const hl = (txt, q) => { txt = String(txt || ""); if (!q) return esc(txt); const lo = txt.toLowerCase(); let o = "", p = 0, i; while ((i = lo.indexOf(q, p)) >= 0 && q) { o += esc(txt.slice(p, i)) + "<mark>" + esc(txt.slice(i, i + q.length)) + "</mark>"; p = i + q.length; } return o + esc(txt.slice(p)); };
@@ -895,7 +895,7 @@ function pMonths(k, am) {
   if (k === "y0" || k === "y1") { const y = +am.slice(0, 4) - (k === "y1" ? 1 : 0), o = []; for (let i = 1; i <= 12; i++) o.push(y + "-" + String(i).padStart(2, "0")); return o; }
   const n = k === "m3" ? 3 : k === "m12" ? 12 : 6, o = []; for (let i = n - 1; i >= 0; i--) o.push(shiftMonth(am, -i)); return o;
 }
-const pChips = (act, cur, list) => '<div class="chips" style="margin:0 0 8px;flex-wrap:wrap">' + list.map(x => '<button class="chip' + (cur === x[0] ? " on" : "") + '" data-a="' + act + '" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>";
+const pChips = (act, cur, list) => '<div class="wch">' + list.map(x => '<button class="chip' + (cur === x[0] ? " on" : "") + '" data-a="' + act + '" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>";
 function hmBody(am) {
   const k = PR.hmN || "m6", ms = pMonths(k, am), set = {}; ms.forEach(m => set[m] = 1);
   const top = byCat([].concat(...ms.map(ofMonth)), "exp").slice(0, 12), ch = pChips("hmset", k, PSEL);
@@ -954,7 +954,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 41 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 42 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
