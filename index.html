@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 17:16";
+const BUILD = "18.10 18:42";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1717,6 +1717,9 @@ const dtpCSS = `
 .pop.dtl .dtp-t{font-size:calc(13px*var(--z,1));font-weight:600;text-align:center;margin:0 0 6px;padding:14px 0 12px;border-bottom:1px solid var(--ln)}
 .pop.dtl .dli{height:34px;padding:0 14px;gap:12px;font-size:calc(13px*var(--z,1))} .pop.dtl .dli svg{width:16px;height:16px;color:var(--tx)}
 .pop.dtl .dli .dr{font-size:calc(12px*var(--z,1))} .pop.dtl .psep{margin:6px 0}
+.qa-back.qin{animation:qbin .22s ease-out} .qa-back.qin .qa{animation:qsl .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes qbin{from{background:rgba(0,0,0,0)}} @keyframes qsl{from{transform:translateY(46px);opacity:.3}}
+@media(prefers-reduced-motion:reduce){.qa-back.qin,.qa-back.qin .qa{animation:none}}
 .pop.pin{animation:popexp .26s cubic-bezier(.2,.8,.2,1) both;transform-origin:top left}
 .pop.pin.up{animation-name:popexpup;transform-origin:bottom left}
 @keyframes popexpup{from{clip-path:inset(100% 0 0 0 round 8px);opacity:.3}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1}}
@@ -3280,9 +3283,10 @@ function lheadHTML() {
 }
 function qaHTML() {
   if (!ui.qa) return "";
+  const qin = !ui.qa.shown; ui.qa.shown = true;
   const q = ui.qa, di = dueInfo({ due: q.due, done: false });
   const chip = (svg, label, attrs, on) => '<button type="button" class="qchip ' + (on ? "on" : "") + '" ' + attrs + ">" + ic(svg, 16) + "<span>" + label + "</span></button>";
-  return '<div class="qa-back" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" name="qa_task_text" data-lpignore="true" data-form-type="other" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '"><button class="qsend' + ((ui.qaText || "").trim() ? " on" : "") + '" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
+  return '<div class="qa-back' + (qin ? " qin" : "") + '" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" name="qa_task_text" data-lpignore="true" data-form-type="other" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '"><button class="qsend' + ((ui.qaText || "").trim() ? " on" : "") + '" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
     chip("cal", di ? di.txt : "Задать дату выполнения", 'data-a="pop" data-p="due" data-id="__qa"', !!q.due) +
     chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "Напомнить", 'data-a="pop" data-p="remind" data-id="__qa"', !!q.remind_at) +
     chip("repeat", q.repeat_rule ? esc(repeatText(q.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="__qa"', !!q.repeat_rule) +
@@ -3972,6 +3976,28 @@ function morphKeep(o, n, keep, nk) {
   for (let i = ni + 1; i < nc.length; i++) o.appendChild(nc[i]);
   return true;
 }
+/* ----- плавность: закрывающиеся окна/панели «растворяются» вместо мгновенного исчезновения ----- */
+function ghostGrab() {
+  const g = [], add = (sel, kind) => { const e = document.querySelector(sel); if (e) g.push({ sel, kind, el: e.cloneNode(true), r: e.getBoundingClientRect() }); };
+  add("#pop", "pop"); add(".qa-back:not([data-ghost])", "qa"); if (isMobile() && selId) add("#right", "slide");
+  return g;
+}
+function ghostPlay(g) {
+  const lsel = window.__lsel; window.__lsel = selId;
+  g.forEach(x => {
+    if (document.querySelector(x.sel)) return;   // осталось на месте — не прячем
+    const c = x.el, r = x.r; c.setAttribute("data-ghost", "1"); c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
+    const st = c.style; st.setProperty("pointer-events", "none"); st.setProperty("z-index", "9000"); st.setProperty("margin", "0");
+    if (x.kind !== "qa") { st.setProperty("position", "fixed"); st.setProperty("left", r.left + "px", "important"); st.setProperty("top", r.top + "px", "important"); st.setProperty("right", "auto", "important"); st.setProperty("bottom", "auto", "important"); st.setProperty("width", r.width + "px"); st.setProperty("height", r.height + "px"); st.setProperty("transform", "none", "important"); }
+    document.body.appendChild(c);
+    const kf = x.kind === "slide" ? [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(32px)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
+    const an = c.animate(kf, { duration: x.kind === "pop" ? 150 : 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+    if (x.kind === "qa") { const q = c.querySelector(".qa"); if (q) q.animate([{ transform: "translateY(0)" }, { transform: "translateY(28px)" }], { duration: 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); }
+    an.onfinish = () => c.remove(); setTimeout(() => c.remove(), 600);
+  });
+  if (ui.vfade) { ui.vfade = 0; const m = $("main"); if (m && m.animate) m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" }); }
+  else if (isMobile() && selId && selId !== lsel) { const r = $("right"); if (r && r.animate) r.animate([{ opacity: 0, transform: "translateX(28px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 240, easing: "cubic-bezier(.2,.8,.2,1)" }); }
+}
 function render() {
   want = false;
   if (isLite()) { if (view === "journal" || view === "food" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
@@ -3983,11 +4009,13 @@ function render() {
   today = todayISO();
   if (!selId) lastDetail = null; if (!ui.settings) lastSettings = false;
   if (pendingOpen && S.tasks[pendingOpen]) { selId = pendingOpen; pendingOpen = null; ui.left = false; }
+  const gh = ghostGrab();   // «призраки» уходящих элементов — чтобы закрытие было плавным, а не мгновенным
   const html = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : appHTML());
   let kept = false;   // поиск: поле ввода остаётся живым (не теряем клавиатуру/композицию), перерисовывается всё вокруг
   if (fid === "q" && S.user && screen !== "setup") { try { const tmp = document.createElement(app.tagName); tmp.innerHTML = html; const nk = tmp.querySelector("#q"); if (nk) kept = morphKeep(app, tmp, ae, nk); } catch (e) { kept = false; } }
   if (!kept) app.innerHTML = html;
   applyTheme();
+  try { ghostPlay(gh); } catch (e) {}
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
@@ -4108,7 +4136,7 @@ function onBack() {
 
 /* ----- действия по клику ----- */
 const closePop = () => { ui.pop = null; ui.dtp = null; };
-const goView = v => { view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
+const goView = v => { if (v !== view) ui.vfade = 1; view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
 const patchTask = (id, o) => { const d = draftOf(id); if (d) Object.assign(d, o); else upd(id, o); };
 const setDue = (id, v) => {
   const map = { today: today, tom: addDays(today, 1), week: nextMonday(), clear: null };
