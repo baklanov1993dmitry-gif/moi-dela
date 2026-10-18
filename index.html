@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "18.10 20:25";
+const BUILD = "18.10 20:38";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1717,17 +1717,17 @@ const dtpCSS = `
 .pop.dtl .dtp-t{font-size:calc(13px*var(--z,1));font-weight:600;text-align:center;margin:0 0 6px;padding:14px 0 12px;border-bottom:1px solid var(--ln)}
 .pop.dtl .dli{height:34px;padding:0 14px;gap:12px;font-size:calc(13px*var(--z,1))} .pop.dtl .dli svg{width:16px;height:16px;color:var(--tx)}
 .pop.dtl .dli .dr{font-size:calc(12px*var(--z,1))} .pop.dtl .psep{margin:6px 0}
-.qa-back.qin{animation:qbin .22s ease-out} .qa-back.qin .qa{animation:qsl .28s cubic-bezier(.2,.8,.2,1)}
+.qa-back.qin{animation:qbin .16s ease-out} .qa-back.qin .qa{animation:qsl .2s cubic-bezier(.2,.8,.2,1)}
 @keyframes qbin{from{background:rgba(0,0,0,0)}} @keyframes qsl{from{transform:translateY(46px);opacity:.3}}
 @media(prefers-reduced-motion:reduce){.qa-back.qin,.qa-back.qin .qa{animation:none}}
-.pop.pin{animation:popexp .38s cubic-bezier(.22,.9,.3,1) both;transform-origin:top left}
+.pop.pin{animation:popexp .2s cubic-bezier(.22,.9,.3,1) both;transform-origin:top left}
 .pop.pin.up{animation-name:popexpup;transform-origin:bottom left}
 .pop.pin.mid{animation-name:popmid;transform-origin:center}
 @keyframes popmid{0%{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
 @keyframes popexpup{0%{clip-path:inset(70% 0 0 0 round 10px);opacity:0;transform:translateY(14px) scale(.97)}40%{opacity:.85}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1;transform:none}}
 
 @keyframes popexp{0%{clip-path:inset(0 0 70% 0 round 10px);opacity:0;transform:translateY(-10px) scale(.97)}40%{opacity:.85}to{clip-path:inset(-40px -40px -40px -40px round 8px);opacity:1;transform:none}}
-.popsrc{animation:popsrc .22s ease both;background:rgba(0,0,0,.07)!important}
+.popsrc{animation:popsrc .06s ease both;background:rgba(0,0,0,.07)!important}
 @keyframes popsrc{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.07)}}
 @media(prefers-reduced-motion:reduce){.pop.pin,.popsrc{animation:none}}
 .pop.dtl .pi{height:52px;padding:0 18px;gap:16px;font-size:calc(17px*var(--z,1))} .pop.dtl .ptitle{padding:10px 18px 0} .pop.dtl .pform{padding:6px 18px 10px} .pop.rep{max-height:72vh;overflow:auto}
@@ -1738,7 +1738,7 @@ body .pop.rmd .dqrow.big .dq{padding:9px 6px;font-size:calc(14px*var(--z,1));bor
 body .pop.rmd .jr-wc{font-size:21px}body .pop.rmd .dtp-time{margin-top:6px;padding-top:4px}body .pop.rmd .dtp-sum{margin:6px 0 6px;font-size:calc(13.5px*var(--z,1))}
 body .pop.rmd .btn{height:40px;font-size:calc(15px*var(--z,1))}
 .dtpb{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.4);z-index:59}
-.dtpb{animation:dbin .3s ease-out}@keyframes dbin{from{opacity:0}}
+.dtpb{animation:dbin .16s ease-out}@keyframes dbin{from{opacity:0}}
 @media(max-width:760px){.pop.dtp{left:8px!important;right:8px!important;top:calc(env(safe-area-inset-top) + 52px)!important;bottom:auto!important;transform:none;width:auto;border-radius:18px;max-height:calc(100dvh - 70px);overflow-y:auto;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.35)}.cal-d{height:46px;font-size:calc(16px*var(--z,1))}.cal-w span{font-size:calc(13.5px*var(--z,1))}.cal-n{height:44px;width:48px}.cal-t{font-size:calc(17px*var(--z,1))}.dq{padding:12px 8px;font-size:calc(14.5px*var(--z,1))}}
 .dtp-h{font-size:calc(23px*var(--z,1));font-weight:800;text-align:center;margin:2px 0 2px}
 .dtp-s{font-size:calc(13px*var(--z,1));color:var(--sub);text-align:center;margin:0 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2270,7 +2270,7 @@ function desktopInit(app) {
 }
 const mCSS = `
 .taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
-.mtop.msb{background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
+.mtop.msb{animation:msbin .15s ease-out;background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} @keyframes msbin{from{opacity:0}} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
 .mtop.msb .mcnt{color:#fff} .mcnt{font-size:calc(19px*var(--z,1));font-weight:600;margin-left:6px}
 .mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
 .mbar button{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 12px;cursor:pointer;font-size:inherit}
@@ -3995,33 +3995,39 @@ function morphKeep(o, n, keep, nk) {
   return true;
 }
 /* ----- плавность: закрывающиеся окна/панели «растворяются» вместо мгновенного исчезновения ----- */
+function paintLikeApp(el) {   // скользящая панель должна иметь тот же фон (обои), что и приложение, иначе просвечивает меню под ней
+  try { const cs = getComputedStyle($("app")), st = el.style; st.backgroundImage = cs.backgroundImage; st.backgroundSize = cs.backgroundSize; st.backgroundPosition = cs.backgroundPosition; st.backgroundRepeat = cs.backgroundRepeat; st.backgroundColor = cs.backgroundColor; st.backgroundAttachment = "scroll"; } catch (e) {}
+}
 function ghostGrab() {
   const g = [], add = (sel, kind) => { const e = document.querySelector(sel); if (e) g.push({ sel, kind, el: e.cloneNode(true), r: e.getBoundingClientRect() }); };
   add("#pop", "pop"); add(".qa-back:not([data-ghost])", "qa"); if (isMobile() && selId) add("#right", "slide"); if (isMobile()) add("#left:not(.hide)", "lslide");
+  if (isMobile() && ui.left && document.querySelector("#left.hide") && document.querySelector("#main")) add("#main", "mslide");   // список уезжает вправо, открывая меню
   return g;
 }
 function ghostPlay(g) {
   const lsel = window.__lsel; window.__lsel = selId;
   const prevL = window.__lleft; window.__lleft = ui.left; let lMoved = false;
   g.forEach(x => {
-    if (document.querySelector(x.sel)) return;   // осталось на месте — не прячем
+    if (x.kind !== "mslide" && document.querySelector(x.sel)) return;   // осталось на месте — не прячем
     const c = x.el, r = x.r; c.setAttribute("data-ghost", "1"); c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
-    const st = c.style; st.setProperty("pointer-events", "none"); st.setProperty("z-index", "9000"); st.setProperty("margin", "0");
-    if (x.kind !== "qa") { st.setProperty("position", "fixed"); st.setProperty("left", r.left + "px", "important"); st.setProperty("top", r.top + "px", "important"); st.setProperty("right", "auto", "important"); st.setProperty("bottom", "auto", "important"); st.setProperty("width", r.width + "px"); st.setProperty("height", r.height + "px"); st.setProperty("transform", "none", "important"); }
+    const st = c.style; st.setProperty("pointer-events", "none"); st.setProperty("z-index", x.kind === "mslide" ? "9500" : "9000"); st.setProperty("margin", "0");
+    if (x.kind !== "qa") { st.setProperty("position", "fixed"); st.setProperty("left", r.left + "px", "important"); st.setProperty("top", r.top + "px", "important"); st.setProperty("right", "auto", "important"); st.setProperty("bottom", "auto", "important"); st.setProperty("width", r.width + "px"); st.setProperty("height", r.height + "px"); st.setProperty("transform", "none"); }
+    if (x.kind === "mslide" || x.kind === "slide") paintLikeApp(c);
     document.body.appendChild(c);
-    const kf = x.kind === "lslide" ? [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(-38%)" }] : x.kind === "slide" ? [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(32px)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
-    const an = c.animate(kf, { duration: x.kind === "pop" ? 150 : x.kind === "lslide" ? 320 : 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+    const kf = x.kind === "lslide" ? [{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-30%)", filter: "brightness(.78)" }] : x.kind === "mslide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }] : x.kind === "slide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
+    const an = c.animate(kf, { duration: x.kind === "pop" ? 130 : (x.kind === "lslide" || x.kind === "mslide" || x.kind === "slide") ? 190 : 200, easing: (x.kind === "lslide" || x.kind === "mslide" || x.kind === "slide") ? "cubic-bezier(.22,.8,.25,1)" : "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
     if (x.kind === "qa") { const q = c.querySelector(".qa"); if (q) q.animate([{ transform: "translateY(0)" }, { transform: "translateY(28px)" }], { duration: 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); }
     an.onfinish = () => c.remove(); setTimeout(() => c.remove(), 600);
   });
   if (isMobile() && prevL !== undefined && prevL !== ui.left && !selId) {   // меню ↔ список: меню уезжает влево, список заезжает справа (и наоборот)
     ui.vfade = 0; lMoved = true;
-    if (ui.left) { const l = $("left"); if (l && l.animate) l.animate([{ opacity: .3, transform: "translateX(-38%)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 320, easing: "cubic-bezier(.2,.8,.2,1)" }); }
-    else { const m = $("main"); if (m && m.animate) m.animate([{ opacity: .3, transform: "translateX(34%)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 320, easing: "cubic-bezier(.2,.8,.2,1)" }); }
+    const E = "cubic-bezier(.22,.8,.25,1)";
+    if (ui.left) { const l = $("left"); if (l && l.animate) l.animate([{ transform: "translateX(-30%)", filter: "brightness(.78)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 190, easing: E }); }
+    else { const m = $("main"); if (m && m.animate) { const z = m.style.zIndex, p = m.style.position; m.style.zIndex = "9500"; paintLikeApp(m); if (getComputedStyle(m).position === "static") m.style.position = "relative"; const a = m.animate([{ transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }, { transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }], { duration: 190, easing: E }); a.onfinish = a.oncancel = () => { m.style.zIndex = z; m.style.position = p; m.style.background = ""; }; } }
   }
   if (lMoved) {}
   else if (ui.vfade) { ui.vfade = 0; const m = $("main"); if (m && m.animate) m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" }); }
-  else if (isMobile() && selId && selId !== lsel) { const r = $("right"); if (r && r.animate) r.animate([{ opacity: 0, transform: "translateX(28px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 240, easing: "cubic-bezier(.2,.8,.2,1)" }); }
+  else if (isMobile() && selId && selId !== lsel) { const r = $("right"); if (r && r.animate) r.animate([{ transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }, { transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }], { duration: 190, easing: "cubic-bezier(.22,.8,.25,1)" }); }
 }
 function render() {
   want = false;
