@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 16:41";
+const BUILD = "19.10 16:48";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2329,6 +2329,9 @@ const mCSS = `
 .taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
 .mtop.msb{animation:msbin .15s ease-out;background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} @keyframes msbin{from{opacity:0}} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
 .mtop.msb .mcnt{color:#fff} .smode{display:inline-flex;border:1px solid var(--ln);border-radius:16px;overflow:hidden;background:var(--card)} .smode button{padding:5px 12px;font-size:calc(12.5px*var(--z,1));color:var(--sub);cursor:pointer;white-space:nowrap} .smode button.on{background:var(--acc);color:#fff}
+.sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
+@media(hover:hover){.taskrow.sub:hover .sbmv,.drow.stp:hover .sbmv{display:inline-flex}}
+.drow.stp .sbmv{margin-left:6px}
 .mcnt{font-size:calc(19px*var(--z,1));font-weight:600;margin-left:6px}
 .mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
 .mbar button{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 12px;cursor:pointer;font-size:inherit}
@@ -2359,6 +2362,7 @@ const addCSS = `
 #left .chip,#left .ghead{height:40px;font-size:calc(12.2px*var(--z,1))}
 #left .chip .n{font-size:calc(11.3px*var(--z,1))}
 #left .chip .em{font-size:calc(14px*var(--z,1))}
+#list .taskrow.sub .ttl{font-size:calc(12.2px*var(--z,1))} #list .taskrow.sub .meta{font-size:calc(10.4px*var(--z,1))} #list .taskrow.sub .rad{width:16px;height:16px}
 .taskrow .subbtn{height:26px;min-width:0;padding:0 5px 0 10px;border-radius:13px;font-size:calc(10.4px*var(--z,1))}
 .taskrow .subbtn svg{width:14px;height:14px}
 .addbar.v2{flex-direction:column;align-items:stretch;gap:0;height:auto;padding:0}
@@ -2720,7 +2724,7 @@ function buildSubIdx() {
   for (const id in S.tasks) { const t = S.tasks[id]; if (t.parent_id && S.tasks[t.parent_id]) (subIdx[t.parent_id] = subIdx[t.parent_id] || []).push(t); }
   for (const id in S.tasks) { const t = S.tasks[id]; if (t.parent_id && (t.starred || t.due || t.remind_at || t.repeat_rule || t.category || t.est_minutes || t.plan_start || t.my_day_date || t.status === "someday")) upd(id, { starred: false, due: null, remind_at: null, repeat_rule: null, category: null, est_minutes: null, plan_start: null, my_day: false, my_day_date: null, status: "active" }); }
   for (const id in S.tasks) { const t = S.tasks[id]; if (!t.parent_id && t.status === "someday") upd(id, { status: "active" }); }   // раздел «Когда-нибудь» убран — задачи возвращаются в общие списки
-  for (const k in subIdx) subIdx[k].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || String(a.created_at).localeCompare(String(b.created_at)));
+  for (const k in subIdx) subIdx[k].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || ((a.ord == null ? 1e9 : a.ord) - (b.ord == null ? 1e9 : b.ord)) || String(a.created_at).localeCompare(String(b.created_at)));
 }
 const subOpen = t => { const k = subIdx[t.id]; return ui.subAdd === t.id || (k && k.length && (PR.subs === "top" ? !!PR.subOpen[t.id] : !PR.subClosed[t.id])); };
 function subMeta(t, orphan) {
@@ -2737,7 +2741,18 @@ function subBtn(t) {
 function subRow(k) {
   return '<div class="taskrow sub ' + (selId === k.id ? "sel " : "") + (ui.multi && ui.multi[k.id] ? "msel " : "") + (k.done ? "done" : "") + '" data-a="sel" data-id="' + k.id + '">' +
     '<div class="rad ' + (k.done ? "on" : "") + '" data-a="tog" data-id="' + k.id + '">' + (k.done ? ic("check", 11) : "") + "</div>" +
-    '<div class="tbody"><div class="ttl">' + esc(k.title) + "</div>" + metaHTML(k, false, false) + "</div></div>";
+    '<div class="tbody"><div class="ttl">' + esc(k.title) + "</div>" + metaHTML(k, false, false) + "</div>" + subMvHTML(k.id) + "</div>";
+}
+// порядок подзадач: стрелки ▲▼ (по наведению / у выбранной) и Alt+↑/↓; номер порядка хранится в колонке ord (как очередь, но только внутри родителя)
+const subMvHTML = id => '<span class="sbmv"><button type="button" data-a="submv" data-id="' + id + '" data-d="-1" title="Выше">' + ic("up", 13) + '</button><button type="button" data-a="submv" data-id="' + id + '" data-d="1" title="Ниже">' + ic("down", 13) + "</button></span>";
+function subMove(id, dir) {
+  const t = S.tasks[id]; if (!t || !t.parent_id) return false;
+  if (!OR) { toast("Порядок подзадач: нужна колонка ord (как для очереди) — скажи Claude"); return true; }
+  const a = (subIdx[t.parent_id] || []).filter(x => !!x.done === !!t.done), i = a.findIndex(x => x.id === id), j = i + dir; if (i < 0 || j < 0 || j >= a.length) return true;
+  const o = a.map(x => x.id); o[i] = o[j]; o[j] = id;
+  const rest = (subIdx[t.parent_id] || []).filter(x => !!x.done !== !!t.done).map(x => x.id);
+  (t.done ? rest.concat(o) : o.concat(rest)).forEach((x, n) => { if (S.tasks[x].ord !== n + 1) upd(x, { ord: n + 1 }); });
+  render(); hkReveal(id); return true;
 }
 let ORK = {}, ORL = [];
 function ordBuild(items) { ORK = {}; ORL = items.filter(t => t.ord != null && !t.parent_id).sort((a, b) => (a.ord - b.ord) || String(a.id).localeCompare(String(b.id))).map(t => t.id); ORL.forEach((id, i) => { ORK[id] = i + 1; }); }
@@ -2750,6 +2765,7 @@ function ordToggle(ids) {
   render();
 }
 function ordMove(id, dir) {
+  if (S.tasks[id] && S.tasks[id].parent_id) { subMove(id, dir); return; }
   if (!OR) { toast("Очередь: нужна одноразовая настройка базы (колонка ord)"); return; }
   if (!ORK[id]) { toast("Сначала поставь номер — Пробел"); return; }
   const a = ORL.slice(), i = a.indexOf(id), j = i + dir; if (j < 0 || j >= a.length) return;
@@ -2796,7 +2812,7 @@ function subBlock(t) {
   if (!t.parent_id && ytUrl(t.note)) return videoBlock(t);
   const k = subIdx[t.id] || [];
   return '<div class="dcard"><div class="drow stp sbh" style="cursor:default;color:var(--sub);font-size:calc(13px*var(--z,1))">Подзадачи' + (k.length ? " · " + k.filter(x => x.done).length + " из " + k.length : "") + "</div>" +
-    k.map(x => '<div class="drow stp"><div class="rad ' + (x.done ? "on" : "") + '" style="width:18px;height:18px" data-a="tog" data-id="' + x.id + '">' + (x.done ? ic("check", 11) : "") + '</div><span class="dtx" data-a="sel" data-id="' + x.id + '" style="' + (x.done ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(x.title) + "</span></div>").join("") +
+    k.map(x => '<div class="drow stp"><div class="rad ' + (x.done ? "on" : "") + '" style="width:18px;height:18px" data-a="tog" data-id="' + x.id + '">' + (x.done ? ic("check", 11) : "") + '</div><span class="dtx" data-a="sel" data-id="' + x.id + '" style="' + (x.done ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(x.title) + "</span>" + subMvHTML(x.id) + "</div>").join("") +
     '<form class="drow stp act subadd" data-pid="' + t.id + '" style="padding:0">' + ic("plus", 18) + '<input id="sub-' + t.id + '" enterkeyhint="send" placeholder="Добавить подзадачу" style="color:var(--acc)"><button type="submit" hidden></button></form></div>';
 }
 // ----- фильтры -----
@@ -4299,6 +4315,7 @@ const setDue = (id, v) => {
 };
 const acts = {
   view(a) { goView(a.dataset.v); render(); },
+  submv(a, e) { if (e && e.stopPropagation) e.stopPropagation(); subMove(a.dataset.id, +a.dataset.d); },
   sel(a) { if (fastOpen(a.closest ? a.closest(".taskrow") : null, a.dataset.id)) return; selId = a.dataset.id; ui.left = false; render(); hkEnsure(selId); },
   close() { if (fastClose()) return; selId = null; render(); },
   tog(a) { const t0 = S.tasks[a.dataset.id]; if (t0 && !t0.done) themeFx("done", a.closest(".taskrow")); toggleDone(a.dataset.id); render(); },
