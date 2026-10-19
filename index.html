@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 08:12";
+const BUILD = "19.10 08:16";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -202,7 +202,7 @@ function applyTheme() {
     "--ln": T.ln || "rgba(0,0,0,.1)", "--card": hasBg ? "rgba(255,255,255,.9)" : (T.card || "#ffffff"),
     "--hov": d ? "rgba(255,255,255,.1)" : (T.hov || "rgba(0,0,0,.05)"), "--inp": d ? "rgba(255,255,255,.08)" : "#ffffff",
     "--acc": acc, "--hd": (T.hd && acc === T.acc) ? T.hd : shade(acc, -0.12), "--sel": T.sel && acc === T.acc ? T.sel : rgba(acc, .13), "--solid": d ? "#1b2236" : "#ffffff",
-    "--od": d ? "#ff8a80" : "#a4262c", "--catl": d ? "72%" : "36%", "--shadow": T.sh || "0 1px 2px rgba(0,0,0,.12)",
+    "--tdy": (() => { const c = hexRgb(acc); const red = c[0] > 140 && c[0] > c[1] * 1.9 && c[0] > c[2] * 1.7; return red ? (d ? "#7fb2ff" : "#1f5fd6") : acc; })(), "--od": d ? "#ff8a80" : "#a4262c", "--catl": d ? "72%" : "36%", "--shadow": T.sh || "0 1px 2px rgba(0,0,0,.12)",
     "--lp": hasBg ? (d ? "rgba(8,12,24,.62)" : "rgba(255,255,255,.66)") : T.l,
     "--mp": hasBg ? (d ? "rgba(8,12,24,.38)" : "rgba(255,255,255,.4)") : T.m,
     "--rp": hasBg ? (d ? "rgba(8,12,24,.7)" : "rgba(255,255,255,.75)") : T.r,
@@ -2867,7 +2867,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 @media(max-width:760px){#right .ttlinp{font-size:calc(18px*var(--z,1));max-height:5.4em;overflow-y:auto}}
 #right .star svg{width:26px;height:26px}
 #right .drow{position:relative;min-height:52px;padding:0 16px;gap:18px;font-size:calc(17px*var(--z,1));border-bottom:0}
-#right .drow svg{width:24px;height:24px;color:var(--sub);flex-shrink:0} #right .drow.act svg{color:var(--acc)} #right .drow.od svg{color:#e0212a}
+#right .drow svg{width:24px;height:24px;color:var(--sub);flex-shrink:0} #right .drow.act svg{color:var(--tdy,var(--acc))} #right .drow.od svg{color:#e0212a}
 #right .drow:not(:last-child)::after{content:"";position:absolute;left:58px;right:0;bottom:0;height:1px;background:var(--ln)}
 #right .drow.sbh{display:none}
 #right .drow.stp .rad{width:24px!important;height:24px!important;border-color:var(--sub)} #right .drow.stp .rad.on{border-color:var(--acc)}
@@ -3082,7 +3082,7 @@ const CSS = `
 .done .ttl{text-decoration:line-through;color:var(--sub)}
 .meta{display:flex;flex-wrap:wrap;align-items:center;gap:1px 8px;color:var(--sub);font-size:calc(12px*var(--z,1));margin-top:3px}
 .mi{display:inline-flex;align-items:center;gap:4px}
-.mi.od{color:#e0212a!important;font-weight:600} .mi.today{color:var(--acc)}
+.mi.od{color:#e0212a!important;font-weight:600} .mi.today{color:var(--tdy,var(--acc))}
 .mi + .mi::before{content:"•";margin-right:8px;color:var(--sub)}
 .star{color:var(--sub);padding:2px;flex-shrink:0;display:flex}
 .star.on{color:var(--acc)}
@@ -3111,7 +3111,7 @@ body.dropfile::after{content:"Отпусти файл — он прикрепи�
 .drow{display:flex;align-items:center;gap:12px;min-height:40px;padding:3px 14px;border-bottom:1px solid var(--ln);cursor:pointer;font-size:calc(14px*var(--z,1))}
 .drow:last-child{border-bottom:0}
 .drow:hover{background:var(--hov)}
-.drow.act{color:var(--acc)} .drow.od{color:#e0212a!important}
+.drow.act{color:var(--tdy,var(--acc))} .drow.od{color:#e0212a!important}
 .drow .dtx{flex:1;min-width:0;word-break:break-word}
 .drow .xbtn{color:var(--sub);display:flex;padding:4px}
 .drow input,.drow select{flex:1;background:transparent;border:0;color:inherit;font:inherit;min-width:0;height:36px}
