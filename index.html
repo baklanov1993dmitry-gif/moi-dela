@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 13:21";
+const BUILD = "19.10 16:36";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -233,11 +233,11 @@ function applyTheme() {
 /* ----- анимации тем (закрытие задачи); включаются в Настройках ----- */
 function fxClone(row) { const r = row.getBoundingClientRect(), c = row.cloneNode(true); c.removeAttribute("data-a"); c.removeAttribute("id"); c.style.cssText += ";position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;margin:0;z-index:9000;pointer-events:none;box-sizing:border-box;overflow:hidden"; const cs = getComputedStyle(row); c.style.background = "linear-gradient(" + cs.backgroundColor + "," + cs.backgroundColor + "), #fff"; c.style.color = cs.color; c.style.fontFamily = cs.fontFamily; c.style.fontSize = cs.fontSize; c.style.border = cs.border; c.style.borderRadius = cs.borderRadius; c.style.boxShadow = cs.boxShadow; c.style.padding = cs.padding; c.style.display = "flex"; c.style.alignItems = "flex-start"; c.style.gap = cs.gap; document.body.appendChild(c); return { c, r }; }
 function fxWeb(row) {
-  const { c, r } = fxClone(row), W = innerWidth, ns = "http://www.w3.org/2000/svg", col = "#1b2a5e", y = r.top + r.height / 2, sx = W - 30, tx = r.left + 24, L = sx - tx;
+  const { c, r } = fxClone(row), W = innerWidth, ns = "http://www.w3.org/2000/svg", col = "#1b2a5e", y = r.top + r.height / 2, sx = W - 90, tx = r.left + 24, L = sx - tx;
   const sv = document.createElementNS(ns, "svg"); sv.setAttribute("style", "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:9100;pointer-events:none;overflow:visible");
   // нитемёт справа (оригинальный значок-прибор)
-  const gun = document.createElementNS(ns, "g"); gun.innerHTML = '<rect x="0" y="-11" width="36" height="22" rx="8" fill="#e11d48"/><rect x="-8" y="-5" width="12" height="10" rx="3" fill="#1b2a5e"/><circle cx="22" cy="0" r="5" fill="#fff" fill-opacity=".9"/><circle cx="22" cy="0" r="2" fill="#1b2a5e"/>';
-  gun.setAttribute("transform", "translate(" + (W + 6) + "," + y + ")"); sv.appendChild(gun);
+  const gun = document.createElementNS(ns, "g"); gun.innerHTML = '<g transform="translate(' + sx + ',' + y + ') rotate(-90) scale(.72) translate(-75,-118)"><image href="webshooter.png" width="165" height="243"/></g>';   // рука с нитемётом (рисунок автора), пальцы влево, нить — из сопла
+  sv.appendChild(gun); gun.style.transform = "translateX(190px)";
   const p = document.createElementNS(ns, "path"); p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", "2.4"); p.setAttribute("stroke-linecap", "round");
   p.setAttribute("stroke-dasharray", L + " " + L); p.setAttribute("stroke-dashoffset", L); sv.appendChild(p);
   const g = document.createElementNS(ns, "path"); let d = ""; for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4; d += "M0 0L" + (Math.cos(an) * 20).toFixed(1) + " " + (Math.sin(an) * 20).toFixed(1); }
@@ -246,7 +246,7 @@ function fxWeb(row) {
   document.body.appendChild(sv);
   const path = ex => { p.setAttribute("d", "M" + sx + " " + y + "Q" + ((sx + ex) / 2) + " " + (y + 5) + " " + ex + " " + y); g.setAttribute("transform", "translate(" + ex + "," + y + ")"); };
   path(tx); const t0 = performance.now(); let ph = 0, shift = 0, T1 = 240, T2 = 180, T3 = 520;
-  gun.animate([{ transform: "translate(" + (W + 6) + "px," + y + "px)" }, { transform: "translate(" + (W - 34) + "px," + y + "px)" }], { duration: 150, fill: "forwards", easing: "ease-out" });
+  gun.animate([{ transform: "translateX(190px)" }, { transform: "translateX(0)" }], { duration: 170, fill: "forwards", easing: "cubic-bezier(.2,.8,.2,1)" });
   const end = () => { c.remove(); sv.remove(); };
   const tick = now => {
     const t = now - t0;
