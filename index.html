@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 08:24";
+const BUILD = "19.10 08:26";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2010,6 +2010,14 @@ const hkMap = () => { const m = {}; HK.forEach(a => { m[a[0]] = PR.keys && a[0] 
 const hkCombo = e => (e.altKey ? "Alt+" : "") + (e.shiftKey ? "Shift+" : "") + e.code;
 const hkName = c => c.split("+").map(p => ({ Enter: "Enter", Delete: "Del", Slash: "/", Space: "Пробел", ArrowUp: "↑", ArrowDown: "↓", Backslash: "\\", Comma: ",", Period: ".", Minus: "-", Equal: "=", Backquote: "`", BracketLeft: "[", BracketRight: "]", Semicolon: ";", Quote: "'" }[p] || p.replace(/^Key/, "").replace(/^Digit/, "").replace(/^Numpad/, "Num "))).join(" + ");
 const hkReserved = c => /^(Digit[0-8]|Numpad[0-8]|Escape|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Tab|Space|Backspace)$/.test(c) ? "занято приложением или браузером" : "";
+const hkEnsure = id => {   // после открытия задачи список меняет ширину и перестраивается — следим, чтобы выбранная строка осталась на экране
+  const fix = () => {
+    const r = id && document.querySelector('#main .taskrow[data-id="' + id + '"]'), sc = document.getElementById("list"); if (!r || !sc || isMobile()) return;
+    const cb = sc.getBoundingClientRect(), rb = r.getBoundingClientRect();
+    if (rb.top < cb.top + 4 || rb.bottom > cb.bottom - 4) sc.scrollTo({ top: sc.scrollTop + (rb.top - cb.top) - sc.clientHeight * 0.28 });
+  };
+  fix(); requestAnimationFrame(() => { fix(); setTimeout(fix, 280); });
+};
 const hkReveal = id => {   // выделенная стрелками задача держится в верхней трети списка
   const r = id && document.querySelector('#main .taskrow[data-id="' + id + '"]'); if (!r) return;
   let sc = r.parentElement; while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 2 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
@@ -4255,7 +4263,7 @@ const setDue = (id, v) => {
 };
 const acts = {
   view(a) { goView(a.dataset.v); render(); },
-  sel(a) { if (fastOpen(a.closest ? a.closest(".taskrow") : null, a.dataset.id)) return; selId = a.dataset.id; ui.left = false; render(); },
+  sel(a) { if (fastOpen(a.closest ? a.closest(".taskrow") : null, a.dataset.id)) return; selId = a.dataset.id; ui.left = false; render(); hkEnsure(selId); },
   close() { if (fastClose()) return; selId = null; render(); },
   tog(a) { const t0 = S.tasks[a.dataset.id]; if (t0 && !t0.done) themeFx("done", a.closest(".taskrow")); toggleDone(a.dataset.id); render(); },
   star(a) { const t = S.tasks[a.dataset.id]; if (!t) return; upd(t.id, { starred: !t.starred }); render(); },
