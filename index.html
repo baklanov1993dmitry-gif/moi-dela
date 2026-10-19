@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 08:29";
+const BUILD = "19.10 11:13";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -91,6 +91,17 @@ const fmtEst = m => m >= 480 && m % 480 === 0 ? (m / 480) + " дн" : m >= 60 ? 
 const localDate = iso => iso ? isoLocal(new Date(iso)) : "";
 const toLocalInput = iso => { const d = new Date(iso); return isoLocal(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
 const atTime = (isoDate, h) => { const d = parseISO(isoDate); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+// поиск: 2 — слово в названии/теме (подстрока), 1 — в заметке только как начало слова (так не ловим мусор внутри слов и ссылок), 0 — нет
+function srchHit(t) {
+  const q = (ui.q || "").trim().toLowerCase(); if (!q) return 0;
+  if ((t.title + " " + (t.category || "")).toLowerCase().indexOf(q) >= 0) return 2;
+  const n = " " + String(t.note || "").toLowerCase().replace(/[^a-zа-яё0-9]+/g, " ");
+  return n.indexOf(" " + q.replace(/[^a-zа-яё0-9 ]+/g, " ").trim()) >= 0 ? 1 : 0;
+}
+function srchSnip(t) {
+  const q = (ui.q || "").trim().toLowerCase(), n = String(t.note || "").replace(/\s+/g, " "), nl = n.toLowerCase(); let i = -1, j = -1; while ((j = nl.indexOf(q, j + 1)) >= 0) { if (j === 0 || !/[a-zа-яё0-9]/.test(nl[j - 1])) { i = j; break; } } if (i < 0) return "";
+  return (i > 24 ? "…" : "") + n.slice(Math.max(0, i - 24), i + q.length + 40).trim() + (n.length > i + q.length + 40 ? "…" : "");
+}
 function dueInfo(t) {
   if (!t.due) return null;
   const od = !t.done && t.due < today, d = parseISO(t.due), mob = isMobile();
@@ -635,7 +646,7 @@ function toggleDone(id) {
 }
 function matches(t) {
   if (t.parent_id && view !== "search") return false;   // подзадачи живут внутри родителя
-  if (view === "search") { const q = ui.q.toLowerCase(); return (t.title + " " + t.note + " " + (t.category || "")).toLowerCase().indexOf(q) >= 0; }
+  if (view === "search") return srchHit(t) > 0;
   if (view.indexOf("list:") !== 0 && inArch(t)) return false;   // архивные списки видны только внутри себя и в поиске
   if (view === "someday") return t.status === "someday";
   if (t.status === "someday") return false;
@@ -3467,6 +3478,7 @@ function metaHTML(t, showList, orphan) {
   { const sm0 = subMeta(t, orphan); if (sm0) m.push(sm0); }
   if (t.parent_id) { if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>"); if (t.note) m.push('<span class="mi">' + ic("note", 13) + "</span>"); return m.length ? '<div class="meta">' + m.join("") + "</div>" : ""; }
   if (showList && l) m.push('<span class="mi">' + (l.icon ? esc(l.icon) : ic("list", 12)) + " " + esc(l.name) + "</span>");
+  if (view === "search" && srchHit(t) === 1) { const sn = srchSnip(t); if (sn) m.push('<span class="mi" style="font-style:italic;opacity:.85;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ic("note", 12) + " " + esc(sn) + "</span>"); }
   if (PR.myday && inMyDay(t) && view !== "myday") m.push('<span class="mi">' + ic("sun", 13) + " Мой день</span>");
   if (di) m.push('<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>");   // срок — просто подпись (не кликабельная): менять — правой кнопкой / свайпом / в карточке
   if (t.repeat_rule) m.push('<span class="mi" title="' + esc(repeatText(t.repeat_rule)) + '">' + ic("repeat", 13) + "</span>");
