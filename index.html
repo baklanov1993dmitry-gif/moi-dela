@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 08:23";
+const BUILD = "19.10 08:24";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2273,7 +2273,12 @@ function desktopInit(app) {
     else if (!c && !e.altKey && !ui.pop && /^[0-8]$/.test(e.key) && (mIds().length || (selId && S.tasks[selId]))) {
       e.preventDefault(); const n = +e.key, ids = mIds().length ? mIds() : [selId], nd = n === 0 ? null : n === 8 ? nextMonday() : addDays(today, n === 7 ? 7 : n - 1);
       mSnap(ids); ids.forEach(id => setDueKeepRemind(S.tasks[id], nd));
-      toast((nd ? "Срок: " + dateLong(parseISO(nd)) : "Срок убран") + (ids.length > 1 ? " · задач: " + ids.length : "") + " (Ctrl+Z — отмена)"); render();
+      toast((nd ? "Срок: " + dateLong(parseISO(nd)) : "Срок убран") + (ids.length > 1 ? " · задач: " + ids.length : "") + " (Ctrl+Z — отмена)");
+      if (ids.length === 1) {   // выставил срок — выделение само переходит на следующую задачу: можно идти по списку без остановки
+        const vi = visIds(), k = vi.indexOf(ids[0]), nx = k >= 0 ? (vi[k + 1] || null) : null;
+        if (nx && nx !== ids[0] && S.tasks[nx]) selId = nx;
+      }
+      render(); hkReveal(selId);
     }
     else if (e.key === "Delete" && mIds().length && !ui.pop) { e.preventDefault(); mApply("del", { dataset: {} }); }
   }, true);
