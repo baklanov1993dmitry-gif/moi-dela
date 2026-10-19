@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 16:36";
+const BUILD = "19.10 16:41";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -238,11 +238,15 @@ function fxWeb(row) {
   // нитемёт справа (оригинальный значок-прибор)
   const gun = document.createElementNS(ns, "g"); gun.innerHTML = '<g transform="translate(' + sx + ',' + y + ') rotate(-90) scale(.72) translate(-75,-118)"><image href="webshooter.png" width="165" height="243"/></g>';   // рука с нитемётом (рисунок автора), пальцы влево, нить — из сопла
   sv.appendChild(gun); gun.style.transform = "translateX(190px)";
-  const p = document.createElementNS(ns, "path"); p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", "2.4"); p.setAttribute("stroke-linecap", "round");
-  p.setAttribute("stroke-dasharray", L + " " + L); p.setAttribute("stroke-dashoffset", L); sv.appendChild(p);
+  // нить: несколько тонких светлых волокон с лёгким провисом и тёмной окантовкой, чтобы было видно на светлом фоне
+  const mk = (w, c, dy, op) => { const e = document.createElementNS(ns, "path"); e.setAttribute("fill", "none"); e.setAttribute("stroke", c); e.setAttribute("stroke-width", w); e.setAttribute("stroke-linecap", "round"); e.setAttribute("stroke-opacity", op); e._dy = dy; sv.appendChild(e); return e; };
+  const strands = [mk(1.7, "#fdfeff", 0, 1), mk(.9, "#cfd9ff", 2.2, .95), mk(.7, "#ffffff", -1.8, .9)];
+  const FL = "drop-shadow(0 0 1px rgba(28,38,92,.85)) drop-shadow(0 0 3px rgba(150,170,255,.55))"; strands.forEach(e => { e.style.filter = FL; });
+  const p = { setAttribute(k, v) { strands.forEach(e => { if (k === "d") { const m = /^M([\d.\-]+) ([\d.\-]+)Q([\d.\-]+) ([\d.\-]+) ([\d.\-]+) ([\d.\-]+)$/.exec(v); e.setAttribute("d", m ? "M" + m[1] + " " + (+m[2] + e._dy * .3) + "Q" + m[3] + " " + (+m[4] + 6 + e._dy) + " " + m[5] + " " + (+m[6] + e._dy * .3) : v); } else e.setAttribute(k, v); }); } };
+  p.setAttribute("stroke-dasharray", L + " " + L); p.setAttribute("stroke-dashoffset", L);
   const g = document.createElementNS(ns, "path"); let d = ""; for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4; d += "M0 0L" + (Math.cos(an) * 20).toFixed(1) + " " + (Math.sin(an) * 20).toFixed(1); }
   [8, 15].forEach(rr => { for (let i = 0; i <= 8; i++) { const an = i * Math.PI / 4; d += (i ? "L" : "M") + (Math.cos(an) * rr).toFixed(1) + " " + (Math.sin(an) * rr).toFixed(1); } });
-  g.setAttribute("d", d); g.setAttribute("fill", "none"); g.setAttribute("stroke", col); g.setAttribute("stroke-width", "1.5"); g.style.opacity = "0"; g.style.transformBox = "fill-box"; g.style.transformOrigin = "center"; sv.appendChild(g);
+  g.setAttribute("d", d); g.setAttribute("fill", "none"); g.setAttribute("stroke", "#f7f9ff"); g.setAttribute("stroke-width", "1.4"); g.style.filter = FL; g.style.opacity = "0"; g.style.transformBox = "fill-box"; g.style.transformOrigin = "center"; sv.appendChild(g);
   document.body.appendChild(sv);
   const path = ex => { p.setAttribute("d", "M" + sx + " " + y + "Q" + ((sx + ex) / 2) + " " + (y + 5) + " " + ex + " " + y); g.setAttribute("transform", "translate(" + ex + "," + y + ")"); };
   path(tx); const t0 = performance.now(); let ph = 0, shift = 0, T1 = 240, T2 = 180, T3 = 520;
