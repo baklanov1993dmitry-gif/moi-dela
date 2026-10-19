@@ -393,6 +393,7 @@ const savePrices = () => { jset(LSP.rows, PRICES); jset(LSP.pend, pendP); };
 const dbPrice = r => ({ id: r.id, ts: r.ts, name: r.name, pkey: r.pkey, price: r.price, qty: r.qty, amount: r.amount, shop: r.shop || "", tx_id: r.tx_id || null, updated_at: r.updated_at });
 const pendDel = id => pendP.some(o => o.op === "del" && o.id === id);
 function addPrice(r) { r.updated_at = nowISO(); PRICES.push(r); pendP.push({ op: "up", row: dbPrice(r) }); savePrices(); flushP(); }
+function upPrice(r) { r.updated_at = nowISO(); const i = PRICES.findIndex(x => x.id === r.id); if (i >= 0) PRICES[i] = r; else PRICES.push(r); pendP.push({ op: "up", row: dbPrice(r) }); savePrices(); flushP(); }
 function addPrices(L) { const t = nowISO(); L.forEach(r => { r.updated_at = t; PRICES.push(r); pendP.push({ op: "up", row: dbPrice(r) }); }); savePrices(); flushP(); }
 function delPrice(id) { PRICES = PRICES.filter(r => r.id !== id); pendP.push({ op: "del", id }); savePrices(); flushP(); }
 async function flushP() {
@@ -954,7 +955,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 43 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 44 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1111,6 +1112,11 @@ function rUnit(x) {
   let w = ""; if (a === +x.a0 && p > 0 && Math.abs(p * q - a) > Math.max(0.05, a * 0.01)) w = "в чеке цена " + fm(p) + ", но цена × кол-во не равны сумме, взял сумму ÷ кол-во"; else if (q === 1 && !(p > 0 && p !== a) && Math.round(a * 100) % 10 !== 0) w = "похоже на весовой товар, а вес не найден: цена за 1, проверь";
   return "<b>" + fm(u) + "/" + (frac ? "кг" : "ед.") + "</b>" + (w ? '<span class="bad"> ⚠ ' + w + "</span>" : "");
 }
+function unitRow(s) {
+  if (s.kind !== "exp") return "";
+  if (!s._pl) { s._pl = 1; const r = s.id ? PRICES.find(x => x.tx_id === s.id) : null; if (r) { s.q = r.qty > 0 && r.qty !== 1 ? String(+(+r.qty).toFixed(3)) : (s.q || ""); s.p = r.price > 0 ? String(+(+r.price).toFixed(2)) : (s.p || ""); } }
+  return '<div class="rq" id="s-unit" style="padding:2px 4px 4px"><span>кол-во</span><input id="s-q" inputmode="decimal" placeholder="1" value="' + esc(s.q || "") + '"><span>цена за кг / шт</span><input id="s-p" inputmode="decimal" style="width:84px" placeholder="= сумме" value="' + esc(s.p || "") + '"></div>';
+}
 function rsumText(s) {
   const t = s.items.reduce((a, x) => a + (parseFloat(String(x.amount).replace(",", ".")) || 0), 0), un = s.items.filter(x => !x.cat).length, ok = s.total && Math.abs(t - s.total) <= 1;
   return '<b class="big">' + fm(t) + '</b><div class="rst">' + s.items.length + " поз." + (s.total ? " · на чеке " + fm(s.total) + (ok ? ' <span class="ok">✓</span>' : ' <span class="bad">не сходится</span>') : "") + (un ? '<br><span class="bad">без категории: ' + un + "</span>" : "") + "</div>";
@@ -1177,7 +1183,7 @@ function sheetHTML() {
       return '<div class="full fcat">' + head + date + amt + '<input class="in cs" id="cs" autocomplete="off" placeholder="🔍 Найти категорию" value="' + esc(s.cq || "") + '"><div class="cgrid" id="cg">' + cgridInner(s) + "</div></div>";
     }
     const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
-    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" enterkeyhint="done" autocomplete="off" value="' + esc(s.note || "") + '"></label><div class="sgs" id="s-sug">' + sugHTML(s.note || "") + '</div><div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
+    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" enterkeyhint="done" autocomplete="off" value="' + esc(s.note || "") + '"></label><div class="sgs" id="s-sug">' + sugHTML(s.note || "") + '</div>' + unitRow(s) + '<div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
       (c ? '<button class="cbtn sv" data-a="txsave">Сохранить · ' + esc(c.name) + "</button>" : "") + '<button class="cbtn" data-a="cstep">Выбор категории</button></div>';
   }
   if (s.type === "cat") {
@@ -1353,10 +1359,24 @@ function evalExpr(e) {
   if (!x || !/^[\d.+\-*/]+$/.test(x)) return 0;
   try { const v = Function('"use strict";return (' + x.replace(/^[+*/]+/, "") + ")")(); return isFinite(v) ? v : 0; } catch (err) { return 0; }
 }
-function dateChange(v) { const s = ui.sheet; if (!s || !v) return; s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
+function dateChange(v) { const s = ui.sheet; if (!s || !v) return; uread(); s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
 function rread() { const s = ui.sheet; if (!s || s.type !== "rcp" || !s.items) return; s.items.forEach((x, i) => { const n = $("r-n-" + i), a = $("r-a-" + i), c = $("r-c-" + i), q = $("r-q-" + i); if (n) x.name = n.value; if (a) x.amount = a.value; if (q) { const qv = parseFloat(String(q.value).replace(",", ".")); x.q = qv > 0 ? qv : 1; } if (c) x.cat = c.value; }); if ($("r-date") && $("r-date").value) s.date = $("r-date").value; if ($("r-merge")) s.merge = $("r-merge").checked; }
 function xread() { const s = ui.sheet; if (!s) return; const g = i => ($(i) || {}).value; if ($("x-cat")) s.cat = g("x-cat"); if ($("x-amt")) s.amt = g("x-amt"); if ($("x-note")) s.note = g("x-note"); if ($("x-day")) s.day = g("x-day"); }
 function openTx(o) { ui.sheet = Object.assign({ type: "tx", step: "kb", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
+const pnum = v => { const x = parseFloat(String(v == null ? "" : v).replace(",", ".")); return x > 0 ? x : 0; };
+function unitCalc(amt, q, p) {   // кол-во и цена за единицу; ничего не указано → цена = сумме, кол-во 1
+  if (p > 0 && q > 0) return { p, q, explicit: true };
+  if (p > 0) return { p, q: Math.round(amt / p * 1000) / 1000, explicit: true };
+  if (q > 0) return { p: Math.round(amt / q * 100) / 100, q, explicit: true };
+  return { p: amt, q: 1, explicit: false };
+}
+function uread() { const s = ui.sheet; if (!s || s.type !== "tx") return; const q = $("s-q"), p = $("s-p"); if (q) s.q = q.value; if (p) s.p = p.value; }
+function unitUpd() {
+  const s = ui.sheet; if (!s || s.type !== "tx") return; const q = $("s-q"), p = $("s-p"); if (!q || !p) return;
+  const amt = Math.round(evalExpr(s.expr || "") * 100) / 100, qv = pnum(q.value), pv = pnum(p.value);
+  q.placeholder = !qv && pv > 0 && amt > 0 ? String(Math.round(amt / pv * 1000) / 1000) : "1";
+  p.placeholder = !pv && qv > 0 && amt > 0 ? String(Math.round(amt / qv * 100) / 100) : amt > 0 ? String(amt) : "= сумме";
+}
 function keyPress(v) {
   const s = ui.sheet; if (!s) return; let e = s.expr || "";
   const OPS = "+−×÷", last = e.split(/[+−×÷]/).pop();
@@ -1365,7 +1385,7 @@ function keyPress(v) {
   else if (OPS.includes(v)) { if (!e) return; if (OPS.includes(e.slice(-1))) e = e.slice(0, -1) + v; else if (/\.$/.test(e)) e = e.slice(0, -1) + v; else e += v; }
   else if (v === ".") { if (last.includes(".")) return; e += last ? "." : (e && !OPS.includes(e.slice(-1)) ? "" : "0."); }
   else { if (/\.\d\d$/.test(last) || e.length > 18) return; e += v; }
-  s.expr = e; const el = document.querySelector(".amt"); if (el) { el.textContent = e || "0"; el.style.fontSize = e.length > 12 ? "1.9em" : e.length > 8 ? "2.5em" : ""; }
+  s.expr = e; const el = document.querySelector(".amt"); if (el) { el.textContent = e || "0"; el.style.fontSize = e.length > 12 ? "1.9em" : e.length > 8 ? "2.5em" : ""; } unitUpd();
 }
 function saveTx() {
   const s = ui.sheet; s.note = $("s-note") ? $("s-note").value : (s.note || ""); s.date = ($("s-date") || {}).value || s.date; if (!s.cat) { toast("Выбери категорию"); return; }
@@ -1373,7 +1393,12 @@ function saveTx() {
   const old = s.id ? txs.find(t => t.id === s.id) : null, d = new Date(s.date + "T12:00"), now = new Date();
   if (s.date === dayKey(now) && !old) d.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
   else if (old && dayKey(new Date(old.ts)) === s.date) d.setTime(new Date(old.ts).getTime());
-  upTx({ id: s.id || uid(), ts: d.toISOString(), amount: amt, kind: s.kind, category_id: s.cat, note: s.note.trim(), account: "Основной" });
+  uread(); const tid = s.id || uid(), nm = s.note.trim();
+  upTx({ id: tid, ts: d.toISOString(), amount: amt, kind: s.kind, category_id: s.cat, note: nm, account: "Основной" });
+  try {
+    const key = PRC.key(nm), multi = nm.split(/\s*,\s+|\s+,\s*|;|\n/).filter(Boolean).length > 1, ex = PRICES.find(r => r.tx_id === tid), c = unitCalc(amt, pnum(s.q), pnum(s.p));
+    if (s.kind === "exp" && nm && key && !multi && (c.explicit || ex || (window.FOOD && FOOD.classify(nm.toLowerCase()).size > 0))) upPrice({ id: ex ? ex.id : uid(), ts: d.toISOString(), name: nm.slice(0, 140), pkey: key, price: PRC.unitPrice(c.p, c.q, amt), qty: c.q, amount: amt, shop: ex ? ex.shop : "", tx_id: tid });
+  } catch (e) {}
   const bm = s.kind === "exp" ? budgetMsg(s.cat, d.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200);
 }
 
@@ -1432,7 +1457,7 @@ const A = {
   pick(a) { openTx({ kind: a.dataset.v, cat: null }); },
   txback() { const s = ui.sheet; if (s && s.step === "cat") { s.step = "kb"; render(); } else { ui.sheet = null; render(); } },
   crare() { ui.sheet.rare = !ui.sheet.rare; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); },
-  cstep() { const s = ui.sheet; s.note = ($("s-note") || {}).value || s.note || ""; s.date = ($("s-date") || {}).value || s.date; s.step = "cat"; render(); },
+  cstep() { const s = ui.sheet; uread(); s.note = ($("s-note") || {}).value || s.note || ""; s.date = ($("s-date") || {}).value || s.date; s.step = "cat"; render(); },
   cpick(a) { ui.sheet.cat = a.dataset.id; saveTx(); },
   txsave() { saveTx(); },
   iset(a) { PR.iset = a.dataset.v; savePR(); render(); },
@@ -1509,7 +1534,7 @@ const A = {
   rnall() { const s = ui.sheet; (s._vis || []).forEach(k => s.sel[k] = 1); renRefresh(); }, rnnone() { ui.sheet.sel = {}; renRefresh(); }, rnapply() { renApply(); },
   prcset(a) { PR.prcN = +a.dataset.v; savePR(); render(); }, nutset(a) { PR.nutN = +a.dataset.v; savePR(); render(); },
   sugpick(a) {
-    const s = ui.sheet, e = (SUGX.cur || [])[+a.dataset.i], inp = $("s-note"); if (!s || !e || !inp) return;
+    const s = ui.sheet, e = (SUGX.cur || [])[+a.dataset.i], inp = $("s-note"); if (!s || !e || !inp) return; uread();
     const parts = inp.value.split(/,\s*/); parts[parts.length - 1] = e.text; inp.value = parts.join(", "); s.note = inp.value;
     if (!s.cat && s.kind === "exp") { let b = null, bn = 0; Object.keys(e.cat).forEach(c => { if (e.cat[c] > bn && catOf(c) && catOf(c).id) { b = c; bn = e.cat[c]; } }); if (b) s.cat = b; }
     const box = $("s-sug"); if (box) box.innerHTML = ""; render(); const i2 = $("s-note"); if (i2) { i2.focus(); try { i2.setSelectionRange(i2.value.length, i2.value.length); } catch (x) { } }
@@ -1579,7 +1604,7 @@ document.addEventListener("keydown", e => {
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
 document.addEventListener("change", e => { const sel = e.target.dataset && e.target.dataset.sel; if (!sel) return; const v = e.target.value; if (sel === "itmset") PR.itmN = +v; else if (sel === "itmmode") PR.itmM = v; else if (sel === "itmsrt") PR.itmS = v; else return; savePR(); render(); });
-document.addEventListener("input", e => { if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[naq]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); ui.sheet.items.forEach((x, i) => { const u = $("r-u-" + i); if (u) u.innerHTML = rUnit(x); }); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
+document.addEventListener("input", e => { if (e.target.id === "s-q" || e.target.id === "s-p") { unitUpd(); return; } if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[naq]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); ui.sheet.items.forEach((x, i) => { const u = $("r-u-" + i); if (u) u.innerHTML = rUnit(x); }); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "rn-q" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.q = e.target.value; renRefresh(); return; } if (e.target.id === "rn-n" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.name = e.target.value; return; } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
