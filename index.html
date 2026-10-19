@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 08:26";
+const BUILD = "19.10 08:29";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2018,13 +2018,30 @@ const hkEnsure = id => {   // после открытия задачи спис�
   };
   fix(); requestAnimationFrame(() => { fix(); setTimeout(fix, 280); });
 };
+let hkA = null;   // идущая плавная прокрутка списка стрелками (render() пересоздаёт #list, поэтому ищем его на каждом кадре)
+function hkGo(t) {
+  const l0 = document.getElementById("list"); if (l0) t = Math.max(0, Math.min(l0.scrollHeight - l0.clientHeight, t));
+  const run = !hkA; hkA = { t };
+  if (!run) return;
+  const step = () => {
+    const sc = document.getElementById("list"); if (!sc || !hkA) { hkA = null; return; }
+    const diff = hkA.t - sc.scrollTop;
+    if (Math.abs(diff) < 1) { sc.scrollTop = hkA.t; hkA = null; return; }
+    sc.scrollTop += Math.abs(diff) < 3 ? diff : diff * 0.3; requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 const hkReveal = id => {   // выделенная стрелками задача держится в верхней трети списка
   const r = id && document.querySelector('#main .taskrow[data-id="' + id + '"]'); if (!r) return;
   let sc = r.parentElement; while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 2 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
   if (!sc || sc === document.body) { if (r.scrollIntoView) r.scrollIntoView({ block: "nearest" }); return; }
   const cb = sc.getBoundingClientRect(), rb = r.getBoundingClientRect(), h = sc.clientHeight, y = rb.top - cb.top;
-  if (y >= h * 0.08 && y <= h * 0.42 && rb.bottom <= cb.bottom) return;   // уже в верхней трети — не дёргаем
-  sc.scrollTo({ top: sc.scrollTop + y - h * 0.28, behavior: "smooth" });
+  const hi = h * 0.36, lo = h * 0.1, pend = hkA ? hkA.t - sc.scrollTop : 0, yt = y - pend;   // yt — где строка окажется, когда доедет идущая прокрутка
+  let d = 0; if (yt > hi) d = yt - hi; else if (yt < lo) d = yt - lo;
+  if (!d && rb.bottom - pend > cb.bottom) d = rb.bottom - pend - cb.bottom + 8;
+  if (!d) return;
+  if (Math.abs(d) > h * 0.6) { hkA = null; sc.scrollTop += y - h * 0.28; return; }   // далёкий прыжок (Home/поиск) — сразу в верхнюю треть
+  hkGo(sc.scrollTop + pend + d);
 };
 function hkRun(a) {
   const ids = visIds(), id = selId && S.tasks[selId] ? selId : null, t = id && S.tasks[id];
@@ -3094,7 +3111,7 @@ const CSS = `
 .cards.grid .mi + .mi::before{display:none}
 .cards.grid .meta{gap:2px 12px}
 .taskrow{display:flex;gap:12px;align-items:flex-start;padding:var(--pad) 14px;background:var(--card);box-shadow:var(--shadow);border-radius:var(--rad);margin-bottom:var(--gap,3px);cursor:pointer;min-height:var(--rowh,48px);border:var(--cbd)}
-#list .taskrow{content-visibility:auto;contain-intrinsic-size:auto 58px} @media(hover:hover){.taskrow:hover{background:var(--hov)}} .taskrow.sel{background:var(--sel)}
+@media(hover:none){#list .taskrow{content-visibility:auto;contain-intrinsic-size:auto 58px}} @media(hover:hover){.taskrow:hover{background:var(--hov)}} .taskrow.sel{background:var(--sel)}
 .rad{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--acc);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
 .rad:hover{background:var(--sel)} .rad.on{background:var(--acc)}
 .tbody{flex:1;min-width:0}
