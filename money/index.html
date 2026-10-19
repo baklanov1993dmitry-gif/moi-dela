@@ -96,7 +96,7 @@ table.hm td{padding:6px 2px;text-align:center;border-radius:6px}
 table.hm th{color:var(--sub);font-weight:600;font-size:.9em}
 .pill{border-radius:14px;padding:11px 14px;color:#fff;font-weight:800;font-size:1.1em;text-align:center;line-height:1.2}.pill small{display:block;font-weight:500;font-size:.68em;opacity:.9}
 .crow{display:flex;align-items:center;gap:10px;width:100%;padding:9px 2px;text-align:left}.crow .chev{width:20px;color:var(--sub);font-size:1.3em}.crow .ci{width:46px;height:46px;font-size:22px;border-width:2px;flex:none}.crow b{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.crow .bd{background:var(--card2);border-radius:10px;padding:1px 8px;font-size:.78em;color:var(--sub)}.crow .a{font-weight:700;white-space:nowrap}
-.sub-r{display:flex;gap:10px;width:100%;padding:7px 8px 7px 32px;text-align:left;font-size:.9em;border-top:1px solid var(--ln)}.sub-r .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rq{display:flex;gap:6px;align-items:center;font-size:.78em;color:var(--sub);padding:0 4px 6px 38px;flex-wrap:wrap}.rq input{width:62px;padding:3px 6px;border-radius:8px;background:var(--card);color:var(--tx);border:1px solid color-mix(in srgb,var(--tx) 14%,transparent);font-size:1em}.rq b{color:var(--tx)}.rraw{max-height:30vh;overflow:auto;font-size:.7em;white-space:pre-wrap;background:var(--card);padding:8px;border-radius:10px;margin:6px 0 0}.sub-r{display:flex;gap:10px;width:100%;padding:7px 8px 7px 32px;text-align:left;font-size:.9em;border-top:1px solid var(--ln)}.sub-r .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fab{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;padding:0 28px;pointer-events:none;z-index:4;max-width:720px;margin:0 auto}
 .fb{pointer-events:auto;width:78px;height:78px;border-radius:50%;font-size:2.4em;font-weight:300;border:4px solid;background:var(--card);box-shadow:0 4px 16px rgba(0,0,0,.35)}.fb.m{border-color:var(--exp);color:var(--exp)}.fb.p{border-color:var(--inc);color:var(--inc)}
 .st{position:fixed;top:calc(4px + env(safe-area-inset-top));right:10px;font-size:.7em;color:var(--sub);z-index:3}
@@ -954,7 +954,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 42 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 43 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1106,6 +1106,11 @@ function cgridInner(s) {
   const act = all.filter(x => !dorm(x)), rare = all.filter(dorm);
   return act.map(btn).join("") + (rare.length ? (s.rare ? rare.map(btn).join("") : "") + '<button class="crare" data-a="crare">' + (s.rare ? "Скрыть редкие" : "Редкие и разовые (" + rare.length + ") — показать") + "</button>" : "");
 }
+function rUnit(x) {
+  const a = parseFloat(String(x.amount).replace(",", ".")) || 0, q = +x.q > 0 ? +x.q : 1, p = a === +x.a0 ? +x.p : 0, u = PRC.unitPrice(p, q, a), frac = Math.abs(q - Math.round(q)) > 0.0005;
+  let w = ""; if (a === +x.a0 && p > 0 && Math.abs(p * q - a) > Math.max(0.05, a * 0.01)) w = "в чеке цена " + fm(p) + ", но цена × кол-во не равны сумме, взял сумму ÷ кол-во"; else if (q === 1 && !(p > 0 && p !== a) && Math.round(a * 100) % 10 !== 0) w = "похоже на весовой товар, а вес не найден: цена за 1, проверь";
+  return "<b>" + fm(u) + "/" + (frac ? "кг" : "ед.") + "</b>" + (w ? '<span class="bad"> ⚠ ' + w + "</span>" : "");
+}
 function rsumText(s) {
   const t = s.items.reduce((a, x) => a + (parseFloat(String(x.amount).replace(",", ".")) || 0), 0), un = s.items.filter(x => !x.cat).length, ok = s.total && Math.abs(t - s.total) <= 1;
   return '<b class="big">' + fm(t) + '</b><div class="rst">' + s.items.length + " поз." + (s.total ? " · на чеке " + fm(s.total) + (ok ? ' <span class="ok">✓</span>' : ' <span class="bad">не сходится</span>') : "") + (un ? '<br><span class="bad">без категории: ' + un + "</span>" : "") + "</div>";
@@ -1127,7 +1132,7 @@ function rcpFromParsed(r, text, extra) {
   if (dup) notes.push("⚠️ Похоже, этот чек уже записывали.");
   if (r.refund) notes.push("⚠️ Это возврат, а не покупка.");
   if (!r.ok) notes.push("Сумма позиций не сошлась с итогом чека, сверь.");
-  ui.sheet = { type: "rcp", merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: false, key: r.key, items, inbox: extra.inbox || null };
+  ui.sheet = { type: "rcp", text: String(text || ""), merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: false, key: r.key, items, inbox: extra.inbox || null };
   render();
 }
 function rcpText(text, meta) {
@@ -1200,13 +1205,13 @@ function sheetHTML() {
     const g = {}; s.items.forEach((it, i) => { (g[it.cat || ""] = g[it.cat || ""] || []).push(i); });
     const gsum = k => g[k].reduce((t, i) => t + val(s.items[i]), 0);
     const keys = Object.keys(g).sort((a, b) => a === "" ? -1 : b === "" ? 1 : gsum(b) - gsum(a));
-    const row = i => { const it = s.items[i], c = it.cat ? catOf(it.cat) : null; return '<div class="rr"><button class="rb' + (c ? "" : " no") + '" data-a="rcat" data-i="' + i + '">' + (c ? ic(c.icon, c.color, 26) : "<span>?</span>") + '</button><textarea class="rn2" id="r-n-' + i + '" rows="2" spellcheck="false">' + esc(it.name) + '</textarea><input class="ra2" id="r-a-' + i + '" inputmode="decimal" value="' + esc((+String(it.amount).replace(",", ".")).toFixed(2)) + '"><button class="rx" data-a="rdel" data-i="' + i + '">✕</button></div>'; };
+    const row = i => { const it = s.items[i], c = it.cat ? catOf(it.cat) : null; return '<div class="rr"><button class="rb' + (c ? "" : " no") + '" data-a="rcat" data-i="' + i + '">' + (c ? ic(c.icon, c.color, 26) : "<span>?</span>") + '</button><textarea class="rn2" id="r-n-' + i + '" rows="2" spellcheck="false">' + esc(it.name) + '</textarea><input class="ra2" id="r-a-' + i + '" inputmode="decimal" value="' + esc((+String(it.amount).replace(",", ".")).toFixed(2)) + '"><button class="rx" data-a="rdel" data-i="' + i + '">✕</button></div><div class="rq"><span>кол-во</span><input id="r-q-' + i + '" inputmode="decimal" value="' + esc(String(+it.q > 0 ? +(+it.q).toFixed(3) : 1)) + '"><span>→ цена за единицу:</span><span id="r-u-' + i + '">' + rUnit(it) + "</span></div>"; };
     const gh = k => { const c = k ? catOf(k) : null; return '<div class="rgh' + (k ? "" : " no") + '">' + (c ? ic(c.icon, c.color, 22) + "<b>" + esc(c.name) + "</b>" : "<b>⚠ Выбери категорию</b>") + '<span class="gc">' + g[k].length + '</span>' + (k ? '<span class="gs">' + fm(gsum(k)) + "</span>" : '<button class="rall" data-a="rcat" data-i="all">Всем…</button>') + "</div>"; };
     const dl = new Date((s.date || dayKey(new Date())) + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
     return '<div class="ov" data-a="shclose"><div class="sheet rcp" data-a="nop"><div class="rhd"><div class="rm">🧾 ' + esc(s.merchant || "Чек") + '</div><label class="rdt">📅 <span>' + esc(dl) + '</span><input type="date" id="r-date" value="' + esc(s.date) + '"></label></div>' +
       '<div class="rtot" id="rsum">' + rsumText(s) + "</div>" + (s.note ? '<div class="rnote">' + esc(s.note) + "</div>" : "") +
       '<div class="rl">' + (keys.length ? keys.map(k => gh(k) + g[k].map(row).join("")).join("") : '<div class="empty">Позиций не осталось</div>') + "</div>" +
-      '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div>' + (s.inbox ? '<button class="btn g" style="width:100%;margin-top:8px" data-a="inbskip">Не чек — пропустить</button>' : "") + "</div></div>";
+      '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div><button class="btn g" style="width:100%;margin-top:8px;padding:6px" data-a="rraw">' + (s.showRaw ? "Скрыть" : "📄 Показать") + ' текст чека</button>' + (s.showRaw ? '<pre class="rraw">' + esc(String(s.text || "").split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 150).map(l => l.slice(0, 160)).join("\n")) + "</pre>" : "") + (s.inbox ? '<button class="btn g" style="width:100%;margin-top:8px" data-a="inbskip">Не чек — пропустить</button>' : "") + "</div></div>";
   }
   if (s.type === "tplq") {
     const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
@@ -1349,7 +1354,7 @@ function evalExpr(e) {
   try { const v = Function('"use strict";return (' + x.replace(/^[+*/]+/, "") + ")")(); return isFinite(v) ? v : 0; } catch (err) { return 0; }
 }
 function dateChange(v) { const s = ui.sheet; if (!s || !v) return; s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
-function rread() { const s = ui.sheet; if (!s || s.type !== "rcp" || !s.items) return; s.items.forEach((x, i) => { const n = $("r-n-" + i), a = $("r-a-" + i), c = $("r-c-" + i); if (n) x.name = n.value; if (a) x.amount = a.value; if (c) x.cat = c.value; }); if ($("r-date") && $("r-date").value) s.date = $("r-date").value; if ($("r-merge")) s.merge = $("r-merge").checked; }
+function rread() { const s = ui.sheet; if (!s || s.type !== "rcp" || !s.items) return; s.items.forEach((x, i) => { const n = $("r-n-" + i), a = $("r-a-" + i), c = $("r-c-" + i), q = $("r-q-" + i); if (n) x.name = n.value; if (a) x.amount = a.value; if (q) { const qv = parseFloat(String(q.value).replace(",", ".")); x.q = qv > 0 ? qv : 1; } if (c) x.cat = c.value; }); if ($("r-date") && $("r-date").value) s.date = $("r-date").value; if ($("r-merge")) s.merge = $("r-merge").checked; }
 function xread() { const s = ui.sheet; if (!s) return; const g = i => ($(i) || {}).value; if ($("x-cat")) s.cat = g("x-cat"); if ($("x-amt")) s.amt = g("x-amt"); if ($("x-note")) s.note = g("x-note"); if ($("x-day")) s.day = g("x-day"); }
 function openTx(o) { ui.sheet = Object.assign({ type: "tx", step: "kb", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
 function keyPress(v) {
@@ -1472,6 +1477,7 @@ const A = {
   dueskip() { const x = dueList()[0]; if (x) EXT.due = EXT.due.filter(d => d !== x.d); saveExt(); ui.sheet = dueList().length ? { type: "due" } : null; render(); },
   xask() { xread(); ui.sheet.ask = !ui.sheet.ask; render(); },
   inbopen() { if (INB[0]) inboxOpen(INB[0]); },
+  rraw() { rread(); ui.sheet.showRaw = !ui.sheet.showRaw; render(); },
   inbskip() { const s = ui.sheet; if (s && s.inbox) inboxMark(s.inbox, "skip"); ui.sheet = null; render(); toast("Пропустил"); },
   rdel(a) { ui.sheet.items.splice(+a.dataset.i, 1); render(); },
   rsave() {
@@ -1573,7 +1579,7 @@ document.addEventListener("keydown", e => {
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
 document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
 document.addEventListener("change", e => { const sel = e.target.dataset && e.target.dataset.sel; if (!sel) return; const v = e.target.value; if (sel === "itmset") PR.itmN = +v; else if (sel === "itmmode") PR.itmM = v; else if (sel === "itmsrt") PR.itmS = v; else return; savePR(); render(); });
-document.addEventListener("input", e => { if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[na]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
+document.addEventListener("input", e => { if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[naq]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); ui.sheet.items.forEach((x, i) => { const u = $("r-u-" + i); if (u) u.innerHTML = rUnit(x); }); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "rn-q" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.q = e.target.value; renRefresh(); return; } if (e.target.id === "rn-n" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.name = e.target.value; return; } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
