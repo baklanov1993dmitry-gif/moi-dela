@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 11:22";
+const BUILD = "19.10 13:18";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1737,6 +1737,8 @@ const dtpCSS = `
 .pop.pin{animation:popexp .13s cubic-bezier(.2,.8,.2,1) both;transform-origin:top center}
 .pop.pin.up{animation-name:popexpup;transform-origin:bottom center}
 .pop.pin.mid{animation-name:popmid;transform-origin:center}
+@keyframes popctr{0%{opacity:0;transform:translate(-50%,-50%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%)}}
+@media(min-width:761px){.pop.dtp.pin,.pop.dtp.pin.up,.pop.dtp.pin.mid{animation-name:popctr;transform-origin:center}}
 @keyframes popmid{0%{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
 @keyframes popexpup{0%{opacity:0;transform:translateY(10px) scale(.95,.72)}to{opacity:1;transform:none}}
 
