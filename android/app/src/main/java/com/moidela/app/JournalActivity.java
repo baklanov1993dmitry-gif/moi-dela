@@ -1,6 +1,7 @@
 package com.moidela.app;
 
 import android.app.Activity;
+import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
@@ -134,19 +135,44 @@ public class JournalActivity extends Activity {
         } });
     }
 
-    boolean timer, minEdited;
-    TextView sinceTv;
+    boolean timer, minEdited, startPicked;
+    long endT;   // 0 = «сейчас»
+    TextView sinceTv, stB, enB;
     static boolean sameDay(long a, long b) { java.util.Calendar x = java.util.Calendar.getInstance(), y = java.util.Calendar.getInstance(); x.setTimeInMillis(a); y.setTimeInMillis(b); return x.get(java.util.Calendar.YEAR) == y.get(java.util.Calendar.YEAR) && x.get(java.util.Calendar.DAY_OF_YEAR) == y.get(java.util.Calendar.DAY_OF_YEAR); }
     /** начало дела: запущенный таймер → конец последней записи сегодня → 30 минут назад */
     void pickStart(long last) {
         long now = System.currentTimeMillis();
-        if (timer) return;
+        if (timer || startPicked) return;
         if (last > 0 && last < now && sameDay(last, now) && now - last <= 12 * 3600e3) start = last; else if (start <= 0) start = now - 30 * 60000L;
     }
+    static String hm(long t) { return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(t)); }
     void showStart() {
-        long mins = Math.max(1, (System.currentTimeMillis() - start) / 60000);
-        if (sinceTv != null) sinceTv.setText("с " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(start)) + " до сейчас");
+        long e = endT > 0 ? endT : System.currentTimeMillis();
+        long mins = Math.max(1, (e - start) / 60000);
+        if (sinceTv != null) sinceTv.setText("с " + hm(start) + " до " + (endT > 0 ? hm(endT) : "сейчас"));
+        if (stB != null) stB.setText("Начало  " + hm(start));
+        if (enB != null) enB.setText("Конец  " + (endT > 0 ? hm(endT) : "сейчас"));
         if (emin != null && !minEdited) emin.setText(String.valueOf(Math.min(1440, mins)));
+    }
+    /** время ЧЧ:мм → сегодня; если вышло в будущем — вчера (дело через полночь) */
+    long resolve(int h, int m) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        long now = c.getTimeInMillis();
+        c.set(java.util.Calendar.HOUR_OF_DAY, h); c.set(java.util.Calendar.MINUTE, m); c.set(java.util.Calendar.SECOND, 0); c.set(java.util.Calendar.MILLISECOND, 0);
+        if (c.getTimeInMillis() > now + 60000) c.add(java.util.Calendar.DAY_OF_YEAR, -1);
+        return c.getTimeInMillis();
+    }
+    void pickTime(final boolean isStart) {
+        long cur = isStart ? start : (endT > 0 ? endT : System.currentTimeMillis());
+        java.util.Calendar c = java.util.Calendar.getInstance(); c.setTimeInMillis(cur);
+        new TimePickerDialog(this, new TimePickerDialog.OnTimeSetListener() { public void onTimeSet(android.widget.TimePicker v, int h, int m) {
+            long t = resolve(h, m);
+            long other = isStart ? (endT > 0 ? endT : System.currentTimeMillis()) : start;
+            if (isStart ? t >= other : t <= other) { Toast.makeText(JournalActivity.this, "Начало должно быть раньше конца", Toast.LENGTH_SHORT).show(); return; }
+            if (isStart) { start = t; startPicked = true; } else endT = t;
+            minEdited = false;
+            showStart();
+        } }, c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE), true).show();
     }
 
     void buildStop(LinearLayout card, final SharedPreferences sp) {
@@ -214,6 +240,17 @@ public class JournalActivity extends Activity {
         card.addView(vr);
         paintVal();
 
+        card.addView(label("Когда"));
+        LinearLayout tr2 = new LinearLayout(this);
+        stB = btn("", cFld, cTx, 16); enB = btn("", cFld, cTx, 16);
+        stB.setSingleLine(); enB.setSingleLine();
+        stB.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { pickTime(true); } });
+        enB.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { pickTime(false); } });
+        tr2.addView(stB, new LinearLayout.LayoutParams(0, dp(52), 1));
+        LinearLayout.LayoutParams ep2 = new LinearLayout.LayoutParams(0, dp(52), 1); ep2.leftMargin = dp(8);
+        tr2.addView(enB, ep2);
+        card.addView(tr2);
+
         card.addView(label("Сколько минут"));
         LinearLayout mr = new LinearLayout(this);
         mr.setGravity(Gravity.CENTER_VERTICAL);
@@ -263,6 +300,8 @@ public class JournalActivity extends Activity {
         try { m = Integer.parseInt(emin.getText().toString().trim()); } catch (Exception e) { /* 0 */ }
         m = Math.max(1, Math.min(1440, m + d));
         emin.setText(String.valueOf(m));
+        endT = start + m * 60000L;
+        showStart();
     }
 
     void done(String msg) {
@@ -277,7 +316,7 @@ public class JournalActivity extends Activity {
         int m = 0;
         try { m = Integer.parseInt(emin.getText().toString().trim()); } catch (Exception e) { /* ниже */ }
         if (m < 1 || m > 1440) { Toast.makeText(this, "Минут: от 1 до 1440", Toast.LENGTH_SHORT).show(); return; }
-        final long end = System.currentTimeMillis(), st = end - m * 60000L;
+        final long st = start, end = minEdited ? start + m * 60000L : (endT > 0 ? endT : System.currentTimeMillis());
         StringBuilder sbc = new StringBuilder();
         for (AutoCompleteTextView a : tf) { String t = a.getText().toString().trim().replace(",", " "); if (t.length() > 0 && sbc.indexOf(t) < 0) sbc.append(sbc.length() > 0 ? ", " : "").append(t); }
         final String ct = sbc.toString(), v = val;
