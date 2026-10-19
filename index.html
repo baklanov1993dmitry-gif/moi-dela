@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 16:48";
+const BUILD = "19.10 23:04";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2332,6 +2332,7 @@ const mCSS = `
 .sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
 @media(hover:hover){.taskrow.sub:hover .sbmv,.drow.stp:hover .sbmv{display:inline-flex}}
 .drow.stp .sbmv{margin-left:6px}
+.webbn{margin:8px 10px 2px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(10,18,56,.28);flex:none} .webbn svg{display:block;width:100%;height:auto;max-height:92px}
 .mcnt{font-size:calc(19px*var(--z,1));font-weight:600;margin-left:6px}
 .mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
 .mbar button{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 12px;cursor:pointer;font-size:inherit}
@@ -3477,6 +3478,15 @@ function weekMainHTML(vi) {
     sec("Просрочено", over, "Либо делаем сегодня, либо переносим осознанно.") + sec("Переносились 3+ раза", moved, "Такие задачи обычно слишком большие или не ваши: разбейте на подзадачи или честно скажите «не буду».") + sec("На ближайшие 7 дней", ahead) +
     (!over.length && !moved.length && !ahead.length && !closed.length ? '<div style="text-align:center;padding:40px 10px;color:var(--sub)">Пока нечего показывать</div>' : "") + "</div></div>";
 }
+// собственная заставка темы «Паутина»: ночной город, нить-паутина и надпись комиксным шрифтом (рисуется кодом, без картинок)
+function webBannerHTML() {
+  if (TH.theme !== "webl" || (PR.rail && !isMobile())) return "";
+  let b = "", x = 0; [[0,34,22],[22,22,30],[56,40,18],[96,26,34],[122,44,24],[166,30,38],[196,38,20]].forEach(q => { b += '<rect x="' + q[0] + '" y="' + (92 - q[2] * 1.5) + '" width="' + q[1] + '" height="' + (q[2] * 1.5 + 2) + '" fill="#18265a"/>'; for (let wy = 92 - q[2] * 1.5 + 6; wy < 88; wy += 9) for (let wx = q[0] + 5; wx < q[0] + q[1] - 4; wx += 8) if (((wx * 7 + wy * 3) % 5) === 0) b += '<rect x="' + wx + '" y="' + wy + '" width="3" height="3" fill="#ffd978" opacity=".8"/>'; });
+  const web = '<g fill="none" stroke="#e8eeff" stroke-opacity=".55" stroke-width=".8"><path d="M0 0L70 46M0 0L46 70M0 0L84 18M0 0L18 84"/><path d="M18 0Q20 18 0 18M38 0Q40 38 0 38M60 0Q62 60 0 60"/></g>';
+  const T = 'x="120" y="63" text-anchor="middle" font-family="Impact,\'Arial Black\',\'Arial Narrow Bold\',sans-serif" font-weight="900" font-size="35" letter-spacing="1" font-style="italic"';
+  return '<div class="webbn" aria-hidden="true"><svg viewBox="0 0 240 92" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="wbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d1747"/><stop offset="1" stop-color="#2a2f7a"/></linearGradient></defs><rect width="240" height="92" fill="url(#wbg)"/>' + b + web +
+    '<g transform="skewX(-8) translate(10 0)"><text ' + T + ' fill="var(--acc)" transform="translate(2.5 3)" stroke="#0a1238" stroke-width="5" paint-order="stroke" stroke-linejoin="round">ПАУТИНА</text><text ' + T + ' fill="#f2f6ff" stroke="#0a1238" stroke-width="4" paint-order="stroke" stroke-linejoin="round">ПАУТИНА</text></g></svg></div>';
+}
 function leftHTML(c) {
   const sm = (v, svg, name, n, color) => '<div class="chip ' + (view === v || (v === "team" && view.indexOf("team:") === 0) ? "on" : "") + '" data-a="view" data-v="' + v + '" title="' + name + '"><span class="em" style="color:' + color + '">' + ic(svg, 18) + '</span><span class="tx">' + name + '</span><span class="n">' + (n || "") + "</span></div>";
   const lc = l => '<div class="chip ' + (view === "list:" + l.id ? "on" : "") + '" data-a="view" data-v="list:' + l.id + '" data-lid="' + l.id + '" title="' + esc(l.name) + '">' + listIcon(l) + '<span class="tx">' + esc(l.name) + '</span><span class="n">' + (c["list:" + l.id] || "") + "</span></div>";
@@ -3489,7 +3499,7 @@ function leftHTML(c) {
     tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"><span class="tx">' + esc(g) + '</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>";
     if (!col) tree += '<div class="gbody">' + mem.map(lc).join("") + "</div>";
   }
-  return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
+  return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() + webBannerHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
     (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
