@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 13:18";
+const BUILD = "19.10 13:21";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3471,7 +3471,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>' + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
+    (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -3640,7 +3640,7 @@ function settingsHTML() {
     '<label class="swrow" style="margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>";
   else if (tab === "work") b =
     sec("Рабочий день (для плана и сетки «День»)", '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">' + sel("s-ds", PR.dayStart, [6,7,8,9,10].map(h => [h, "с " + h + ":00"])) + sel("s-de", PR.dayEnd, [14,15,16,17,18,19,20,21,22].map(h => [h, "до " + h + ":00"])) + sel("s-rs", PR.reserve, [0,10,20,25,30,40].map(p => [p, "резерв " + p + "%"])) + "</div>") +
-    '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-rit"' + (!PR.ritOff ? " checked" : "") + '> Утренний план при первом открытии за день (кнопка «План на сегодня» в меню есть всегда)</label>' +
+    (isLite() ? "" : '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-rit"' + (!PR.ritOff ? " checked" : "") + '> Утренний план при первом открытии за день (кнопка «План на сегодня» в меню есть всегда)</label>') +
     '<div class="lbl" style="margin-top:10px">Напоминать о задачах без движения</div>' + sel("s-stall", PR.stall === 0 ? 0 : (PR.stall || 3), [[0, "Не напоминать"], [2, "через 2 дня"], [3, "через 3 дня"], [5, "через 5 дней"], [7, "через неделю"]]) +
     '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
     '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Мой день» — это список на сегодня, который каждое утро начинается с нуля: вы сами выбираете, что берёте в работу сегодня. Если вам хватает «Запланировано» (по датам), оставьте выключенным.</div>';
@@ -3989,7 +3989,7 @@ function shareMaybe() {
   goView("list:" + l.id); render();
 }
 function ritualHTML() {
-  if (!ui.rit) return ""; const d = ritData(), eo = t => t.est_minutes || 30, sum = arr => arr.reduce((x, t) => x + eo(t), 0), est = sum(d.tod), cap = capacityMin(), noEst = d.tod.filter(t => !t.est_minutes).length;
+  if (!ui.rit || isLite()) return ""; const d = ritData(), eo = t => t.est_minutes || 30, sum = arr => arr.reduce((x, t) => x + eo(t), 0), est = sum(d.tod), cap = capacityMin(), noEst = d.tod.filter(t => !t.est_minutes).length;
   ui.ritc = ui.ritc || {};
   const open = (k, def) => ui.ritc[k] === undefined ? def : ui.ritc[k];
   const hd = (k, title, arr, def, hint) => { const o = open(k, def), ne = arr.filter(t => !t.est_minutes).length; return '<button class="rit-hd' + (o ? " on" : "") + '" data-a="ritfold" data-k="' + k + '" data-d="' + (def ? 1 : 0) + '"><span class="rit-ar">' + (o ? "▾" : "▸") + "</span><span class=\"rit-ht\">" + title + '</span><b>' + arr.length + '</b><span class="rit-hs">≈ ' + fmtDurM(sum(arr)) + (ne ? " (" + ne + " без оценки)" : "") + "</span></button>" + (o && hint ? '<div class="rit-hint">' + hint + "</div>" : ""); };
@@ -4008,7 +4008,7 @@ function ritualHTML() {
     '<div class="rit-ft"><button class="btn" data-a="ritok" style="flex:1">Принять план</button></div></div></div>';
 }
 function ritMaybe() {
-  if (!S.user || PR.ritOff || PR.ritDone === today || ui.rit || document.hidden || new Date().getHours() < 5) return;
+  if (!S.user || isLite() || PR.ritOff || PR.ritDone === today || ui.rit || document.hidden || new Date().getHours() < 5) return;
   if (ui.settings || ui.qa || ui.pop || ui.dsheet || selId || ui.noteFull || !Object.keys(S.tasks).length) return;
   const d = ritData(); if (!d.over.length && !d.tod.length && !d.stall.length) { PR.ritDone = today; savePrefs(); return; }
   ui.rit = true; render();
@@ -4331,7 +4331,7 @@ const acts = {
   sync() { loadAll(); },
   settings() { ui.settings = true; ui.smenu = true; ui.msg = ""; closePop(); render(); },
   bgclear() { TH.bg = ""; saveTheme(); render(); },
-  ritual() { ui.rit = true; ui.left = false; render(); },
+  ritual() { if (isLite()) return; ui.rit = true; ui.left = false; render(); },
   trk() { ui.trk = true; ui.left = false; TRK.off = 0; TRK.view = null; render(); trkLoad(); },
   trkclose() { ui.trk = false; render(); },
   trkovl(a, e) { if (e.target === a) { ui.trk = false; render(); } },
