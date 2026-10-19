@@ -114,8 +114,7 @@ public class JournalActivity extends Activity {
         shade.addView(sv, lp);
         setContentView(shade);
 
-        if (start <= 0) { buildStart(card, sp); return; }
-        buildStop(card, sp);
+        buildStop(card, sp);   // сразу «что уже сделал»: начало = конец последней записи, конец = сейчас
     }
 
     void buildStart(LinearLayout card, final SharedPreferences sp) {
@@ -135,13 +134,30 @@ public class JournalActivity extends Activity {
         } });
     }
 
-    void buildStop(LinearLayout card, final SharedPreferences sp) {
+    boolean timer, minEdited;
+    TextView sinceTv;
+    static boolean sameDay(long a, long b) { java.util.Calendar x = java.util.Calendar.getInstance(), y = java.util.Calendar.getInstance(); x.setTimeInMillis(a); y.setTimeInMillis(b); return x.get(java.util.Calendar.YEAR) == y.get(java.util.Calendar.YEAR) && x.get(java.util.Calendar.DAY_OF_YEAR) == y.get(java.util.Calendar.DAY_OF_YEAR); }
+    /** начало дела: запущенный таймер → конец последней записи сегодня → 30 минут назад */
+    void pickStart(long last) {
+        long now = System.currentTimeMillis();
+        if (timer) return;
+        if (last > 0 && last < now && sameDay(last, now) && now - last <= 12 * 3600e3) start = last; else if (start <= 0) start = now - 30 * 60000L;
+    }
+    void showStart() {
         long mins = Math.max(1, (System.currentTimeMillis() - start) / 60000);
-        String since = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(start));
+        if (sinceTv != null) sinceTv.setText("с " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(start)) + " до сейчас");
+        if (emin != null && !minEdited) emin.setText(String.valueOf(Math.min(1440, mins)));
+    }
+
+    void buildStop(LinearLayout card, final SharedPreferences sp) {
+        timer = start > 0;
+        if (!timer) { start = 0; pickStart(sp.getLong("jt_last", 0)); }
+        long mins = Math.max(1, (System.currentTimeMillis() - start) / 60000);
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.addView(tv("⏱  Записать в журнал", 20, cTx, true), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        top.addView(tv("с " + since, 14, cMut, false));
+        sinceTv = tv("", 14, cMut, false);
+        top.addView(sinceTv);
         card.addView(top);
         et = field("Что делал?", sp.getString("jt_title", ""));
         LinearLayout.LayoutParams fl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -175,10 +191,11 @@ public class JournalActivity extends Activity {
         card.addView(tr);
         final Context c = getApplicationContext();
         new Thread(new Runnable() { public void run() {   // темы из журнала (по частоте)
-            JSONArray arr = null;
-            try { String r = Net.get(Store.api(c, "jrc", "")); if (r != null) arr = new JSONObject(r).optJSONArray("cats"); } catch (Exception e) { /* без подсказок — можно вписать */ }
-            final JSONArray fa = arr;
+            JSONArray arr = null; long lst = 0;
+            try { String r = Net.get(Store.api(c, "jrc", "")); if (r != null) { JSONObject o = new JSONObject(r); arr = o.optJSONArray("cats"); lst = o.optLong("last", 0); } } catch (Exception e) { /* без подсказок — можно вписать */ }
+            final JSONArray fa = arr; final long fl2 = lst;
             runOnUiThread(new Runnable() { public void run() {
+                if (fl2 > 0) { pickStart(fl2); showStart(); }
                 if (fa == null) return;
                 for (ArrayAdapter<String> ad : ads) { ad.clear(); for (int i = 0; i < fa.length(); i++) ad.add(fa.optString(i)); ad.notifyDataSetChanged(); }
             } });
@@ -203,6 +220,7 @@ public class JournalActivity extends Activity {
         TextView minus = btn("−", cFld, cTx, 24), plus = btn("+", cFld, cTx, 24);
         emin = field("", String.valueOf(mins));
         emin.setInputType(InputType.TYPE_CLASS_NUMBER);
+        emin.setOnFocusChangeListener(new View.OnFocusChangeListener() { public void onFocusChange(View v, boolean f) { if (f) minEdited = true; } });
         emin.setGravity(Gravity.CENTER);
         emin.setTextSize(24);
         emin.setTypeface(Typeface.DEFAULT_BOLD);
@@ -212,6 +230,7 @@ public class JournalActivity extends Activity {
         mr.addView(emin, ep);
         mr.addView(plus, new LinearLayout.LayoutParams(dp(60), dp(56)));
         card.addView(mr);
+        showStart();
         minus.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { step(-5); } });
         plus.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { step(5); } });
 
@@ -220,6 +239,7 @@ public class JournalActivity extends Activity {
         sl.topMargin = dp(22);
         card.addView(save, sl);
         save.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { save(); } });
+        if (!timer) return;
         TextView drop = tv("Сбросить таймер", 15, cMut, false);
         drop.setGravity(Gravity.CENTER);
         drop.setPadding(0, dp(14), 0, dp(6));
@@ -238,6 +258,7 @@ public class JournalActivity extends Activity {
     }
 
     void step(int d) {
+        minEdited = true;
         int m = 0;
         try { m = Integer.parseInt(emin.getText().toString().trim()); } catch (Exception e) { /* 0 */ }
         m = Math.max(1, Math.min(1440, m + d));
@@ -274,7 +295,7 @@ public class JournalActivity extends Activity {
             final boolean noval = good && res.contains("\"noval\"");
             runOnUiThread(new Runnable() { public void run() {
                 if (!good) { Toast.makeText(c, "Нет связи — таймер сохранён, повтори позже", Toast.LENGTH_LONG).show(); return; }
-                Store.p(c).edit().remove("jt_start").remove("jt_title").apply();
+                Store.p(c).edit().remove("jt_start").remove("jt_title").putLong("jt_last", end).apply();
                 Toast.makeText(c, noval ? "В журнале ✓ (оценка не сохранилась: включи колонку val в приложении)" : "В журнале ✓", Toast.LENGTH_SHORT).show();
                 JournalWidget.refreshAll(c);
                 me.finish();

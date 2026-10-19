@@ -50,7 +50,7 @@ final class JournalNotif {
              .addAction(R.drawable.ic_tile_jr, "■ Стоп и записать", open);
         } else {
             PendingIntent go = PendingIntent.getBroadcast(a, 62, new Intent(a, JournalNotifReceiver.class).setAction("start"), fl);
-            b.setContentTitle("Журнал").setContentText("Нажми «Старт», когда начнёшь дело").setShowWhen(false)
+            b.setContentTitle("Журнал").setContentText("Нажми — запиши, что сделал. «Старт» — засечь новое").setShowWhen(false)
              .addAction(R.drawable.ic_tile_jr, "▶ Старт", go);
         }
         try { nm.notify(ID, b.build()); } catch (Exception e) { /* нет разрешения на уведомления */ }

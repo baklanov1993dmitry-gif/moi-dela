@@ -18,9 +18,10 @@ public class JournalWidget extends AppWidgetProvider {
         String t = Store.p(c).getString("jt_title", "");
         if (st <= 0) {
             v.setInt(R.id.j_root, "setBackgroundResource", R.drawable.jw_idle);
-            v.setTextViewText(R.id.j_icon, "▶");
+            long last = Store.p(c).getLong("jt_last", 0), now = System.currentTimeMillis();
+            v.setTextViewText(R.id.j_icon, "✎");
             v.setTextViewText(R.id.j_text, "Журнал");
-            v.setTextViewText(R.id.j_sub, "Нажми, чтобы начать дело");
+            v.setTextViewText(R.id.j_sub, last > 0 && last < now && JournalActivity.sameDay(last, now) ? "Что сделал с " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(last)) + "? Нажми" : "Нажми — запиши, что сделал");
         } else {
             v.setInt(R.id.j_root, "setBackgroundResource", R.drawable.jw_run);
             v.setTextViewText(R.id.j_icon, "■");

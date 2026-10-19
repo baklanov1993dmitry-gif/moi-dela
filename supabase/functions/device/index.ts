@@ -82,7 +82,9 @@ Deno.serve(async (req) => {
     const r = await fetch(base + "time_log?select=cat&user_id=eq." + uid + "&cat=not.is.null&order=created_at.desc&limit=2000", { headers: hd });
     const cnt: Record<string, { n: number; t: string }> = {};
     if (r.ok) for (const x of await r.json()) for (const t0 of String(x.cat || "").split(",")) { const t = t0.trim().replace(/^#/, "").slice(0, 40), k = t.toLowerCase(); if (!t) continue; (cnt[k] = cnt[k] || { n: 0, t }).n++; }
-    return ok({ cats: Object.values(cnt).sort((p, q) => q.n - p.n).slice(0, 60).map((v) => v.t) });
+    let last = 0;   // конец последней записи журнала (не в будущем) — от него телефон считает начало нового дела
+    try { const lr = await fetch(base + "time_log?select=end_at&user_id=eq." + uid + "&end_at=not.is.null&end_at=lte." + encodeURIComponent(new Date(Date.now() + 60e3).toISOString()) + "&order=end_at.desc&limit=1", { headers: hd }); if (lr.ok) { const x = (await lr.json())[0]; if (x && x.end_at) last = Date.parse(x.end_at) || 0; } } catch { /* без него */ }
+    return ok({ cats: Object.values(cnt).sort((p, q) => q.n - p.n).slice(0, 60).map((v) => v.t), last });
   }
   if (a === "jr") {   // запись в журнал с телефона (таймер старт/стоп): title, start (мс), end (мс), cat, val = u|n|x
     let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
