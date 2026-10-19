@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 08:22";
+const BUILD = "19.10 08:23";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2010,7 +2010,14 @@ const hkMap = () => { const m = {}; HK.forEach(a => { m[a[0]] = PR.keys && a[0] 
 const hkCombo = e => (e.altKey ? "Alt+" : "") + (e.shiftKey ? "Shift+" : "") + e.code;
 const hkName = c => c.split("+").map(p => ({ Enter: "Enter", Delete: "Del", Slash: "/", Space: "Пробел", ArrowUp: "↑", ArrowDown: "↓", Backslash: "\\", Comma: ",", Period: ".", Minus: "-", Equal: "=", Backquote: "`", BracketLeft: "[", BracketRight: "]", Semicolon: ";", Quote: "'" }[p] || p.replace(/^Key/, "").replace(/^Digit/, "").replace(/^Numpad/, "Num "))).join(" + ");
 const hkReserved = c => /^(Digit[0-8]|Numpad[0-8]|Escape|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Tab|Space|Backspace)$/.test(c) ? "занято приложением или браузером" : "";
-const hkReveal = id => { const r = id && document.querySelector('#main .taskrow[data-id="' + id + '"]'); if (r && r.scrollIntoView) r.scrollIntoView({ block: "nearest" }); };
+const hkReveal = id => {   // выделенная стрелками задача держится в верхней трети списка
+  const r = id && document.querySelector('#main .taskrow[data-id="' + id + '"]'); if (!r) return;
+  let sc = r.parentElement; while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 2 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+  if (!sc || sc === document.body) { if (r.scrollIntoView) r.scrollIntoView({ block: "nearest" }); return; }
+  const cb = sc.getBoundingClientRect(), rb = r.getBoundingClientRect(), h = sc.clientHeight, y = rb.top - cb.top;
+  if (y >= h * 0.08 && y <= h * 0.42 && rb.bottom <= cb.bottom) return;   // уже в верхней трети — не дёргаем
+  sc.scrollTo({ top: sc.scrollTop + y - h * 0.28, behavior: "smooth" });
+};
 function hkRun(a) {
   const ids = visIds(), id = selId && S.tasks[selId] ? selId : null, t = id && S.tasks[id];
   const need = () => { toast("Сначала выберите задачу: стрелки ↑ ↓"); return true; };
