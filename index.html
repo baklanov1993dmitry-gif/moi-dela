@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 23:08";
+const BUILD = "20.10 23:12";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2448,6 +2448,11 @@ const jrCSS = `
 .jr-bot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:14px}
 .jr-w,.jr-d{cursor:pointer}.jr-w:hover{text-decoration:underline}
 .jr-tx{cursor:pointer;padding:1px 7px;border-radius:7px;box-decoration-break:clone;-webkit-box-decoration-break:clone;line-height:1.55}
+#main .jr-sbox .jr-it:not(.jr-ed){margin:3px 0;padding:8px 8px 8px 14px;border-radius:10px}
+#main .jr-sbox .jr-it:not(.jr-ed).vu{background:rgba(58,167,109,.17);box-shadow:inset 5px 0 #3aa76d}
+#main .jr-sbox .jr-it:not(.jr-ed).vn{background:rgba(154,160,166,.17);box-shadow:inset 5px 0 #9aa0a6}
+#main .jr-sbox .jr-it:not(.jr-ed).vx{background:rgba(217,83,79,.18);box-shadow:inset 5px 0 #d9534f}
+.jrb{font-style:normal;margin-right:6px}
 .jr-tx.vu{background:#cfeedd}.jr-tx.vn{background:#e3e5e9}.jr-tx.vx{background:#f9d6d2}.jr-tx:hover{outline:1px solid rgba(0,0,0,.18)}
 .jr-pen{border:0;background:transparent;color:var(--sub);cursor:pointer;font-size:1.05em;padding:0;opacity:.45;align-self:start}.jr-pen:hover{opacity:1;color:#8764b8}
 .jr-tg{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;min-height:20px;min-width:0}.jr-tg .jr-c{min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -5063,7 +5068,7 @@ function jrPeriodList(R) {   // сами записи за выбранную н
   let arr = all.filter(l => (!f.val || (f.val === "none" ? !l.val : l.val === f.val)) && (!f.tag || jrTagsOf(l.cat).indexOf(f.tag) >= 0));
   arr.sort((a, b) => (jrDay(a) + (a.start_at || "")).localeCompare(jrDay(b) + (b.start_at || "")));
   let body = "", cd = "";
-  arr.forEach(l => { const d = jrDay(l); if (d !== cd) { cd = d; const dd = parseISO(d), sum = arr.filter(x => jrDay(x) === d).reduce((t, x) => t + jrMinOf(x), 0); body += '<div class="jr-day"><span>' + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + "</span><span>" + (sum ? fmtDurM(sum) : "") + "</span></div>"; } body += jrItem(l); });
+  arr.forEach(l => { const d = jrDay(l); if (d !== cd) { cd = d; const dd = parseISO(d), sum = arr.filter(x => jrDay(x) === d).reduce((t, x) => t + jrMinOf(x), 0); body += '<div class="jr-day"><span>' + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + "</span><span>" + (sum ? fmtDurM(sum) : "") + "</span></div>"; } body += jrItem(l).replace('<span class="jr-tx">', '<span class="jr-tx"><i class="jrb">' + ({ u: "🟢", n: "⚪", x: "🔴" }[l.val] || "") + "</i>"); });
   return '<div class="jr-sbox"><div class="jr-st">Записи за период: <b>' + arr.length + "</b>" + (arr.length !== all.length ? " из " + all.length : "") + "</div>" +
     (hasV.length ? '<div class="jr-chips">' + hasV.map(o => chip("jrsfv", o[0], f.val, o[1])).join("") + "</div>" : "") +
     (tags.length ? '<div class="jr-chips">' + chip("jrsft", "", f.tag, "Все темы") + tags.map(t => chip("jrsft", t, f.tag, esc(t))).join("") + "</div>" : "") +
