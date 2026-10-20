@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 23:05";
+const BUILD = "20.10 23:08";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -5049,7 +5049,25 @@ function jrSummaryHTML() {
     '<div class="jr-nav"><button class="ibtn" data-a="jrswp">' + ic("arrowl", 22) + '</button><div class="jr-nl" style="cursor:default">' + lab + '</div><button class="ibtn jr-nr" data-a="jrswn">' + ic("arrowl", 22) + "</button></div>" +
     jrGlance(cur, R) + '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> ' + (R.p === "m" ? "этот месяц" : "эта неделя") + ' <u></u> ' + (R.p === "m" ? "прошлый" : "прошлая") + '</div></div>' + jrGoalsHTML(R) + jrReviewHTML(R) +
     '<div class="jr-sbox"><div class="jr-st">Что видно по цифрам</div><ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul></div>" +
+    jrPeriodList(R) +
     '<button class="btn jr-go" data-a="jrmk">🏷 Разметка записей</button>' + (R.p === "w" ? '<button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' : "") + aiBox(J.ai) + jrCzHTML();
+}
+function jrPeriodList(R) {   // сами записи за выбранную неделю/месяц: пробежаться глазами, отфильтровать по оценке и теме
+  const J = jrState(), f = J.sf || (J.sf = { val: "", tag: "" });
+  const all = Object.values(S.time_log).filter(l => { const d = jrDay(l); return !l.deleted && l.title && d && d >= R.from && d < R.to; });
+  const tm = {}; all.forEach(l => { const m = jrMinOf(l); jrTagsOf(l.cat).forEach(t => { tm[t] = (tm[t] || 0) + m; }); });
+  const tags = Object.keys(tm).sort((a, b) => tm[b] - tm[a]).slice(0, 12);
+  if (f.tag && tags.indexOf(f.tag) < 0) f.tag = "";
+  const hasV = JV ? [["", "Все"], ["u", "🟢"], ["n", "⚪"], ["x", "🔴"], ["none", "Без оценки"]] : [];
+  const chip = (act, v, cur, lab) => '<button class="jr-chip' + (cur === v ? " on" : "") + '" data-a="' + act + '" data-v="' + esc(v) + '">' + lab + "</button>";
+  let arr = all.filter(l => (!f.val || (f.val === "none" ? !l.val : l.val === f.val)) && (!f.tag || jrTagsOf(l.cat).indexOf(f.tag) >= 0));
+  arr.sort((a, b) => (jrDay(a) + (a.start_at || "")).localeCompare(jrDay(b) + (b.start_at || "")));
+  let body = "", cd = "";
+  arr.forEach(l => { const d = jrDay(l); if (d !== cd) { cd = d; const dd = parseISO(d), sum = arr.filter(x => jrDay(x) === d).reduce((t, x) => t + jrMinOf(x), 0); body += '<div class="jr-day"><span>' + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + "</span><span>" + (sum ? fmtDurM(sum) : "") + "</span></div>"; } body += jrItem(l); });
+  return '<div class="jr-sbox"><div class="jr-st">Записи за период: <b>' + arr.length + "</b>" + (arr.length !== all.length ? " из " + all.length : "") + "</div>" +
+    (hasV.length ? '<div class="jr-chips">' + hasV.map(o => chip("jrsfv", o[0], f.val, o[1])).join("") + "</div>" : "") +
+    (tags.length ? '<div class="jr-chips">' + chip("jrsft", "", f.tag, "Все темы") + tags.map(t => chip("jrsft", t, f.tag, esc(t))).join("") + "</div>" : "") +
+    (body || '<div class="jr-empty">Нет записей по этому фильтру</div>') + "</div>";
 }
 const jrNoCat = () => Object.values(S.time_log).filter(l => !l.cat && l.title && !l.deleted).sort((a, b) => String(b.start_at || b.d1 || "").localeCompare(String(a.start_at || a.d1 || "")));
 const jrToMark = () => Object.values(S.time_log).filter(l => l.title && !l.deleted && jrDay(l) && (!l.cat || (JV && !l.val))).sort((a, b) => (jrDay(b) + (b.start_at || "")).localeCompare(jrDay(a) + (a.start_at || "")));
@@ -5159,6 +5177,8 @@ Object.assign(acts, {
   jrtab(a) { const J = jrState(); J.menu = false; J.mk = false; J.an = false; J.hist = false; J.cz = null; J.sum = true; J.ai = null;
     if (a.dataset.v === "m") { J.sp = "m"; J.sm = jrMonthShift(todayISO().slice(0, 8) + "01", -1); } else { J.sp = "w"; J.sw = addDays(jrMon(todayISO()), -7); }   // сразу прошлая завершённая неделя/месяц; стрелками можно к текущей
     render(); },
+  jrsfv(a) { const J = jrState(); (J.sf || (J.sf = {})).val = a.dataset.v; render(); },
+  jrsft(a) { const J = jrState(); (J.sf || (J.sf = {})).tag = a.dataset.v; render(); },
   jrsum() { const J = jrState(); J.sum = !J.sum; J.ai = null; render(); },
   jrswp() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, -1); else J.sw = addDays(J.sw || jrMon(todayISO()), -7); J.ai = null; render(); },
   jrswn() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, 1); else J.sw = addDays(J.sw || jrMon(todayISO()), 7); J.ai = null; render(); },
