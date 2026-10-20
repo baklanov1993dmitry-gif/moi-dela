@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 22:40";
+const BUILD = "20.10 23:05";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4810,12 +4810,15 @@ function journalMainHTML(vi) {
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, 1, '<button class="ibtn" data-a="jrmenu" title="Меню журнала" style="font-size:22px;font-weight:700">⋯</button>') + '<div class="mhead mhide"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrmenu" title="Разметка, итоги, аналитика, история">⋯ Меню</button><button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub mhide-m">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.menu ? jrMenuHTML() : "") + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + "") + "</div>" + wheel + "</div>";
+    '<div class="msub mhide-m">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.menu ? jrMenuHTML() : "") + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : jrTabsHTML() + nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + "") + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wcw"><div class="jr-wsq"></div><div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: WC * n }, (_, i) => "<div>" + pad2(i % n) + "</div>").join("") + '<div class="jr-wp"></div></div></div>';
   setTimeout(() => { const h = $("jr-wh-h"), m = $("jr-wh-m"); const mid = Math.floor(WC / 2); if (h) { h.scrollTop = (mid * 24 + w.h) * WR; jrWFx(h); } if (m) { m.scrollTop = (mid * 60 + w.m) * WR; jrWFx(m); } jrWCol(w.col || "h"); }, 0);
   return '<div class="jr-wov" data-a="jrwcancel"><div class="jr-wbox" data-a="jrnop"><div class="jr-wt">' + (w.k === "st" || w.k === "est" ? "Начало" : "Конец") + '</div><div class="jr-wl"><span id="jr-wl-h">часы</span><span id="jr-wl-m">минуты</span></div><div class="jr-wr">' + col("jr-wh-h", 24) + '<b>:</b>' + col("jr-wh-m", 60) + '</div><div class="jr-wb"><button class="btn ghost" data-a="jrwnow">Сейчас</button><span style="flex:1"></span><button class="btn ghost" data-a="jrwcancel">Отмена</button><button class="btn" data-a="jrwok">Готово</button></div></div></div>';
+}
+function jrTabsHTML() {   // заметные вкладки: день / итоги недели / итоги месяца (раньше были спрятаны в «⋯»)
+  return '<div class="jr-chips jr-tabs"><button class="jr-chip on">📅 День</button><button class="jr-chip" data-a="jrtab" data-v="w">📊 Неделя</button><button class="jr-chip" data-a="jrtab" data-v="m">🗓 Месяц</button></div>';
 }
 function jrMenuHTML() {
   const n = JV ? jrUnval().length : 0;
@@ -5153,6 +5156,9 @@ Object.assign(acts, {
     J.wh = { k, h: +p[0], m: +p[1] }; render();
   },
   jrnop() {},
+  jrtab(a) { const J = jrState(); J.menu = false; J.mk = false; J.an = false; J.hist = false; J.cz = null; J.sum = true; J.ai = null;
+    if (a.dataset.v === "m") { J.sp = "m"; J.sm = jrMonthShift(todayISO().slice(0, 8) + "01", -1); } else { J.sp = "w"; J.sw = addDays(jrMon(todayISO()), -7); }   // сразу прошлая завершённая неделя/месяц; стрелками можно к текущей
+    render(); },
   jrsum() { const J = jrState(); J.sum = !J.sum; J.ai = null; render(); },
   jrswp() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, -1); else J.sw = addDays(J.sw || jrMon(todayISO()), -7); J.ai = null; render(); },
   jrswn() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, 1); else J.sw = addDays(J.sw || jrMon(todayISO()), 7); J.ai = null; render(); },
