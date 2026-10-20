@@ -198,7 +198,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .crow .a{font-size:16px}
 .fab{bottom:calc(11px + env(safe-area-inset-bottom))}
 .full{overflow-y:auto}.full.fcat{overflow:hidden}
-.dt{padding:0;height:46px;font-size:17.4px;gap:6px}
+.dt{padding:0;height:46px;font-size:17.4px;gap:6px}.nmc{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:2;border:0;background:var(--card2);color:var(--sub);font:inherit;font-size:.7em;padding:5px 10px;border-radius:999px;cursor:pointer}.nmc.on{background:var(--acc);color:#fff}
 .amtbox{height:66px;margin:45px 14px 0}
 .amtbox .cur{width:39px;align-items:flex-start;justify-content:space-between;padding:6px 0 4px 4px;margin:4px 0}
 .amtbox .cur svg{width:30px;height:24px}.amtbox .cur small{font-size:13px}
@@ -370,7 +370,8 @@ let flushing = false;
 const savePR = () => jset(LS.pref, PR);
 const THEMES = [["gray", "Серая", "#424242", "#616161"], ["black", "Чёрная", "#000000", "#171717"], ["light", "Светлая", "#f2f3f5", "#e3e6ec"], ["navy", "Синяя", "#141a2c", "#1f2742"], ["forest", "Лесная", "#14201a", "#1d3328"], ["plum", "Сливовая", "#1d1626", "#2e2140"], ["sand", "Песок", "#f4efe6", "#e6dccb"], ["cream", "Кремовая", "#fbf6e6", "#f1e9d0"], ["beige", "Бежевая", "#e8dcc8", "#d9c9ae"], ["mint", "Мятная", "#eaf3ee", "#d6e7dd"], ["sky", "Небесная", "#eaf1f8", "#d5e2f0"], ["rose", "Розовая", "#f8ecee", "#efd7db"], ["lav", "Лавандовая", "#efeaf6", "#e0d7ee"]], ACCS = ["#81c995", "#6fd1c4", "#6aa8ff", "#a78bfa", "#f2b36d", "#e88fc4", "#b6d96a", "#ff8f6b", "#ffd54f", "#4dd0e1", "#9fa8ff", "#ff7a90", "#c5e1a5", "#ffab40", "#2e9e5b", "#1f7ae0", "#7c4dff", "#d6336c", "#c2410c", "#0f766e", "#8d6e63", "#90a4ae"];
 function applyTheme() { if (PR.theme === "dark") PR.theme = "gray"; const th = THEMES.find(t => t[0] === PR.theme) || THEMES[0]; document.documentElement.dataset.t = th[0]; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = th[3]; }
-function toast(t, cls, ms) { const e = document.createElement("div"); e.className = "toast " + (cls || ""); e.textContent = String(t).replace(/\n+/g, " · "); document.body.appendChild(e); setTimeout(() => e.remove(), ms || 2200); }
+function toast(t, cls, ms) { document.querySelectorAll(".toast").forEach(x => x.remove()); const e = document.createElement("div"); e.className = "toast " + (cls || ""); e.textContent = String(t).replace(/\n+/g, " · "); e.style.pointerEvents = "auto"; e.dataset.t = Date.now(); e.onclick = () => e.remove(); document.body.appendChild(e); setTimeout(() => e.remove(), ms || 1400); }
+document.addEventListener("pointerdown", () => document.querySelectorAll(".toast").forEach(x => { if (Date.now() - x.dataset.t > 350) x.remove(); }), true);
 const catOf = id => cats.find(c => c.id === id) || { id: null, name: "Без категории", icon: "❔", color: "#8d99ae", kind: "exp" };
 const catsOf = k => cats.filter(c => c.kind === k && !c.archived).sort((a, b) => a.position - b.position);
 
@@ -530,6 +531,12 @@ function budgetOf(c, am) { if (c.kind === "exp" && c.id && isCl(c.id, am)) retur
 function budState(spent, b, am) {
   const r = b.v ? spent / b.v : 0, cur = am === mk(new Date()), f = cur ? Math.min(1, new Date().getDate() / daysIn(am)) : 1;
   return { r, f, st: r > 1 ? "over" : r >= .85 ? "warn" : (cur && r > .5 && spent > b.v * f * 1.25 ? "pace" : "ok") };
+}
+function limState(m) {   // итог месяца против потолка/нормы
+  const capOn = bmode() === "cap" && PR.cap > 0, sp = monTot(monthSums(), m); let base = 0, proj = 0;
+  if (capOn) base = PR.cap; else cats.filter(c => c.kind === "exp").forEach(c => { const b = budgetOf(c, m); if (b && b.kind !== "closed") base += b.v; });
+  cats.filter(c => c.kind === "exp").forEach(c => { const b = budgetOf(c, m), v = catSpent(c.id, m); proj += Math.max(v, b ? b.v : 0); });
+  return { capOn, sp, base, proj, over: base > 0 && sp > base };
 }
 const BCOL = { ok: "var(--acc)", pace: "#f2b36d", warn: "#f2b36d", over: "var(--exp)" };
 const catSpent = (id, m) => ((monthSums()[m] || {})[id || "_"]) || 0;
@@ -955,7 +962,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 44 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 45 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1177,7 +1184,7 @@ function sheetHTML() {
   if (s.type === "tx") {
     const c = s.cat ? catOf(s.cat) : null, d = new Date((s.date || dayKey(new Date())) + "T12:00"), dl = d.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }), title = s.id ? "Правка" : s.kind === "exp" ? "Новый расход" : "Новый доход";
     const head = '<div class="hdr"><button class="hb" data-a="txback">' + UI.back + '</button><div class="ttl"><div class="sa" style="color:var(--tx);font-size:1.35em;margin:0">' + title + "</div></div>" + (s.id ? '<button class="hb" data-a="txdel" style="color:var(--expc)">' + UI.trash + "</button>" : s.kind === "exp" ? '<button class="hb" data-a="rcptxt" title="Чек из письма" style="font-size:22px">✉️</button>' : "") + "</div>";
-    const date = '<label class="dt">' + UI.cal + "<span>" + esc(dl.charAt(0).toUpperCase() + dl.slice(1)) + '</span><input type="date" id="s-date" value="' + esc(s.date) + '" onchange="dateChange(this.value)"></label>';
+    const date = '<label class="dt">' + UI.cal + "<span>" + esc(dl.charAt(0).toUpperCase() + dl.slice(1)) + '</span><input type="date" id="s-date" value="' + esc(s.date) + '" onchange="dateChange(this.value)">' + nmChip(s) + "</label>";
     const amt = '<div class="amtbox"><div class="cur">' + UI.cash + "<small>RUB</small></div><div class=\"amt\">" + esc(s.expr || "0") + '</div><button class="bs" data-a="key" data-v="⌫">' + UI.bks + "</button></div>";
     if (s.step === "cat") {
       return '<div class="full fcat">' + head + date + amt + '<input class="in cs" id="cs" autocomplete="off" placeholder="🔍 Найти категорию" value="' + esc(s.cq || "") + '"><div class="cgrid" id="cg">' + cgridInner(s) + "</div></div>";
@@ -1194,6 +1201,12 @@ function sheetHTML() {
   }
   if (s.type === "rcpc") {
     return '<div class="ov" data-a="rcpcback"><div class="sheet rcp" data-a="nop"><h2 style="margin:0 0 8px">' + (s.all ? "Категория для всех без категории" : "Категория") + '</h2><input class="in" id="rc-q" autocomplete="off" placeholder="🔍 Найти категорию по слову" value="' + esc(s.q || "") + '"><div class="rl" id="rc-l" style="margin-top:6px">' + rcpcList(s.q) + '</div><div style="display:flex;gap:8px;margin-top:6px">' + (s.all ? "" : '<button class="btn g" style="flex:1" data-a="rcpick" data-id="">Без категории</button>') + '<button class="btn g" style="flex:1" data-a="rcpcback">Назад</button></div></div></div>';
+  }
+  if (s.type === "ovr") {
+    const L = s.L, sug = Math.ceil(L.proj / 1000) * 1000, what = L.capOn ? "потолок" : "норму";
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 6px">⚠️ Выход за ' + what + ' месяца</h2><div class="sub" style="font-size:.92em;line-height:1.4">Потрачено <b>' + fm(L.sp) + "</b> при " + what + " " + fm(L.base) + ' — это на <b class="exp">' + fm(L.sp - L.base) + "</b> больше. Планы по категориям и «сколько ещё можно» считались от старой цифры — пора задать новую.</div>" +
+      '<div class="sub" style="margin:10px 0 4px">Если остальное тратить как обычно, месяц закончится на ≈ <b>' + fm(L.proj) + '</b>. Новый потолок:</div><input class="in" id="ov-v" inputmode="decimal" value="' + sug + '"><div class="sub" style="font-size:.8em;margin:4px 0 0">Я пересчитаю все группы: что уже потрачено не урезается, остаток распределится по гибким категориям.</div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1;background:var(--card2);color:var(--tx)" data-a="shclose">Оставить</button><button class="btn" style="flex:1" data-a="ovrset">Задать и пересчитать</button></div></div></div>';
   }
   if (s.type === "pback") return pbHTML(s);
   if (s.type === "ren") return renHTML(s);
@@ -1359,6 +1372,8 @@ function evalExpr(e) {
   if (!x || !/^[\d.+\-*/]+$/.test(x)) return 0;
   try { const v = Function('"use strict";return (' + x.replace(/^[+*/]+/, "") + ")")(); return isFinite(v) ? v : 0; } catch (err) { return 0; }
 }
+const nextM1 = () => { const n = new Date(); return dayKey(new Date(n.getFullYear(), n.getMonth() + 1, 1)); };
+function nmChip(s) { if (s.id) return ""; const fut = (s.date || "") >= nextM1(), nm = new Date(nextM1() + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" }); return '<button class="nmc' + (fut ? " on" : "") + '" data-a="nextm">' + (fut ? "↩ сегодня" : "→ " + nm) + "</button>"; }
 function dateChange(v) { const s = ui.sheet; if (!s || !v) return; uread(); s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
 function rread() { const s = ui.sheet; if (!s || s.type !== "rcp" || !s.items) return; s.items.forEach((x, i) => { const n = $("r-n-" + i), a = $("r-a-" + i), c = $("r-c-" + i), q = $("r-q-" + i); if (n) x.name = n.value; if (a) x.amount = a.value; if (q) { const qv = parseFloat(String(q.value).replace(",", ".")); x.q = qv > 0 ? qv : 1; } if (c) x.cat = c.value; }); if ($("r-date") && $("r-date").value) s.date = $("r-date").value; if ($("r-merge")) s.merge = $("r-merge").checked; }
 function xread() { const s = ui.sheet; if (!s) return; const g = i => ($(i) || {}).value; if ($("x-cat")) s.cat = g("x-cat"); if ($("x-amt")) s.amt = g("x-amt"); if ($("x-note")) s.note = g("x-note"); if ($("x-day")) s.day = g("x-day"); }
@@ -1393,13 +1408,15 @@ function saveTx() {
   const old = s.id ? txs.find(t => t.id === s.id) : null, d = new Date(s.date + "T12:00"), now = new Date();
   if (s.date === dayKey(now) && !old) d.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
   else if (old && dayKey(new Date(old.ts)) === s.date) d.setTime(new Date(old.ts).getTime());
-  uread(); const tid = s.id || uid(), nm = s.note.trim();
+  uread(); const tid = s.id || uid(), nm = s.note.trim(), cm = mk(d), L0 = s.kind === "exp" && cm === mk(new Date()) ? limState(cm) : null;
   upTx({ id: tid, ts: d.toISOString(), amount: amt, kind: s.kind, category_id: s.cat, note: nm, account: "Основной" });
   try {
     const key = PRC.key(nm), multi = nm.split(/\s*,\s+|\s+,\s*|;|\n/).filter(Boolean).length > 1, ex = PRICES.find(r => r.tx_id === tid), c = unitCalc(amt, pnum(s.q), pnum(s.p));
     if (s.kind === "exp" && nm && key && !multi && (c.explicit || ex || (window.FOOD && FOOD.classify(nm.toLowerCase()).size > 0))) upPrice({ id: ex ? ex.id : uid(), ts: d.toISOString(), name: nm.slice(0, 140), pkey: key, price: PRC.unitPrice(c.p, c.q, amt), qty: c.q, amount: amt, shop: ex ? ex.shop : "", tx_id: tid });
   } catch (e) {}
-  const bm = s.kind === "exp" ? budgetMsg(s.cat, d.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200);
+  const bm = s.kind === "exp" ? budgetMsg(s.cat, d.toISOString()) : null, L1 = L0 ? limState(cm) : null;
+  if (L0 && L1.over && !L0.over) { ui.sheet = { type: "ovr", m: cm, L: L1 }; render(); return; }
+  ui.sheet = null; render(); toast("Записано: " + fm(amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 3600 : 1400);
 }
 
 /* ============ импорт Monefy CSV ============ */
@@ -1485,6 +1502,8 @@ const A = {
   cltog(a) { const am = anchorMonth(), id = a.dataset.id; PR.cl = PR.cl || {}; PR.cl[am] = PR.cl[am] || {}; if (PR.cl[am][id]) delete PR.cl[am][id]; else PR.cl[am][id] = true; savePR(); render(); toast(PR.cl[am][id] ? "Закрыто: остаток освобождён для других категорий" : "Категория снова открыта"); },
   fixtog(a) { const am = anchorMonth(), id = a.dataset.id; PR.fixm = PR.fixm || {}; const f = PR.fixm[am] = Object.assign({}, fixM(am)); if (f[id]) delete f[id]; else f[id] = true; savePR(); render(); },
   bmode(a) { PR.bm = a.dataset.v; PR.normOn = PR.bm !== "off"; savePR(); render(); },
+  nextm() { const s = ui.sheet; if (!s) return; uread(); s.note = ($("s-note") || {}).value || s.note || ""; s.date = (s.date || "") >= nextM1() ? dayKey(new Date()) : nextM1(); render(); },
+  ovrset() { const v = parseFloat((($("ov-v") || {}).value || "").replace(",", ".")); if (!(v > 0)) { toast("Введи сумму"); return; } PR.bm = "cap"; PR.normOn = true; PR.cap = Math.round(v); savePR(); ui.sheet = null; render(); toast("Потолок " + fm(PR.cap) + " · группы пересчитаны", "ok", 2600); },
   capset() { const v = parseFloat((($("cap-v") || {}).value || "").replace(",", ".")); PR.cap = v > 0 ? Math.round(v) : 0; savePR(); render(); },
   capfill(a) { PR.cap = +a.dataset.v; savePR(); render(); },
   normn(a) { PR.normN = +a.dataset.v; savePR(); render(); }, normon() { PR.normOn = PR.normOn === false; savePR(); render(); },
@@ -1547,7 +1566,7 @@ const A = {
   pbadd() { const L = []; ui.sheet.groups.filter(g => g.on).forEach(g => g.rows.forEach(r => L.push({ id: uid(), ts: r.ts, name: r.name, pkey: PRC.key(r.name), price: r.price, qty: r.qty, amount: r.amount, shop: "", tx_id: r.tx }))); ui.sheet = null; if (L.length) addPrices(L); render(); toast("Добавлено цен: " + L.length); },
   popen(a) { ui.pk = a.dataset.k; render(); }, pclose() { ui.pk = null; render(); },
   pdel(a) { if (confirm("Удалить эту запись цены? (сама трата останется)")) { delPrice(a.dataset.id); render(); } },
-  tplgo(a) { const t = EXT.tpl.find(x => x.id === a.dataset.id); if (!t) return; const now = new Date(); upTx({ id: uid(), ts: now.toISOString(), amount: t.amt, kind: t.kind, category_id: t.cat, note: t.note || "", account: "Основной" }); const bm = t.kind === "exp" ? budgetMsg(t.cat, now.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(t.amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 5200 : 2200); },
+  tplgo(a) { const t = EXT.tpl.find(x => x.id === a.dataset.id); if (!t) return; const now = new Date(); upTx({ id: uid(), ts: now.toISOString(), amount: t.amt, kind: t.kind, category_id: t.cat, note: t.note || "", account: "Основной" }); const bm = t.kind === "exp" ? budgetMsg(t.cat, now.toISOString()) : null; ui.sheet = null; render(); toast("Записано: " + fm(t.amt) + (bm ? "\n" + bm.t : ""), bm ? bm.cls : "", bm ? 3600 : 1400); },
   hmday(a) { ui.rg = { t: "d", a: +new Date(a.dataset.v + "T12:00") }; ui.tab = "list"; render(); },
   xnew(a) { const kind = "exp"; ui.sheet = { type: "ext", k: a.dataset.k, id: null, kind, cat: (catsOf(kind)[0] || {}).id, amt: "", note: "", day: a.dataset.k === "rec" ? "1" : "", ask: false }; render(); },
   xedit(a) { const r = EXT[a.dataset.k].find(x => x.id === a.dataset.id); if (!r) return; ui.sheet = { type: "ext", k: a.dataset.k, id: r.id, kind: r.kind, cat: r.cat, amt: r.amt, note: r.note || "", day: r.day || "", ask: !!r.ask }; render(); },
