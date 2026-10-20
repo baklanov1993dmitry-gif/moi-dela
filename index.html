@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 17:24";
+const BUILD = "20.10 20:24";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1835,6 +1835,17 @@ function updBadge() {
   try { document.title = "Мои дела"; } catch (e) {}
   return n;
 }
+// ---- плавные переходы (см. навык ui-animation-springs) ----
+const mdOk = () => { try { return !CFG0.TEST && !matchMedia("(prefers-reduced-motion: reduce)").matches && !!Element.prototype.animate; } catch (e) { return false; } };
+const mdKids = id => { const r = document.querySelector('#main .tnode.has>.taskrow[data-id="' + id + '"]'); return r && r.parentNode.querySelector(".kids"); };
+function mdDone(row, rad) {
+  if (!mdOk()) { row.classList.add("fin"); setTimeout(render, 260); return; }
+  try { rad.animate([{ transform: "scale(1)" }, { transform: "scale(1.3)", offset: .4 }, { transform: "scale(1)" }], { duration: 320, easing: "cubic-bezier(.34,1.56,.64,1)" }); } catch (e) {}
+  const h = row.offsetHeight, cs = getComputedStyle(row); row.style.overflow = "hidden"; row.style.pointerEvents = "none";
+  const to = { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginBottom: "0px", opacity: 0, transform: "translateX(28px)" };
+  const an = row.animate([{ height: h + "px", opacity: 1, transform: "translateX(0)" }, { height: h + "px", opacity: 0, transform: "translateX(28px)", offset: .5 }, to], { duration: 420, easing: "cubic-bezier(.3,0,.2,1)", fill: "forwards" });
+  an.onfinish = an.oncancel = () => render();
+}
 const uxActs = {
   tog(a) {
     const id = a.dataset.id, t = S.tasks[id], row = a.closest(".taskrow");
@@ -1842,7 +1853,7 @@ const uxActs = {
     const willDone = !t.done;
     const fxd = willDone && row ? themeFx("done", row) : false;   // анимация темы (клон строки живёт в body и переживает render)
     toggleDone(id);
-    if (fxd) { row.style.visibility = "hidden"; a.classList.add("on"); setTimeout(render, 120); } else if (willDone && row && !CFG0.TEST) { row.classList.add("fin"); a.classList.add("on"); setTimeout(render, 260); } else render();
+    if (fxd) { row.style.visibility = "hidden"; a.classList.add("on"); setTimeout(render, 120); } else if (willDone && row && !CFG0.TEST) { a.classList.add("on"); mdDone(row, a); } else render();
   },
   postp(a, e) { if (e && e.stopPropagation) e.stopPropagation(); postpone(a.dataset.id, a.dataset.v); render(); }
 };
@@ -2873,7 +2884,13 @@ const estFull = m => !m ? "" : (m % 480 === 0 ? m / 480 + "д" : m % 60 === 0 ? 
 const subActs = {
   notefull() { ui.noteFull = true; render(); },
   notefullclose() { ui.noteFull = false; render(); },
-  subtog(a) { const id = a.dataset.id; if (PR.subs === "top") PR.subOpen[id] = !PR.subOpen[id]; else PR.subClosed[id] = !PR.subClosed[id]; ui.subAdd = null; savePrefs(); render(); },
+  subtog(a) {
+    const id = a.dataset.id, was = subOpen(S.tasks[id]); if (PR.subs === "top") PR.subOpen[id] = !PR.subOpen[id]; else PR.subClosed[id] = !PR.subClosed[id]; ui.subAdd = null; savePrefs();
+    const k = mdKids(id);
+    if (was && k && mdOk()) { const h = k.offsetHeight; k.style.overflow = "hidden"; const an = k.animate([{ height: h + "px", opacity: 1 }, { height: "0px", opacity: 0 }], { duration: 220, easing: "cubic-bezier(.3,0,.2,1)", fill: "forwards" }); const fin = () => { render(); }; an.onfinish = fin; an.oncancel = fin; return; }
+    render();
+    if (!was && mdOk()) { const k2 = mdKids(id); if (k2) { const h = k2.offsetHeight; k2.style.overflow = "hidden"; const an = k2.animate([{ height: "0px", opacity: 0 }, { height: h + "px", opacity: 1 }], { duration: 300, easing: "cubic-bezier(.2,.8,.2,1)" }); an.onfinish = an.oncancel = () => { k2.style.overflow = ""; }; } }
+  },
   submode() { PR.subs = PR.subs === "top" ? "all" : "top"; savePrefs(); toast(PR.subs === "top" ? "Только задачи верхнего уровня (счётчик ▸ раскрывает)" : "Показываю подзадачи внутри списка"); render(); },
   flt(a) {
     const k = a.dataset.k, v = a.dataset.v, f = PR.flt[view] = PR.flt[view] || {};
