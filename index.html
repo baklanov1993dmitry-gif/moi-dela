@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 23:51";
+const BUILD = "21.10 00:00";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2426,6 +2426,9 @@ const jrCSS = `
 .jr-c{font-style:normal;font-size:calc(10.8px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:1px 6px;margin:0;display:inline-flex;align-items:center;gap:3px;line-height:1.3}
 .jr-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px}
 :root{--jd-u:#3aa76d;--jd-n:#9aa0a6;--jd-x:#d9534f}
+.jr-sug{min-height:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0 0}.jr-sug:empty{display:none}.jr-sg{font-size:calc(12px*var(--z,1));color:var(--sub)}
+.jr-tgr{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--ln)}.jr-tgr b{flex:0 1 auto}.jr-tgr>span{flex:1;color:var(--sub);font-size:calc(12.5px*var(--z,1))}.jr-tgr.rare{opacity:.62}
+.jr3-l{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:12px}.jr3-l li::marker{font-weight:700;color:var(--acc)}.jr3-l li>div{margin-top:3px;line-height:1.45}
 .jd-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.jd-k{background:var(--hov);border-radius:12px;padding:10px 12px;min-width:0;display:flex;flex-direction:column;gap:4px}
 .jd-kl{font-size:calc(11.5px*var(--z,1));color:var(--sub)}.jd-kv{font-size:calc(21px*var(--z,1));font-weight:700;line-height:1.1}.jd-kv small{font-size:.55em;font-weight:500;color:var(--sub)}
 .jd-kv em{font-style:normal;font-size:.5em;font-weight:600;margin-left:4px;vertical-align:middle}.jd-up{color:var(--jd-u)}.jd-dn{color:var(--jd-x)}
@@ -4852,14 +4855,14 @@ function journalMainHTML(vi) {
   if (JX) {
     const df = J.date || today0;
     if (J.mode === "p") add = '<div class="jr-box"><div class="jr-f"><input type="date" id="jr-d1" class="inp" value="' + (J.d1 || yest) + '"><span>–</span><input type="date" id="jr-d2" class="inp" value="' + esc(J.d2 || "") + '" title="Конец периода (необязательно)"></div>' +
-      '<div class="jr-f" style="margin-top:8px"><input id="jr-tx" class="inp" style="flex:1;min-width:0" placeholder="Коротко за день или период" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"><button class="btn" data-a="jradd">Добавить</button></div>' + jrTag3("", J.cat) + jrTagList() + (JV ? jrValBtns(J.val, "jrv") : "") +
+      '<div class="jr-f" style="margin-top:8px"><input id="jr-tx" class="inp" style="flex:1;min-width:0" placeholder="Коротко за день или период" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"><button class="btn" data-a="jradd">Добавить</button></div>' + jrTag3("", J.cat) + '<div class="jr-sug" id="jr-sug">' + jrSugHTML() + "</div>" + jrTagList() + (JV ? jrValBtns(J.val, "jrv") : "") +
       '<div class="jr-f" style="margin-top:6px"><button class="linkbtn" data-a="jrmode" data-v="t">← Обычная запись со временем</button></div></div>';
     else {
       const q = jrPlan();
       add = '<div class="jr-box jr-cmp"><div class="jr-tr"><button class="jr-tb' + (q.st ? "" : " ph") + '" data-a="jrwheel" data-k="st"><i>Начало</i>' + (q.st || "—:—") + '</button><span>→</span><button class="jr-tb' + (q.en ? "" : " now") + '" data-a="jrwheel" data-k="en"><i>Конец</i>' + (q.en || "сейчас") + '</button></div>' +
         (df !== today0 ? '<div class="jr-hint">Дата записи: ' + jrShort(df) + ' <button class="linkbtn" data-a="jrtoday">на сегодня</button></div>' : "") +
         '<div class="jr-f" style="margin-top:8px"><input id="jr-tx" class="inp jr-big" style="flex:1 1 100%;min-width:0" placeholder="Что делал?" autocomplete="off" enterkeyhint="send" value="' + esc(J.tx) + '"></div>' +
-        jrTag3("", J.cat) + jrTagList() + '<div class="jr-act">' + (JV ? jrValBtns(J.val, "jrv", "mini") : "") + '<button class="btn jr-go" data-a="jradd">Записать</button></div>' + (JV ? "" : jrValSetup()) +
+        jrTag3("", J.cat) + '<div class="jr-sug" id="jr-sug">' + jrSugHTML() + "</div>" + jrTagList() + '<div class="jr-act">' + (JV ? jrValBtns(J.val, "jrv", "mini") : "") + '<button class="btn jr-go" data-a="jradd">Записать</button></div>' + (JV ? "" : jrValSetup()) +
         '<div class="jr-prev" id="jr-prev">' + esc(jrPrevText()) + '</div><div class="jr-f"><button class="linkbtn" data-a="jrmode" data-v="p">За день / период без времени</button></div></div>';
     }
   }
@@ -4888,7 +4891,7 @@ function journalMainHTML(vi) {
   const chips = [["r", "Недавние"], ["7", "7 дней"], ["30", "30 дней"], ["all", "Всё"]].map(o => '<button class="jr-chip' + (J.per === o[0] ? " on" : "") + '" data-a="jrper" data-v="' + o[0] + '">' + o[1] + "</button>").join("");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, 1, '<button class="ibtn" data-a="jrmenu" title="Меню журнала" style="font-size:22px;font-weight:700">⋯</button>') + '<div class="mhead mhide"><h1><span style="color:#8764b8;display:inline-flex">' + ic(vi.svg, 24) + "</span><span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' +
     '<button class="tool" data-a="jrmenu" title="Разметка, итоги, аналитика, история">⋯ Меню</button><button class="tool" data-a="jrxl" title="Выгрузить весь журнал в Excel">' + ic("dl", 16) + '<span class="tl"> Excel</span></button>' + (JX ? '<button class="tool" data-a="jrimp" title="Загрузить записи из файла .json">' + ic("fplus", 16) + '<span class="tl"> Импорт</span></button><input type="file" id="jr-file" accept=".json,application/json" hidden>' : "") + "</div>" +
-    '<div class="msub mhide-m">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.menu ? jrMenuHTML() : "") + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : jrTabsHTML() + nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + "") + "</div>" + wheel + "</div>";
+    '<div class="msub mhide-m">' + esc(vi.sub) + " · записей: " + all.length + '</div><div class="scroll" id="list">' + (J.menu ? jrMenuHTML() : "") + (J.mk ? jrMarkHTML() : J.sum ? '<div class="jr-chips"><button class="jr-chip" data-a="jrsum">← К дню</button></div>' + jrSummaryHTML() : J.an ? jrAnalyticsHTML() : J.tg ? '<div class="jr-chips"><button class="jr-chip" data-a="jrtags">← К дню</button></div>' + jrTagsHTML() : J.cz && !J.cz.sum ? jrCzHTML() : (J.hist ? '<div class="jr-chips"><button class="jr-chip" data-a="jrhist">← К дню</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><label class="jr-chip jr-jmp">📅 Перейти к дню<input type="date" id="jr-jump"></label></div><div class="jr-chips jr-mch">' + jrMonthChips(all) + "</div>" : jrTabsHTML() + nav) + setup + nudge + add + (J.hist ? "" : jrAutoBar()) + body + "") + "</div>" + wheel + "</div>";
 }
 function jrWheelHTML() {
   const w = ui.jr.wh, col = (id, n) => '<div class="jr-wcw"><div class="jr-wsq"></div><div class="jr-wc" id="' + id + '"><div class="jr-wp"></div>' + Array.from({ length: WC * n }, (_, i) => "<div>" + pad2(i % n) + "</div>").join("") + '<div class="jr-wp"></div></div></div>';
@@ -4898,9 +4901,24 @@ function jrWheelHTML() {
 function jrTabsHTML() {   // заметные вкладки: день / итоги недели / итоги месяца (раньше были спрятаны в «⋯»)
   return '<div class="jr-chips jr-tabs"><button class="jr-chip on">📅 День</button><button class="jr-chip" data-a="jrtab" data-v="w">📊 Неделя</button><button class="jr-chip" data-a="jrtab" data-v="m">🗓 Месяц</button></div>';
 }
+function jrTagRename(from, to) {   // переименовать тему во всех записях; если новая уже есть — темы сольются
+  to = jrCleanTag(to).split(",")[0].trim(); let n = 0;
+  Object.values(S.time_log).forEach(l => { if (!jrHasTag(l.cat, from)) return; const a = jrTagsOf(l.cat).map(x => nrm(x) === nrm(from) ? to : x).filter(Boolean); updLog(l.id, { cat: jrTagsOf(a.join(", ")).join(", ") }); n++; });
+  return n;
+}
+function jrTagsHTML() {
+  const cm = {}, mm = {}; Object.values(S.time_log).forEach(l => { const m = jrMinOf(l); jrTagsOf(l.cat).forEach(t => { cm[t] = (cm[t] || 0) + 1; mm[t] = (mm[t] || 0) + m; }); });
+  const ks = Object.keys(cm).sort((a, b) => cm[b] - cm[a]), stem = t => nrm(t).replace(/[^а-яa-z0-9]/g, "").slice(0, 5), sim = [];
+  for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = nrm(ks[i]), b = nrm(ks[j]); if ((stem(ks[i]).length >= 4 && stem(ks[i]) === stem(ks[j])) || (a.length >= 4 && b.length >= 4 && (a.indexOf(b) >= 0 || b.indexOf(a) >= 0))) sim.push([ks[i], ks[j]]); }
+  const rows = ks.map(t => '<div class="jr-tgr' + (cm[t] <= 2 ? " rare" : "") + '"><b>' + esc(t) + '</b><span>' + cm[t] + " зап." + (mm[t] ? " · " + fmtDurM(mm[t]) : "") + '</span><button class="jr-chip" data-a="jrtagren" data-t="' + esc(t) + '">✏️ Переименовать / слить</button></div>').join("");
+  return '<div class="jr-sbox"><div class="jr-st">🏷 Темы: ' + ks.length + '</div>' +
+    '<div class="jr-hint">' + (ks.length > 8 ? "Тем много — выводы размываются. Хороший ориентир: 6–8 основных. Сливай похожие и редкие (бледные строки)." : "Количество тем в порядке. Следи, чтобы они не пересекались.") + "</div>" +
+    (sim.length ? '<div class="jr-sbox" style="margin:8px 0"><div class="jr-st">Похоже на одно и то же</div>' + sim.slice(0, 8).map(p => '<div class="jr-tgr"><span><b>' + esc(p[0]) + "</b> ≈ <b>" + esc(p[1]) + '</b></span><button class="jr-chip" data-a="jrtagmerge" data-a1="' + esc(p[1]) + '" data-b="' + esc(p[0]) + '">Слить в «' + esc(p[0]) + "»</button></div>").join("") + "</div>" : "") +
+    (rows || '<div class="jr-empty">Тем пока нет</div>') + "</div>";
+}
 function jrMenuHTML() {
   const n = JV ? jrUnval().length : 0;
-  return '<div class="jr-menu"><button class="jr-chip" data-a="jrmk">🏷 Разметка' + (n ? " (" + n + ")" : "") + '</button><button class="jr-chip" data-a="jrsum">📊 Итоги</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><button class="jr-chip" data-a="jrhist">🗂 История</button><button class="jr-chip" data-a="jrxl">⬇ Excel</button>' + (JX ? '<button class="jr-chip" data-a="jrimp">⬆ Импорт</button>' : "") + "</div>";
+  return '<div class="jr-menu"><button class="jr-chip" data-a="jrmk">🏷 Разметка' + (n ? " (" + n + ")" : "") + '</button><button class="jr-chip" data-a="jrsum">📊 Итоги</button><button class="jr-chip" data-a="jran">📈 Аналитика</button><button class="jr-chip" data-a="jrtags">🏷 Темы</button><button class="jr-chip" data-a="jrhist">🗂 История</button><button class="jr-chip" data-a="jrxl">⬇ Excel</button>' + (JX ? '<button class="jr-chip" data-a="jrimp">⬆ Импорт</button>' : "") + "</div>";
 }
 function jrInput(el) {
   const J = jrState();
@@ -4911,8 +4929,22 @@ function jrInput(el) {
   if (m[1]) { J.e[m[2]] = el.value; if (/^(date|d1|d2)$/.test(m[2])) render(); return; }
   J[m[2]] = el.value; if (m[2] === "date") J.st = null; if (m[2] === "vd") { if (!el.value) return; render(); return; }
   const pv = $("jr-prev"); if (pv) pv.textContent = jrPrevText();
+  if (m[2] === "tx") { const sg = $("jr-sug"); if (sg) sg.innerHTML = jrSugHTML(); }
 }
 const jrMon = iso => addDays(iso, -((parseISO(iso).getDay() + 6) % 7));
+// подсказка темы по похожим прошлым записям (взвешенно: редкие слова весят больше); показывается чипом, пока печатаешь
+function jrSuggest(tx) {
+  const stem = w => w.slice(0, 5), tk = x => Array.from(new Set(String(x || "").toLowerCase().replace(/ё/g, "е").split(/[^а-яa-z0-9]+/).filter(w => w.length >= 3).map(stem)));
+  const q = tk(tx); if (!q.length) return [];
+  const logs = Object.values(S.time_log).filter(l => l.cat && l.title).slice(-800), df = {}, rows = logs.map(l => { const t = tk(l.title); t.forEach(k => { df[k] = (df[k] || 0) + 1; }); return { t: new Set(t), tags: jrTagsOf(l.cat) }; });
+  const N = Math.max(2, rows.length), sc = {}; let tot = 0;
+  rows.forEach(r => { let m = 0; q.forEach(k => { if (r.t.has(k)) m += Math.log(1 + N / df[k]); }); if (m > 0) r.tags.forEach(t => { sc[t] = (sc[t] || 0) + m; tot += m; }); });
+  return Object.keys(sc).sort((a, b) => sc[b] - sc[a]).filter(t => sc[t] / tot >= .3 && sc[t] >= 1.5).slice(0, 2);
+}
+function jrSugHTML() {
+  const J = jrState(), a = jrSuggest(J.tx).filter(t => !jrHasTag(J.cat, t)); if (!a.length || J.mode === "x") return "";
+  return '<span class="jr-sg">💡 Похоже на:</span>' + a.map(t => '<button class="jr-chip" data-a="jrsug" data-t="' + esc(t) + '">' + esc(t) + "</button>").join("");
+}
 function jrGuessCat(tx) {
   const toks = String(tx || "").toLowerCase().split(/[^а-яa-z0-9ё]+/).filter(w => w.length >= 4).map(w => w.slice(0, 5)); if (!toks.length) return null;
   const cn = {}; let tot = 0;
@@ -5124,6 +5156,17 @@ function jrGoalsHTML(R) {
     (gs.length ? (tot ? '<div class="jr-hint" style="margin-top:0"><b>На цели ушло ' + pc(onG, tot) + '%</b> записанного времени (' + fmtDurM(onG) + ').</div>' : "") + rows : '<div class="jr-hint" style="margin-top:0">Добавьте 1–3 главные цели и привяжите к ним темы из журнала — здесь будет видно, двигаетесь ли вы к ним.</div>') +
     '<details class="jr-gadd"' + (gs.length ? "" : " open") + '><summary>＋ Добавить цель</summary><div class="jr-f" style="margin-top:8px"><input id="jrg-n" class="inp" style="flex:1 1 100%" placeholder="Цель, например: Выучить английский" autocomplete="off"><input id="jrg-t" class="inp" style="flex:1 1 100%" placeholder="Темы журнала через запятую: английский, курсы" autocomplete="off"><input id="jrg-h" class="inp" style="flex:1 1 140px" inputmode="decimal" placeholder="Часов в неделю (необяз.)" autocomplete="off"><button class="btn" data-a="jrgadd">Добавить</button></div></details></div>';
 }
+function jrReview3(R, cur, prev) {   // обзор за 10 минут: цифра → пожиратель → одно изменение
+  if (!cur.tot || R.p !== "w") return "";
+  const gs = jrGoals(), v = cur.val, rated = v.u + v.n + v.x, ch = jrRevGet(R.p, R.from).change;
+  let s1, g = gs.find(x => x.hpw);
+  if (g) { const m = jrGoalMin(R, g), tgt = g.hpw * 60, pr = Math.round(m / tgt * 100); s1 = "«" + esc(g.name) + "»: <b>" + fmtDurM(m) + "</b> из " + fmtDurM(Math.round(tgt)) + " (" + pr + "%)" + (pr >= 100 ? " ✅" : ""); }
+  else if (JV && rated) s1 = "Доля полезного: <b>" + Math.round(v.u / rated * 100) + "%</b>. Поставьте себе цель (например, не ниже 60%) или добавьте цель по часам в блоке «Цели» ниже.";
+  else s1 = "Цели пока нет. Добавьте цель по часам в неделю в блоке «Цели» ниже — тогда здесь будет прогресс.";
+  const ex = Object.keys(cur.catx).sort((a, b) => cur.catx[b] - cur.catx[a])[0], hasX = ex && cur.catx[ex] >= 15, tp = hasX ? ex : Object.keys(cur.cat).sort((a, b) => cur.cat[b] - cur.cat[a])[0];
+  const s2 = tp ? "«" + esc(tp) + "» — <b>" + fmtDurM(hasX ? cur.catx[tp] : cur.cat[tp]) + "</b>" + (hasX ? " бесполезного времени (больше всего за неделю)" : " — больше всего времени (оценок «🔴» пока нет)") + ' <button class="jr-chip" data-a="jreater" data-t="' + esc(tp) + '" data-x="' + (hasX ? 1 : 0) + '">Смотреть записи</button>' : "Пока нечего показать.";
+  return '<div class="jr-sbox jr3"><div class="jr-st">⏱ Обзор недели за 10 минут</div><ol class="jr3-l"><li><b>Главная цифра</b><div>' + s1 + '</div></li><li><b>Главный «пожиратель»</b><div>' + s2 + '</div></li><li><b>Одно изменение на следующую неделю</b><div>' + (ch ? "Записано: " + esc(ch).replace(/\n/g, "<br>") : "Что одно конкретное поменяю?") + ' <button class="jr-chip" data-a="jrgoch">' + (ch ? "Изменить" : "Записать") + "</button></div></li></ol></div>";
+}
 function jrReviewHTML(R) {
   const cur = jrRevGet(R.p, R.from), prv = jrRevGet(R.p, R.pfrom), nxt = R.p === "m" ? "следующий месяц" : "следующую неделю", pw = R.p === "m" ? "прошлом месяце" : "прошлой неделе";
   const past = Object.values(S.user_settings).filter(r => r.key && r.key.indexOf("jr:rev:" + R.p + ":") === 0 && r.data && r.data.from !== R.from && (r.data.learn || r.data.change)).sort((a, b) => a.data.from < b.data.from ? 1 : -1).slice(0, 8);
@@ -5158,7 +5201,7 @@ function jrSummaryHTML() {
   } else ins.push(R.p === "m" ? "За этот месяц записей со временем пока нет." : "За эту неделю записей со временем пока нет.");
   return '<div class="jr-chips jr-sp"><button class="jr-chip' + (R.p === "w" ? " on" : "") + '" data-a="jrsp" data-v="w">Неделя</button><button class="jr-chip' + (R.p === "m" ? " on" : "") + '" data-a="jrsp" data-v="m">Месяц</button></div>' +
     '<div class="jr-nav"><button class="ibtn" data-a="jrswp">' + ic("arrowl", 22) + '</button><div class="jr-nl" style="cursor:default">' + lab + '</div><button class="ibtn jr-nr" data-a="jrswn">' + ic("arrowl", 22) + "</button></div>" +
-    jrDash(R, cur, prev) + jrGlance(cur, R) + '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> ' + (R.p === "m" ? "этот месяц" : "эта неделя") + ' <u></u> ' + (R.p === "m" ? "прошлый" : "прошлая") + '</div></div>' + jrGoalsHTML(R) + jrReviewHTML(R) +
+    jrReview3(R, cur, prev) + jrDash(R, cur, prev) + jrGlance(cur, R) + '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> ' + (R.p === "m" ? "этот месяц" : "эта неделя") + ' <u></u> ' + (R.p === "m" ? "прошлый" : "прошлая") + '</div></div>' + jrGoalsHTML(R) + jrReviewHTML(R) +
     '<div class="jr-sbox"><div class="jr-st">Что видно по цифрам</div><ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul></div>" +
     jrPeriodList(R) +
     '<button class="btn jr-go" data-a="jrmk">🏷 Разметка записей</button>' + (R.p === "w" ? '<button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' : "") + aiBox(J.ai) + jrCzHTML();
@@ -5175,7 +5218,7 @@ function jrPeriodList(R) {   // сами записи за выбранную н
   arr.sort((a, b) => (jrDay(a) + (a.start_at || "")).localeCompare(jrDay(b) + (b.start_at || "")));
   let body = "", cd = "";
   arr.forEach(l => { const d = jrDay(l); if (d !== cd) { cd = d; const dd = parseISO(d), sum = arr.filter(x => jrDay(x) === d).reduce((t, x) => t + jrMinOf(x), 0); body += '<div class="jr-day"><span>' + WDS[dd.getDay()] + ", " + dd.getDate() + " " + MONS[dd.getMonth()] + "</span><span>" + (sum ? fmtDurM(sum) : "") + "</span></div>"; } body += jrItem(l).replace('<span class="jr-tx">', '<span class="jr-tx"><i class="jrb">' + ({ u: "🟢", n: "⚪", x: "🔴" }[l.val] || "") + "</i>"); });
-  return '<div class="jr-sbox"><div class="jr-st">Записи за период: <b>' + arr.length + "</b>" + (arr.length !== all.length ? " из " + all.length : "") + "</div>" +
+  return '<div class="jr-sbox" id="jr-plist"><div class="jr-st">Записи за период: <b>' + arr.length + "</b>" + (arr.length !== all.length ? " из " + all.length : "") + "</div>" +
     (hasV.length ? '<div class="jr-chips">' + hasV.map(o => chip("jrsfv", o[0], f.val, o[1])).join("") + "</div>" : "") +
     (tags.length ? '<div class="jr-chips">' + chip("jrsft", "", f.tag, "Все темы") + tags.map(t => chip("jrsft", t, f.tag, esc(t))).join("") + "</div>" : "") +
     (body || '<div class="jr-empty">Нет записей по этому фильтру</div>') + "</div>";
@@ -5290,6 +5333,12 @@ Object.assign(acts, {
     render(); },
   jrsfv(a) { const J = jrState(); (J.sf || (J.sf = {})).val = a.dataset.v; render(); },
   jrsft(a) { const J = jrState(); (J.sf || (J.sf = {})).tag = a.dataset.v; render(); },
+  jrtags() { const J = jrState(); J.tg = !J.tg; J.menu = false; J.mk = false; J.sum = false; J.an = false; J.hist = false; render(); },
+  jrtagren(a) { const t = a.dataset.t, n = prompt("Новое название для темы «" + t + "».\nЕсли такая тема уже есть — они сольются. Пусто — убрать тему из записей.", t); if (n === null) return; if (!n.trim() && !confirm("Убрать тему «" + t + "» из всех записей?")) return; const c = jrTagRename(t, n); toast("Обновлено записей: " + c); render(); },
+  jrtagmerge(a) { const c = jrTagRename(a.dataset.a1, a.dataset.b); toast("Слито, записей: " + c); render(); },
+  jreater(a) { const J = jrState(); J.sf = { val: a.dataset.x === "1" ? "x" : "", tag: a.dataset.t }; render(); setTimeout(() => { const e = $("jr-plist"); if (e) e.scrollIntoView({ behavior: "smooth", block: "start" }); }, 30); },
+  jrgoch() { const e = document.querySelector('.jr-rv[data-k="change"]'); if (e) { e.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => e.focus(), 300); } },
+  jrsug(a) { const J = jrState(); J.cat = jrTagToggle(J.cat, a.dataset.t); render(); const x = $("jr-tx"); if (x) { x.focus(); } },
   jrsum() { const J = jrState(); J.sum = !J.sum; J.ai = null; render(); },
   jrswp() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, -1); else J.sw = addDays(J.sw || jrMon(todayISO()), -7); J.ai = null; render(); },
   jrswn() { const J = jrState(); if (J.sp === "m") J.sm = jrMonthShift(J.sm, 1); else J.sw = addDays(J.sw || jrMon(todayISO()), 7); J.ai = null; render(); },
@@ -6013,7 +6062,7 @@ async function checkBuild() {
     location.reload();
   } catch (e) {}
 }
-["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
+["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
 if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog };
 init();
 
