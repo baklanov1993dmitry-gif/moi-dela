@@ -198,7 +198,15 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .crow .a{font-size:16px}
 .fab{bottom:calc(11px + env(safe-area-inset-bottom))}
 .full{overflow-y:auto}.full.fcat{overflow:hidden}
-.dt{padding:0;height:46px;font-size:17.4px;gap:6px}.nmc{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:2;border:0;background:var(--card2);color:var(--sub);font:inherit;font-size:.7em;padding:5px 10px;border-radius:999px;cursor:pointer}.nmc.on{background:var(--acc);color:#fff}
+.dt{padding:0;height:46px;font-size:17.4px;gap:6px}.full.roll{animation:rollin .5s cubic-bezier(.2,.8,.2,1)}@keyframes rollin{from{clip-path:circle(0 at var(--ox) 94%);opacity:.6}to{clip-path:circle(160% at var(--ox) 94%);opacity:1}}
+.rcp.prt{animation:prtup .55s cubic-bezier(.2,.9,.25,1.05)}@keyframes prtup{from{transform:translateY(100%)}to{transform:none}}
+.rcp.prt .rl>*{opacity:0;animation:prtl .3s ease-out forwards}@keyframes prtl{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.rcp.prt .rtot{animation:prtt .5s .1s both}@keyframes prtt{from{opacity:0}to{opacity:1}}
+.row[data-a=edit]{position:relative;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.row.lp::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--exp) 38%,transparent);transform-origin:left;animation:lpf .65s linear forwards;pointer-events:none}@keyframes lpf{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.toast .tu{margin-left:12px;border:0;background:rgba(255,255,255,.18);color:inherit;font:inherit;font-weight:700;padding:3px 12px;border-radius:10px}
+@media (prefers-reduced-motion:reduce){.full.roll,.rcp.prt,.rcp.prt .rl>*,.row.lp::after{animation-duration:.01s!important}}
+.nmc{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:2;border:0;background:var(--card2);color:var(--sub);font:inherit;font-size:.7em;padding:5px 10px;border-radius:999px;cursor:pointer}.nmc.on{background:var(--acc);color:#fff}
 .amtbox{height:66px;margin:45px 14px 0}
 .amtbox .cur{width:39px;align-items:flex-start;justify-content:space-between;padding:6px 0 4px 4px;margin:4px 0}
 .amtbox .cur svg{width:30px;height:24px}.amtbox .cur small{font-size:13px}
@@ -371,7 +379,7 @@ const savePR = () => jset(LS.pref, PR);
 const THEMES = [["gray", "Серая", "#424242", "#616161"], ["black", "Чёрная", "#000000", "#171717"], ["light", "Светлая", "#f2f3f5", "#e3e6ec"], ["navy", "Синяя", "#141a2c", "#1f2742"], ["forest", "Лесная", "#14201a", "#1d3328"], ["plum", "Сливовая", "#1d1626", "#2e2140"], ["sand", "Песок", "#f4efe6", "#e6dccb"], ["cream", "Кремовая", "#fbf6e6", "#f1e9d0"], ["beige", "Бежевая", "#e8dcc8", "#d9c9ae"], ["mint", "Мятная", "#eaf3ee", "#d6e7dd"], ["sky", "Небесная", "#eaf1f8", "#d5e2f0"], ["rose", "Розовая", "#f8ecee", "#efd7db"], ["lav", "Лавандовая", "#efeaf6", "#e0d7ee"]], ACCS = ["#81c995", "#6fd1c4", "#6aa8ff", "#a78bfa", "#f2b36d", "#e88fc4", "#b6d96a", "#ff8f6b", "#ffd54f", "#4dd0e1", "#9fa8ff", "#ff7a90", "#c5e1a5", "#ffab40", "#2e9e5b", "#1f7ae0", "#7c4dff", "#d6336c", "#c2410c", "#0f766e", "#8d6e63", "#90a4ae"];
 function applyTheme() { if (PR.theme === "dark") PR.theme = "gray"; const th = THEMES.find(t => t[0] === PR.theme) || THEMES[0]; document.documentElement.dataset.t = th[0]; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = th[3]; }
 function toast(t, cls, ms) { document.querySelectorAll(".toast").forEach(x => x.remove()); const e = document.createElement("div"); e.className = "toast " + (cls || ""); e.textContent = String(t).replace(/\n+/g, " · "); e.style.pointerEvents = "auto"; e.dataset.t = Date.now(); e.onclick = () => e.remove(); document.body.appendChild(e); setTimeout(() => e.remove(), ms || 1400); }
-document.addEventListener("pointerdown", () => document.querySelectorAll(".toast").forEach(x => { if (Date.now() - x.dataset.t > 350) x.remove(); }), true);
+document.addEventListener("pointerdown", ev => { if (ev.target.closest && ev.target.closest(".toast")) return; document.querySelectorAll(".toast").forEach(x => { if (Date.now() - x.dataset.t > 350) x.remove(); }); }, true);
 const catOf = id => cats.find(c => c.id === id) || { id: null, name: "Без категории", icon: "❔", color: "#8d99ae", kind: "exp" };
 const catsOf = k => cats.filter(c => c.kind === k && !c.archived).sort((a, b) => a.position - b.position);
 
@@ -962,7 +970,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 45 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 46 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1145,7 +1153,7 @@ function rcpFromParsed(r, text, extra) {
   if (dup) notes.push("⚠️ Похоже, этот чек уже записывали.");
   if (r.refund) notes.push("⚠️ Это возврат, а не покупка.");
   if (!r.ok) notes.push("Сумма позиций не сошлась с итогом чека, сверь.");
-  ui.sheet = { type: "rcp", text: String(text || ""), merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: false, key: r.key, items, inbox: extra.inbox || null };
+  ui.sheet = { type: "rcp", anim: true, text: String(text || ""), merchant: r.merchant || "", date: dd, total: r.total || 0, note: notes.join(" "), merge: false, key: r.key, items, inbox: extra.inbox || null };
   render();
 }
 function rcpText(text, meta) {
@@ -1182,6 +1190,7 @@ function rcpcList(q) {
 function sheetHTML() {
   const s = ui.sheet; if (!s) return "";
   if (s.type === "tx") {
+    const an = s.anim; s.anim = false;
     const c = s.cat ? catOf(s.cat) : null, d = new Date((s.date || dayKey(new Date())) + "T12:00"), dl = d.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }), title = s.id ? "Правка" : s.kind === "exp" ? "Новый расход" : "Новый доход";
     const head = '<div class="hdr"><button class="hb" data-a="txback">' + UI.back + '</button><div class="ttl"><div class="sa" style="color:var(--tx);font-size:1.35em;margin:0">' + title + "</div></div>" + (s.id ? '<button class="hb" data-a="txdel" style="color:var(--expc)">' + UI.trash + "</button>" : s.kind === "exp" ? '<button class="hb" data-a="rcptxt" title="Чек из письма" style="font-size:22px">✉️</button>' : "") + "</div>";
     const date = '<label class="dt">' + UI.cal + "<span>" + esc(dl.charAt(0).toUpperCase() + dl.slice(1)) + '</span><input type="date" id="s-date" value="' + esc(s.date) + '" onchange="dateChange(this.value)">' + nmChip(s) + "</label>";
@@ -1190,7 +1199,7 @@ function sheetHTML() {
       return '<div class="full fcat">' + head + date + amt + '<input class="in cs" id="cs" autocomplete="off" placeholder="🔍 Найти категорию" value="' + esc(s.cq || "") + '"><div class="cgrid" id="cg">' + cgridInner(s) + "</div></div>";
     }
     const keys = ["1", "2", "3", "+", "4", "5", "6", "−", "7", "8", "9", "×", ".", "0", "=", "÷"];
-    return '<div class="full">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" enterkeyhint="done" autocomplete="off" value="' + esc(s.note || "") + '"></label><div class="sgs" id="s-sug">' + sugHTML(s.note || "") + '</div>' + unitRow(s) + '<div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
+    return '<div class="full' + (an ? " roll" : "") + '" style="--ox:' + (s.kind === "inc" ? "75%" : "25%") + '">' + head + date + (s.id ? "" : tplRow(s.kind)) + amt + '<label class="note">' + UI.pen + '<span class="nl">Заметка</span><input id="s-note" enterkeyhint="done" autocomplete="off" value="' + esc(s.note || "") + '"></label><div class="sgs" id="s-sug">' + sugHTML(s.note || "") + '</div>' + unitRow(s) + '<div style="flex:1"></div><div class="kp4">' + keys.map(k => '<button data-a="key" data-v="' + k + '">' + k + "</button>").join("") + "</div>" +
       (c ? '<button class="cbtn sv" data-a="txsave">Сохранить · ' + esc(c.name) + "</button>" : "") + '<button class="cbtn" data-a="cstep">Выбор категории</button></div>';
   }
   if (s.type === "cat") {
@@ -1218,6 +1227,7 @@ function sheetHTML() {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">✉️ Чек из письма</h2><div class="sub" style="font-size:.85em">Открой письмо с чеком, выдели текст и скопируй. Потом нажми «Из буфера» или вставь сюда. Можно и сразу «Поделиться» письмом в «Траты».</div>' + (s.err ? '<div class="sub exp" style="margin:6px 0">' + esc(s.err) + "</div>" : "") + '<textarea class="in" id="rt-t" rows="6" placeholder="Текст письма с чеком" style="width:100%;margin:8px 0;resize:vertical">' + esc(s.text || "") + '</textarea><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="rcpclip">📋 Из буфера</button><button class="btn" data-a="rcpgo" style="flex:1">Разобрать</button></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn g" data-a="rcpfile" style="flex:1">📎 Файл письма (.eml)</button>' + (s.inbox ? '<button class="btn g" data-a="inbskip">Не чек</button>' : "") + '<button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
   }
   if (s.type === "rcp") {
+    const an = s.anim; s.anim = false;
     const cl = cats.filter(c => c.kind === "exp" && !c.archived).sort((a, b) => a.name.localeCompare(b.name, "ru"));
     const val = x => parseFloat(String(x.amount).replace(",", ".")) || 0;
     const opts = id => '<option value="">— категория —</option>' + cl.map(c => '<option value="' + c.id + '"' + (c.id === id ? " selected" : "") + ">" + esc(c.name) + "</option>").join("");
@@ -1227,7 +1237,7 @@ function sheetHTML() {
     const row = i => { const it = s.items[i], c = it.cat ? catOf(it.cat) : null; return '<div class="rr"><button class="rb' + (c ? "" : " no") + '" data-a="rcat" data-i="' + i + '">' + (c ? ic(c.icon, c.color, 26) : "<span>?</span>") + '</button><textarea class="rn2" id="r-n-' + i + '" rows="2" spellcheck="false">' + esc(it.name) + '</textarea><input class="ra2" id="r-a-' + i + '" inputmode="decimal" value="' + esc((+String(it.amount).replace(",", ".")).toFixed(2)) + '"><button class="rx" data-a="rdel" data-i="' + i + '">✕</button></div><div class="rq"><span>кол-во</span><input id="r-q-' + i + '" inputmode="decimal" value="' + esc(String(+it.q > 0 ? +(+it.q).toFixed(3) : 1)) + '"><span>→ цена за единицу:</span><span id="r-u-' + i + '">' + rUnit(it) + "</span></div>"; };
     const gh = k => { const c = k ? catOf(k) : null; return '<div class="rgh' + (k ? "" : " no") + '">' + (c ? ic(c.icon, c.color, 22) + "<b>" + esc(c.name) + "</b>" : "<b>⚠ Выбери категорию</b>") + '<span class="gc">' + g[k].length + '</span>' + (k ? '<span class="gs">' + fm(gsum(k)) + "</span>" : '<button class="rall" data-a="rcat" data-i="all">Всем…</button>') + "</div>"; };
     const dl = new Date((s.date || dayKey(new Date())) + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-    return '<div class="ov" data-a="shclose"><div class="sheet rcp" data-a="nop"><div class="rhd"><div class="rm">🧾 ' + esc(s.merchant || "Чек") + '</div><label class="rdt">📅 <span>' + esc(dl) + '</span><input type="date" id="r-date" value="' + esc(s.date) + '"></label></div>' +
+    return '<div class="ov" data-a="shclose"><div class="sheet rcp' + (an ? ' prt' : '') + '" data-a="nop"><div class="rhd"><div class="rm">🧾 ' + esc(s.merchant || "Чек") + '</div><label class="rdt">📅 <span>' + esc(dl) + '</span><input type="date" id="r-date" value="' + esc(s.date) + '"></label></div>' +
       '<div class="rtot" id="rsum">' + rsumText(s) + "</div>" + (s.note ? '<div class="rnote">' + esc(s.note) + "</div>" : "") +
       '<div class="rl">' + (keys.length ? keys.map(k => gh(k) + g[k].map(row).join("")).join("") : '<div class="empty">Позиций не осталось</div>') + "</div>" +
       '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div><button class="btn g" style="width:100%;margin-top:8px;padding:6px" data-a="rraw">' + (s.showRaw ? "Скрыть" : "📄 Показать") + ' текст чека</button>' + (s.showRaw ? '<pre class="rraw">' + esc(String(s.text || "").split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 150).map(l => l.slice(0, 160)).join("\n")) + "</pre>" : "") + (s.inbox ? '<button class="btn g" style="width:100%;margin-top:8px" data-a="inbskip">Не чек — пропустить</button>' : "") + "</div></div>";
@@ -1377,7 +1387,7 @@ function nmChip(s) { if (s.id) return ""; const fut = (s.date || "") >= nextM1()
 function dateChange(v) { const s = ui.sheet; if (!s || !v) return; uread(); s.note = ($("s-note") || {}).value || s.note || ""; s.date = v; render(); }
 function rread() { const s = ui.sheet; if (!s || s.type !== "rcp" || !s.items) return; s.items.forEach((x, i) => { const n = $("r-n-" + i), a = $("r-a-" + i), c = $("r-c-" + i), q = $("r-q-" + i); if (n) x.name = n.value; if (a) x.amount = a.value; if (q) { const qv = parseFloat(String(q.value).replace(",", ".")); x.q = qv > 0 ? qv : 1; } if (c) x.cat = c.value; }); if ($("r-date") && $("r-date").value) s.date = $("r-date").value; if ($("r-merge")) s.merge = $("r-merge").checked; }
 function xread() { const s = ui.sheet; if (!s) return; const g = i => ($(i) || {}).value; if ($("x-cat")) s.cat = g("x-cat"); if ($("x-amt")) s.amt = g("x-amt"); if ($("x-note")) s.note = g("x-note"); if ($("x-day")) s.day = g("x-day"); }
-function openTx(o) { ui.sheet = Object.assign({ type: "tx", step: "kb", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
+function openTx(o) { ui.sheet = Object.assign({ type: "tx", anim: !(o && o.id), step: "kb", id: null, kind: ui.kind, cat: null, expr: "", note: "", date: dayKey(new Date()) }, o); render(); }
 const pnum = v => { const x = parseFloat(String(v == null ? "" : v).replace(",", ".")); return x > 0 ? x : 0; };
 function unitCalc(amt, q, p) {   // кол-во и цена за единицу; ничего не указано → цена = сумме, кол-во 1
   if (p > 0 && q > 0) return { p, q, explicit: true };
@@ -1483,7 +1493,7 @@ const A = {
   edit(a) { const t = txs.find(x => x.id === a.dataset.id); if (!t) return; const e = String(t.amount).replace(".", ","); openTx({ id: t.id, kind: t.kind, cat: t.category_id || (catsOf(t.kind)[0] || {}).id, expr: String(t.amount), note: t.note, date: dayKey(new Date(t.ts)) }); },
   key(a) { keyPress(a.dataset.v); },
   shclose(a, e) { if (e.target === a) { ui.sheet = null; render(); } },
-  txdel() { if (ui.sheet && ui.sheet.id && confirm("Удалить операцию?")) { delTx(ui.sheet.id); ui.sheet = null; render(); toast("Удалено"); } },
+  txdel() { if (ui.sheet && ui.sheet.id) { const id = ui.sheet.id; ui.sheet = null; delUndo(id); } },
   catnew() { ui.sheet = { type: "cat", id: null, name: "", icon: "📦", color: PAL[cats.length % PAL.length], kind: ui.kind }; render(); },
   catedit(a) { const c = cats.find(x => x.id === a.dataset.id); if (c) { ui.sheet = Object.assign({ type: "cat" }, c); render(); } },
   cic(a) { ui.sheet.name = ($("c-name") || {}).value || ui.sheet.name; ui.sheet.lim = parseFloat((($("c-lim") || {}).value || "").replace(",", ".")) || null; ui.sheet.icon = a.dataset.v; render(); },
@@ -1621,7 +1631,17 @@ document.addEventListener("keydown", e => {
   if (id === "d-amt" && ui.sheet.type === "due") { e.preventDefault(); e.target.blur(); A.duego(); }
 });
 document.addEventListener("keydown", e => { if (e.target.id === "cs" && e.key === "Enter") { const b = document.querySelector("#cg [data-a=cpick]"); if (b) b.click(); } });
-document.addEventListener("click", e => { const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
+/* ---- удаление долгим тапом + «Вернуть»; «печать» чека ---- */
+(function () { let css = ""; for (let i = 1; i <= 40; i++) css += ".rcp.prt .rl>:nth-child(" + i + "){animation-delay:" + (0.35 + i * 0.07).toFixed(2) + "s}"; const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st); })();
+function toastU(t, fn) { document.querySelectorAll(".toast").forEach(x => x.remove()); const e = document.createElement("div"); e.className = "toast"; e.style.pointerEvents = "auto"; e.dataset.t = Date.now(); const sp = document.createElement("span"); sp.textContent = t; const b = document.createElement("button"); b.className = "tu"; b.textContent = "Вернуть"; b.onclick = ev => { ev.stopPropagation(); e.remove(); fn(); }; e.append(sp, b); e.onclick = () => e.remove(); document.body.appendChild(e); setTimeout(() => e.remove(), 4500); }
+function delUndo(id) { const t = txs.find(x => x.id === id); if (!t) return; const pr = PRICES.filter(r => r.tx_id === id).map(r => Object.assign({}, r)); delTx(id); render(); toastU("Удалено · " + fm(t.amount), () => { upTx(t); pr.forEach(r => upPrice(r)); render(); }); }
+let _lp = null, _lpAt = 0;
+const lpCancel = () => { if (_lp) { clearTimeout(_lp.tm); _lp.r.classList.remove("lp"); _lp = null; } };
+document.addEventListener("pointerdown", e => { const r = e.target.closest && e.target.closest(".row[data-a=edit]"); if (!r || (e.button || 0) > 0) return; lpCancel(); r.classList.add("lp"); _lp = { r, x: e.clientX, y: e.clientY, tm: setTimeout(() => { const id = r.dataset.id; _lp = null; _lpAt = Date.now(); r.classList.remove("lp"); navigator.vibrate && navigator.vibrate(20); delUndo(id); }, 650) }; });
+document.addEventListener("pointermove", e => { if (_lp && Math.hypot(e.clientX - _lp.x, e.clientY - _lp.y) > 9) lpCancel(); });
+["pointerup", "pointercancel", "scroll"].forEach(n => document.addEventListener(n, lpCancel, true));
+document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest(".row[data-a=edit]")) e.preventDefault(); });
+document.addEventListener("click", e => { if (Date.now() - _lpAt < 700) { e.preventDefault(); return; } const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
 document.addEventListener("change", e => { const sel = e.target.dataset && e.target.dataset.sel; if (!sel) return; const v = e.target.value; if (sel === "itmset") PR.itmN = +v; else if (sel === "itmmode") PR.itmM = v; else if (sel === "itmsrt") PR.itmS = v; else return; savePR(); render(); });
 document.addEventListener("input", e => { if (e.target.id === "s-q" || e.target.id === "s-p") { unitUpd(); return; } if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[naq]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); ui.sheet.items.forEach((x, i) => { const u = $("r-u-" + i); if (u) u.innerHTML = rUnit(x); }); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "rn-q" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.q = e.target.value; renRefresh(); return; } if (e.target.id === "rn-n" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.name = e.target.value; return; } });
