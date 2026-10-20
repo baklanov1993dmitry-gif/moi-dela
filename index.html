@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 20:32";
+const BUILD = "20.10 22:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4147,12 +4147,12 @@ function ghostPlay(g) {
       let a;
       if (ui.left) {
         ms.boxShadow = sh; a = m.animate([{ transform: "translateX(0)" }, { transform: "translateX(100%)" }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)", fill: "forwards" });
-        l.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)" });
-        a.onfinish = a.oncancel = () => { done(); try { a.cancel(); } catch (e) {} };
+        const la = l.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.35,.1,.25,1)" });
+        a.onfinish = a.oncancel = () => { done(); try { a.cancel(); } catch (e) {} }; mdHold(a, la);
       } else {
         ms.boxShadow = sh; a = m.animate([{ transform: "translateX(72%)" }, { transform: "translateX(0)" }], { duration: 250, easing: "cubic-bezier(0,0,.2,1)" });
-        l.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: "cubic-bezier(0,0,.2,1)", fill: "forwards" });
-        a.onfinish = a.oncancel = () => { done(); try { l.getAnimations().forEach(x => x.cancel()); } catch (e) {} };
+        const lb = l.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: "cubic-bezier(0,0,.2,1)", fill: "forwards" });
+        a.onfinish = a.oncancel = () => { done(); try { l.getAnimations().forEach(x => x.cancel()); } catch (e) {} }; mdHold(a, lb);
       }
     }
   }
@@ -4162,13 +4162,16 @@ function ghostPlay(g) {
     try { r.getAnimations().forEach(an => { if (an.animationName) an.cancel(); }); } catch (e) {}   // штатное «проявление» панели мешает раскрытию
     const mm = $("main"), E = "cubic-bezier(0,0,.2,1)";   // открытие задачи — как переход из меню в список: задача выезжает справа поверх списка, список уходит влево и темнеет
     r.style.boxShadow = "-10px 0 28px rgba(0,0,0,.22)";
+    r.style.willChange = "transform";
     const a = r.animate([{ transform: "translateX(72%)" }, { transform: "translateX(0)" }], { duration: 250, easing: E });
-    a.onfinish = a.oncancel = () => { r.style.boxShadow = ""; };
-    if (mm && mm.animate) { paintLikeApp(mm); const b2 = mm.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: E, fill: "forwards" }); b2.onfinish = b2.oncancel = () => { mm.style.background = ""; b2.cancel(); }; }
+    a.onfinish = a.oncancel = () => { r.style.boxShadow = ""; r.style.willChange = ""; }; mdHold(a);
+    if (mm && mm.animate) { paintLikeApp(mm); const b2 = mm.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: E, fill: "forwards" }); mm.style.willChange = "transform, filter"; b2.onfinish = b2.oncancel = () => { mm.style.background = ""; mm.style.willChange = ""; b2.cancel(); }; mdHold(b2); }
   } }
 }
 /* ----- быстрые переходы: анимация стартует ДО тяжёлой перерисовки и идёт на видеочипе, поэтому не дёргается ----- */
 const after2 = f => requestAnimationFrame(() => requestAnimationFrame(f));
+// переход стартует только после того, как тяжёлая перерисовка уже отрисована: иначе первые кадры теряются и видна «рваность»
+const mdHold = (...an) => { an.forEach(a => { try { a.pause(); } catch (e) {} }); after2(() => an.forEach(a => { try { a.play(); } catch (e) {} })); };
 function fastOpen() { return false; }
 function fastClose() {   // закрытие задачи — как переход из списка в меню: задача уезжает вправо, под ней список возвращается на место и светлеет
   const r = $("right"), m = $("main"); if (!isMobile() || !selId || !r || r.classList.contains("hide") || !r.animate) return false;
