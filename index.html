@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "19.10 23:27";
+const BUILD = "20.10 08:14";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2897,7 +2897,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .chip[data-lid]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .tnode{display:block}
 .tnode.has{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:3px;overflow:hidden}
-.tnode.has>.taskrow{box-shadow:none;border:0;background:transparent;margin:0;border-radius:0}
+.tnode.has>.taskrow{box-shadow:none;border:0;background:transparent;margin:0;border-radius:0} .tnode.has>.taskrow.sel,.tnode.has>.taskrow.msel{background:var(--sel);border-radius:14px 14px 0 0} @media(hover:hover){.tnode.has>.taskrow:hover{background:var(--hov);border-radius:14px 14px 0 0} .tnode.has>.taskrow.sel:hover{background:var(--sel)}}
 .kids{border-top:1px dashed var(--ln);padding:2px 8px 4px 46px}
 .taskrow.sub{box-shadow:none;border:0;background:transparent;min-height:40px;padding:7px 8px;margin:0;border-radius:6px;gap:10px}
 .taskrow.sub:hover{background:var(--hov)} .taskrow.sub.sel{background:var(--sel)}
