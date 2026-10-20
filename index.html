@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 08:14";
+const BUILD = "20.10 10:28";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1832,7 +1832,7 @@ function updBadge() {
   let n = 0;
   Object.values(S.tasks).forEach(t => { if (!t.done && !t.parent_id && t.status !== "someday" && t.due && t.due <= today) n++; });
   try { if (navigator.setAppBadge) { n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch (e) {}
-  try { document.title = (n ? "(" + n + ") " : "") + "Мои дела"; } catch (e) {}
+  try { document.title = "Мои дела"; } catch (e) {}
   return n;
 }
 const uxActs = {
@@ -3206,7 +3206,7 @@ body.dropfile::after{content:"Отпусти файл — он прикрепи�
 .pform{padding:6px 14px 10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .pform input,.pform select{background:var(--inp);color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:7px 8px;font:inherit;font-size:calc(13px*var(--z,1))}
 .pform input[type=number]{width:64px}
-.sw{width:26px;height:26px;border-radius:50%;border:3px solid transparent}
+.sw{width:26px;height:26px;border-radius:50%;border:3px solid transparent} .emg{display:grid!important;grid-template-columns:repeat(8,1fr);gap:2px;max-width:300px} .eb{font-size:20px;line-height:1;padding:6px 0;border-radius:8px;background:transparent;border:0;cursor:pointer} .eb:hover{background:var(--hov)}
 .ptext{padding:8px 14px;font-size:calc(13px*var(--z,1));line-height:1.55;color:var(--tx)}
 .authwrap{position:fixed;left:0;right:0;top:0;bottom:0;overflow-y:auto;overscroll-behavior:contain;background:var(--bg);color:var(--tx)}
 .authbox{width:min(420px,92vw);margin:0 auto;padding:56px 4px 160px}
@@ -3612,6 +3612,7 @@ function popHTML() {
     case "sort": { const s = getSort(view); h = '<div class="ptitle">Сортировать по</div>' + Object.keys(SORTS).map(k => it("sort", SORTS[k].n, 'data-v="' + k + '"', s.by === k ? "cur" : "", s.by === k ? (s.dir === 1 ? "↑" : "↓") : "")).join("") + (PR.sort[view] ? '<div class="psep"></div>' + it("sortclr", "Сбросить сортировку") : ""); break; }
     case "group": { const g = getGroup(view); h = '<div class="ptitle">Группировать</div>' + Object.keys(GROUPS).filter(k => k !== "list" || view.indexOf("list:") !== 0).map(k => it("group", GROUPS[k], 'data-v="' + k + '"', g === k ? "cur" : "", g === k ? "✓" : "")).join(""); break; }
     case "listmenu": h = im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + '<div class="psep"></div>' + im("l_dup", "copy", "Дублировать список") + im("l_arch", "inbox", S.lists[p.id] && S.lists[p.id].group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_print", "print", "Напечатать список") + im("l_deldone", "ccheck", "Удалить завершённые") + '<div class="psep"></div>' + im("l_del", "trash", "Удалить список", "danger"); break;
+    case "icon": h = '<div class="ptitle">Значок списка</div><div class="pform emg">' + ["📋","📝","✅","⭐","🔥","💼","🏠","🛒","💰","📞","📧","📅","⏰","🎯","🚀","💡","📚","🎓","🛠️","⚙️","🔧","⚡","🏗️","📐","📊","📈","🧾","📦","🚚","✈️","🚗","🏋️","🍎","☕","❤️","🎁","🎉","🧠","🔒","🌱","🐾","🎵","🎮","🧹","💊","🩺","👥","🕷️"].map(e => '<button class="eb" data-a="pa" data-k="l_icon" ' + idA + ' data-v="' + e + '">' + e + "</button>").join("") + "</div>" + it("l_iconc", "Свой эмодзи…", idA) + it("l_icon", "Без значка", idA + ' data-v=""'); break;
     case "color": h = '<div class="ptitle">Цвет списка</div><div class="pform">' + ACCENTS.map(c => '<button class="sw" style="background:' + c + '" data-a="pa" data-k="l_color" ' + idA + ' data-v="' + c + '"></button>').join("") + "</div>" + it("l_color", "По умолчанию", idA + ' data-v=""'); break;
     case "move": {
       const gs = [...new Set(listsArr().map(l => l.group_name).filter(Boolean))], cur = S.lists[p.id] && S.lists[p.id].group_name;
@@ -4464,10 +4465,11 @@ const acts = {
       case "sortclr": delete PR.sort[view]; savePrefs(); break;
       case "group": PR.group[view] = v; savePrefs(); break;
       case "l_rename": { const n = prompt("Название списка", l.name); if (n && n.trim()) { l.name = n.trim(); mark("lists", id, "u"); } break; }
-      case "l_icon": { const n = prompt("Значок (эмодзи)", l.icon || ""); if (n !== null) { l.icon = n.trim(); mark("lists", id, "u"); } break; }
+      case "l_icon": if (v === undefined) return sub("icon"); l.icon = v; mark("lists", id, "u"); break;
+      case "l_iconc": { const n = prompt("Свой значок (эмодзи)", l.icon || ""); if (n !== null) { l.icon = n.trim(); mark("lists", id, "u"); } break; }
       case "l_colorpop": return sub("color");
       case "l_grouppop": return sub("move");
-      case "l_color": l.color = v || null; mark("lists", id, "u"); break;
+      case "l_color": l.color = v || null; if (TH.nolc) { TH.nolc = 0; saveTheme(); } mark("lists", id, "u"); break;
       case "l_group": setListGroup(id, d.g); break;
       case "l_groupnew": { const n = prompt("Название новой группы"); if (n && n.trim()) setListGroup(id, n.trim()); break; }
       case "l_up": moveList(id, -1); break;
