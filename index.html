@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 23:12";
+const BUILD = "20.10 23:45";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -717,7 +717,7 @@ function addBarHTML() {
 }
 const isFresh = t => !!(ui.fresh && ui.fresh.id === t.id && ui.fresh.view === view);
 function freshTask(items) {
-  const f = ui.fresh; if (!f || f.view !== view || Date.now() - f.at > 600000) return null;
+  const f = ui.fresh; if (!f || f.view !== view || Date.now() - f.at > 45000) return null;   // «только что добавлено» держится недолго
   const t = S.tasks[f.id]; return t && !t.done && items.indexOf(t) >= 0 ? t : null;
 }
 function submitQA() {
@@ -1867,7 +1867,7 @@ function ptrInit(app) {
     if (!bar) { bar = document.createElement("div"); bar.className = "ptr"; document.body.appendChild(bar); }
     pull = Math.min(d, 110); bar.style.opacity = Math.min(1, pull / 80); bar.style.transform = "translate(-50%," + (pull * .6) + "px)"; bar.textContent = pull > 80 ? "↓ отпусти — обновлю" : "↓ потяни, чтобы обновить";
   }, { passive: true });
-  const fin = () => { if (bar) { bar.style.opacity = 0; } if (pull > 80 && el) { toast("Обновляю…"); loadAll(); } el = null; pull = 0; };
+  const fin = () => { if (bar) { bar.style.opacity = 0; } if (pull > 80 && el) { toast("Обновляю…"); ui.fresh = null; loadAll(); } el = null; pull = 0; };
   app.addEventListener("touchend", fin); app.addEventListener("touchcancel", () => { el = null; pull = 0; if (bar) bar.style.opacity = 0; });
 }
 function swipeInit(app) {
@@ -2211,24 +2211,24 @@ const wave = (t, d, v) => [Nz(250, t, d, v, 1600, { a: d * .55, f: "lp", k: "bro
 const wash = (t, d, v) => [Nz(1500, t, d, v, 200, { a: d * .12, f: "lp", k: "brown", q: .7 })];
 const wind = (t, d, v) => [Nz(600, t, d, v, 1300, { a: d * .5, f: "bp", k: "pink", q: .6 })];
 const swish = (t, f1, f2, d, v) => Nz(f1, t, d, v, f2, { f: "bp", q: 2.2, a: d * .3 });
-const L = (...a) => [].concat(...a);
+const SL = (...a) => [].concat(...a);   // не называть L — это перекрывает глобальный Leaflet (карта трекера)
 const THEME_SND = {
-  web: { n: "Паутина", done: L([swish(0, 900, 4500, .09, 1.2)], [[330, .07, .5, "triangle", .3, 300], [660, .07, .3, "sine", .12, 600], [120, .08, .14, "sine", .5, 60]]), add: [swish(0, 700, 3500, .08, .8)], del: L([swish(0, 4000, 600, .14, 1)], crackle(.1, .12, 5, 4500, .3, 1)), remind: L([0, .35, .7].map(t => [swish(t, 900, 4500, .09, 1.2), [330, t + .07, .4, "triangle", .35, 300]]).flat()) },
-  paper: { n: "Бумага", done: L(crackle(0, .25, 10, 4500, .8, 1), [[1800, .27, .03, "triangle", .15]]), add: crackle(0, .1, 5, 4500, .7, 1), del: crackle(0, .5, 24, 3000, 1, 1), remind: L(knock(0, .6), knock(.2, .6), knock(.4, .6)) },
-  sky: { n: "Небо", done: L(bell(1568, 0, .2, 1.4), bell(2093, .15, .2, 1.4), bell(2637, .3, .15, 1.6)), add: bell(1760, 0, .22, .8), del: bell(988, 0, .22, 1), remind: L(bell(1568, 0, .22, 1.2), bell(2093, .2, .22, 1.2), bell(1319, .4, .22, 1.2), bell(2349, .6, .22, 1.2), bell(1760, .8, .22, 1.6)) },
-  mint: { n: "Мята", done: L(bloop(500, 0, .5), bloop(750, .13, .45)), add: bloop(600, 0, .45), del: bloop(300, 0, .5), remind: L(bloop(500, 0, .5), bloop(500, .3, .5), bloop(500, .6, .5), bloop(800, .75, .5)) },
-  lavender: { n: "Лаванда", done: bowl(528, 0, .35), add: bowl(660, 0, .3), del: bowl(330, 0, .35), remind: L(bowl(528, 0, .4), bowl(528, 1, .4), bowl(528, 2, .4)) },
-  peach: { n: "Закат", done: L(marimba(523, 0, .5), marimba(784, .12, .5)), add: marimba(659, 0, .45), del: marimba(262, 0, .5), remind: L(marimba(523, 0, .5), marimba(659, .2, .5), marimba(784, .4, .5), marimba(1047, .6, .5)) },
-  forest: { n: "Лес", done: L(bird(0, .35), bird(.3, .3), crackle(0, .4, 6, 3500, .25)), add: bird(0, .35), del: L([Nz(2500, 0, .02, 1.2, 0, { f: "hp", q: .6 }), [180, 0, .08, "sine", .5, 90]]), remind: L(bird(0, .45), bird(.45, .45), bird(.9, .45)) },
-  dusk: { n: "Сумерки", done: gong(147, 0, .35), add: L(cricket(0, .12), cricket(.2, .12), cricket(.4, .12)), del: gong(110, 0, .35), remind: L(gong(147, 0, .5), gong(147, 1, .5), gong(147, 2, .5)) },
-  honey: { n: "Мёд", done: L(mbox(1047, 0, .25), mbox(1319, .13, .25), mbox(1568, .26, .25), mbox(2093, .39, .25)), add: mbox(1568, 0, .28), del: L(mbox(784, 0, .28), mbox(659, .15, .28)), remind: L(mbox(1319, 0, .3), mbox(1568, .2, .3), mbox(2093, .4, .3), mbox(1319, .9, .3), mbox(1568, 1.1, .3), mbox(2093, 1.3, .3)) },
-  berry: { n: "Ягода", done: L(pop(0, .7), pop(.16, .6), bloop(500, .3, .35)), add: pop(0, .6), del: [Nz(800, 0, .18, .8, 200, { f: "lp", q: .7 })], remind: L(pop(0, .8), pop(.2, .8), pop(.4, .8), pop(.6, .8)) },
-  lime: { n: "Лайм", done: L(pop(0, .7), crackle(.03, .45, 34, 6500, .5, 1), bloop(600, .4, .3)), add: L(pop(0, .5), crackle(0, .15, 10, 6500, .4, 1)), del: crackle(0, .4, 22, 3500, .5, 1), remind: L(pop(0, .8), crackle(.03, .3, 22, 6500, .5, 1), pop(.5, .8), crackle(.53, .3, 22, 6500, .5, 1)) },
-  ocean: { n: "Океан", done: wave(0, 1.5, 1.4), add: L(bloop(700, 0, .4), [Nz(3000, .02, .12, .3, 1500, { f: "hp", k: "white" })]), del: wash(0, 1, 1.4), remind: L(wave(0, 1.3, 1.2), gull(.5, .4), gull(1.2, .4)) },
-  cotton: { n: "Сахарная вата", done: L(glass(1047, 0, .22), glass(1319, .08, .22), glass(1568, .16, .22), glass(2093, .24, .22)), add: glass(1568, 0, .25), del: glass(784, 0, .3), remind: L(glass(1047, 0, .28), glass(1319, .1, .28), glass(1568, .2, .28), glass(1047, .6, .28), glass(1319, .7, .28), glass(1568, .8, .28)) },
-  rose: { n: "Роза", done: L(piano(659, 0, .4), piano(784, .1, .4), piano(988, .2, .4, 1.4)), add: piano(784, 0, .4, .7), del: piano(330, 0, .45, .9), remind: L(piano(659, 0, .45), piano(784, 0, .45), piano(988, 0, .45, 1.2), piano(659, .9, .45), piano(784, .9, .45), piano(1175, .9, .45, 1.4)) },
-  ice: { n: "Лёд", done: L(glass(2349, 0, .25), glass(3136, .07, .22)), add: glass(2637, 0, .22), del: L(crackle(0, .3, 14, 7000, .5, 1), glass(1000, .2, .25)), remind: L(glass(2349, 0, .3), glass(3136, .25, .3), glass(2349, .5, .3), glass(3136, .75, .3)) },
-  sand: { n: "Пустыня", done: L(wind(0, .8, 1.1), drum(.1, .5)), add: drum(0, .45), del: [Nz(1300, 0, .5, 1, 300, { a: .06, f: "bp", k: "pink", q: .6 })], remind: L(drum(0, .6), drum(.3, .6), drum(.6, .6)) }
+  web: { n: "Паутина", done: SL([swish(0, 900, 4500, .09, 1.2)], [[330, .07, .5, "triangle", .3, 300], [660, .07, .3, "sine", .12, 600], [120, .08, .14, "sine", .5, 60]]), add: [swish(0, 700, 3500, .08, .8)], del: SL([swish(0, 4000, 600, .14, 1)], crackle(.1, .12, 5, 4500, .3, 1)), remind: SL([0, .35, .7].map(t => [swish(t, 900, 4500, .09, 1.2), [330, t + .07, .4, "triangle", .35, 300]]).flat()) },
+  paper: { n: "Бумага", done: SL(crackle(0, .25, 10, 4500, .8, 1), [[1800, .27, .03, "triangle", .15]]), add: crackle(0, .1, 5, 4500, .7, 1), del: crackle(0, .5, 24, 3000, 1, 1), remind: SL(knock(0, .6), knock(.2, .6), knock(.4, .6)) },
+  sky: { n: "Небо", done: SL(bell(1568, 0, .2, 1.4), bell(2093, .15, .2, 1.4), bell(2637, .3, .15, 1.6)), add: bell(1760, 0, .22, .8), del: bell(988, 0, .22, 1), remind: SL(bell(1568, 0, .22, 1.2), bell(2093, .2, .22, 1.2), bell(1319, .4, .22, 1.2), bell(2349, .6, .22, 1.2), bell(1760, .8, .22, 1.6)) },
+  mint: { n: "Мята", done: SL(bloop(500, 0, .5), bloop(750, .13, .45)), add: bloop(600, 0, .45), del: bloop(300, 0, .5), remind: SL(bloop(500, 0, .5), bloop(500, .3, .5), bloop(500, .6, .5), bloop(800, .75, .5)) },
+  lavender: { n: "Лаванда", done: bowl(528, 0, .35), add: bowl(660, 0, .3), del: bowl(330, 0, .35), remind: SL(bowl(528, 0, .4), bowl(528, 1, .4), bowl(528, 2, .4)) },
+  peach: { n: "Закат", done: SL(marimba(523, 0, .5), marimba(784, .12, .5)), add: marimba(659, 0, .45), del: marimba(262, 0, .5), remind: SL(marimba(523, 0, .5), marimba(659, .2, .5), marimba(784, .4, .5), marimba(1047, .6, .5)) },
+  forest: { n: "Лес", done: SL(bird(0, .35), bird(.3, .3), crackle(0, .4, 6, 3500, .25)), add: bird(0, .35), del: SL([Nz(2500, 0, .02, 1.2, 0, { f: "hp", q: .6 }), [180, 0, .08, "sine", .5, 90]]), remind: SL(bird(0, .45), bird(.45, .45), bird(.9, .45)) },
+  dusk: { n: "Сумерки", done: gong(147, 0, .35), add: SL(cricket(0, .12), cricket(.2, .12), cricket(.4, .12)), del: gong(110, 0, .35), remind: SL(gong(147, 0, .5), gong(147, 1, .5), gong(147, 2, .5)) },
+  honey: { n: "Мёд", done: SL(mbox(1047, 0, .25), mbox(1319, .13, .25), mbox(1568, .26, .25), mbox(2093, .39, .25)), add: mbox(1568, 0, .28), del: SL(mbox(784, 0, .28), mbox(659, .15, .28)), remind: SL(mbox(1319, 0, .3), mbox(1568, .2, .3), mbox(2093, .4, .3), mbox(1319, .9, .3), mbox(1568, 1.1, .3), mbox(2093, 1.3, .3)) },
+  berry: { n: "Ягода", done: SL(pop(0, .7), pop(.16, .6), bloop(500, .3, .35)), add: pop(0, .6), del: [Nz(800, 0, .18, .8, 200, { f: "lp", q: .7 })], remind: SL(pop(0, .8), pop(.2, .8), pop(.4, .8), pop(.6, .8)) },
+  lime: { n: "Лайм", done: SL(pop(0, .7), crackle(.03, .45, 34, 6500, .5, 1), bloop(600, .4, .3)), add: SL(pop(0, .5), crackle(0, .15, 10, 6500, .4, 1)), del: crackle(0, .4, 22, 3500, .5, 1), remind: SL(pop(0, .8), crackle(.03, .3, 22, 6500, .5, 1), pop(.5, .8), crackle(.53, .3, 22, 6500, .5, 1)) },
+  ocean: { n: "Океан", done: wave(0, 1.5, 1.4), add: SL(bloop(700, 0, .4), [Nz(3000, .02, .12, .3, 1500, { f: "hp", k: "white" })]), del: wash(0, 1, 1.4), remind: SL(wave(0, 1.3, 1.2), gull(.5, .4), gull(1.2, .4)) },
+  cotton: { n: "Сахарная вата", done: SL(glass(1047, 0, .22), glass(1319, .08, .22), glass(1568, .16, .22), glass(2093, .24, .22)), add: glass(1568, 0, .25), del: glass(784, 0, .3), remind: SL(glass(1047, 0, .28), glass(1319, .1, .28), glass(1568, .2, .28), glass(1047, .6, .28), glass(1319, .7, .28), glass(1568, .8, .28)) },
+  rose: { n: "Роза", done: SL(piano(659, 0, .4), piano(784, .1, .4), piano(988, .2, .4, 1.4)), add: piano(784, 0, .4, .7), del: piano(330, 0, .45, .9), remind: SL(piano(659, 0, .45), piano(784, 0, .45), piano(988, 0, .45, 1.2), piano(659, .9, .45), piano(784, .9, .45), piano(1175, .9, .45, 1.4)) },
+  ice: { n: "Лёд", done: SL(glass(2349, 0, .25), glass(3136, .07, .22)), add: glass(2637, 0, .22), del: SL(crackle(0, .3, 14, 7000, .5, 1), glass(1000, .2, .25)), remind: SL(glass(2349, 0, .3), glass(3136, .25, .3), glass(2349, .5, .3), glass(3136, .75, .3)) },
+  sand: { n: "Пустыня", done: SL(wind(0, .8, 1.1), drum(.1, .5)), add: drum(0, .45), del: [Nz(1300, 0, .5, 1, 300, { a: .06, f: "bp", k: "pink", q: .6 })], remind: SL(drum(0, .6), drum(.3, .6), drum(.6, .6)) }
 };
 THEME_SND.webl = THEME_SND.web;
 const sndPackOf = c => c.pack === "theme" ? (THEME_SND[(THEMES[TH.theme] || {}).snd || TH.theme] || SND_PACKS.soft) : SND_PACKS[c.pack];
@@ -4133,7 +4133,7 @@ function ghostPlay(g) {
       c.remove(); let rr = null; try { const rw = document.querySelector('#main .taskrow[data-id="' + lsel + '"]'); if (rw) rr = rw.getBoundingClientRect(); } catch (e) {}
       const H = innerHeight, to = rr && rr.bottom > 0 && rr.top < H ? rr : { left: 12, top: H * 0.45, width: innerWidth - 24, height: 56 };
       xCard({ left: 0, top: 0, width: innerWidth, height: H }, to, 240, 60, true);
-      const mm = $("main"); if (mm && mm.animate) mm.animate([{ filter: "brightness(.86)" }, { filter: "brightness(1)" }], { duration: 240, easing: "cubic-bezier(.3,0,.15,1)" });
+      const mm = $("main"); if (mm && mm.animate) mdDim(mm, [{ opacity: .14 }, { opacity: 0 }], 240, "cubic-bezier(.3,0,.15,1)");
       return;
     }
     const kf = x.kind === "lslide" ? [{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .25 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }] : x.kind === "mslide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.28)" }] : x.kind === "slide" ? [{ transform: "translateX(0)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }, { transform: "translateX(100%)", boxShadow: "-10px 0 28px rgba(0,0,0,.25)" }] : x.kind === "qa" ? [{ opacity: 1 }, { opacity: 0 }] : x.kind === "pop" ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(8px)" }];
@@ -4170,12 +4170,14 @@ function ghostPlay(g) {
     r.style.willChange = "transform";
     const a = r.animate([{ transform: "translateX(72%)" }, { transform: "translateX(0)" }], { duration: 250, easing: E });
     a.onfinish = a.oncancel = () => { r.style.boxShadow = ""; r.style.willChange = ""; }; mdHold(a);
-    if (mm && mm.animate) { paintLikeApp(mm); const b2 = mm.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-22%)", filter: "brightness(.72)", offset: .3 }, { transform: "translateX(-25%)", filter: "brightness(.72)" }], { duration: 250, easing: E, fill: "forwards" }); mm.style.willChange = "transform, filter"; b2.onfinish = b2.oncancel = () => { mm.style.background = ""; mm.style.willChange = ""; b2.cancel(); }; mdHold(b2); }
+    if (mm && mm.animate) { paintLikeApp(mm); const b2 = mm.animate([{ transform: "translateX(0)" }, { transform: "translateX(-22%)", offset: .3 }, { transform: "translateX(-25%)" }], { duration: 250, easing: E, fill: "forwards" }); mm.style.willChange = "transform"; const dm = mdDim(mm, [{ opacity: 0 }, { opacity: .28, offset: .3 }, { opacity: .28 }], 250, E); b2.onfinish = b2.oncancel = () => { mm.style.background = ""; mm.style.willChange = ""; b2.cancel(); }; mdHold(b2, dm); }
   } }
 }
 /* ----- быстрые переходы: анимация стартует ДО тяжёлой перерисовки и идёт на видеочипе, поэтому не дёргается ----- */
 const after2 = f => requestAnimationFrame(() => requestAnimationFrame(f));
 // переход стартует только после того, как тяжёлая перерисовка уже отрисована: иначе первые кадры теряются и видна «рваность»
+// затемнение нижнего слоя полупрозрачной накладкой (только opacity — идёт на видеочипе). filter:brightness на большом списке перерисовывал его каждый кадр = рваность
+const mdDim = (host, kf, dur, ease) => { const d = document.createElement("div"), st = getComputedStyle(host).position === "static"; if (st) host.style.position = "relative"; d.style.cssText = "position:absolute;inset:0;background:#000;pointer-events:none;z-index:60;opacity:" + kf[0].opacity; host.appendChild(d); const a = d.animate(kf, { duration: dur, easing: ease, fill: "forwards" }); a.onfinish = a.oncancel = () => { d.remove(); if (st) host.style.position = ""; }; return a; };
 const mdHold = (...an) => { an.forEach(a => { try { a.pause(); } catch (e) {} }); after2(() => an.forEach(a => { try { a.play(); } catch (e) {} })); };
 function fastOpen() { return false; }
 function fastClose() {   // закрытие задачи — как переход из списка в меню: задача уезжает вправо, под ней список возвращается на место и светлеет
@@ -4183,7 +4185,7 @@ function fastClose() {   // закрытие задачи — как перех�
   selId = null; window.__lsel = null;
   const E = "cubic-bezier(.35,.1,.25,1)"; r.style.boxShadow = "-10px 0 28px rgba(0,0,0,.22)";
   const a = r.animate([{ transform: "translateX(0)" }, { transform: "translateX(100%)" }], { duration: 240, easing: E, fill: "forwards" });
-  if (m && m.animate) { paintLikeApp(m); const b3 = m.animate([{ transform: "translateX(-25%)", filter: "brightness(.72)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 240, easing: E }); b3.onfinish = b3.oncancel = () => { m.style.background = ""; }; }
+  if (m && m.animate) { paintLikeApp(m); const b3 = m.animate([{ transform: "translateX(-25%)" }, { transform: "translateX(0)" }], { duration: 240, easing: E }); mdDim(m, [{ opacity: .28 }, { opacity: 0 }], 240, E); b3.onfinish = b3.oncancel = () => { m.style.background = ""; }; }
   let fin = false; const end = () => { if (fin) return; fin = true; render(); };
   a.onfinish = end; setTimeout(end, 400); return true;
 }
@@ -4439,7 +4441,7 @@ const acts = {
     const name = prompt("Название новой группы"); if (!name || !name.trim()) return;
     setListGroup(view.slice(5), name.trim()); render();
   },
-  sync() { loadAll(); },
+  sync() { ui.fresh = null; loadAll(); },
   settings() { ui.settings = true; ui.smenu = true; ui.msg = ""; closePop(); render(); },
   bgclear() { TH.bg = ""; saveTheme(); render(); },
   ritual() { if (isLite()) return; ui.rit = true; ui.left = false; render(); },

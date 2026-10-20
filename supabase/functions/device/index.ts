@@ -44,6 +44,16 @@ Deno.serve(async (req) => {
       const lr = await fetch(base + "lists?select=id&id=eq." + b.list_id + "&user_id=eq." + uid, { headers: hd });
       if (lr.ok && (await lr.json())[0]) list_id = String(b.list_id);
     }
+    if (!list_id && b.list_name) {   // список по имени (например «Файлы» с телефона); нет такого — создаём
+      const nm = String(b.list_name).trim().slice(0, 100);
+      const lr = await fetch(base + "lists?select=id,name&user_id=eq." + uid + "&name=ilike." + encodeURIComponent(nm), { headers: hd });
+      const f1 = lr.ok ? (await lr.json())[0] : null;
+      if (f1) list_id = f1.id;
+      else {
+        const nid = crypto.randomUUID(), cr = await fetch(base + "lists", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ id: nid, user_id: uid, name: nm, icon: "📎", position: 999, created_at: new Date().toISOString() }) });
+        if (cr.ok) list_id = nid;
+      }
+    }
     const due = /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || "")) ? String(b.due) : b.today ? ymdz(Date.now()) : null;
     const t = { id: crypto.randomUUID(), user_id: uid, title, list_id, due, note: b.note ? String(b.note).slice(0, 4000) : "", done: false, parent_id: null, category: null, starred: false, my_day: false, my_day_date: null, steps: [], est_minutes: null, status: "active", remind_at: null, repeat_rule: null, files: [], plan_start: null, created_at: new Date().toISOString() };
     const r = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(t) });

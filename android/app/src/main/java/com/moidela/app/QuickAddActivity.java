@@ -76,9 +76,14 @@ public class QuickAddActivity extends Activity {
                 listIds.add(l.optString("id")); listNames.add((l.isNull("icon") ? "" : l.optString("icon") + " ") + l.optString("name"));
             }
         } catch (Exception e) { /* только «без списка» */ }
+        String filesId = null;   // файл/картинка по умолчанию кладём в список «Файлы» (если его нет — сервер создаст)
+        if (imgBytes != null) {
+            for (int i = 0; i < listNames.size(); i++) if (listNames.get(i).toLowerCase().endsWith("файлы")) { filesId = listIds.get(i); break; }
+            if (filesId == null) { filesId = "__files"; listIds.add(filesId); listNames.add("📎 Файлы (создам)"); }
+        }
         spList = new Spinner(this);
         spList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, listNames));
-        String want = presetList != null ? presetList : Store.p(this).getString("lastlist", "");
+        String want = filesId != null ? filesId : presetList != null ? presetList : Store.p(this).getString("lastlist", "");
         int pos = listIds.indexOf(want);
         spList.setSelection(pos < 0 ? 0 : pos);
         dueNames.add("Без срока"); dueNames.add("Сегодня"); dueNames.add("Завтра"); dueNames.add("Через неделю"); dueNames.add("Выбрать дату…");
@@ -118,7 +123,7 @@ public class QuickAddActivity extends Activity {
             LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             ip.setMargins(0, pd / 2, 0, pd / 2);
             l.addView(iv, ip);
-            et.setHint("Что с этой картинкой сделать? (можно пусто)");
+            et.setHint("Название (пусто — имя файла)");
         }
         if (fileLabel != null) {
             TextView fv = new TextView(this);
@@ -126,7 +131,7 @@ public class QuickAddActivity extends Activity {
             fv.setTextSize(15);
             fv.setPadding(0, pd / 2, 0, pd / 2);
             l.addView(fv);
-            et.setHint("Что с этим файлом сделать? (можно пусто)");
+            et.setHint("Название (пусто — имя файла)");
         }
         l.addView(et);
         TextView l1 = new TextView(this); l1.setText("Список"); l1.setPadding(0, pd / 2, 0, 0); l.addView(l1);
@@ -262,13 +267,13 @@ public class QuickAddActivity extends Activity {
         String tx = et.getText().toString().trim();
         if (tx.length() == 0 && imgBytes != null) {
             java.util.Calendar cc = java.util.Calendar.getInstance();
-            tx = fileLabel != null ? imgName : String.format(java.util.Locale.US, "Картинка %02d.%02d %02d:%02d", cc.get(java.util.Calendar.DAY_OF_MONTH), cc.get(java.util.Calendar.MONTH) + 1, cc.get(java.util.Calendar.HOUR_OF_DAY), cc.get(java.util.Calendar.MINUTE));
+            tx = fileLabel != null || !"Картинка".equals(imgName) ? imgName : String.format(java.util.Locale.US, "Картинка %02d.%02d %02d:%02d", cc.get(java.util.Calendar.DAY_OF_MONTH), cc.get(java.util.Calendar.MONTH) + 1, cc.get(java.util.Calendar.HOUR_OF_DAY), cc.get(java.util.Calendar.MINUTE));
         }
         final String text = tx;
         if (text.length() == 0) return;
         final String lid = listIds.get(spList.getSelectedItemPosition());
         final String due = dueFor(spDue.getSelectedItemPosition());
-        Store.p(this).edit().putString("lastlist", lid).apply();
+        if (!"__files".equals(lid)) Store.p(this).edit().putString("lastlist", lid).apply();
         final android.content.Context c = getApplicationContext();
         new Thread(new Runnable() { public void run() {
             String res = null;
@@ -278,7 +283,7 @@ public class QuickAddActivity extends Activity {
                 JSONObject j = new JSONObject().put("title", first);
                 if (due != null) j.put("due", due);
                 if (note != null) j.put("note", note);
-                if (lid.length() > 0) j.put("list_id", lid);
+                if ("__files".equals(lid)) j.put("list_name", "Файлы"); else if (lid.length() > 0) j.put("list_id", lid);
                 res = Net.post(Store.api(c, "add", ""), j.toString());
                 if (res != null && imgBytes != null) {   // картинка — вложением к только что созданной задаче
                     String id = new JSONObject(res).optString("id");
