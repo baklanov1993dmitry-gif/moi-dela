@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "20.10 23:45";
+const BUILD = "20.10 23:51";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1838,7 +1838,22 @@ function updBadge() {
 // ---- плавные переходы (см. навык ui-animation-springs) ----
 const mdOk = () => { try { return !CFG0.TEST && !matchMedia("(prefers-reduced-motion: reduce)").matches && !!Element.prototype.animate; } catch (e) { return false; } };
 const mdKids = id => { const r = document.querySelector('#main .tnode.has>.taskrow[data-id="' + id + '"]'); return r && r.parentNode.querySelector(".kids"); };
+// маленький «салют» из точек при выполнении (идея Particle Button из KokonutUI; только transform/opacity, живёт 0,7 с)
+function mdBurst(el) {
+  try {
+    if (!mdOk() || !el || !el.getBoundingClientRect) return; const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const cols = [getComputedStyle(document.documentElement).getPropertyValue("--acc") || "#2564cf", "#3aa76d", "#f5b700", "#e3680c", "#8764b8"];
+    for (let i = 0; i < 12; i++) {
+      const d = document.createElement("i"), a = (i / 12) * Math.PI * 2 + Math.random() * .5, dist = 26 + Math.random() * 22, sz = 4 + Math.random() * 3;
+      d.style.cssText = "position:fixed;left:" + (cx - sz / 2) + "px;top:" + (cy - sz / 2) + "px;width:" + sz + "px;height:" + sz + "px;border-radius:50%;pointer-events:none;z-index:99999;background:" + cols[i % cols.length].trim();
+      document.body.appendChild(d);
+      const an = d.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: "translate(" + Math.cos(a) * dist + "px," + (Math.sin(a) * dist - 8) + "px) scale(.2)", opacity: 0 }], { duration: 560 + Math.random() * 180, easing: "cubic-bezier(.2,.8,.2,1)" });
+      an.onfinish = () => d.remove();
+    }
+  } catch (e) {}
+}
 function mdDone(row, rad) {
+  mdBurst(rad);
   if (!mdOk()) { row.classList.add("fin"); setTimeout(render, 260); return; }
   try { rad.animate([{ transform: "scale(1)" }, { transform: "scale(1.3)", offset: .4 }, { transform: "scale(1)" }], { duration: 320, easing: "cubic-bezier(.34,1.56,.64,1)" }); } catch (e) {}
   const h = row.offsetHeight, cs = getComputedStyle(row); row.style.overflow = "hidden"; row.style.pointerEvents = "none";
@@ -2344,7 +2359,8 @@ const mCSS = `
 .taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
 .mtop.msb{animation:msbin .15s ease-out;background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} @keyframes msbin{from{opacity:0}} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
 .mtop.msb .mcnt{color:#fff} .smode{display:inline-flex;border:1px solid var(--ln);border-radius:16px;overflow:hidden;background:var(--card)} .smode button{padding:5px 12px;font-size:calc(12.5px*var(--z,1));color:var(--sub);cursor:pointer;white-space:nowrap} .smode button.on{background:var(--acc);color:#fff}
-.sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
+.btn,.jr-chip,.tool,.mt{transition:transform .22s cubic-bezier(.34,1.56,.64,1)} .btn:active,.jr-chip:active,.tool:active,.mt:active{transform:scale(.95)}
+.sbgrip{cursor:grab;touch-action:none;padding:2px 6px;color:var(--sub);font-weight:700;letter-spacing:-2px;user-select:none;align-self:center} .sbgrip:active{cursor:grabbing} .sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
 @media(hover:hover){.taskrow.sub:hover .sbmv,.drow.stp:hover .sbmv{display:inline-flex}}
 .drow.stp .sbmv{margin-left:6px}
 .mcnt{font-size:calc(19px*var(--z,1));font-weight:600;margin-left:6px}
@@ -2409,6 +2425,19 @@ const jrCSS = `
 .jr-t{min-width:0;overflow-wrap:anywhere}
 .jr-c{font-style:normal;font-size:calc(10.8px*var(--z,1));color:var(--sub);border:1px solid var(--ln);border-radius:9px;padding:1px 6px;margin:0;display:inline-flex;align-items:center;gap:3px;line-height:1.3}
 .jr-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px}
+:root{--jd-u:#3aa76d;--jd-n:#9aa0a6;--jd-x:#d9534f}
+.jd-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.jd-k{background:var(--hov);border-radius:12px;padding:10px 12px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.jd-kl{font-size:calc(11.5px*var(--z,1));color:var(--sub)}.jd-kv{font-size:calc(21px*var(--z,1));font-weight:700;line-height:1.1}.jd-kv small{font-size:.55em;font-weight:500;color:var(--sub)}
+.jd-kv em{font-style:normal;font-size:.5em;font-weight:600;margin-left:4px;vertical-align:middle}.jd-up{color:var(--jd-u)}.jd-dn{color:var(--jd-x)}
+.jd-sp{width:100%;height:32px;margin-top:auto}.jd-line{stroke-dasharray:1;stroke-dashoffset:1;animation:jddraw .9s .1s cubic-bezier(.2,.8,.2,1) forwards}@keyframes jddraw{to{stroke-dashoffset:0}}
+.jd-bars{display:flex;align-items:flex-end;gap:3px;height:32px;margin-top:auto}.jd-bars i{flex:1;background:var(--acc);border-radius:3px 3px 1px 1px;transform-origin:bottom;animation:jdgrow .6s cubic-bezier(.34,1.4,.64,1) backwards}@keyframes jdgrow{from{transform:scaleY(.05)}}
+.jd-ring{display:flex;align-items:center;gap:14px;margin-top:12px}.jd-ring svg{width:116px;height:116px;flex:none}.jd-rt{font-size:19px;font-weight:700;fill:var(--tx,currentColor)}.jd-rs{font-size:8px;fill:var(--sub)}
+.jd-arc{animation:jdarc .9s cubic-bezier(.2,.8,.2,1) backwards}@keyframes jdarc{from{stroke-dasharray:0 400}}
+.jd-lg{display:flex;flex-direction:column;gap:5px;font-size:calc(13px*var(--z,1))}.jd-lg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px}.jd-cmp{color:var(--sub);font-size:.88em;margin-top:2px}
+.jd-hm{max-width:640px;display:grid;grid-template-columns:26px repeat(24,minmax(0,1fr));gap:2px;margin-top:6px;align-items:center}.jd-hl{font-size:calc(10.5px*var(--z,1));color:var(--sub)}.jd-hh{font-size:9px;color:var(--sub);text-align:left;height:12px}
+.jd-hm i{display:block;aspect-ratio:1;border-radius:3px;background:color-mix(in srgb,var(--acc) calc(var(--a)*100%),transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sub) 14%,transparent)}
+@media(max-width:520px){.jd-ring{flex-direction:column;align-items:flex-start}.jd-row{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.jd-line,.jd-bars i,.jd-arc{animation:none!important}.jd-line{stroke-dashoffset:0}}
 .jr-chip{border:1px solid var(--ln);background:var(--solid,transparent);color:inherit;border-radius:16px;padding:5px 12px;cursor:pointer;font-size:calc(12.2px*var(--z,1))}
 .jr-chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .jr-day .linkbtn{margin-left:8px}
@@ -2764,7 +2793,49 @@ function subRow(k) {
     '<div class="tbody"><div class="ttl">' + esc(k.title) + "</div>" + metaHTML(k, false, false) + "</div>" + subMvHTML(k.id) + "</div>";
 }
 // порядок подзадач: стрелки ▲▼ (по наведению / у выбранной) и Alt+↑/↓; номер порядка хранится в колонке ord (как очередь, но только внутри родителя)
-const subMvHTML = id => '<span class="sbmv"><button type="button" data-a="submv" data-id="' + id + '" data-d="-1" title="Выше">' + ic("up", 13) + '</button><button type="button" data-a="submv" data-id="' + id + '" data-d="1" title="Ниже">' + ic("down", 13) + "</button></span>";
+const subMvHTML = id => '<span class="sbmv"><span class="sbgrip" title="Потяните, чтобы переставить">⋮⋮</span><button type="button" data-a="submv" data-id="' + id + '" data-d="-1" title="Выше">' + ic("up", 13) + '</button><button type="button" data-a="submv" data-id="' + id + '" data-d="1" title="Ниже">' + ic("down", 13) + "</button></span>";
+function subReorder(id, to) {   // поставить подзадачу на позицию to среди таких же (по готовности) — для перетаскивания
+  const t = S.tasks[id]; if (!t || !t.parent_id || !OR) return false;
+  const a = (subIdx[t.parent_id] || []).filter(x => !!x.done === !!t.done), o = a.map(x => x.id), i = o.indexOf(id); if (i < 0) return false;
+  o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, to)), 0, id);
+  const rest = (subIdx[t.parent_id] || []).filter(x => !!x.done !== !!t.done).map(x => x.id);
+  (t.done ? rest.concat(o) : o.concat(rest)).forEach((x, n) => { if (S.tasks[x].ord !== n + 1) upd(x, { ord: n + 1 }); });
+  return true;
+}
+// перетаскивание подзадач за «⋮⋮»: соседи расступаются, отпустили — пружинная посадка на место
+function subDragInit(app) {
+  let g = null;
+  app.addEventListener("pointerdown", e => {
+    const h = e.target.closest && e.target.closest(".sbgrip"); if (!h || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const row = h.closest(".taskrow.sub"), box = row && row.parentNode; if (!row || !box) return;
+    if (!OR) { toast("Порядок подзадач: нужна колонка ord (как для очереди)"); return; }
+    const rows = Array.prototype.filter.call(box.children, x => x.classList.contains("sub") && x.classList.contains("done") === row.classList.contains("done"));
+    const rc = rows.map(x => x.getBoundingClientRect()), i0 = rows.indexOf(row); if (i0 < 0 || rows.length < 2) return;
+    e.preventDefault(); try { h.setPointerCapture(e.pointerId); } catch (x) {}
+    g = { id: row.dataset.id, row, rows, rc, i0, i: i0, y0: e.clientY, h, pid: e.pointerId };
+    row.style.zIndex = "5"; row.style.position = "relative"; row.style.transition = "none"; row.style.boxShadow = "0 8px 22px rgba(0,0,0,.22)"; row.style.background = "var(--card)"; row.style.transform = "scale(1.02)";
+    rows.forEach(x => { if (x !== row) x.style.transition = "transform .18s cubic-bezier(.2,.8,.2,1)"; });
+    window.__sbdrag = 1;
+  });
+  app.addEventListener("pointermove", e => {
+    if (!g || e.pointerId !== g.pid) return;
+    const dy = e.clientY - g.y0, r0 = g.rc[g.i0], c = r0.top + r0.height / 2 + dy; let i = 0;
+    g.rc.forEach((r, j) => { if (j !== g.i0 && r.top + r.height / 2 < c) i++; });
+    g.i = i; g.row.style.transform = "translateY(" + dy + "px) scale(1.02)";
+    g.rows.forEach((x, j) => { if (j === g.i0) return; const o = g.i > g.i0 && j > g.i0 && j <= g.i ? -r0.height : g.i < g.i0 && j >= g.i && j < g.i0 ? r0.height : 0; x.style.transform = o ? "translateY(" + o + "px)" : ""; });
+  });
+  const end = e => {
+    if (!g || (e && e.pointerId !== g.pid)) return; const d = g; g = null;
+    try { d.h.releasePointerCapture(d.pid); } catch (x) {}
+    let to = 0; if (d.i > d.i0) for (let j = d.i0 + 1; j <= d.i; j++) to += d.rc[j].height; else for (let j = d.i; j < d.i0; j++) to -= d.rc[j].height;
+    const fin = () => { window.__sbdrag = 0; if (d.i !== d.i0) subReorder(d.id, d.i); render(); hkReveal(d.id); };
+    if (!mdOk() || !d.row.animate) { fin(); return; }
+    const cur = d.row.style.transform; d.row.style.transform = "";
+    const a = d.row.animate([{ transform: cur }, { transform: "translateY(" + to + "px)" }], { duration: 280, easing: "cubic-bezier(.34,1.56,.64,1)", fill: "forwards" });
+    a.onfinish = a.oncancel = fin; setTimeout(() => { if (window.__sbdrag) fin(); }, 700);
+  };
+  app.addEventListener("pointerup", end); app.addEventListener("pointercancel", end);
+}
 function subMove(id, dir) {
   const t = S.tasks[id]; if (!t || !t.parent_id) return false;
   if (!OR) { toast("Порядок подзадач: нужна колонка ord (как для очереди) — скажи Claude"); return true; }
@@ -5000,6 +5071,39 @@ function jrGoalMin(R, g) {
   Object.values(S.time_log).forEach(l => { const d = jrDay(l); if (!d || d < R.from || d >= R.to) return; const min = jrMinOf(l); if (min && jrTagsOf(l.cat).some(t => tg.indexOf(nrm(t)) >= 0)) m += min; });
   return m;
 }
+// ---- «дашборд» итогов: KPI со спарклайном, кольцо оценок, тепловая карта часов (дизайн-язык Bklit, на чистом SVG/CSS) ----
+function jrDash(R, cur, prev) {
+  if (!cur.tot) return "";
+  const days = []; for (let d = R.from; d < R.to; d = addDays(d, 1)) days.push(d);
+  const dm = {}, hh = {}; days.forEach(d => { dm[d] = 0; hh[d] = new Array(24).fill(0); });
+  Object.values(S.time_log).forEach(l => {
+    const d = jrDay(l); if (!(d in dm)) return; const m = jrMinOf(l); if (!m) return; dm[d] += m;
+    let t = new Date(l.start_at).getTime(); const e = new Date(l.end_at).getTime();
+    while (t < e) { const dt = new Date(t), h = dt.getHours(), nx = Math.min(e, new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), h + 1).getTime()); hh[d][h] += (nx - t) / 60000; t = nx; }
+  });
+  const vals = days.map(d => dm[d]), mx = Math.max.apply(null, vals.concat([1])), W = 100, H = 30, st = W / Math.max(1, vals.length - 1);
+  const pts = vals.map((v, i) => [vals.length === 1 ? W / 2 : i * st, H - 3 - v / mx * (H - 8)]), ln = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const spark = '<svg class="jd-sp" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none"><defs><linearGradient id="jdg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--acc)" stop-opacity=".28"/><stop offset="1" stop-color="var(--acc)" stop-opacity="0"/></linearGradient></defs><path d="' + ln + " L" + pts[pts.length - 1][0].toFixed(1) + " " + H + " L" + pts[0][0].toFixed(1) + " " + H + ' Z" fill="url(#jdg)"/><path class="jd-line" pathLength="1" d="' + ln + '" fill="none" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+  const dl = (a, b) => b ? '<em class="' + (a >= b ? "jd-up" : "jd-dn") + '">' + (a >= b ? "▲ " : "▼ ") + Math.abs(Math.round((a - b) / b * 100)) + "%</em>" : "";
+  const v = cur.val, rated = v.u + v.n + v.x, pv = prev.val, prated = pv.u + pv.n + pv.x, Pu = rated ? Math.round(v.u / rated * 100) : 0, Pp = prated ? Math.round(pv.u / prated * 100) : 0;
+  const kpi = '<div class="jd-k"><div class="jd-kl">Записано</div><div class="jd-kv">' + fmtDurM(cur.tot) + " " + dl(cur.tot, prev.tot) + "</div>" + spark + "</div>" +
+    '<div class="jd-k"><div class="jd-kl">Дней с записями</div><div class="jd-kv">' + cur.days + '<small> из ' + Math.min(R.n, days.filter(d => d <= todayISO()).length) + "</small></div>" +
+    '<div class="jd-bars">' + days.map((d, i) => '<i style="height:' + Math.max(6, vals[i] / mx * 100) + '%;opacity:' + (vals[i] ? 1 : .22) + '" title="' + jrShort(d) + (vals[i] ? " · " + fmtDurM(vals[i]) : "") + '"></i>').join("") + "</div></div>";
+  let ring = "";
+  if (JV && rated) {
+    const C = 2 * Math.PI * 38, seg = [["u", "var(--jd-u)"], ["n", "var(--jd-n)"], ["x", "var(--jd-x)"]]; let off = 0;
+    const arcs = seg.map(x => { const f = v[x[0]] / rated; if (!f) return ""; const len = Math.max(0, f * C - (f < 1 ? 3 : 0)), o = off; off += f * C; return '<circle class="jd-arc" cx="50" cy="50" r="38" fill="none" stroke="' + x[1] + '" stroke-width="11" stroke-linecap="round" stroke-dasharray="' + len.toFixed(1) + " " + C.toFixed(1) + '" stroke-dashoffset="' + (-o).toFixed(1) + '" style="--len:' + len.toFixed(1) + '" transform="rotate(-90 50 50)"/>'; }).join("");
+    ring = '<div class="jd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="none" stroke="var(--ln)" stroke-width="11" opacity=".5"/>' + arcs + '<text x="50" y="49" text-anchor="middle" class="jd-rt">' + Pu + '%</text><text x="50" y="63" text-anchor="middle" class="jd-rs">полезное</text></svg>' +
+      '<div class="jd-lg"><div><i style="background:var(--jd-u)"></i>Полезное ' + fmtDurM(v.u) + '</div><div><i style="background:var(--jd-n)"></i>Нейтральное ' + fmtDurM(v.n) + '</div><div><i style="background:var(--jd-x)"></i>Бесполезное ' + fmtDurM(v.x) + "</div>" + (prated ? '<div class="jd-cmp">полезного ' + (Pu >= Pp ? "больше" : "меньше") + " на " + Math.abs(Pu - Pp) + " п.п. чем в прошлый раз</div>" : "") + "</div></div>";
+  }
+  let heat = "";
+  if (R.p === "w") {
+    const hmx = Math.max.apply(null, days.map(d => Math.max.apply(null, hh[d])).concat([1]));
+    heat = '<div class="jd-hm"><div class="jd-hl"></div>' + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map(h => '<div class="jd-hh">' + (h % 6 === 0 ? h : "") + "</div>").join("") +
+      days.map(d => '<div class="jd-hl">' + WDS[parseISO(d).getDay()] + "</div>" + hh[d].map((m, h) => '<i style="--a:' + (m ? (.14 + .86 * Math.min(1, m / Math.max(30, hmx))).toFixed(2) : 0) + '" title="' + WDS[parseISO(d).getDay()] + " " + pad2(h) + ":00" + (m ? " · " + fmtDurM(Math.round(m)) : "") + '"></i>').join("")).join("") + "</div>";
+  }
+  return '<div class="jr-sbox jd"><div class="jd-row">' + kpi + "</div>" + ring + (heat ? '<div class="jr-st" style="margin-top:12px">Когда я работаю</div>' + heat : "") + "</div>";
+}
 function jrGlance(cur, R) {
   if (!JV || !cur.tot) return "";
   const v = cur.val, rated = v.u + v.n + v.x, P = k => rated ? Math.round(v[k] / rated * 100) : 0;
@@ -5054,7 +5158,7 @@ function jrSummaryHTML() {
   } else ins.push(R.p === "m" ? "За этот месяц записей со временем пока нет." : "За эту неделю записей со временем пока нет.");
   return '<div class="jr-chips jr-sp"><button class="jr-chip' + (R.p === "w" ? " on" : "") + '" data-a="jrsp" data-v="w">Неделя</button><button class="jr-chip' + (R.p === "m" ? " on" : "") + '" data-a="jrsp" data-v="m">Месяц</button></div>' +
     '<div class="jr-nav"><button class="ibtn" data-a="jrswp">' + ic("arrowl", 22) + '</button><div class="jr-nl" style="cursor:default">' + lab + '</div><button class="ibtn jr-nr" data-a="jrswn">' + ic("arrowl", 22) + "</button></div>" +
-    jrGlance(cur, R) + '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> ' + (R.p === "m" ? "этот месяц" : "эта неделя") + ' <u></u> ' + (R.p === "m" ? "прошлый" : "прошлая") + '</div></div>' + jrGoalsHTML(R) + jrReviewHTML(R) +
+    jrDash(R, cur, prev) + jrGlance(cur, R) + '<div class="jr-sbox"><div class="jr-st">Итого записано: <b>' + fmtDurM(cur.tot) + '</b></div>' + jrValBar(cur) + (rows || '<div class="jr-empty">Нет записей со временем</div>') + '<div class="jr-leg"><i></i> ' + (R.p === "m" ? "этот месяц" : "эта неделя") + ' <u></u> ' + (R.p === "m" ? "прошлый" : "прошлая") + '</div></div>' + jrGoalsHTML(R) + jrReviewHTML(R) +
     '<div class="jr-sbox"><div class="jr-st">Что видно по цифрам</div><ul class="jr-ul">' + ins.map(x => "<li>" + x + "</li>").join("") + "</ul></div>" +
     jrPeriodList(R) +
     '<button class="btn jr-go" data-a="jrmk">🏷 Разметка записей</button>' + (R.p === "w" ? '<button class="btn jr-go" data-a="jrai">🤖 ИИ-разбор недели</button>' : "") + aiBox(J.ai) + jrCzHTML();
@@ -5882,7 +5986,7 @@ function init() {
   setInterval(() => { if (!document.hidden) bkTick(); }, 120000); setTimeout(() => bkTick(), 25000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); ritMaybe(); }, 20000); setTimeout(ritMaybe, 4000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
-  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app);
+  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app); subDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
   try { const q = new URLSearchParams(location.search); if (q.get("url") || q.get("text") || q.get("title")) { pendingShare = { title: q.get("title") || "", text: q.get("text") || "", url: q.get("url") || "" }; history.replaceState(null, "", location.pathname); } } catch (e) {}
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
