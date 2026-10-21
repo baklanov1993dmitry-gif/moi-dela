@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "21.10 20:33";
+const BUILD = "21.10 23:59";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -133,7 +133,7 @@ function getCfg() {
 let cfg = getCfg(), sb = null, screen = null;
 const S = { user: null, lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} };
 const newP = () => ({ lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} });
-let pendingOpen = null, pendingShare = null, pendingAdd = false;
+let pendingOpen = null, pendingShare = null, pendingAdd = false, voiceAuto = false;
 let P = jget(LSK.pending, { lists: {}, tasks: {}, time_log: {} });
 if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {}; if (!P.time_log) P.time_log = {};
 ["foods", "food_log", "weight_log", "user_settings"].forEach(k => { if (!P[k]) P[k] = {}; });
@@ -4142,21 +4142,25 @@ function trkHTML() {
     '<div class="rit-h">Что играло</div>' + (TRK.media.length ? TRK.media.map(p => '<div class="trk-r"><b>' + hm(p.ts) + "</b><div>" + esc(p.title || "—") + "<br><span>" + esc((p.app || "") + (p.artist ? " · " + p.artist : "") + " · " + (p.state || "")) + "</span></div></div>").join("") : '<div class="rit-hint">Событий пока нет.</div>') +
     "</div></div>" + (setTimeout(trkMapDraw, 0), "");
 }
-// ---- голосовой ввод (Web Speech API, Chrome/Edge). На Android не показываем: там есть микрофон на клавиатуре ----
+// ---- голосовой ввод (Web Speech API, Chrome/Edge/Android Chrome) ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let VR = null;
-const micOK = () => !!SR && !/Android/i.test(navigator.userAgent);
+const micOK = () => !!SR;
 const micBtn = a => micOK() ? '<button type="button" class="micb' + (VR ? " rec" : "") + '" data-a="' + a + '" title="Надиктовать (повторный клик — стоп)">🎤</button>' : "";
-function micToggle(inpId) {
+function micToggle(inpId, auto) {
   if (VR) { try { VR.stop(); } catch (e) {} return; }
   const inp = $(inpId); if (!inp || !SR) return;
   const r = new SR(); r.lang = "ru-RU"; r.interimResults = true; r.continuous = false; const base = inp.value ? inp.value.replace(/\s*$/, " ") : "";
   r.onresult = e => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; inp.value = base + t; if (inpId === "qa-input") ui.qaText = inp.value; try { inp.dispatchEvent(new Event("input", { bubbles: true })); } catch (x) {} };
-  r.onerror = e => { toast(e.error === "not-allowed" ? "Разреши микрофон для сайта (значок замка слева от адреса)" : e.error === "no-speech" ? "Не расслышал — попробуй ещё раз" : "Голос: " + e.error); };
-  r.onend = () => { VR = null; document.querySelectorAll(".micb").forEach(b => b.classList.remove("rec")); const i = $(inpId); if (i) i.focus(); };
+  r.onerror = e => { toast(e.error === "not-allowed" ? "Разреши микрофон для сайта (значок замка слева от адреса) или нажми 🎤 сам" : e.error === "no-speech" ? "Не расслышал — попробуй ещё раз" : "Голос: " + e.error); };
+  r.onend = () => { VR = null; document.querySelectorAll(".micb").forEach(b => b.classList.remove("rec")); const i = $(inpId); if (!i) return;
+    if (auto && i.value.trim() && i.value !== base.trim() + "" && ui.qa) {   // запуск голосом: через 3 с само добавляется, пока не тронешь поле
+      const v = i.value; toast("Добавлю через 3 с — тапни по тексту, чтобы поправить"); let stop = 0; const cancel = () => { stop = 1; }; i.addEventListener("pointerdown", cancel, { once: true }); i.addEventListener("keydown", cancel, { once: true });
+      setTimeout(() => { const j = $(inpId); if (!stop && j && j.value === v && ui.qa) { const f = $("qaform"); if (f && f.requestSubmit) f.requestSubmit(); } }, 3000);
+    } else i.focus(); };
   try { r.start(); VR = r; document.querySelectorAll(".micb").forEach(b => b.classList.add("rec")); toast("🎤 Говори…"); } catch (e) { VR = null; }
 }
-function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { if (!isLite() || true) acts.qaopen(); } catch (e) {} }
+function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { acts.qaopen(); if (voiceAuto && micOK()) setTimeout(() => micToggle("qa-input", true), 500); } catch (e) {} }
 function shareMaybe() {
   addMaybe();
   if (!pendingShare || !S.user) return; if (isLite()) { pendingShare = null; return; } const p = pendingShare; pendingShare = null;
@@ -6183,7 +6187,7 @@ function init() {
   window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app); subDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
   try { const q = new URLSearchParams(location.search); if (q.get("url") || q.get("text") || q.get("title")) { pendingShare = { title: q.get("title") || "", text: q.get("text") || "", url: q.get("url") || "" }; history.replaceState(null, "", location.pathname); } } catch (e) {}
-  try { const q = new URLSearchParams(location.search); if (q.get("add")) { pendingAdd = true; q.delete("add"); const r = q.toString(); history.replaceState(null, "", location.pathname + (r ? "?" + r : "")); } else if (jget("mytasks_openadd", false) && !q.get("t") && !q.get("url") && !q.get("text")) pendingAdd = true; } catch (e) {}
+  try { const q = new URLSearchParams(location.search); if (q.get("add")) { pendingAdd = true; voiceAuto = q.get("add") !== "0" && q.get("voice") !== "0"; q.delete("add"); q.delete("voice"); const r = q.toString(); history.replaceState(null, "", location.pathname + (r ? "?" + r : "")); } else if (jget("mytasks_openadd", false) && !q.get("t") && !q.get("url") && !q.get("text")) { pendingAdd = true; voiceAuto = true; } } catch (e) {}
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
   if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } if (d && d.type === "ng") { try { ngLoad(true); NG.snooze = 0; setTimeout(ngTick, 300); } catch (e) {} } });
   try { if (isMobile() && !new URLSearchParams(location.search).get("app") && !pendingShare && !pendingOpen) ui.left = true; } catch (e) {}   // обычный запуск с телефона — главное меню, «назад» закрывает приложение, как все
