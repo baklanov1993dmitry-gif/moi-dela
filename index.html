@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "21.10 16:09";
+const BUILD = "21.10 16:18";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2553,7 +2553,7 @@ const jrCSS = `
 .ng-ic{font-size:44px;line-height:1}.ng-h{font-size:calc(21px*var(--z,1));font-weight:700;margin:10px 0 6px}.ng-s{font-size:calc(14.5px*var(--z,1));color:var(--sub,#666);line-height:1.45}.ng-n{margin:12px 0 16px;font-size:calc(14px*var(--z,1));color:var(--sub,#666)}.ng-n b{color:var(--acc,#2564cf);font-size:1.15em}
 .ng-bs{display:flex;flex-direction:column;gap:8px}.ng-b{border:1.5px solid var(--acc,#2564cf);background:transparent;color:var(--acc,#2564cf);border-radius:12px;padding:13px 14px;font:inherit;font-size:calc(16px*var(--z,1));font-weight:600;cursor:pointer;transition:transform .12s}.ng-b:active{transform:scale(.97)}.ng-b.ok{background:var(--acc,#2564cf);color:#fff}.ng-pv{margin-top:12px;font-size:12px;color:#d83b01}
 @keyframes ngf{from{opacity:0}to{opacity:1}}@keyframes ngp{from{opacity:0;transform:scale(.9) translateY(14px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.ng-ov,.ng-box{animation:none}}
-.ng-badge{font-size:calc(12px*var(--z,1));border:1px solid var(--acc);color:var(--acc);border-radius:12px;padding:1px 9px;white-space:nowrap}.ng-ed{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.ng-lb{display:flex;gap:6px;align-items:center;font-size:calc(14px*var(--z,1))}.ng-in{flex:1;min-width:150px;border:1px solid var(--ln);border-radius:8px;padding:6px 9px;background:var(--solid,transparent);color:inherit;font:inherit}
+.ng-badge{font-size:calc(12px*var(--z,1));border:1px solid var(--acc);color:var(--acc);border-radius:12px;padding:1px 9px;white-space:nowrap}.ng-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ng-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--acc);color:var(--acc);border-radius:14px;padding:3px 4px 3px 11px;font-weight:600}.ng-chip button{border:0;background:none;color:inherit;cursor:pointer;font-size:12px;padding:2px 6px;opacity:.7}.ng-tm{width:auto;min-width:96px}.ng-ed{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.ng-lb{display:flex;gap:6px;align-items:center;font-size:calc(14px*var(--z,1))}.ng-in{flex:1;min-width:150px;border:1px solid var(--ln);border-radius:8px;padding:6px 9px;background:var(--solid,transparent);color:inherit;font:inherit}
 .ng-lg{margin-top:6px}.ng-r{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 0;border-top:1px solid var(--ln);font-size:calc(13px*var(--z,1))}.ng-r b{min-width:62px}.ng-c{border-radius:10px;padding:1px 9px;background:rgba(127,127,127,.12)}.ng-c.ok{background:rgba(58,167,109,.18)}.ng-c.add{background:rgba(245,183,0,.2)}.ng-c.no{background:rgba(217,83,79,.15);color:#d9534f}
 .rit-ov{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.rit-ov span{border:1.5px solid;border-radius:14px;padding:3px 11px;font-size:calc(13px*var(--z,1))}.rit-how{margin:6px 0;font-size:calc(12.5px*var(--z,1))}.rit-how summary{cursor:pointer;color:var(--acc)}.rit-how div{margin-top:6px;line-height:1.5;color:var(--sub)}
 .rit-b{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 11px;font-size:calc(12.5px*var(--z,1));cursor:pointer}.rit-ft{display:flex;margin-top:16px;position:sticky;bottom:0;padding:8px 0;background:var(--solid)}
@@ -3587,14 +3587,14 @@ function teamMainHTML(vi) {
 function ngBadge(u) { const r = TM.ng && TM.ng.rules[u.id]; if (!(r && r.enabled)) return ""; const pu = TM.pushU, pv = pu ? (pu.indexOf(u.id) >= 0 ? " · пуш ✓" : " · пуш ✗ (ещё не разрешил уведомления)") : ""; return '<span class="ng-badge" title="Принудительный вопрос «Все ли внесено?»">🔔 ' + esc((r.times || []).join(", ")) + pv + "</span>"; }
 function ngBoxHTML(u) {
   if (TM.ngErr === "setup") return '<div class="jr-box"><b>🔔 Вопрос «Все ли внесено в записную книжку?»</b><div class="jr-hint">Нужна одноразовая настройка базы: выполни в Supabase → SQL Editor файл <b>migration_v23.sql</b>.</div></div>';
-  const r = TM.ng && TM.ng.rules[u.id], log = ((TM.ng && TM.ng.log) || []).filter(x => x.user_id === u.id), times = r ? (r.times || []).join(", ") : "11:00, 15:00, 17:30", on = r ? !!r.enabled : false;
+  const r = TM.ng && TM.ng.rules[u.id], log = ((TM.ng && TM.ng.log) || []).filter(x => x.user_id === u.id), tlist = (TM.ngT = TM.ngT || {})[u.id] || (TM.ngT[u.id] = r ? (r.times || []).slice() : ["11:00", "15:00", "17:30"]), on = TM.ngEn && TM.ngEn[u.id] !== undefined ? TM.ngEn[u.id] : (r ? !!r.enabled : false);
   const days = []; for (let i = 0; days.length < 5 && i < 10; i++) { const d = new Date(Date.now() - i * 864e5), w = d.getDay(); if (w && w < 6) days.push(isoLocal(d)); }
   const tod = todayISO(), nowHM = ngHM(new Date()), from = r && r.updated_at ? isoLocal(new Date(r.updated_at)) : "";
   const rowFor = d => { const cells = (r ? r.times || [] : []).map(t => { const rows = log.filter(x => x.slot === d + " " + t), ok = rows.filter(x => x.answer === "ok").pop(), ad = rows.filter(x => x.answer === "add").length;
     if (ok) return '<span class="ng-c ok">✅ ' + t + " · задач за день: " + ok.tasks_today + "</span>"; if (ad) return '<span class="ng-c add">✏️ ' + t + " · добавлял, но не подтвердил</span>"; if (d === tod && t > nowHM) return '<span class="ng-c">⏳ ' + t + "</span>"; return '<span class="ng-c no">— ' + t + " · нет ответа</span>"; }).join("");
     return '<div class="ng-r"><b>' + (d === tod ? "сегодня" : d.slice(8) + "." + d.slice(5, 7)) + "</b>" + cells + "</div>"; };
   return '<div class="jr-box"><b>🔔 Вопрос «Все ли внесено в записную книжку?»</b><div class="jr-hint">Окно появляется у сотрудника по будням в эти часы и закрывается только ответом. Если он ответил «Сейчас добавлю», спросит ещё раз через 10 минут.</div>' +
-    '<div class="ng-ed"><label class="ng-lb"><input type="checkbox" id="ng-en"' + (on ? " checked" : "") + '> Включено</label><input class="ng-in" id="ng-times" value="' + esc(times) + '" placeholder="11:00, 15:00, 17:30" inputmode="text"><button class="tool" data-a="ngsave" data-id="' + u.id + '">Сохранить</button><button class="tool" data-a="ngprev">👁 Как это выглядит</button></div>' +
+    '<div class="ng-ed"><label class="ng-lb"><input type="checkbox" id="ng-en" data-a="ngen" data-id="' + u.id + '"' + (on ? " checked" : "") + '> Включено</label><div class="ng-chips">' + tlist.map(t => '<span class="ng-chip">' + t + '<button data-a="ngdel" data-id="' + u.id + '" data-t="' + t + '" title="Убрать">✕</button></span>').join("") + (tlist.length < 6 ? '<input type="time" class="ng-in ng-tm" id="ng-add" step="300" value="12:00"><button class="tool" data-a="ngadd" data-id="' + u.id + '">＋ Добавить</button>' : "") + '</div><button class="tool" data-a="ngsave" data-id="' + u.id + '">Сохранить</button><button class="tool" data-a="ngprev">👁 Как это выглядит</button></div>' +
     (r ? '<div class="ng-lg">' + days.filter(d => !from || d >= from).map(rowFor).join("") + "</div>" : "") + "</div>";
 }
 function weekMainHTML(vi) {
@@ -4660,14 +4660,18 @@ const acts = {
   tmex(a) { TM.ex[a.dataset.id] = !TM.ex[a.dataset.id]; render(); },
   tmopen(a) { TM.open[a.dataset.id] = !TM.open[a.dataset.id]; render(); },
   tmrefresh() { teamLoad(true); },
+  ngen(a) { (TM.ngEn = TM.ngEn || {})[a.dataset.id] = !!a.checked; },
+  ngdel(a) { const id = a.dataset.id, L = (TM.ngT || {})[id] || []; TM.ngT[id] = L.filter(x => x !== a.dataset.t); render(); },
+  ngadd(a) {
+    const id = a.dataset.id, v = ($("ng-add") && $("ng-add").value) || ""; if (!/^\d{2}:\d{2}$/.test(v)) { toast("Выбери время"); return; }
+    const L = (TM.ngT = TM.ngT || {})[id] || []; if (L.indexOf(v) < 0) L.push(v); TM.ngT[id] = L.sort(); render();
+  },
   async ngsave(a) {
-    const id = a.dataset.id, en = !!($("ng-en") && $("ng-en").checked), raw = ($("ng-times") && $("ng-times").value) || "";
-    const ts = raw.split(/[\s,;]+/).filter(Boolean).map(x => { const m = /^(\d{1,2})[:.](\d{2})$/.exec(x); return m && +m[1] < 24 && +m[2] < 60 ? pad(+m[1]) + ":" + m[2] : null; });
-    if (ts.some(x => !x)) { toast("Время пиши так: 11:00, 15:00, 17:30"); return; }
-    const times = Array.from(new Set(ts)).sort().slice(0, 6); if (en && !times.length) { toast("Укажи хотя бы одно время"); return; }
+    const id = a.dataset.id, en = !!($("ng-en") && $("ng-en").checked), times = ((TM.ngT || {})[id] || []).slice().sort().slice(0, 6);
+    if (en && !times.length) { toast("Добавь хотя бы одно время"); return; }
     const row = { user_id: id, enabled: en, times: times, days: [1, 2, 3, 4, 5], updated_at: new Date().toISOString() };
     const r = await sb.from("nudge_rules").upsert(row); if (r.error) { toast("Не сохранилось: " + errText(r.error)); return; }
-    TM.ng = TM.ng || { rules: {}, log: [] }; TM.ng.rules[id] = row; toast(en ? "Включено: " + times.join(", ") : "Выключено"); render();
+    TM.ng = TM.ng || { rules: {}, log: [] }; TM.ng.rules[id] = row; if (TM.ngEn) delete TM.ngEn[id]; toast(en ? "Включено: " + times.join(", ") : "Выключено"); render();
   },
   ngprev() { ngShow("11:00", true); },
   tmlist(a) { TM.lf[a.dataset.id] = a.dataset.v || null; render(); },
