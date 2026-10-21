@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "21.10 23:59";
+const BUILD = "22.10 00:02";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -133,7 +133,7 @@ function getCfg() {
 let cfg = getCfg(), sb = null, screen = null;
 const S = { user: null, lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} };
 const newP = () => ({ lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} });
-let pendingOpen = null, pendingShare = null, pendingAdd = false, voiceAuto = false;
+let pendingOpen = null, pendingShare = null, pendingAdd = false, voiceAuto = false, micUsed = false;
 let P = jget(LSK.pending, { lists: {}, tasks: {}, time_log: {} });
 if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {}; if (!P.time_log) P.time_log = {};
 ["foods", "food_log", "weight_log", "user_settings"].forEach(k => { if (!P[k]) P[k] = {}; });
@@ -743,7 +743,7 @@ function freshTask(items) {
 }
 function submitQA() {
   const inp = $("qa-input"), raw = inp ? inp.value.trim() : ""; if (!raw) return;
-  createFromText(raw, ui.qa);
+  createFromText(raw, ui.qa); if (voiceAuto || micUsed) sayOk(raw);
   ui.qa = { due: null, remind_at: null, repeat_rule: null, my: false, starred: false }; ui.qaText = "";
   ui.qa = null; toast("Добавлено"); render(); try { if (document.activeElement) document.activeElement.blur(); } catch (e) {}   // панель закрываем, клавиатуру убираем
 }
@@ -4145,12 +4145,19 @@ function trkHTML() {
 // ---- голосовой ввод (Web Speech API, Chrome/Edge/Android Chrome) ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let VR = null;
+function sayOk(t) {   // голосовое подтверждение в наушник; если Chrome не даёт звук без касания — хотя бы писк и вибрация
+  try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (e) {}
+  let spoken = false;
+  try { if (window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance("Записано. " + String(t).slice(0, 90)); u.lang = "ru-RU"; u.rate = 1.05; speechSynthesis.speak(u); spoken = true; } } catch (e) {}
+  try { const C = window.AudioContext || window.webkitAudioContext; if (C) { const c = new C(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = .15; o.start(); o.stop(c.currentTime + .15); setTimeout(() => c.close(), 400); } } catch (e) {}
+  voiceAuto = false; micUsed = false;
+}
 const micOK = () => !!SR;
 const micBtn = a => micOK() ? '<button type="button" class="micb' + (VR ? " rec" : "") + '" data-a="' + a + '" title="Надиктовать (повторный клик — стоп)">🎤</button>' : "";
 function micToggle(inpId, auto) {
   if (VR) { try { VR.stop(); } catch (e) {} return; }
   const inp = $(inpId); if (!inp || !SR) return;
-  const r = new SR(); r.lang = "ru-RU"; r.interimResults = true; r.continuous = false; const base = inp.value ? inp.value.replace(/\s*$/, " ") : "";
+  micUsed = true; const r = new SR(); r.lang = "ru-RU"; r.interimResults = true; r.continuous = false; const base = inp.value ? inp.value.replace(/\s*$/, " ") : "";
   r.onresult = e => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; inp.value = base + t; if (inpId === "qa-input") ui.qaText = inp.value; try { inp.dispatchEvent(new Event("input", { bubbles: true })); } catch (x) {} };
   r.onerror = e => { toast(e.error === "not-allowed" ? "Разреши микрофон для сайта (значок замка слева от адреса) или нажми 🎤 сам" : e.error === "no-speech" ? "Не расслышал — попробуй ещё раз" : "Голос: " + e.error); };
   r.onend = () => { VR = null; document.querySelectorAll(".micb").forEach(b => b.classList.remove("rec")); const i = $(inpId); if (!i) return;
