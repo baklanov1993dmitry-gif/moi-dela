@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "21.10 09:45";
+const BUILD = "21.10 15:59";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2548,6 +2548,13 @@ const jrCSS = `
 .sheet.rit{font-size:calc(13px*var(--z,1))}.rit .rit-sum{font-size:calc(13.5px*var(--z,1))}.rit .rit-t{font-size:calc(13.5px*var(--z,1));line-height:1.3}.rit .rit-m{font-size:calc(11.5px*var(--z,1))}.rit .rit-b{font-size:calc(12px*var(--z,1));padding:5px 11px}.rit .rit-hint{font-size:calc(11.5px*var(--z,1))}
 @media(hover:none) and (pointer:coarse),(max-width:480px){.sheet.rit{font-size:calc(17px*var(--z,1))}.rit .rit-sum{font-size:calc(17px*var(--z,1))}.rit .rit-t{font-size:calc(19px*var(--z,1))}.rit .rit-m{font-size:calc(14px*var(--z,1))}.rit .rit-b{font-size:calc(15px*var(--z,1));padding:9px 14px}.rit .rit-hint{font-size:calc(14px*var(--z,1))}.rit .rit-hd{font-size:calc(17px*var(--z,1))}.rit .rit-hd.sub{font-size:calc(15.5px*var(--z,1))}.rit .rit-ov span{font-size:calc(14.5px*var(--z,1))}.rit .rit-how{font-size:calc(14px*var(--z,1))}}
 .rit-hd{display:flex;align-items:center;gap:8px;width:100%;margin:14px 0 2px;padding:11px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--solid,transparent);color:inherit;font:inherit;font-weight:700;font-size:calc(13.5px*var(--z,1));cursor:pointer;text-align:left}.rit-hd.sub{margin:6px 0 0 10px;width:calc(100% - 10px);font-size:calc(13px*var(--z,1));font-weight:600}.rit-hd .rit-ar{width:18px;opacity:.7}.rit-hd .rit-ht{flex:1;min-width:0}.rit-hd b{background:var(--acc);color:#fff;border-radius:11px;padding:1px 9px;font-size:.85em}.rit-hd .rit-hs{font-weight:400;font-size:calc(13px*var(--z,1));opacity:.7;white-space:nowrap}
+.ng-ov{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,16,30,.62);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:ngf .22s ease-out}
+.ng-box{width:min(440px,100%);background:var(--solid,#fff);color:var(--tx,#1b1b1b);border:1px solid var(--ln,#ddd);border-radius:18px;padding:26px 22px 20px;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.4);animation:ngp .38s cubic-bezier(.34,1.56,.64,1)}
+.ng-ic{font-size:44px;line-height:1}.ng-h{font-size:calc(21px*var(--z,1));font-weight:700;margin:10px 0 6px}.ng-s{font-size:calc(14.5px*var(--z,1));color:var(--sub,#666);line-height:1.45}.ng-n{margin:12px 0 16px;font-size:calc(14px*var(--z,1));color:var(--sub,#666)}.ng-n b{color:var(--acc,#2564cf);font-size:1.15em}
+.ng-bs{display:flex;flex-direction:column;gap:8px}.ng-b{border:1.5px solid var(--acc,#2564cf);background:transparent;color:var(--acc,#2564cf);border-radius:12px;padding:13px 14px;font:inherit;font-size:calc(16px*var(--z,1));font-weight:600;cursor:pointer;transition:transform .12s}.ng-b:active{transform:scale(.97)}.ng-b.ok{background:var(--acc,#2564cf);color:#fff}.ng-pv{margin-top:12px;font-size:12px;color:#d83b01}
+@keyframes ngf{from{opacity:0}to{opacity:1}}@keyframes ngp{from{opacity:0;transform:scale(.9) translateY(14px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.ng-ov,.ng-box{animation:none}}
+.ng-badge{font-size:calc(12px*var(--z,1));border:1px solid var(--acc);color:var(--acc);border-radius:12px;padding:1px 9px;white-space:nowrap}.ng-ed{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.ng-lb{display:flex;gap:6px;align-items:center;font-size:calc(14px*var(--z,1))}.ng-in{flex:1;min-width:150px;border:1px solid var(--ln);border-radius:8px;padding:6px 9px;background:var(--solid,transparent);color:inherit;font:inherit}
+.ng-lg{margin-top:6px}.ng-r{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 0;border-top:1px solid var(--ln);font-size:calc(13px*var(--z,1))}.ng-r b{min-width:62px}.ng-c{border-radius:10px;padding:1px 9px;background:rgba(127,127,127,.12)}.ng-c.ok{background:rgba(58,167,109,.18)}.ng-c.add{background:rgba(245,183,0,.2)}.ng-c.no{background:rgba(217,83,79,.15);color:#d9534f}
 .rit-ov{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.rit-ov span{border:1.5px solid;border-radius:14px;padding:3px 11px;font-size:calc(13px*var(--z,1))}.rit-how{margin:6px 0;font-size:calc(12.5px*var(--z,1))}.rit-how summary{cursor:pointer;color:var(--acc)}.rit-how div{margin-top:6px;line-height:1.5;color:var(--sub)}
 .rit-b{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 11px;font-size:calc(12.5px*var(--z,1));cursor:pointer}.rit-ft{display:flex;margin-top:16px;position:sticky;bottom:0;padding:8px 0;background:var(--solid)}
 .jr-edd{display:flex;gap:8px;margin:-4px 0 8px;flex-wrap:wrap}
@@ -3541,6 +3548,7 @@ async function teamLoad(force) {
     }
     const lr = await sb.from("lists").select("id,name,icon,user_id").neq("user_id", S.user.id); if (lr.error) throw lr.error;
     TM.tasks = all; TM.lists = {}; (lr.data || []).forEach(l => { TM.lists[l.id] = l; }); TM.at = Date.now();
+    try { const nr = await sb.from("nudge_rules").select("*"), nl = await sb.from("nudge_log").select("user_id,slot,answer,tasks_today,created_at").gte("created_at", new Date(Date.now() - 12 * 864e5).toISOString()).order("created_at"); if (nr.error || nl.error) throw (nr.error || nl.error); TM.ng = { rules: {}, log: nl.data || [] }; (nr.data || []).forEach(r => { TM.ng.rules[r.user_id] = r; }); TM.ngErr = ""; } catch (e) { TM.ng = { rules: {}, log: [] }; TM.ngErr = "setup"; }
   } catch (e) { TM.err = /team_users|function|schema cache|PGRST/i.test((e && (e.message || e.code)) || "") ? "setup" : errText(e); }
   TM.busy = false; if (view === "team") render();
 }
@@ -3564,8 +3572,8 @@ function teamMainHTML(vi) {
     const rk = {}; ord(act.filter(t => t.ord != null)).forEach((t, i) => { rk[t.id] = i + 1; });
     const grp = (k, title, arr, rkOn) => arr.length ? '<div class="gh" style="cursor:default"><span>' + title + '</span><span class="cnt">' + arr.length + '</span></div><div class="cards">' + (rkOn ? ord(arr) : arr).slice(0, 40).map(t => row(t, rkOn ? rk[t.id] : 0)).join("") + (arr.length > 40 ? '<div style="color:var(--sub);padding:4px">…и ещё ' + (arr.length - 40) + "</div>" : "") + "</div>" : "";
     const lchips = one ? '<div class="jr-chips" style="margin-top:10px"><button class="jr-chip' + (!lfv ? " on" : "") + '" data-a="tmlist" data-id="' + u.id + '" data-v="">Все списки</button>' + Object.values(TM.lists).filter(l => l.user_id === u.id).map(l => '<button class="jr-chip' + (lfv === l.id ? " on" : "") + '" data-a="tmlist" data-id="' + u.id + '" data-v="' + l.id + '">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</button>").join("") + "</div>" : "";
-    return '<div class="jr-sbox" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;' + (one ? "" : "cursor:pointer") + '"' + (one ? "" : ' data-a="view" data-v="team:' + u.id + '"') + '><b style="font-size:calc(17px*' + z + ')">' + esc(nm(u)) + '</b><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + esc(u.email || "") + '</span><span style="flex:1"></span><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + (last ? "последняя активность: " + fmtShort(last) : "записей нет") + "</span>" + (one ? "" : ic("chevr", 16)) + '</div><div style="display:flex;gap:8px;margin-top:8px">' + (one ? '<button class="tool" data-a="tmallx" data-id="' + u.id + '">' + (TM.allx[u.id] ? "Свернуть всё" : "Развернуть всё") + "</button>" : '<button class="tool" data-a="view" data-v="team:' + u.id + '">Открыть →</button><button class="tool" data-a="tmhide" data-id="' + u.id + '">' + (TM.hid.indexOf(u.id) >= 0 ? "Вернуть в список" : "Скрыть сотрудника") + "</button>") + '</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' + tile(act.length, "активных") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(td.length, "на сегодня", "var(--acc)") + tile(done7.length, "закрыто за 7 дн.") + "</div>" + lchips +
-      (o ? grp("o", "Просрочено", ord(over), true) + grp("t", "На сегодня (по очереди)", td, true) + grp("l", "Позже / без срока", later, false) + grp("d", "Закрыто за 7 дней", done7.sort((a, b) => String(b.done_at).localeCompare(String(a.done_at))), false) : "") + "</div>";
+    return '<div class="jr-sbox" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;' + (one ? "" : "cursor:pointer") + '"' + (one ? "" : ' data-a="view" data-v="team:' + u.id + '"') + '><b style="font-size:calc(17px*' + z + ')">' + esc(nm(u)) + '</b><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + esc(u.email || "") + '</span>' + ngBadge(u) + '<span style="flex:1"></span><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + (last ? "последняя активность: " + fmtShort(last) : "записей нет") + "</span>" + (one ? "" : ic("chevr", 16)) + '</div><div style="display:flex;gap:8px;margin-top:8px">' + (one ? '<button class="tool" data-a="tmallx" data-id="' + u.id + '">' + (TM.allx[u.id] ? "Свернуть всё" : "Развернуть всё") + "</button>" : '<button class="tool" data-a="view" data-v="team:' + u.id + '">Открыть →</button><button class="tool" data-a="tmhide" data-id="' + u.id + '">' + (TM.hid.indexOf(u.id) >= 0 ? "Вернуть в список" : "Скрыть сотрудника") + "</button>") + '</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' + tile(act.length, "активных") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(td.length, "на сегодня", "var(--acc)") + tile(done7.length, "закрыто за 7 дн.") + "</div>" + lchips +
+      (o ? ngBoxHTML(u) : "") + (o ? grp("o", "Просрочено", ord(over), true) + grp("t", "На сегодня (по очереди)", td, true) + grp("l", "Позже / без срока", later, false) + grp("d", "Закрыто за 7 дней", done7.sort((a, b) => String(b.done_at).localeCompare(String(a.done_at))), false) : "") + "</div>";
   };
   let body;
   if (TM.err === "setup") body = '<div class="jr-box"><b>Нужна одноразовая настройка базы</b><div class="jr-hint">Выполни в Supabase → SQL Editor файл <b>migration_v16.sql</b> (права руководителя на чтение). Скажи Claude — он сделает.</div></div>';
@@ -3574,6 +3582,19 @@ function teamMainHTML(vi) {
   else body = tmVis().filter(u => !one || u.id === one).slice().sort((a, b) => nm(a).localeCompare(nm(b))).map(card).join("") + (!one && TM.hid.length ? '<div style="text-align:center;margin:10px"><button class="tool" data-a="tmshowhid">' + (TM.showHid ? "Спрятать скрытых" : "Показать скрытых (" + TM.hid.length + ")") + "</button></div>" : "");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' + (one ? '<button class="tool" data-a="view" data-v="team">← Команда</button>' : "") + '<button class="tool" data-a="tmrefresh">' + ic("repeat", 16) + " Обновить</button></div>" +
     '<div class="msub">' + esc(vi.sub) + (TM.busy ? " · обновляю…" : TM.at ? " · обновлено " + hm(minOf(new Date(TM.at).toISOString())) : "") + '</div><div class="scroll" id="list">' + body + "</div></div>";
+}
+function ngBadge(u) { const r = TM.ng && TM.ng.rules[u.id]; return r && r.enabled ? '<span class="ng-badge" title="Принудительный вопрос «Все ли внесено?»">🔔 ' + esc((r.times || []).join(", ")) + "</span>" : ""; }
+function ngBoxHTML(u) {
+  if (TM.ngErr === "setup") return '<div class="jr-box"><b>🔔 Вопрос «Все ли внесено в записную книжку?»</b><div class="jr-hint">Нужна одноразовая настройка базы: выполни в Supabase → SQL Editor файл <b>migration_v23.sql</b>.</div></div>';
+  const r = TM.ng && TM.ng.rules[u.id], log = ((TM.ng && TM.ng.log) || []).filter(x => x.user_id === u.id), times = r ? (r.times || []).join(", ") : "11:00, 15:00, 17:30", on = r ? !!r.enabled : false;
+  const days = []; for (let i = 0; days.length < 5 && i < 10; i++) { const d = new Date(Date.now() - i * 864e5), w = d.getDay(); if (w && w < 6) days.push(isoLocal(d)); }
+  const tod = todayISO(), nowHM = ngHM(new Date()), from = r && r.updated_at ? isoLocal(new Date(r.updated_at)) : "";
+  const rowFor = d => { const cells = (r ? r.times || [] : []).map(t => { const rows = log.filter(x => x.slot === d + " " + t), ok = rows.filter(x => x.answer === "ok").pop(), ad = rows.filter(x => x.answer === "add").length;
+    if (ok) return '<span class="ng-c ok">✅ ' + t + " · задач за день: " + ok.tasks_today + "</span>"; if (ad) return '<span class="ng-c add">✏️ ' + t + " · добавлял, но не подтвердил</span>"; if (d === tod && t > nowHM) return '<span class="ng-c">⏳ ' + t + "</span>"; return '<span class="ng-c no">— ' + t + " · нет ответа</span>"; }).join("");
+    return '<div class="ng-r"><b>' + (d === tod ? "сегодня" : d.slice(8) + "." + d.slice(5, 7)) + "</b>" + cells + "</div>"; };
+  return '<div class="jr-box"><b>🔔 Вопрос «Все ли внесено в записную книжку?»</b><div class="jr-hint">Окно появляется у сотрудника по будням в эти часы и закрывается только ответом. Если он ответил «Сейчас добавлю», спросит ещё раз через 10 минут.</div>' +
+    '<div class="ng-ed"><label class="ng-lb"><input type="checkbox" id="ng-en"' + (on ? " checked" : "") + '> Включено</label><input class="ng-in" id="ng-times" value="' + esc(times) + '" placeholder="11:00, 15:00, 17:30" inputmode="text"><button class="tool" data-a="ngsave" data-id="' + u.id + '">Сохранить</button><button class="tool" data-a="ngprev">👁 Как это выглядит</button></div>' +
+    (r ? '<div class="ng-lg">' + days.filter(d => !from || d >= from).map(rowFor).join("") + "</div>" : "") + "</div>";
 }
 function weekMainHTML(vi) {
   wkLoad();
@@ -4155,6 +4176,64 @@ function ritMaybe() {
   const d = ritData(); if (!d.over.length && !d.tod.length && !d.stall.length) { PR.ritDone = today; savePrefs(); return; }
   ui.rit = true; render();
 }
+/* ===== «Все ли внесено в записную книжку?» — принудительный вопрос сотруднику. Правила ставит руководитель (таблицы nudge_rules / nudge_log, migration_v23.sql) ===== */
+const NG = { rule: jget("mytasks_nudge_rule", null), at: 0, done: jget("mytasks_nudge_done", {}), snooze: 0, el: null, slot: null, prev: false, q: jget("mytasks_nudge_q", []), fl: 0 };
+const ngHM = d => pad(d.getHours()) + ":" + pad(d.getMinutes());
+const ngToday = () => { const k = isoLocal(new Date()); return Object.values(S.tasks).filter(t => t.created_at && isoLocal(new Date(t.created_at)) === k).length; };
+async function ngLoad(force) {
+  if (!sb || !S.user) return; if (!force && Date.now() - NG.at < 600000) return; NG.at = Date.now();
+  try {
+    const r = await sb.from("nudge_rules").select("enabled,times,days").eq("user_id", S.user.id).maybeSingle();
+    if (r.error) return;   // таблицы ещё нет или нет доступа — молча
+    NG.rule = r.data ? { uid: S.user.id, en: !!r.data.enabled, times: (r.data.times || []).slice().sort(), days: r.data.days || [1, 2, 3, 4, 5] } : null;
+    jset("mytasks_nudge_rule", NG.rule);
+  } catch (e) {}
+}
+async function ngSend() {
+  if (!sb || !S.user || !NG.q.length || NG.sending) return; NG.sending = true;
+  try {
+    for (const x of NG.q.slice()) {   // из очереди убираем только после успешной записи — при обрыве связи ответ не пропадает
+      if (x.user_id !== S.user.id) continue;
+      try { const r = await Promise.race([sb.from("nudge_log").insert(x), new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 15000))]); if (r.error) break; const i = NG.q.indexOf(x); if (i >= 0) NG.q.splice(i, 1); jset("mytasks_nudge_q", NG.q); } catch (e) { break; }
+    }
+  } finally { NG.sending = false; }
+}
+function ngDue() {
+  const R = NG.rule; if (!S.user || !R || !R.en || (R.uid && R.uid !== S.user.id)) return null;
+  const now = new Date(), wd = now.getDay() || 7; if ((R.days || [1, 2, 3, 4, 5]).indexOf(wd) < 0) return null;
+  const dn = NG.done[isoLocal(now)] || {}, hmn = ngHM(now), due = (R.times || []).filter(t => t <= hmn && !dn[t]);
+  return due.length ? due[due.length - 1] : null;
+}
+function ngTick() {
+  try { ngSend(); } catch (e) {}
+  if (NG.el || !S.user || ui.mfaGate || Date.now() < NG.snooze) return;
+  const s = ngDue(); if (s) ngShow(s);
+}
+function ngKey(e) { if (!NG.el) return; if (e.key === "Tab" || e.key === "Enter" || e.key === " ") return; e.preventDefault(); e.stopPropagation(); }   // фоновое приложение под окном не печатает и не реагирует
+function ngStopFlash() { if (NG.fl) { clearInterval(NG.fl); NG.fl = 0; try { document.title = "Мои дела"; } catch (e) {} } }
+function ngShow(slot, prev) {
+  if (NG.el) return; NG.slot = slot; NG.prev = !!prev;
+  const el = document.createElement("div"); el.className = "ng-ov"; el.setAttribute("role", "alertdialog"); el.setAttribute("aria-modal", "true");
+  try { const cs = getComputedStyle($("app") || document.body); ["--solid", "--tx", "--ln", "--acc", "--sub", "--z"].forEach(k => { const v = cs.getPropertyValue(k); if (v) el.style.setProperty(k, v); }); } catch (e) {}
+  el.innerHTML = '<div class="ng-box"><div class="ng-ic">📝</div><div class="ng-h">Все ли внесено в записную книжку?</div><div class="ng-s">Встречи, поручения, звонки, просьбы коллег — всё, что появилось с прошлого раза и не должно потеряться.</div><div class="ng-n">Добавлено сегодня задач: <b>' + ngToday() + '</b></div><div class="ng-bs"><button class="ng-b ok" data-ng="ok">✅ Да, всё внесено</button><button class="ng-b" data-ng="add">✏️ Сейчас добавлю</button></div>' + (prev ? '<div class="ng-pv">Проверка для руководителя: ответ не сохраняется</div>' : "") + "</div>";
+  el.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-ng]"); if (b) ngAnswer(b.dataset.ng); });
+  document.body.appendChild(el); NG.el = el; document.addEventListener("keydown", ngKey, true);
+  try { el.querySelector(".ng-b.ok").focus(); } catch (e) {}
+  if (document.hidden && !prev) {   // вкладка в фоне: мигаем заголовком и показываем системное уведомление (если разрешение уже есть)
+    NG.t0 = Date.now(); let on = 0; ngStopFlash(); NG.fl = setInterval(() => { document.title = (on = !on) ? "❗ Все ли внесено?" : "Мои дела"; if (!document.hidden) ngStopFlash(); }, 1000);
+    try { if (window.Notification && Notification.permission === "granted") { const n = new Notification("Мои дела", { body: "Все ли внесено в записную книжку?", tag: "ng" }); n.onclick = () => { window.focus(); n.close(); }; } } catch (e) {}
+  }
+}
+function ngClose() { if (NG.el) { NG.el.remove(); NG.el = null; } document.removeEventListener("keydown", ngKey, true); ngStopFlash(); }
+function ngAnswer(a) {
+  const k = isoLocal(new Date()), slot = NG.slot, prev = NG.prev; ngClose();
+  if (prev) { toast("Так это увидит сотрудник. Ответ не сохранён."); return; }
+  NG.q.push({ user_id: S.user.id, slot: k + " " + slot, answer: a, tasks_today: ngToday() }); if (NG.q.length > 50) NG.q.splice(0, NG.q.length - 50); jset("mytasks_nudge_q", NG.q); ngSend();
+  if (a === "ok") { const dn = NG.done[k] || {}; ((NG.rule && NG.rule.times) || []).forEach(t => { if (t <= slot) dn[t] = 1; }); NG.done = {}; NG.done[k] = dn; jset("mytasks_nudge_done", NG.done); toast("Спасибо! 👍"); }
+  else { NG.snooze = Date.now() + 10 * 60000; try { acts.qaopen(); } catch (e) {} toast("Добавь дела — через 10 минут спрошу ещё раз"); }
+  try { if (window.Notification && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { ngStopFlash(); setTimeout(ngTick, 400); } });
 function appHTML() {
   if (view.indexOf("list:") === 0 && !S.lists[view.slice(5)]) view = HOME();
   if (view === "myday" && !PR.myday) view = "all";
@@ -4429,7 +4508,7 @@ function setUser(u) {
   const c = jget(LSK.cache, null);
   S.lists = {}; S.tasks = {}; S.time_log = {}; S.foods = {}; S.food_log = {}; S.weight_log = {}; S.user_settings = {};
   if (c && c.user && c.user.id === u.id) { S.lists = c.lists || {}; S.tasks = c.tasks || {}; S.time_log = c.time_log || {}; S.foods = c.foods || {}; S.food_log = c.food_log || {}; S.weight_log = c.weight_log || {}; S.user_settings = c.user_settings || {}; }
-  ui.msg = ""; ui.mfaGate = isOwnerNow() ? { wait: 1 } : null; render(); subRt(); setTimeout(loadAll, 0); if (ui.mfaGate) mfaCheck();
+  ui.msg = ""; ui.mfaGate = isOwnerNow() ? { wait: 1 } : null; render(); subRt(); setTimeout(loadAll, 0); if (ui.mfaGate) mfaCheck(); NG.at = 0; NG.rule = (NG.rule && NG.rule.uid === u.id) ? NG.rule : null; setTimeout(() => ngLoad(true), 1500);
 }
 async function logout() {
   if (pendCount() && !confirm("Есть неотправленные изменения (" + pendCount() + "). Выйти и потерять их?")) return;
@@ -4571,6 +4650,16 @@ const acts = {
   tmex(a) { TM.ex[a.dataset.id] = !TM.ex[a.dataset.id]; render(); },
   tmopen(a) { TM.open[a.dataset.id] = !TM.open[a.dataset.id]; render(); },
   tmrefresh() { teamLoad(true); },
+  async ngsave(a) {
+    const id = a.dataset.id, en = !!($("ng-en") && $("ng-en").checked), raw = ($("ng-times") && $("ng-times").value) || "";
+    const ts = raw.split(/[\s,;]+/).filter(Boolean).map(x => { const m = /^(\d{1,2})[:.](\d{2})$/.exec(x); return m && +m[1] < 24 && +m[2] < 60 ? pad(+m[1]) + ":" + m[2] : null; });
+    if (ts.some(x => !x)) { toast("Время пиши так: 11:00, 15:00, 17:30"); return; }
+    const times = Array.from(new Set(ts)).sort().slice(0, 6); if (en && !times.length) { toast("Укажи хотя бы одно время"); return; }
+    const row = { user_id: id, enabled: en, times: times, days: [1, 2, 3, 4, 5], updated_at: new Date().toISOString() };
+    const r = await sb.from("nudge_rules").upsert(row); if (r.error) { toast("Не сохранилось: " + errText(r.error)); return; }
+    TM.ng = TM.ng || { rules: {}, log: [] }; TM.ng.rules[id] = row; toast(en ? "Включено: " + times.join(", ") : "Выключено"); render();
+  },
+  ngprev() { ngShow("11:00", true); },
   tmlist(a) { TM.lf[a.dataset.id] = a.dataset.v || null; render(); },
   ordtog(a) { ordToggle([a.dataset.id]); },
   ritfold(a) { ui.ritc = ui.ritc || {}; const k = a.dataset.k, cur = ui.ritc[k] === undefined ? a.dataset.d === "1" : ui.ritc[k]; ui.ritc[k] = !cur; render(); },
@@ -6054,7 +6143,7 @@ function init() {
   window.addEventListener("resize", () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(renderSoon, 200); });
   setInterval(() => { if (!document.hidden && S.user && Date.now() - lastLoad > 300000) loadAll(); }, 60000);
   setInterval(() => { if (!document.hidden) bkTick(); }, 120000); setTimeout(() => bkTick(), 25000);
-  setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); ritMaybe(); }, 20000); setTimeout(ritMaybe, 4000);
+  setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); ritMaybe(); ngLoad(); ngTick(); }, 20000); setTimeout(() => { ngLoad(true); ngTick(); }, 3500); setTimeout(ritMaybe, 4000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
   window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app); subDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
@@ -6084,7 +6173,7 @@ async function checkBuild() {
   } catch (e) {}
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
-if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog };
+if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
 init();
 
 })();
