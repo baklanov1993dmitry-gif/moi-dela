@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "21.10 20:26";
+const BUILD = "21.10 20:33";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -133,7 +133,7 @@ function getCfg() {
 let cfg = getCfg(), sb = null, screen = null;
 const S = { user: null, lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} };
 const newP = () => ({ lists: {}, tasks: {}, time_log: {}, foods: {}, food_log: {}, weight_log: {}, user_settings: {} });
-let pendingOpen = null, pendingShare = null;
+let pendingOpen = null, pendingShare = null, pendingAdd = false;
 let P = jget(LSK.pending, { lists: {}, tasks: {}, time_log: {} });
 if (!P.lists) P.lists = {}; if (!P.tasks) P.tasks = {}; if (!P.time_log) P.time_log = {};
 ["foods", "food_log", "weight_log", "user_settings"].forEach(k => { if (!P[k]) P[k] = {}; });
@@ -726,7 +726,7 @@ const draftOf = id => id === "__qa" ? ui.qa : id === "__dd" ? ui.dd : null;
 function addBarHTML() {
   const q = ui.dd || (ui.dd = newDD()), di = dueInfo({ due: q.due, done: false });
   const chip = (svg, label, attrs, on, title) => '<button type="button" class="achip' + (on ? " on" : "") + '" ' + attrs + ' title="' + title + '">' + ic(svg, 16) + (label ? "<span>" + label + "</span>" : "") + "</button>";
-  return '<form id="addform" class="addbar v2"><div class="arow">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" name="new_task_text" data-lpignore="true" data-form-type="other" enterkeyhint="send" placeholder="Добавить задачу" value="' + esc(q.text || "") + '"></div>' +
+  return '<form id="addform" class="addbar v2"><div class="arow">' + ic("plus", 20) + '<input id="newtask" autocomplete="off" name="new_task_text" data-lpignore="true" data-form-type="other" enterkeyhint="send" placeholder="Добавить задачу" value="' + esc(q.text || "") + '">' + micBtn("nmic") + '</div>' +
     '<div class="achips">' +
     chip("cal", di ? di.txt : "Срок", 'data-a="pop" data-p="due" data-id="__dd"', !!q.due, "Срок выполнения (Alt+1…7, Alt+0 — убрать)") +
     chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "", 'data-a="pop" data-p="remind" data-id="__dd"', !!q.remind_at, "Напомнить") +
@@ -3117,7 +3117,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .qrow{gap:14px;padding:4px 0 6px}
 .qrow .rad{width:28px;height:28px;border-color:var(--sub);opacity:.7}
 .qrow input{font-size:calc(20px*var(--z,1));height:48px}
-.qsend{width:44px;height:44px;border-radius:6px;background:var(--ln);color:var(--sub)} .qsend.on{background:var(--acc);color:#fff}
+.micb{border:0;background:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px;flex-shrink:0}.micb.rec{background:#d13438;animation:micp 1s infinite}@keyframes micp{50%{opacity:.5}}.qsend{width:44px;height:44px;border-radius:6px;background:var(--ln);color:var(--sub)} .qsend.on{background:var(--acc);color:#fff}
 .qchips{gap:4px;margin:0 -16px;padding:2px 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
 .qchips::-webkit-scrollbar{display:none}
 .qchip{border:0;background:transparent;padding:10px 12px;border-radius:8px;gap:8px;font-size:calc(17px*var(--z,1));color:var(--sub)} .qchip svg{width:22px;height:22px}
@@ -3506,7 +3506,7 @@ function qaHTML() {
   const qin = !ui.qa.shown; ui.qa.shown = true;
   const q = ui.qa, di = dueInfo({ due: q.due, done: false });
   const chip = (svg, label, attrs, on) => '<button type="button" class="qchip ' + (on ? "on" : "") + '" ' + attrs + ">" + ic(svg, 16) + "<span>" + label + "</span></button>";
-  return '<div class="qa-back' + (qin ? " qin" : "") + '" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" name="qa_task_text" data-lpignore="true" data-form-type="other" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '"><button class="qsend' + ((ui.qaText || "").trim() ? " on" : "") + '" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
+  return '<div class="qa-back' + (qin ? " qin" : "") + '" data-a="qaclose"><form id="qaform" class="qa" autocomplete="off"><div class="qrow"><div class="rad" style="pointer-events:none"></div><input id="qa-input" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" name="qa_task_text" data-lpignore="true" data-form-type="other" placeholder="Добавить задачу" value="' + esc(ui.qaText || "") + '">' + micBtn("qamic") + '<button class="qsend' + ((ui.qaText || "").trim() ? " on" : "") + '" type="submit" title="Добавить">' + ic("up", 20) + '</button></div><div class="qchips">' +
     chip("cal", di ? di.txt : "Задать дату выполнения", 'data-a="pop" data-p="due" data-id="__qa"', !!q.due) +
     chip("bell", q.remind_at ? esc(fmtRemind(q.remind_at).replace("Напомнить в ", "")) : "Напомнить", 'data-a="pop" data-p="remind" data-id="__qa"', !!q.remind_at) +
     chip("repeat", q.repeat_rule ? esc(repeatText(q.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="__qa"', !!q.repeat_rule) +
@@ -3809,7 +3809,7 @@ function settingsHTML() {
     '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
     '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Мой день» — это список на сегодня, который каждое утро начинается с нуля: вы сами выбираете, что берёте в работу сегодня. Если вам хватает «Запланировано» (по датам), оставьте выключенным.</div>';
   else if (tab === "notif") b =
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button><button class="btn ghost" data-a="devlink">🤖 Подключить Android-приложение</button></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="openadd">' + (jget("mytasks_openadd", false) ? "✅" : "⬜") + ' Запуск сразу с окном «Новая задача»</button><button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button><button class="btn ghost" data-a="devlink">🤖 Подключить Android-приложение</button></div>' +
     '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Звук и вибрация этого приложения настраиваются в Android: долгое нажатие на уведомление → «Настройки».</div>';
   else if (tab === "snd") b = sndHTML();
   else if (tab === "keys" && !isMobile()) b = hkHTML();
@@ -4142,7 +4142,23 @@ function trkHTML() {
     '<div class="rit-h">Что играло</div>' + (TRK.media.length ? TRK.media.map(p => '<div class="trk-r"><b>' + hm(p.ts) + "</b><div>" + esc(p.title || "—") + "<br><span>" + esc((p.app || "") + (p.artist ? " · " + p.artist : "") + " · " + (p.state || "")) + "</span></div></div>").join("") : '<div class="rit-hint">Событий пока нет.</div>') +
     "</div></div>" + (setTimeout(trkMapDraw, 0), "");
 }
+// ---- голосовой ввод (Web Speech API, Chrome/Edge). На Android не показываем: там есть микрофон на клавиатуре ----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let VR = null;
+const micOK = () => !!SR && !/Android/i.test(navigator.userAgent);
+const micBtn = a => micOK() ? '<button type="button" class="micb' + (VR ? " rec" : "") + '" data-a="' + a + '" title="Надиктовать (повторный клик — стоп)">🎤</button>' : "";
+function micToggle(inpId) {
+  if (VR) { try { VR.stop(); } catch (e) {} return; }
+  const inp = $(inpId); if (!inp || !SR) return;
+  const r = new SR(); r.lang = "ru-RU"; r.interimResults = true; r.continuous = false; const base = inp.value ? inp.value.replace(/\s*$/, " ") : "";
+  r.onresult = e => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; inp.value = base + t; if (inpId === "qa-input") ui.qaText = inp.value; try { inp.dispatchEvent(new Event("input", { bubbles: true })); } catch (x) {} };
+  r.onerror = e => { toast(e.error === "not-allowed" ? "Разреши микрофон для сайта (значок замка слева от адреса)" : e.error === "no-speech" ? "Не расслышал — попробуй ещё раз" : "Голос: " + e.error); };
+  r.onend = () => { VR = null; document.querySelectorAll(".micb").forEach(b => b.classList.remove("rec")); const i = $(inpId); if (i) i.focus(); };
+  try { r.start(); VR = r; document.querySelectorAll(".micb").forEach(b => b.classList.add("rec")); toast("🎤 Говори…"); } catch (e) { VR = null; }
+}
+function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { if (!isLite() || true) acts.qaopen(); } catch (e) {} }
 function shareMaybe() {
+  addMaybe();
   if (!pendingShare || !S.user) return; if (isLite()) { pendingShare = null; return; } const p = pendingShare; pendingShare = null;
   const m = [p.url, p.text, p.title].join(" ").match(/https?:\/\/[^\s]+/), url = m ? m[0] : "";
   let title = (p.title || p.text || "").replace(/https?:\/\/[^\s]+/g, "").trim(); if (!title) title = url ? "Видео " + ((url.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{6,})/) || [])[1] || "") : "Без названия";
@@ -4608,6 +4624,9 @@ const acts = {
   grid(a) { PR.grid[view] = a.dataset.v === "1"; savePrefs(); render(); },
   sugg() { ui.sugg = !ui.sugg; render(); },
   qaopen() { ui.qaText = ""; ui.qa = { due: null, remind_at: null, repeat_rule: null, my: view === "myday", starred: view === "starred" }; closePop(); render(); const i = $("qa-input"); if (i) i.focus(); },
+  openadd() { jset("mytasks_openadd", !jget("mytasks_openadd", false)); toast(jget("mytasks_openadd", false) ? "При запуске приложения сразу откроется «Новая задача» (удобно для голосовой команды «Открой Мои дела»)" : "Выключено"); render(); },
+  qamic() { micToggle("qa-input"); },
+  nmic() { micToggle("newtask"); },
   qaclose(a, e) { if (e.target !== a) return; ui.qa = null; closePop(); render(); },
   qatog(a) { const f = a.dataset.f; ui.qa[f] = !ui.qa[f]; render(); const i = $("qa-input"); if (i) i.focus(); },
   msearch() { ui.left = false; ui.msearch = true; render(); const q = $("q"); if (q) q.focus(); },
@@ -6164,6 +6183,7 @@ function init() {
   window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app); subDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
   try { const q = new URLSearchParams(location.search); if (q.get("url") || q.get("text") || q.get("title")) { pendingShare = { title: q.get("title") || "", text: q.get("text") || "", url: q.get("url") || "" }; history.replaceState(null, "", location.pathname); } } catch (e) {}
+  try { const q = new URLSearchParams(location.search); if (q.get("add")) { pendingAdd = true; q.delete("add"); const r = q.toString(); history.replaceState(null, "", location.pathname + (r ? "?" + r : "")); } else if (jget("mytasks_openadd", false) && !q.get("t") && !q.get("url") && !q.get("text")) pendingAdd = true; } catch (e) {}
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
   if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } if (d && d.type === "ng") { try { ngLoad(true); NG.snooze = 0; setTimeout(ngTick, 300); } catch (e) {} } });
   try { if (isMobile() && !new URLSearchParams(location.search).get("app") && !pendingShare && !pendingOpen) ui.left = true; } catch (e) {}   // обычный запуск с телефона — главное меню, «назад» закрывает приложение, как все

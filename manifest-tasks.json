@@ -5,7 +5,15 @@
   "description": "Личный список дел с облачной синхронизацией",
   "start_url": "./?app=tasks",
   "scope": "./",
-  "share_target": {"action": "./", "method": "GET", "params": {"title": "title", "text": "text", "url": "url"}},
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0f172a",
@@ -32,6 +40,18 @@
     }
   ],
   "shortcuts": [
+    {
+      "name": "Новая задача",
+      "short_name": "Новая",
+      "url": "./?app=tasks&add=1",
+      "icons": [
+        {
+          "src": "icon-tasks-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
     {
       "name": "Мои дела",
       "short_name": "Дела",
