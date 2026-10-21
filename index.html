@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "21.10 15:59";
+const BUILD = "21.10 16:09";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3548,6 +3548,7 @@ async function teamLoad(force) {
     }
     const lr = await sb.from("lists").select("id,name,icon,user_id").neq("user_id", S.user.id); if (lr.error) throw lr.error;
     TM.tasks = all; TM.lists = {}; (lr.data || []).forEach(l => { TM.lists[l.id] = l; }); TM.at = Date.now();
+    try { const pu = await sb.rpc("team_push_users"); TM.pushU = pu.error ? null : (pu.data || []).map(x => x && x.team_push_users || x); } catch (e) { TM.pushU = null; }
     try { const nr = await sb.from("nudge_rules").select("*"), nl = await sb.from("nudge_log").select("user_id,slot,answer,tasks_today,created_at").gte("created_at", new Date(Date.now() - 12 * 864e5).toISOString()).order("created_at"); if (nr.error || nl.error) throw (nr.error || nl.error); TM.ng = { rules: {}, log: nl.data || [] }; (nr.data || []).forEach(r => { TM.ng.rules[r.user_id] = r; }); TM.ngErr = ""; } catch (e) { TM.ng = { rules: {}, log: [] }; TM.ngErr = "setup"; }
   } catch (e) { TM.err = /team_users|function|schema cache|PGRST/i.test((e && (e.message || e.code)) || "") ? "setup" : errText(e); }
   TM.busy = false; if (view === "team") render();
@@ -3583,7 +3584,7 @@ function teamMainHTML(vi) {
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' + (one ? '<button class="tool" data-a="view" data-v="team">← Команда</button>' : "") + '<button class="tool" data-a="tmrefresh">' + ic("repeat", 16) + " Обновить</button></div>" +
     '<div class="msub">' + esc(vi.sub) + (TM.busy ? " · обновляю…" : TM.at ? " · обновлено " + hm(minOf(new Date(TM.at).toISOString())) : "") + '</div><div class="scroll" id="list">' + body + "</div></div>";
 }
-function ngBadge(u) { const r = TM.ng && TM.ng.rules[u.id]; return r && r.enabled ? '<span class="ng-badge" title="Принудительный вопрос «Все ли внесено?»">🔔 ' + esc((r.times || []).join(", ")) + "</span>" : ""; }
+function ngBadge(u) { const r = TM.ng && TM.ng.rules[u.id]; if (!(r && r.enabled)) return ""; const pu = TM.pushU, pv = pu ? (pu.indexOf(u.id) >= 0 ? " · пуш ✓" : " · пуш ✗ (ещё не разрешил уведомления)") : ""; return '<span class="ng-badge" title="Принудительный вопрос «Все ли внесено?»">🔔 ' + esc((r.times || []).join(", ")) + pv + "</span>"; }
 function ngBoxHTML(u) {
   if (TM.ngErr === "setup") return '<div class="jr-box"><b>🔔 Вопрос «Все ли внесено в записную книжку?»</b><div class="jr-hint">Нужна одноразовая настройка базы: выполни в Supabase → SQL Editor файл <b>migration_v23.sql</b>.</div></div>';
   const r = TM.ng && TM.ng.rules[u.id], log = ((TM.ng && TM.ng.log) || []).filter(x => x.user_id === u.id), times = r ? (r.times || []).join(", ") : "11:00, 15:00, 17:30", on = r ? !!r.enabled : false;
@@ -4231,8 +4232,17 @@ function ngAnswer(a) {
   NG.q.push({ user_id: S.user.id, slot: k + " " + slot, answer: a, tasks_today: ngToday() }); if (NG.q.length > 50) NG.q.splice(0, NG.q.length - 50); jset("mytasks_nudge_q", NG.q); ngSend();
   if (a === "ok") { const dn = NG.done[k] || {}; ((NG.rule && NG.rule.times) || []).forEach(t => { if (t <= slot) dn[t] = 1; }); NG.done = {}; NG.done[k] = dn; jset("mytasks_nudge_done", NG.done); toast("Спасибо! 👍"); }
   else { NG.snooze = Date.now() + 10 * 60000; try { acts.qaopen(); } catch (e) {} toast("Добавь дела — через 10 минут спрошу ещё раз"); }
-  try { if (window.Notification && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
 }
+// сотруднику с включённым вопросом — один раз просим разрешить уведомления и подключаем пуши (первый же клик/тап)
+function ngPushSetup() {
+  try {
+    if (!S.user || !NG.rule || !NG.rule.en || !("Notification" in window) || NG.pushTried) return;
+    if (Notification.permission === "denied") return;
+    NG.pushTried = 1;
+    enablePush().then(() => {}).catch(() => {});
+  } catch (e) {}
+}
+document.addEventListener("pointerdown", () => { if (!NG.pushTried && NG.rule && NG.rule.en) ngPushSetup(); }, true);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { ngStopFlash(); setTimeout(ngTick, 400); } });
 function appHTML() {
   if (view.indexOf("list:") === 0 && !S.lists[view.slice(5)]) view = HOME();
@@ -6149,7 +6159,7 @@ function init() {
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
   try { const q = new URLSearchParams(location.search); if (q.get("url") || q.get("text") || q.get("title")) { pendingShare = { title: q.get("title") || "", text: q.get("text") || "", url: q.get("url") || "" }; history.replaceState(null, "", location.pathname); } } catch (e) {}
   try { pendingOpen = new URLSearchParams(location.search).get("t"); if (pendingOpen) history.replaceState(null, "", location.pathname); } catch (e) {}
-  if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } });
+  if ("serviceWorker" in navigator && !CFG0.TEST) navigator.serviceWorker.addEventListener("message", ev => { const d = ev.data; if (d && d.type === "open" && d.id) { pendingOpen = d.id; render(); } if (d && d.type === "ng") { try { ngLoad(true); NG.snooze = 0; setTimeout(ngTick, 300); } catch (e) {} } });
   try { if (isMobile() && !new URLSearchParams(location.search).get("app") && !pendingShare && !pendingOpen) ui.left = true; } catch (e) {}   // обычный запуск с телефона — главное меню, «назад» закрывает приложение, как все
   applyTheme(); boot();
   setTimeout(videoCatchup, 6000); setTimeout(checkBuild, 1500); setInterval(checkBuild, 300000);

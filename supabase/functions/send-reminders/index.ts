@@ -37,6 +37,33 @@ Deno.serve(async (req) => {
         }
       }
     } catch (err) { console.error("webhook check " + (err as Error).message); }
+    // Принудительный вопрос «Все ли внесено в записную книжку?»: пуш в назначенные слоты (будни), до 3 раз с паузой 10 мин, пока нет ответа
+    try {
+      const nowN = new Date();
+      const { data: rules } = await sb.from("nudge_rules").select("user_id,times,days,tz").eq("enabled", true);
+      for (const r of rules ?? []) {
+        const loc = new Date(nowN.getTime() + (r.tz ?? 7) * 3600e3), wd = loc.getUTCDay() || 7;
+        if (!(r.days ?? [1, 2, 3, 4, 5]).includes(wd)) continue;
+        const day = loc.toISOString().slice(0, 10), hm = loc.toISOString().slice(11, 16);
+        const slots = (r.times ?? []).filter((t: string) => t <= hm).sort();
+        const slot = slots[slots.length - 1]; if (!slot) continue;
+        const [h, m] = slot.split(":").map(Number), age = (loc.getUTCHours() * 60 + loc.getUTCMinutes()) - (h * 60 + m);
+        if (age > 90) continue;
+        const key = day + " " + slot;
+        const { data: ans } = await sb.from("nudge_log").select("slot").eq("user_id", r.user_id).eq("answer", "ok").gte("slot", key).like("slot", day + "%").limit(1);
+        if (ans && ans.length) continue;
+        const { data: ex } = await sb.from("nudge_push").select("n,last_at").eq("user_id", r.user_id).eq("slot", key).maybeSingle();
+        if (ex && (ex.n >= 3 || nowN.getTime() - Date.parse(ex.last_at) < 9.5 * 60e3)) continue;
+        const { data: ss } = await sb.from("push_subs").select("endpoint,p256dh,auth").eq("user_id", r.user_id);
+        if (!ss || !ss.length) continue;
+        await sb.from("nudge_push").upsert({ user_id: r.user_id, slot: key, n: (ex?.n ?? 0) + 1, last_at: nowN.toISOString() });
+        const pl = JSON.stringify({ title: "📝 Все ли внесено в записную книжку?", body: "Откройте «Мои дела» и ответьте — это займёт 5 секунд.", tag: "ng", ng: 1 });
+        for (const s of ss) {
+          try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, pl, { TTL: 3600, urgency: "high", timeout: 10000 }); }
+          catch (e) { const sc = (e as { statusCode?: number }).statusCode; if (sc === 404 || sc === 410) await sb.from("push_subs").delete().eq("endpoint", s.endpoint); else console.error("ng push " + (e as Error).message); }
+        }
+      }
+    } catch (err) { console.error("nudge " + (err as Error).message); }
     const now = new Date(), since = new Date(now.getTime() - 24 * 3600e3);
     const { data: tasks, error } = await sb.from("tasks")
       .select("id,user_id,title,remind_at,remind_sent_for,due,list_id,remind_via")

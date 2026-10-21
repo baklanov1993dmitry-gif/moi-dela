@@ -1,5 +1,5 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html отдаётся из кэша мгновенно и обновляется в фоне.
-const CACHE = "moidela-shell-v179";
+const CACHE = "moidela-shell-v180";
 const SHELL = ["./", "./index.html", "./webshooter.png", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./manifest-journal.json", "./manifest-food.json", "./manifest-tasks.json", "./icon-journal-192.png", "./icon-food-192.png", "./icon-tasks-192.png", "./foods.json?v=4"];
 
 self.addEventListener("install", e => {
@@ -47,13 +47,20 @@ self.addEventListener("push", e => {
   // Chrome требует показать уведомление на КАЖДЫЙ пуш; иначе он сам рисует заглушку «tap to copy the url for this app». Поэтому показываем всегда.
   e.waitUntil(self.registration.showNotification(d.title || "Напоминание", {
     body: d.body || "", tag: d.tag || d.id || "moidela", renotify: true, requireInteraction: true, silent: false,
-    icon: "icon-192.png", badge: "icon-192.png", vibrate: [250, 100, 250, 100, 250], data: { id: d.id || null, u: d.u || null, sig: d.sig || null, t: d.title || "" },
+    icon: "icon-192.png", badge: "icon-192.png", vibrate: [250, 100, 250, 100, 250], data: { ng: d.ng || 0, id: d.id || null, u: d.u || null, sig: d.sig || null, t: d.title || "" },
     actions: d.sig && d.u ? [{ action: "done", title: "✅ Готово" }, { action: "snooze", title: "⏰ +1 час" }, { action: "tom", title: "🌙 Завтра" }] : []   // кнопки прямо в шторке
   }));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
   const dt = e.notification.data || {}, id = dt.id;
+  if (dt.ng) {   // вопрос «Все ли внесено?»: открыть/показать приложение, окно вопроса появится само
+    e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
+      if (cs.length) { cs[0].postMessage({ type: "ng" }); return cs[0].focus(); }
+      return self.clients.openWindow("./?ng=1");
+    }));
+    return;
+  }
   if (e.action && dt.sig && dt.u && dt.sig[e.action]) {   // действие из шторки: сервер проверяет подпись и меняет задачу
     const lab = { done: "✅ Выполнено", snooze: "⏰ Отложено на час", tom: "🌙 Перенесено на завтра 9:00" }[e.action];
     e.waitUntil(fetch(dt.u + "?ra=1&id=" + encodeURIComponent(id) + "&a=" + e.action + "&sig=" + dt.sig[e.action], { mode: "no-cors", cache: "no-store" })
