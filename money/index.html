@@ -203,7 +203,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .rcp.prt .rl>*{opacity:0;animation:prtl .3s ease-out forwards}@keyframes prtl{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
 .rcp.prt .rtot{animation:prtt .5s .1s both}@keyframes prtt{from{opacity:0}to{opacity:1}}
 [data-a=edit],[data-a=edit] *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}[data-a=edit]{position:relative;overflow:hidden}
-[data-a=edit].lp::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--exp) 38%,transparent);transform-origin:left;animation:lpf .5s linear forwards;pointer-events:none}@keyframes lpf{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+[data-a=edit].lp::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--exp) 38%,transparent);transform-origin:left;animation:lpf 1s linear forwards;pointer-events:none}@keyframes lpf{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .toast .tu{margin-left:12px;border:0;background:rgba(255,255,255,.18);color:inherit;font:inherit;font-weight:700;padding:3px 12px;border-radius:10px}
 @media (prefers-reduced-motion:reduce){.full.roll,.rcp.prt,.rcp.prt .rl>*,[data-a=edit].lp::after{animation-duration:.01s!important}}
 .nmc{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:2;border:0;background:var(--card2);color:var(--sub);font:inherit;font-size:.7em;padding:5px 10px;border-radius:999px;cursor:pointer}.nmc.on{background:var(--acc);color:#fff}
@@ -970,7 +970,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 48 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 49 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1638,11 +1638,11 @@ function delUndo(id) { const t = txs.find(x => x.id === id); if (!t) return; con
 let _lp = null, _lpAt = 0;
 function lpFire() { if (!_lp) return; const r = _lp.r, id = r.dataset.id; clearTimeout(_lp.tm); _lp = null; _lpAt = Date.now(); r.classList.remove("lp"); navigator.vibrate && navigator.vibrate(20); delUndo(id); }
 const lpCancel = () => { if (_lp) { clearTimeout(_lp.tm); _lp.r.classList.remove("lp"); _lp = null; } };
-document.addEventListener("pointerdown", e => { const r = e.target.closest && e.target.closest("[data-a=edit]"); if (!r || (e.button || 0) > 0) return; lpCancel(); r.classList.add("lp"); _lp = { r, x: e.clientX, y: e.clientY, tm: setTimeout(lpFire, 500) }; });
+document.addEventListener("pointerdown", e => { const r = e.target.closest && e.target.closest("[data-a=edit]"); if (!r || (e.button || 0) > 0) return; lpCancel(); r.classList.add("lp"); _lp = { r, x: e.clientX, y: e.clientY, tm: setTimeout(lpFire, 1000) }; });
 document.addEventListener("pointermove", e => { if (_lp && Math.hypot(e.clientX - _lp.x, e.clientY - _lp.y) > 16) lpCancel(); });
 ["pointerup", "scroll"].forEach(n => document.addEventListener(n, lpCancel, true));
 document.addEventListener("selectstart", e => { const n = e.target && (e.target.nodeType === 1 ? e.target : e.target.parentElement); if (n && n.closest && n.closest("[data-a=edit]")) e.preventDefault(); });
-document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest("[data-a=edit]")) { e.preventDefault(); lpFire(); } });
+document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest("[data-a=edit]")) e.preventDefault(); });
 document.addEventListener("click", e => { if (Date.now() - _lpAt < 700) { e.preventDefault(); return; } const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
 document.addEventListener("change", e => { const sel = e.target.dataset && e.target.dataset.sel; if (!sel) return; const v = e.target.value; if (sel === "itmset") PR.itmN = +v; else if (sel === "itmmode") PR.itmM = v; else if (sel === "itmsrt") PR.itmS = v; else return; savePR(); render(); });
 document.addEventListener("input", e => { if (e.target.id === "s-q" || e.target.id === "s-p") { unitUpd(); return; } if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[naq]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); ui.sheet.items.forEach((x, i) => { const u = $("r-u-" + i); if (u) u.innerHTML = rUnit(x); }); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
