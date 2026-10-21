@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "21.10 16:18";
+const BUILD = "21.10 20:26";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4452,10 +4452,12 @@ function saveCfg() {
 const isOwnerNow = () => !!(S.user && S.user.email && OWNER_EMAILS.indexOf(String(S.user.email).toLowerCase()) >= 0);
 async function mfaCheck() {
   try {
-    const a = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (navigator.onLine === false) throw 0;   // без связи не держим на «проверяю защиту»: данные локальные, а сервер всё равно проверит 2FA при синхронизации
+    const tmo = new Promise(r => setTimeout(() => r({ error: 1 }), 4000));   // зависший запрос тоже не блокирует вход
+    const a = await Promise.race([sb.auth.mfa.getAuthenticatorAssuranceLevel(), tmo]);
     if (a.error || !a.data) throw 0;
     if (a.data.nextLevel === "aal2" && a.data.currentLevel !== "aal2") {
-      const f = await sb.auth.mfa.listFactors(), t = f.data && f.data.totp && f.data.totp[0];
+      const f = await Promise.race([sb.auth.mfa.listFactors(), tmo]), t = f.data && f.data.totp && f.data.totp[0];
       if (t) { ui.mfaGate = { fid: t.id }; render(); return; }
     }
   } catch (e) {}
