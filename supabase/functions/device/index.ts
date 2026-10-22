@@ -116,7 +116,43 @@ Deno.serve(async (req) => {
       return /который час|сколько времени|какое число|какой день/.test(t) ? { intent: "time" } : /погод/.test(t) ? { intent: "weather", day: /завтра/.test(t) ? "tomorrow" : "today" } : /ближайш|что на сегодня|что у меня|какие дела|что по делам/.test(t) ? { intent: "read_today" } : /что дальше|следующ.* напоминан|ближайш.* напоминан/.test(t) ? { intent: "read_next" } : /сколько дел/.test(t) ? { intent: "count" } : /^(готово|сделал|сделано|выполнено|выполнил)/.test(t) ? { intent: "done", target: "last" } : /^отложи/.test(t) ? { intent: "snooze", target: "last", minutes: /полчаса|30 минут/.test(t) ? 30 : /2 часа|два часа/.test(t) ? 120 : 60 } : /перенеси.*завтра|на завтра$/.test(t) && /^перенеси/.test(t) ? { intent: "tomorrow", target: "last" } : /^(отмена|отмени|удали последн)/.test(t) ? { intent: "undo" } : /что (ты )?умеешь|^помощь|какие команды/.test(t) ? { intent: "help" } : { intent: "add", title: tx.replace(/^(запиши|запись|добавь|новая задача)[,:]?\s*/i, "") };
     };
     const hasTimeWords = /завтра|сегодня|послезавтра|через|понедельник|вторник|сред[ауы]|четверг|пятниц|суббот|воскресень|утром|вечером|днём|днем|ночью|\d{1,2}[:.]\d{2}|\bв \d|\d+ (час|минут|дн|недел)/i.test(text);
-    let I: any = rulesOf(text); const needAI = I.intent === "add" && hasTimeWords;   // ИИ нужен только для разбора срока/времени
+    // быстрый разбор типовых сроков правилами (без ИИ): завтра / в 17:30 / в 5 вечера / через 2 часа / в понедельник / через 3 дня; сомнительное -> null (тогда ИИ)
+    const parseWhen = (tx: string): { title: string; due: string | null; remind: string | null } | null => {
+      let s = " " + tx.trim() + " ", due: string | null = null, remind: string | null = null, found = false, m: RegExpExecArray | null;
+      const NUM: Record<string, number> = { один: 1, одну: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10, одиннадцать: 11, двенадцать: 12 };
+      const cut = (r: RegExpExecArray) => { s = s.replace(r[0], " "); found = true; };
+      const dstr = (off: number) => ymdz(nowMs + off * 864e5);
+      if ((m = /\sчерез\s+((?:\d+(?:[.,]\d+)?\s*|[а-яё]+\s+)?(?:часа|часов|час|минут[ыу]?|мин)(?![а-яё])|полчаса)/i.exec(s)) && (/полчаса/i.test(m[1]) || durMin(m[1]))) {
+        const mins = /полчаса/i.test(m[1]) ? 30 : durMin(m[1]), t = nowMs + mins * 60000; remind = ymdz(t) + " " + hm(t); cut(m);
+      } else if ((m = /\sчерез\s+(\d+|[а-яё]+)\s+(дн(?:я|ей)|день|недел[юиь])(?![а-яё])/i.exec(s))) {
+        const n = /^\d+$/.test(m[1]) ? +m[1] : NUM[m[1].toLowerCase()]; if (!n) return null; due = dstr(/^недел/i.test(m[2]) ? n * 7 : n); cut(m);
+      } else {
+        let off: number | null = null;
+        if ((m = /\s(послезавтра|завтра|сегодня)(?![а-яё])/i.exec(s))) { off = /^после/i.test(m[1]) ? 2 : /^завтра/i.test(m[1]) ? 1 : 0; cut(m); }
+        else if ((m = /\s(?:(?:в|во|на)\s+)?(понедельник|вторник|сред[уа]|четверг|пятниц[уа]|суббот[уа]|воскресенье)(?![а-яё])/i.exec(s))) {
+          const idx = ["воскресенье", "понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"].findIndex((w) => m![1].toLowerCase().startsWith(w));
+          off = (idx - loc.getUTCDay() + 7) % 7 || 7; cut(m);
+        }
+        let h = -1, mi = 0;
+        if ((m = /\s(?:в|к)\s+(\d{1,2})[:.](\d{2})(?!\d)(?:\s*(утра|вечера|дня|ночи))?/i.exec(s))) { h = +m[1]; mi = +m[2]; const sf = (m[3] || "").toLowerCase(); if ((sf === "вечера" || sf === "дня") && h < 12) h += 12; cut(m); }
+        else if ((m = /\s(?:в|к)\s+(\d{1,2}|один|два|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)(?:\s+час(?:а|ов)?)?\s+(утра|вечера|дня|ночи)(?![а-яё])/i.exec(s)) || (m = /\s(?:в|к)\s+(\d{1,2}|один|два|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)?(?![а-яё])/i.exec(s))) {
+          const n = /^\d+$/.test(m[1]) ? +m[1] : NUM[m[1].toLowerCase()], sf = (m[2] || "").toLowerCase(); if (n == null || n > 23) return null;
+          h = n; if ((sf === "вечера" || sf === "дня") && n < 12) h = n + 12; else if (sf === "ночи" && n === 12) h = 0; else if (!sf && n >= 1 && n <= 7) return null; cut(m);
+        }
+        if (h >= 0) {
+          if (h > 23 || mi > 59) return null;
+          const base0 = off != null ? off : (h * 60 + mi <= loc.getUTCHours() * 60 + loc.getUTCMinutes() ? 1 : 0);
+          remind = dstr(base0) + " " + pad(h) + ":" + pad(mi);
+        } else if (off != null) due = dstr(off);
+      }
+      if (!found) return null;
+      if (/\sчерез\s|утром|вечером|днём|днем|ночью|\sв\s+\d|завтра|сегодня|послезавтра|понедельник|вторник|\sсред[ау]|четверг|пятниц|суббот|воскресень|\d[:.]\d\d/i.test(s)) return null;
+      const title = s.replace(/^\s*(?:пожалуйста[,\s]*)?(?:запиши|добавь|создай\s+задачу|поставь\s+задачу|напомни(?:\s+мне)?)[,:\s]*(?:что\s+|о\s+том,?\s+что\s+)?/i, " ").replace(/\s+(?:на|в|к|во)\s*$/i, "").replace(/^[\s,.:—-]+|[\s,.:—-]+$/g, "").replace(/\s{2,}/g, " ");
+      if (title.length < 2) return null;
+      return { title: title[0].toUpperCase() + title.slice(1), due, remind };
+    };
+    let I: any = rulesOf(text); let needAI = I.intent === "add" && hasTimeWords;
+    if (needAI) { const pw = parseWhen(text); if (pw) { I = { intent: "add", title: pw.title, due: pw.due, remind: pw.remind }; needAI = false; } }   // ИИ нужен только для разбора срока/времени
     if (needAI) I = null;
     let GSYS = "", GBODY = "";
     try {
