@@ -54,8 +54,8 @@ Deno.serve(async (req) => {
         if (cr.ok) list_id = nid;
       }
     }
-    const due = /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || "")) ? String(b.due) : b.today ? ymdz(Date.now()) : null;
-    const t = { id: crypto.randomUUID(), user_id: uid, title, list_id, due, note: b.note ? String(b.note).slice(0, 4000) : "", done: false, parent_id: null, category: null, starred: false, my_day: false, my_day_date: null, steps: [], est_minutes: null, status: "active", remind_at: null, repeat_rule: null, files: [], plan_start: null, created_at: new Date().toISOString() };
+    const due = /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || "")) ? String(b.due) : (b.today || b.myday) ? ymdz(Date.now()) : null;
+    const t = { id: crypto.randomUUID(), user_id: uid, title, list_id, due, note: b.note ? String(b.note).slice(0, 4000) : "", done: false, parent_id: null, category: null, starred: false, my_day: !!b.myday, my_day_date: b.myday ? ymdz(Date.now()) : null, steps: [], est_minutes: null, status: "active", remind_at: null, repeat_rule: null, files: [], plan_start: null, created_at: new Date().toISOString() };
     const r = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(t) });
     return r.ok ? ok({ ok: true, id: t.id }) : ok({ error: "db " + (await r.text()).slice(0, 200) }, 500);
   }

@@ -120,20 +120,20 @@ public class VoiceAddActivity extends Activity {
     }
 
     private void save(final String raw) {
-        done = true; final String[] pd = parseDue(raw); final Context c = getApplicationContext();
+        done = true; final String[] pd = new String[]{raw, null}; final Context c = getApplicationContext();
         String t0 = pd[0]; if (t0.length() > 0) t0 = t0.substring(0, 1).toUpperCase(Locale.ROOT) + t0.substring(1);
         final String title = t0; tv.setText(title);
         new Thread(new Runnable() { public void run() {
             String res = null;
             try {
                 JSONObject j = new JSONObject().put("title", title);
-                if (pd[1] != null) j.put("due", pd[1]);
+                j.put("myday", true);   // всегда в «Мой день» со сроком сегодня
                 res = Net.post(Store.api(c, "add", ""), j.toString());
             } catch (Exception e) {}
             final boolean ok = res != null;
             if (ok) Sync.run(c);
             h.post(new Runnable() { public void run() {
-                speakAndEnd(ok ? "Записано. " + title + (pd[1] != null ? ". Срок поставлен." : "") : "Нет связи. Не записалось.");
+                speakAndEnd(ok ? "Записано. " + title : "Нет связи. Не записалось.");
             } });
         } }).start();
     }
