@@ -50,9 +50,15 @@ Deno.serve(async (req) => {
     const open: any[] = gr.ok ? await gr.json() : [];
     const last = b.last && b.last.id ? b.last : null;
     // --- 1. намерение: Gemini, а если недоступен — простые правила ---
-    let I: any = null;
+    const rulesOf = (tx: string): any => {
+      const t = tx.toLowerCase();
+      return /который час|сколько времени|какое число|какой день/.test(t) ? { intent: "time" } : /погод/.test(t) ? { intent: "weather", day: /завтра/.test(t) ? "tomorrow" : "today" } : /ближайш|что на сегодня|что у меня|какие дела|что по делам/.test(t) ? { intent: "read_today" } : /что дальше|следующ.* напоминан|ближайш.* напоминан/.test(t) ? { intent: "read_next" } : /сколько дел/.test(t) ? { intent: "count" } : /^(готово|сделал|сделано|выполнено|выполнил)/.test(t) ? { intent: "done", target: "last" } : /^отложи/.test(t) ? { intent: "snooze", target: "last", minutes: /полчаса|30 минут/.test(t) ? 30 : /2 часа|два часа/.test(t) ? 120 : 60 } : /перенеси.*завтра|на завтра$/.test(t) && /^перенеси/.test(t) ? { intent: "tomorrow", target: "last" } : /^(отмена|отмени|удали последн)/.test(t) ? { intent: "undo" } : /что (ты )?умеешь|^помощь|какие команды/.test(t) ? { intent: "help" } : { intent: "add", title: tx.replace(/^(запиши|запись|добавь|новая задача)[,:]?\s*/i, "") };
+    };
+    const hasTimeWords = /завтра|сегодня|послезавтра|через|понедельник|вторник|сред[ауы]|четверг|пятниц|суббот|воскресень|утром|вечером|днём|днем|ночью|\d{1,2}[:.]\d{2}|\bв \d|\d+ (час|минут|дн|недел)/i.test(text);
+    let I: any = rulesOf(text); const needAI = I.intent === "add" && hasTimeWords;   // ИИ нужен только для разбора срока/времени
+    if (needAI) I = null;
     try {
-      const key = Deno.env.get("GEMINI_API_KEY");
+      const key = needAI ? Deno.env.get("GEMINI_API_KEY") : "";
       if (key) {
         const sys = `Ты разбираешь голосовую команду владельца личного списка дел. Сейчас ${loc.toISOString().slice(0, 16).replace("T", " ")} (${WD[loc.getUTCDay()]}), часовой пояс +7. Ответь ТОЛЬКО JSON без пояснений: {"intent":"add|read_today|read_next|count|done|snooze|tomorrow|undo|time|weather|help","title":"текст дела (для add) без слов про срок и без слов-команд, с заглавной буквы","due":"YYYY-MM-DD или null","remind":"YYYY-MM-DD HH:MM или null","target":"last или id задачи из списка или null","minutes":число или null,"day":"today|tomorrow|null"}. Правила: add — любая фраза, похожая на новое дело/поручение/«запиши…/напомни…» (если названо время «в 15:00» — remind; «завтра» — due). read_today — что на сегодня/ближайшие дела/что у меня; read_next — какое следующее напоминание/что дальше; count — сколько дел; done — «готово/сделал/выполнено» (target last или id); snooze — «отложи/напомни позже» (minutes, по умолчанию 60); tomorrow — «перенеси на завтра»; undo — «отмена/удали последнее»; time — который час/какое число; weather — погода (day); help — «что ты умеешь/помощь». Если сомневаешься — add с полным текстом.`;
         const body = "Фраза: " + text + "\nПоследняя задача из разговора: " + (last ? last.id + " | " + last.title : "нет") + "\nОткрытые задачи (id | название | срок | напоминание):\n" + open.slice(0, 60).map((t) => t.id + " | " + t.title + " | " + (t.due || "") + " | " + (t.remind_at ? new Date(Date.parse(t.remind_at) + TZ).toISOString().slice(0, 16).replace("T", " ") : "")).join("\n");
@@ -64,7 +70,8 @@ Deno.serve(async (req) => {
         }
       }
     } catch { /* правила ниже */ }
-    if (!I || !I.intent) {
+    if (!I || !I.intent) { I = rulesOf(text); }
+    if (false) {
       const t = text.toLowerCase();
       I = /который час|сколько времени/.test(t) ? { intent: "time" } : /погод/.test(t) ? { intent: "weather", day: /завтра/.test(t) ? "tomorrow" : "today" } : /ближайш|что на сегодня|что у меня/.test(t) ? { intent: "read_today" } : /сколько дел/.test(t) ? { intent: "count" } : /^(готово|сделал|выполнено)/.test(t) ? { intent: "done", target: "last" } : /^отмена|удали последн/.test(t) ? { intent: "undo" } : { intent: "add", title: text.replace(/^(запиши|запись|добавь|новая задача)[,:]?\s*/i, "") };
     }
