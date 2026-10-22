@@ -34,7 +34,15 @@ Deno.serve(async (req) => {
       q("order=due.asc.nullslast&limit=400"),
       fetch(base + "lists?select=id,name,icon&user_id=eq." + uid + "&order=name.asc", { headers: hd }).then((r) => r.ok ? r.json() : []),
     ]);
-    return ok({ rem: (rem || []).map((x: any) => ({ ...x, at: Date.parse(x.remind_at) })), tasks, lists, today: ymdz(Date.now()), now: Date.now() });
+    let vcfg: unknown = null;   // настройки голосового добавления (общие для сайта и телефона)
+    try { const vr = await fetch(base + "user_settings?select=data&user_id=eq." + uid + "&key=eq.voice:cfg", { headers: hd }); if (vr.ok) vcfg = ((await vr.json())[0] || {}).data || null; } catch { /* без настроек */ }
+    return ok({ rem: (rem || []).map((x: any) => ({ ...x, at: Date.parse(x.remind_at) })), tasks, lists, vcfg, today: ymdz(Date.now()), now: Date.now() });
+  }
+  if (a === "vset") {   // телефон сохраняет настройки голоса, чтобы они были видны и на сайте
+    let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
+    const d = { list: String(b.list ?? ""), due: Math.max(0, Math.min(2, +b.due || 0)), myday: !!b.myday, say: Math.max(0, Math.min(2, +b.say || 0)), rate: Math.max(0, Math.min(3, +b.rate || 0)), beep: b.beep !== false, ts: +b.ts || Date.now() };
+    const r = await fetch(base + "user_settings?on_conflict=user_id,key", { method: "POST", headers: { ...hd, Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ user_id: uid, key: "voice:cfg", data: d, updated_at: new Date().toISOString() }) });
+    return r.ok ? ok({ ok: true }) : ok({ error: "db " + (await r.text()).slice(0, 200) }, 500);
   }
   if (a === "add") {   // быстрое добавление с телефона (плитка, «Поделиться»)
     let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }

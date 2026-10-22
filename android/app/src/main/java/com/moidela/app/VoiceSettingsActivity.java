@@ -93,7 +93,13 @@ public class VoiceSettingsActivity extends Activity {
         final Runnable save = new Runnable() { public void run() {
             sp.edit().putString("v_list", listIds.get(Math.max(0, spList.getSelectedItemPosition()))).putInt("v_due", spDue.getSelectedItemPosition())
                 .putBoolean("v_myday", cbMy.isChecked()).putInt("v_say", spSay.getSelectedItemPosition()).putInt("v_rate", spRate.getSelectedItemPosition())
-                .putString("v_voice", voiceIds.get(Math.max(0, Math.min(voiceIds.size() - 1, spVoice.getSelectedItemPosition())))).putBoolean("v_beep", cbBeep.isChecked()).apply();
+                .putString("v_voice", voiceIds.get(Math.max(0, Math.min(voiceIds.size() - 1, spVoice.getSelectedItemPosition())))).putBoolean("v_beep", cbBeep.isChecked()).putLong("v_ts", System.currentTimeMillis()).apply();
+            final android.content.Context c = getApplicationContext();
+            new Thread(new Runnable() { public void run() { try {   // отправляем на сервер, чтобы настройки были видны и на сайте
+                JSONObject j = new JSONObject().put("list", sp.getString("v_list", "")).put("due", sp.getInt("v_due", 1)).put("myday", sp.getBoolean("v_myday", false))
+                    .put("say", sp.getInt("v_say", 0)).put("rate", sp.getInt("v_rate", 1)).put("beep", sp.getBoolean("v_beep", true)).put("ts", sp.getLong("v_ts", 0));
+                Net.post(Store.api(c, "vset", ""), j.toString());
+            } catch (Exception e) {} } }).start();
         } };
         AdapterView.OnItemSelectedListener ch = new AdapterView.OnItemSelectedListener() {
             public void onItemSelected(AdapterView<?> p, View v, int i, long id) { save.run(); }

@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 08:58";
+const BUILD = "22.10 09:00";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3119,7 +3119,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .qrow{gap:14px;padding:4px 0 6px}
 .qrow .rad{width:28px;height:28px;border-color:var(--sub);opacity:.7}
 .qrow input{font-size:calc(20px*var(--z,1));height:48px}
-.rx-box{margin:2px 0 8px 44px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}.rx-l{font-size:12px;color:var(--sub)}.rx-ch{display:flex;gap:6px;flex-wrap:wrap}.rx-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--acc);color:var(--acc);border-radius:14px;padding:2px 4px 2px 10px;font-size:13px}.rx-chip button{border:0;background:none;color:inherit;cursor:pointer;padding:2px 6px;opacity:.7}.rx-add{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.micb{border:0;background:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px;flex-shrink:0}.micb.rec{background:#d13438;animation:micp 1s infinite}@keyframes micp{50%{opacity:.5}}.qsend{width:44px;height:44px;border-radius:6px;background:var(--ln);color:var(--sub)} .qsend.on{background:var(--acc);color:#fff}
+.vc-box{margin-top:18px;padding-top:14px;border-top:1px solid var(--ln);display:flex;flex-direction:column;gap:10px}.vc-h{font-weight:700}.vc-s{font-size:12px;color:var(--sub)}.vc-r{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--sub)}.vc-r select{padding:8px;border:1px solid var(--ln);border-radius:8px;background:var(--solid);color:var(--tx);font-size:14px}.rx-box{margin:2px 0 8px 44px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}.rx-l{font-size:12px;color:var(--sub)}.rx-ch{display:flex;gap:6px;flex-wrap:wrap}.rx-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--acc);color:var(--acc);border-radius:14px;padding:2px 4px 2px 10px;font-size:13px}.rx-chip button{border:0;background:none;color:inherit;cursor:pointer;padding:2px 6px;opacity:.7}.rx-add{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.micb{border:0;background:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px;flex-shrink:0}.micb.rec{background:#d13438;animation:micp 1s infinite}@keyframes micp{50%{opacity:.5}}.qsend{width:44px;height:44px;border-radius:6px;background:var(--ln);color:var(--sub)} .qsend.on{background:var(--acc);color:#fff}
 .qchips{gap:4px;margin:0 -16px;padding:2px 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
 .qchips::-webkit-scrollbar{display:none}
 .qchip{border:0;background:transparent;padding:10px 12px;border-radius:8px;gap:8px;font-size:calc(17px*var(--z,1));color:var(--sub)} .qchip svg{width:22px;height:22px}
@@ -3813,7 +3813,7 @@ function settingsHTML() {
     '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Мой день» — это список на сегодня, который каждое утро начинается с нуля: вы сами выбираете, что берёте в работу сегодня. Если вам хватает «Запланировано» (по датам), оставьте выключенным.</div>';
   else if (tab === "notif") b =
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="openadd">' + (jget("mytasks_openadd", false) ? "✅" : "⬜") + ' Запуск сразу с окном «Новая задача»</button>' + (/Android/i.test(navigator.userAgent) ? '<button class="btn ghost" data-a="voiceset">🎤 Настройки голосового добавления</button>' : "") + '<button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button><button class="btn ghost" data-a="devlink">🤖 Подключить Android-приложение</button></div>' +
-    '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Звук и вибрация этого приложения настраиваются в Android: долгое нажатие на уведомление → «Настройки».</div>';
+    '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Звук и вибрация этого приложения настраиваются в Android: долгое нажатие на уведомление → «Настройки».</div>' + vcHTML();
   else if (tab === "snd") b = sndHTML();
   else if (tab === "keys" && !isMobile()) b = hkHTML();
   else if (tab === "bk") b = bkHTML();
@@ -4188,6 +4188,34 @@ function remExtraHTML(t, id) {
   const q = t.remind_queue || [];
   return q.map((x, i) => '<div class="drow act" data-a="remxpop" data-p="remind" data-id="' + id + '" data-xi="' + i + '">' + ic("bell", 18) + '<span class="dtx">' + esc(fmtRemind(x)) + '</span><button class="xbtn" data-a="remxdel" data-id="' + id + '" data-i="' + i + '" title="Убрать">' + ic("x", 15) + "</button></div>").join("") +
     '<div class="drow" data-a="remxpop" data-p="remind" data-id="' + id + '" data-xi="-1">' + ic("plus", 18) + '<span class="dtx">Ещё напоминание</span></div>';
+}
+// ---- настройки голосового добавления (для телефона): правятся и тут, лежат в user_settings voice:cfg, телефон подхватывает при синхронизации ----
+const VC = { cfg: null, loaded: false, busy: false };
+async function vcLoad() {
+  if (VC.loaded || VC.busy || !sb || !S.user) return; VC.busy = true;
+  try { const r = await sb.from("user_settings").select("data").eq("user_id", S.user.id).eq("key", "voice:cfg").maybeSingle(); if (!r.error) { VC.cfg = r.data && r.data.data || null; VC.loaded = true; } } catch (e) {}
+  VC.busy = false; renderSoon();
+}
+function vcGet() {
+  const c = Object.assign({ list: null, due: 1, myday: false, say: 0, rate: 1, beep: true }, VC.cfg || {});
+  if (c.list === null || c.list === undefined) { const m = listsArr().find(l => /свои дела/i.test(l.name)); c.list = m ? m.id : ""; }
+  return c;
+}
+async function vcSet(k, v) {
+  const c = vcGet(); c[k] = v; c.ts = Date.now(); VC.cfg = c;
+  try { const r = await sb.from("user_settings").upsert({ user_id: S.user.id, key: "voice:cfg", data: c, updated_at: nowISO() }, { onConflict: "user_id,key" }); if (r.error) toast("Не сохранилось: " + errText(r.error)); else toast("Сохранено — телефон подхватит при синхронизации"); } catch (e) { toast("Нет связи — не сохранилось"); }
+}
+function vcHTML() {
+  vcLoad(); const c = vcGet();
+  const sel = (k, opts, cur) => '<select class="vc-in" data-k="' + k + '">' + opts.map((o, i) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? " selected" : "") + ">" + esc(o[1]) + "</option>").join("") + "</select>";
+  const ls = [["", "📥 Без списка"]].concat(listsArr().map(l => [l.id, (l.icon ? l.icon + " " : "") + l.name]));
+  return '<div class="vc-box"><div class="vc-h">🎤 Голосовое добавление (для телефона)</div><div class="vc-s">Эти настройки применяются в приложении на телефоне (двойное касание наушника, боковая кнопка, иконка «Голосом»). Телефон забирает их при синхронизации, примерно в течение 5 минут. Сам голос озвучки выбирается только на телефоне.</div>' +
+    '<label class="vc-r">Куда класть задачи' + sel("list", ls, c.list) + "</label>" +
+    '<label class="vc-r">Срок' + sel("due", [[0, "Без срока"], [1, "Сегодня"], [2, "Завтра"]], c.due) + "</label>" +
+    '<label class="vc-r"><input type="checkbox" class="vc-in" data-k="myday"' + (c.myday ? " checked" : "") + '> Ещё и в «Мой день»</label>' +
+    '<label class="vc-r">Подтверждение голосом' + sel("say", [[0, "Повторять задачу целиком"], [1, "Только «Записано»"], [2, "Молча (сигнал и вибрация)"]], c.say) + "</label>" +
+    '<label class="vc-r">Скорость речи' + sel("rate", [[0, "Медленно"], [1, "Обычно"], [2, "Быстро"], [3, "Очень быстро"]], c.rate) + "</label>" +
+    '<label class="vc-r"><input type="checkbox" class="vc-in" data-k="beep"' + (c.beep ? " checked" : "") + '> Сигнал перед записью</label></div>';
 }
 function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { acts.qaopen(); if (voiceAuto && micOK()) setTimeout(() => micToggle("qa-input", true), 500); } catch (e) {} }
 function shareMaybe() {
@@ -6102,6 +6130,7 @@ function init() {
   });
   app.addEventListener("change", e => {
     if (e.target.classList && e.target.classList.contains("jr-rv")) { jrRevSave(e.target.dataset.p, e.target.dataset.from, e.target.dataset.k, e.target.value); return; }
+    if (e.target.classList && e.target.classList.contains("vc-in")) { const k = e.target.dataset.k, t = e.target; vcSet(k, t.type === "checkbox" ? t.checked : (k === "list" ? t.value : +t.value)); return; }
     const id = e.target.id;
     const czE = e.target.closest && e.target.closest(".jr-czs");
     if (czE) {
