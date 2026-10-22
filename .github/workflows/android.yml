@@ -17,7 +17,7 @@ jobs:
       - name: Движок нейроголоса (sherpa-onnx, arm64)
         run: |
           curl -fsSL -o /tmp/sh.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-android.tar.bz2
-          mkdir -p android/app/src/main/jniLibs && tar xjf /tmp/sh.tar.bz2 -C android/app/src/main/jniLibs --strip-components=1 ./jniLibs/arm64-v8a
+          mkdir -p /tmp/sh android/app/src/main/jniLibs && tar xjf /tmp/sh.tar.bz2 -C /tmp/sh && cp -r /tmp/sh/jniLibs/arm64-v8a android/app/src/main/jniLibs/
           rm -f android/app/src/main/jniLibs/arm64-v8a/*cxx-api.so; ls -la android/app/src/main/jniLibs/arm64-v8a
       - name: Keystore
         env:
