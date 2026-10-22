@@ -52,6 +52,19 @@ Deno.serve(async (req) => {
     // --- 1. намерение: Gemini, а если недоступен — простые правила ---
     const rulesOf = (tx: string): any => {
       const t = tx.toLowerCase();
+      const jm = /^(?:в\s+)?журнал[,:]?\s*(.+)$/i.exec(tx.trim());
+      if (jm) {
+        let rest = jm[1], mins = 0;
+        const dm = /(?:(\d+(?:[.,]\d+)?|полтора|пол|один|одну|два|две|три|четыре|пять)\s*)?(часа|часов|час|ч|минут[ы]?|мин)(?![а-яё])/i.exec(rest) || /(полчаса)/i.exec(rest);
+        const W: Record<string, number> = { один: 1, одну: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, полтора: 1.5, пол: 0.5 };
+        if (dm) {
+          if (/полчаса/i.test(dm[0])) mins = 30;
+          else { const n = dm[1] ? (W[dm[1].toLowerCase()] ?? parseFloat(dm[1].replace(",", "."))) : 1; mins = Math.round(n * (/^ч/i.test(dm[2]) ? 60 : 1)); }
+          rest = rest.replace(dm[0], "");
+        }
+        const title = rest.replace(/^[\s,.:—-]+|[\s,.:—-]+$/g, "").replace(/\s{2,}/g, " ");
+        return { intent: "journal", title: title ? title[0].toUpperCase() + title.slice(1) : "", minutes: mins };
+      }
       return /который час|сколько времени|какое число|какой день/.test(t) ? { intent: "time" } : /погод/.test(t) ? { intent: "weather", day: /завтра/.test(t) ? "tomorrow" : "today" } : /ближайш|что на сегодня|что у меня|какие дела|что по делам/.test(t) ? { intent: "read_today" } : /что дальше|следующ.* напоминан|ближайш.* напоминан/.test(t) ? { intent: "read_next" } : /сколько дел/.test(t) ? { intent: "count" } : /^(готово|сделал|сделано|выполнено|выполнил)/.test(t) ? { intent: "done", target: "last" } : /^отложи/.test(t) ? { intent: "snooze", target: "last", minutes: /полчаса|30 минут/.test(t) ? 30 : /2 часа|два часа/.test(t) ? 120 : 60 } : /перенеси.*завтра|на завтра$/.test(t) && /^перенеси/.test(t) ? { intent: "tomorrow", target: "last" } : /^(отмена|отмени|удали последн)/.test(t) ? { intent: "undo" } : /что (ты )?умеешь|^помощь|какие команды/.test(t) ? { intent: "help" } : { intent: "add", title: tx.replace(/^(запиши|запись|добавь|новая задача)[,:]?\s*/i, "") };
     };
     const hasTimeWords = /завтра|сегодня|послезавтра|через|понедельник|вторник|сред[ауы]|четверг|пятниц|суббот|воскресень|утром|вечером|днём|днем|ночью|\d{1,2}[:.]\d{2}|\bв \d|\d+ (час|минут|дн|недел)/i.test(text);
@@ -61,7 +74,7 @@ Deno.serve(async (req) => {
     try {
       const key = needAI ? Deno.env.get("GEMINI_API_KEY") : "";
       if (key) {
-        GSYS = `Ты разбираешь голосовую команду владельца личного списка дел. Сейчас ${loc.toISOString().slice(0, 16).replace("T", " ")} (${WD[loc.getUTCDay()]}), часовой пояс +7. Ответь ТОЛЬКО JSON без пояснений: {"intent":"add|read_today|read_next|count|done|snooze|tomorrow|undo|time|weather|help","title":"текст дела (для add) без слов про срок и без слов-команд, с заглавной буквы","due":"YYYY-MM-DD или null","remind":"YYYY-MM-DD HH:MM или null","target":"last или id задачи из списка или null","minutes":число или null,"day":"today|tomorrow|null"}. Правила: add — любая фраза, похожая на новое дело/поручение/«запиши…/напомни…» (если названо время «в 15:00» — remind; «завтра» — due). read_today — что на сегодня/ближайшие дела/что у меня; read_next — какое следующее напоминание/что дальше; count — сколько дел; done — «готово/сделал/выполнено» (target last или id); snooze — «отложи/напомни позже» (minutes, по умолчанию 60); tomorrow — «перенеси на завтра»; undo — «отмена/удали последнее»; time — который час/какое число; weather — погода (day); help — «что ты умеешь/помощь». Если сомневаешься — add с полным текстом.`;
+        GSYS = `Ты разбираешь голосовую команду владельца личного списка дел. Сейчас ${loc.toISOString().slice(0, 16).replace("T", " ")} (${WD[loc.getUTCDay()]}), часовой пояс +7. Ответь ТОЛЬКО JSON без пояснений: {"intent":"add|journal|read_today|read_next|count|done|snooze|tomorrow|undo|time|weather|help","title":"текст дела (для add) без слов про срок и без слов-команд, с заглавной буквы","due":"YYYY-MM-DD или null","remind":"YYYY-MM-DD HH:MM или null","target":"last или id задачи из списка или null","minutes":число или null,"day":"today|tomorrow|null"}. Правила: add — любая фраза, похожая на новое дело/поручение/«запиши…/напомни…» (если названо время «в 15:00» — remind; «завтра» — due). read_today — что на сегодня/ближайшие дела/что у меня; read_next — какое следующее напоминание/что дальше; count — сколько дел; done — «готово/сделал/выполнено» (target last или id); snooze — «отложи/напомни позже» (minutes, по умолчанию 60); tomorrow — «перенеси на завтра»; undo — «отмена/удали последнее»; time — который час/какое число; weather — погода (day); help — «что ты умеешь/помощь». Если сомневаешься — add с полным текстом.`;
         GBODY = "Фраза: " + text + "\nПоследняя задача из разговора: " + (last ? last.id + " | " + last.title : "нет") + "\nОткрытые задачи (id | название | срок | напоминание):\n" + open.slice(0, 60).map((t) => t.id + " | " + t.title + " | " + (t.due || "") + " | " + (t.remind_at ? new Date(Date.parse(t.remind_at) + TZ).toISOString().slice(0, 16).replace("T", " ") : "")).join("\n");
         for (const model of [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter((m) => m) as string[]) {
           const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", { method: "POST", headers: { "x-goog-api-key": key, "content-type": "application/json" }, body: JSON.stringify({ model, input: [{ type: "text", text: GSYS + "\n\n" + GBODY }] }) });
@@ -118,7 +131,17 @@ Deno.serve(async (req) => {
           const c = w.current, d = w.daily; return done("Сейчас " + sg(c.temperature_2m) + ", " + WC(c.weather_code) + ", ощущается как " + sg(c.apparent_temperature) + ", ветер " + r0(c.wind_speed_10m) + " метров в секунду. Сегодня от " + sg(d.temperature_2m_min[0]) + " до " + sg(d.temperature_2m_max[0]) + ", осадки " + r0(d.precipitation_probability_max[0]) + " процентов.");
         } catch { return done("Не получилось узнать погоду."); }
       }
-      case "help": return done("Можно сказать: запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
+      case "journal": {
+        const mn = Math.round(Number(I.minutes) || 0), ttl = String(I.title || "").trim().slice(0, 500);
+        if (!ttl) return done("Не расслышал, что записать в журнал.");
+        if (mn < 1 || mn > 600) return done("Не понял длительность. Скажи, например: в журнал, расчёт щита, сорок минут.");
+        const en = Date.now(), row: any = { id: crypto.randomUUID(), user_id: uid, title: ttl, note: "", kind: "t", start_at: new Date(en - mn * 60e3).toISOString(), end_at: new Date(en).toISOString() };
+        const jr = await fetch(base + "time_log", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(row) });
+        if (!jr.ok) return done("Не получилось записать в журнал.");
+        const h = Math.floor(mn / 60), m = mn % 60;
+        return done("В журнале: " + ttl + ", " + (h ? h + " " + nm(h, "час", "часа", "часов") + (m ? " " : "") : "") + (m ? m + " " + nm(m, "минута", "минуты", "минут") : "") + ".");
+      }
+      case "help": return done("Можно сказать: в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
       default: break;
     }
     // add
