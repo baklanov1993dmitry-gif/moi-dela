@@ -254,7 +254,7 @@ public class VoiceAddActivity extends Activity {
         final float spd = rr[Math.max(0, Math.min(3, Store.p(this).getInt("v_rate", 1)))];
         h.postDelayed(new Runnable() { public void run() {
             if (neural) Neural.speak(VoiceAddActivity.this, nv, t, spd, new Neural.Done() { public void end(boolean ok) {
-                h.post(new Runnable() { public void run() { finish(); } });   // если нейроголос не сработал — молча завершаем, задача уже сохранена
+                h.post(new Runnable() { public void run() { if (ok) finish(); else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); } });   // облако/нейро не вышли (нет сети) — читает системный голос
             } });
             else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok");
         } }, d);

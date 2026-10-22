@@ -74,14 +74,14 @@ public class VoiceSettingsActivity extends Activity {
         voiceIds.add(""); voiceNames.add("По умолчанию (системный)");
         spVoice = spin(voiceNames, 0); root.addView(spVoice);
 
-        root.addView(label("🧠 Нейроголос (звучит живее, работает офлайн)"));
+        root.addView(label("🧠 Голос ответов: облако Яндекс (самый живой) или офлайн Piper"));
         final Spinner spNeu = spin(java.util.Arrays.asList(Neural.NAMES), sp.getInt("v_neural", 0)); root.addView(spNeu);
         final TextView neuSt = new TextView(this); neuSt.setTextSize(13); neuSt.setPadding(0, 6, 0, 6); root.addView(neuSt);
         final Button neuDl = new Button(this); neuDl.setText("⬇ Скачать выбранный голос (~65 МБ, лучше по Wi-Fi)"); root.addView(neuDl);
         final Runnable neuRefresh = new Runnable() { public void run() {
             String v = Neural.selected(sp);
-            neuDl.setVisibility(v.length() == 0 ? View.GONE : View.VISIBLE);
-            neuSt.setText(v.length() == 0 ? "Сейчас читает системный голос." : Neural.busy ? Neural.status : Neural.ready(VoiceSettingsActivity.this, v) ? "Голос скачан ✓ — будет читать ответы." : (Neural.status.length() > 0 ? Neural.status : "Не скачан. Пока читает системный голос."));
+            neuDl.setVisibility(v.length() == 0 || Neural.isCloud(v) ? View.GONE : View.VISIBLE);
+            neuSt.setText(v.length() == 0 ? "Сейчас читает системный голос." : Neural.isCloud(v) ? "Яндекс SpeechKit (онлайн, ~0,16 ₽ за ответ). Нет связи — прочитает системный голос." : Neural.busy ? Neural.status : Neural.ready(VoiceSettingsActivity.this, v) ? "Голос скачан ✓ — будет читать ответы." : (Neural.status.length() > 0 ? Neural.status : "Не скачан. Пока читает системный голос."));
         } };
         final android.os.Handler hh = new android.os.Handler();
         hh.post(new Runnable() { public void run() { neuRefresh.run(); hh.postDelayed(this, 500); } });
@@ -124,7 +124,8 @@ public class VoiceSettingsActivity extends Activity {
         test.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
             save.run(); VoiceAddActivity.applyVoice(tts, sp);
             final String nv = Neural.selected(sp); final float[] rr = {0.85f, 1.0f, 1.2f, 1.4f};
-            if (nv.length() > 0 && Neural.ready(VoiceSettingsActivity.this, nv)) Neural.speak(VoiceSettingsActivity.this, nv, "Записано. Позвонить Иванову по поводу щита.", rr[Math.max(0, Math.min(3, sp.getInt("v_rate", 1)))], new Neural.Done() { public void end(boolean ok) { } });
+            final String tt = "Записано. Позвонить Иванову по поводу щита.";
+            if (nv.length() > 0 && Neural.ready(VoiceSettingsActivity.this, nv)) Neural.speak(VoiceSettingsActivity.this, nv, tt, rr[Math.max(0, Math.min(3, sp.getInt("v_rate", 1)))], new Neural.Done() { public void end(final boolean ok) { if (!ok) runOnUiThread(new Runnable() { public void run() { neuSt.setText("Облако недоступно (нет ключей или связи) — читаю системным голосом."); tts.speak(tt, TextToSpeech.QUEUE_FLUSH, null, "t"); } }); } });
             else tts.speak("Записано. Позвонить Иванову по поводу щита.", TextToSpeech.QUEUE_FLUSH, null, "t");
         } });
     }

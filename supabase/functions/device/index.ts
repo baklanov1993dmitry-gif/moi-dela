@@ -154,6 +154,26 @@ Deno.serve(async (req) => {
     if (!r.ok) return ok({ intent: "add", speak: "Не получилось записать.", error: "db" }, 500);
     return done("Записано. " + title + (rem ? ". Напоминание в " + hm(Date.parse(rem)) : due === today ? ". На сегодня" : due === tomorrow ? ". На завтра" : "") + ".", { id: t.id, title, added: true });
   }
+  if (a === "tts") {   // озвучка Яндекс SpeechKit v3: {text, voice, speed} -> {audio: base64 mp3}. Секреты YANDEX_API_KEY, YANDEX_FOLDER_ID
+    const yk = Deno.env.get("YANDEX_API_KEY"), yf = Deno.env.get("YANDEX_FOLDER_ID");
+    if (!yk || !yf) return ok({ error: "no_keys" }, 501);
+    let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
+    const text = String(b.text || "").trim().slice(0, 250); if (!text) return ok({ error: "empty" }, 400);
+    const voice = /^[a-z_]{3,20}$/.test(String(b.voice || "")) ? String(b.voice) : "filipp";
+    const speed = Math.max(0.6, Math.min(1.6, Number(b.speed) || 1));
+    const r = await fetch("https://tts.api.cloud.yandex.net/tts/v3/utteranceSynthesis", { method: "POST", headers: { Authorization: "Api-Key " + yk, "x-folder-id": yf, "Content-Type": "application/json" },
+      body: JSON.stringify({ text, outputAudioSpec: { containerAudio: { containerAudioType: "MP3" } }, loudnessNormalizationType: "LUFS", hints: [{ voice }, { speed }] }) });
+    if (!r.ok) return ok({ error: "yandex " + r.status + " " + (await r.text()).slice(0, 200) }, 502);
+    const chunks: Uint8Array[] = []; let n = 0;
+    for (const line of (await r.text()).split("\n")) {
+      if (!line.trim()) continue;
+      try { const d = JSON.parse(line)?.result?.audioChunk?.data; if (d) { const bin = atob(d), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); chunks.push(u8); n += u8.length; } } catch { /* пропуск */ }
+    }
+    if (!n) return ok({ error: "no_audio" }, 502);
+    const all = new Uint8Array(n); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+    let sb = ""; for (let i = 0; i < all.length; i += 0x8000) sb += String.fromCharCode(...all.subarray(i, i + 0x8000));
+    return ok({ audio: btoa(sb) });
+  }
   if (a === "vset") {   // телефон сохраняет настройки голоса, чтобы они были видны и на сайте
     let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
     const d = { list: String(b.list ?? ""), due: Math.max(0, Math.min(2, +b.due || 0)), myday: !!b.myday, say: Math.max(0, Math.min(2, +b.say || 0)), rate: Math.max(0, Math.min(3, +b.rate || 0)), beep: b.beep !== false, smart: b.smart !== false, ts: +b.ts || Date.now() };

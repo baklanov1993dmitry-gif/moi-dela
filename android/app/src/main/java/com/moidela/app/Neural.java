@@ -22,8 +22,10 @@ import java.util.zip.ZipInputStream;
 
 /** Нейроголос Piper (офлайн, sherpa-onnx). Голос качается один раз (~65 МБ) с релиза «voices» и лежит в памяти приложения. */
 final class Neural {
-    static final String[] IDS = {"", "denis", "dmitri", "ruslan", "irina"};
-    static final String[] NAMES = {"Выключен (системный голос)", "Денис (мужской)", "Дмитрий (мужской)", "Руслан (мужской)", "Ирина (женский)"};
+    static final String[] IDS = {"", "y:filipp", "y:ermil", "y:madirus", "y:zahar", "y:alexander", "y:alena", "y:marina", "denis", "dmitri", "ruslan", "irina"};
+    static final String[] NAMES = {"Выключен (системный голос)", "☁ Яндекс: Филипп (муж.)", "☁ Яндекс: Ермил (муж.)", "☁ Яндекс: Мадирус (муж.)", "☁ Яндекс: Захар (муж.)", "☁ Яндекс: Александр (муж.)", "☁ Яндекс: Алёна (жен.)", "☁ Яндекс: Марина (жен.)",
+        "Офлайн Piper: Денис", "Офлайн Piper: Дмитрий", "Офлайн Piper: Руслан", "Офлайн Piper: Ирина (жен.)"};
+    static boolean isCloud(String v) { return v.startsWith("y:"); }
     static final String BASE = "https://github.com/baklanov1993dmitry-gif/moi-dela/releases/download/voices/voice-";
 
     static volatile String status = "";      // для экрана настроек
@@ -32,7 +34,7 @@ final class Neural {
 
     static String selected(SharedPreferences sp) { int i = sp.getInt("v_neural", 0); return i > 0 && i < IDS.length ? IDS[i] : ""; }
     static File dir(Context c, String v) { return new File(c.getFilesDir(), "piper/" + v); }
-    static boolean ready(Context c, String v) { File d = dir(c, v); return v.length() > 0 && new File(d, "model.onnx").exists() && new File(d, "tokens.txt").exists() && new File(d, "espeak-ng-data").isDirectory() && new File(d, ".ok").exists(); }
+    static boolean ready(Context c, String v) { if (isCloud(v)) return true; File d = dir(c, v); return v.length() > 0 && new File(d, "model.onnx").exists() && new File(d, "tokens.txt").exists() && new File(d, "espeak-ng-data").isDirectory() && new File(d, ".ok").exists(); }
 
     /** Скачать и распаковать голос (в фоне). onEnd — в потоке загрузки. */
     static synchronized void download(final Context ctx, final String v, final Runnable onEnd) {
@@ -76,7 +78,29 @@ final class Neural {
 
     /** Озвучить текст (в фоне, потоково). onEnd вызывается всегда; ok=false — не вышло (можно прочитать системным голосом). */
     interface Done { void end(boolean ok); }
+    private static void cloud(final Context ctx, final String v, final String text, final float speed, final Done end) {
+        new Thread(new Runnable() { public void run() {
+            boolean ok = false; File f = null;
+            try {
+                String r = Net.post(Store.api(ctx.getApplicationContext(), "tts", ""), new org.json.JSONObject().put("text", text).put("voice", v.substring(2)).put("speed", speed).toString());
+                String b64 = r == null ? "" : new org.json.JSONObject(r).optString("audio", "");
+                if (b64.length() == 0) throw new Exception("no audio");
+                f = new File(ctx.getCacheDir(), "tts.mp3"); FileOutputStream o = new FileOutputStream(f); o.write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); o.close();
+                final Object lock = new Object(); final boolean[] fin = {false};
+                android.media.MediaPlayer mp = new android.media.MediaPlayer();
+                mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+                mp.setDataSource(f.getPath()); mp.prepare();
+                mp.setOnCompletionListener(new android.media.MediaPlayer.OnCompletionListener() { public void onCompletion(android.media.MediaPlayer m) { synchronized (lock) { fin[0] = true; lock.notifyAll(); } } });
+                mp.start();
+                synchronized (lock) { long t0 = System.currentTimeMillis(); while (!fin[0] && System.currentTimeMillis() - t0 < 25000) lock.wait(500); }
+                try { mp.release(); } catch (Throwable e) {}
+                ok = true;
+            } catch (Throwable e) { ok = false; }
+            finally { end.end(ok); }
+        } }).start();
+    }
     static void speak(final Context ctx, final String v, final String text, final float speed, final Done end) {
+        if (isCloud(v)) { cloud(ctx, v, text, speed, end); return; }
         new Thread(new Runnable() { public void run() {
             boolean ok = false; AudioTrack at = null;
             try {
