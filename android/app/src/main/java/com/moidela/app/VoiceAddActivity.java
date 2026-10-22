@@ -117,7 +117,7 @@ public class VoiceAddActivity extends Activity {
         } });
     }
 
-    private int confirmRetry = 0;
+    private int confirmRetry = 0, recSeq = 0;
     private void listenOnce(final Cb cb) {   // второй вопрос (подтверждение): снова через наушники, короткий сигнал
         confirmCb = cb; done = false; confirmRetry = 0;
         routeBt(new Runnable() { public void run() {
@@ -137,7 +137,7 @@ public class VoiceAddActivity extends Activity {
             public void onEndOfSpeech() { tv.setText("…"); }
             public void onPartialResults(Bundle p) { ArrayList<String> a = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION); if (a != null && a.size() > 0) tv.setText(a.get(0)); }
             public void onEvent(int t, Bundle p) {}
-            public void onError(int e) { if (me != sr || done) return; if (confirmCb != null) { if (confirmRetry++ < 1) { try { new ToneGenerator(AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP2, 250); } catch (Exception x) {} h.postDelayed(new Runnable() { public void run() { if (!done && confirmCb != null) beginRecognize(); } }, 600); return; } confirmCb = null; speakAndEnd("Не расслышал. Отменяю."); return; } speakAndEnd(e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ? "Не расслышал. Повторите." : "Не получилось записать голос."); }
+            public void onError(int e) { if (me != sr || done) return; if (confirmCb != null) { if (confirmRetry++ < 1) { try { new ToneGenerator(AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP2, 250); } catch (Exception x) {} h.postDelayed(new Runnable() { public void run() { if (!done && confirmCb != null) beginRecognize(); } }, 600); return; } confirmCb = null; speakAndEnd("Не расслышал, код " + e + ". Отменяю."); return; } speakAndEnd(e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ? "Не расслышал. Повторите." : "Не получилось записать голос."); }
             public void onResults(Bundle r) {
                 if (me != sr || done) return;
                 ArrayList<String> a = r.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
@@ -154,7 +154,7 @@ public class VoiceAddActivity extends Activity {
         i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
         i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
         sr.startListening(i);
-        h.postDelayed(new Runnable() { public void run() { if (!done && sr != null) sr.stopListening(); } }, 20000);
+        final int seq = ++recSeq; h.postDelayed(new Runnable() { public void run() { if (!done && sr != null && seq == recSeq) sr.stopListening(); } }, 20000);
     }
 
     static void applyVoice(TextToSpeech t, android.content.SharedPreferences sp) {

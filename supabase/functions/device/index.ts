@@ -121,20 +121,22 @@ Deno.serve(async (req) => {
     let GSYS = "", GBODY = "";
     try {
       const key = needAI ? Deno.env.get("GEMINI_API_KEY") : "";
-      if (key) {
+      if (needAI) {
         GSYS = `Ты разбираешь голосовую команду владельца личного списка дел. Сейчас ${loc.toISOString().slice(0, 16).replace("T", " ")} (${WD[loc.getUTCDay()]}), часовой пояс +7. Ответь ТОЛЬКО JSON без пояснений: {"intent":"add|journal|read_today|read_next|count|done|snooze|tomorrow|undo|time|weather|help","title":"текст дела (для add) без слов про срок и без слов-команд, с заглавной буквы","due":"YYYY-MM-DD или null","remind":"YYYY-MM-DD HH:MM или null","target":"last или id задачи из списка или null","minutes":число или null,"day":"today|tomorrow|null"}. Правила: add — любая фраза, похожая на новое дело/поручение/«запиши…/напомни…» (если названо время «в 15:00» — remind; «завтра» — due). read_today — что на сегодня/ближайшие дела/что у меня; read_next — какое следующее напоминание/что дальше; count — сколько дел; done — «готово/сделал/выполнено» (target last или id); snooze — «отложи/напомни позже» (minutes, по умолчанию 60); tomorrow — «перенеси на завтра»; undo — «отмена/удали последнее»; time — который час/какое число; weather — погода (day); help — «что ты умеешь/помощь». Если сомневаешься — add с полным текстом.`;
         GBODY = "Фраза: " + text + "\nПоследняя задача из разговора: " + (last ? last.id + " | " + last.title : "нет") + "\nОткрытые задачи (id | название | срок | напоминание):\n" + open.slice(0, 60).map((t) => t.id + " | " + t.title + " | " + (t.due || "") + " | " + (t.remind_at ? new Date(Date.parse(t.remind_at) + TZ).toISOString().slice(0, 16).replace("T", " ") : "")).join("\n");
-        for (const model of [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter((m) => m) as string[]) {
-          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", { method: "POST", headers: { "x-goog-api-key": key, "content-type": "application/json" }, body: JSON.stringify({ model, input: [{ type: "text", text: GSYS + "\n\n" + GBODY }] }) });
+      }
+      if (needAI && !I) {   // быстрый Groq первым
+        const gk = Deno.env.get("GROQ_API_KEY");
+        if (gk) { const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + gk, "content-type": "application/json" }, body: JSON.stringify({ model: "llama-3.3-70b-versatile", temperature: 0, messages: [{ role: "user", content: GSYS + "\n\n" + GBODY }] }), signal: AbortSignal.timeout(7000) });
+          if (r.ok) { const j = await r.json().catch(() => ({})); const m = /\{[\s\S]*\}/.exec(j?.choices?.[0]?.message?.content || ""); if (m) { try { I = JSON.parse(m[0]); } catch { /* правила */ } } } }
+      }
+      if (needAI && !I && key) {   // Groq не вышел — Gemini
+        for (const model of [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash"].filter((m) => m) as string[]) {
+          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", { method: "POST", headers: { "x-goog-api-key": key, "content-type": "application/json" }, body: JSON.stringify({ model, input: [{ type: "text", text: GSYS + "\n\n" + GBODY }] }), signal: AbortSignal.timeout(6000) });
           if (!r.ok) continue; const j = await r.json().catch(() => ({})); const parts: string[] = [];
           const grab = (o: any) => { if (!o || typeof o !== "object") return; if (Array.isArray(o)) { o.forEach(grab); return; } if (/thought|reason/i.test(String(o.type || ""))) return; if (typeof o.text === "string") parts.push(o.text); for (const k of Object.keys(o)) if (k !== "text" && typeof o[k] === "object") grab(o[k]); };
           grab(j.steps ?? j.outputs ?? j); const m = /\{[\s\S]*\}/.exec(parts.join("\n")); if (m) { try { I = JSON.parse(m[0]); break; } catch { /* дальше */ } }
         }
-      }
-      if (needAI && !I) {   // Gemini недоступен — запасной Groq
-        const gk = Deno.env.get("GROQ_API_KEY");
-        if (gk) { const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + gk, "content-type": "application/json" }, body: JSON.stringify({ model: "llama-3.3-70b-versatile", temperature: 0, messages: [{ role: "user", content: GSYS + "\n\n" + GBODY }] }) });
-          if (r.ok) { const j = await r.json().catch(() => ({})); const m = /\{[\s\S]*\}/.exec(j?.choices?.[0]?.message?.content || ""); if (m) { try { I = JSON.parse(m[0]); } catch { /* правила */ } } } }
       }
     } catch { /* правила ниже */ }
     if (!I || !I.intent) { I = rulesOf(text); }
