@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 09:44";
+const BUILD = "22.10 12:08";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -349,6 +349,7 @@ const IC = {
   star: '<polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   tag: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.2"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
   clip: '<path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
@@ -3321,6 +3322,7 @@ body.dropfile::after{content:"Отпусти файл — он прикрепи�
 .drow input,.drow select{flex:1;background:transparent;border:0;color:inherit;font:inherit;min-width:0;height:36px}
 .drow select option{color:#111}
 .drow.stp{cursor:default}
+.nlinks{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px 8px}.nlink{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:5px 10px;border-radius:999px;background:var(--ac-bg,rgba(80,140,255,.14));color:var(--ac,#6aa0ff);font-size:13px;text-decoration:none;overflow:hidden;white-space:nowrap}.nlink:active,.nlink:hover{filter:brightness(1.15)}.nlink b{font-weight:600}.nlink i{font-style:normal;opacity:.7;overflow:hidden;text-overflow:ellipsis}
 .notearea{width:100%;flex:1;min-height:200px;background:transparent;border:0;color:var(--tx);padding:12px 14px;font:inherit;resize:none;display:block}
 .dgrid{gap:8px}.dgrid input{flex:1 1 40%}.dgrid select{flex:1 1 50%;max-width:55%}
 .estval{color:var(--sub);font-weight:600;padding:3px 10px;border-radius:12px;background:var(--hov)}.estval.on{color:#fff;background:var(--acc)}
@@ -3723,7 +3725,7 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => fileRowHTML(f, i)).join("") + "</div>" : "") +
-    '<div class="dcard grow">' + (isMobile() ? "" : '<button class="nexp" data-a="notefull" title="Развернуть заметку на весь экран (Esc — закрыть)">⤢ Развернуть</button>') + '<textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
+    '<div class="dcard grow">' + (isMobile() ? "" : '<button class="nexp" data-a="notefull" title="Развернуть заметку на весь экран (Esc — закрыть)">⤢ Развернуть</button>') + '<textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea>' + noteLinksHTML(t.note) + '<div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
@@ -5175,6 +5177,10 @@ function jrWeekData(m0, end0) {
   return { cat, tot, days: days.size, n, val, catx };
 }
 const vLine = n => /^(https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+)[ \t]*\n?/i.exec(n || "");
+const noteLinksHTML = n => {
+  const u = [...new Set((String(n || "").match(/https?:\/\/[^\s<>"')\]]+/g) || []).map(x => x.replace(/[.,;:!?]+$/, "")))].slice(0, 12);
+  return u.length ? '<div class="nlinks">' + u.map(x => { let h = x, p = ""; try { const o = new URL(x); h = o.hostname.replace(/^www\./, ""); p = (o.pathname + o.search).replace(/^\/$/, ""); } catch (e) {} return '<a class="nlink" href="' + esc(x) + '" target="_blank" rel="noopener noreferrer" title="' + esc(x) + '">' + ic("link", 13) + "<b>" + esc(h) + "</b>" + (p ? "<i>" + esc(p.length > 28 ? p.slice(0, 27) + "…" : p) + "</i>" : "") + "</a>"; }).join("") + "</div>" : "";
+};
 const noteView = t => { const m = vLine(t.note); return m ? String(t.note).slice(m[0].length).replace(/^\n+/, "") : (t.note || ""); };
 const noteSet = (t, v) => { const m = vLine(t.note); return m ? m[1] + "\n\n" + v : v; };
 const ytUrl = n => { if (isLite()) return ""; const m = String(n || "").match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
