@@ -23,6 +23,16 @@ SYS.nutrition_report = `Ты — клинически мыслящий нутр�
 ## Опора — 3–5 коротких ссылок на источники (организация, год, тезис), без выдуманных цифр.
 Правила: не придумывай то, чего нет в данных; если дней записи мало или данные неполные — скажи это в начале; не ставь диагнозов и не назначай лекарства/добавки в дозах, при тревожных признаках (очень низкие ккал <1200, длительный сильный дефицит) мягко советуй врача/диетолога. Различай факты из данных и оценки.`;
 
+async function groq(sys: string, user: string): Promise<{ text: string; model: string } | null> {
+  const k = Deno.env.get("GROQ_API_KEY"); if (!k) return null;
+  for (const model of ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]) {
+    try {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + k, "content-type": "application/json" }, body: JSON.stringify({ model, temperature: 0.3, messages: [{ role: "system", content: sys }, { role: "user", content: user }] }) });
+      if (!r.ok) continue; const j = await r.json().catch(() => ({})); const t = j?.choices?.[0]?.message?.content; if (t) return { text: String(t).trim(), model };
+    } catch { /* следующая */ }
+  }
+  return null;
+}
 // Бесплатный разбор питания через Gemini API (тот же GEMINI_API_KEY, что у video)
 async function gemini(sys: string, body: string, search = false, label = "Данные (JSON):\n"): Promise<{ text: string; model: string }> {
   const key = Deno.env.get("GEMINI_API_KEY"); if (!key) throw new Error("GEMINI_API_KEY не задан");
@@ -40,7 +50,7 @@ async function gemini(sys: string, body: string, search = false, label = "Дан
     lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
     if (!/demand|overload|unavailable|try again|not found|no longer|quota|rate|permission|403|503|429|404/i.test(lastErr + r.status)) break;
   }
-  if (lastErr) throw new Error(lastErr);
+  if (lastErr) { const g = await groq(sys, label + body); if (g) return g; throw new Error(lastErr); }
   const grab = (o: any, out: string[]) => {
     if (!o || typeof o !== "object") return;
     if (Array.isArray(o)) { o.forEach((x) => grab(x, out)); return; }
@@ -54,7 +64,7 @@ async function gemini(sys: string, body: string, search = false, label = "Дан
   if (!text) throw new Error("пустой ответ: " + JSON.stringify(j).slice(0, 300));
   return { text, model: used };
 }
-const nice = (m: string) => m.replace(/^gemini-/, "Gemini ").replace(/-/g, " ");
+const nice = (m: string) => m.replace(/^gemini-/, "Gemini ").replace(/^llama/, "Groq Llama").replace(/-/g, " ");
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 
 Deno.serve(async (req) => {
