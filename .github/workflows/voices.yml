@@ -1,0 +1,29 @@
+name: Piper voices
+on:
+  workflow_dispatch: {}
+  push:
+    paths: [".github/workflows/voices.yml"]
+permissions:
+  contents: write
+jobs:
+  voices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pack voices
+        run: |
+          mkdir -p out && cd out
+          for v in denis dmitri ruslan irina; do
+            curl -fsSL -o m.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ru_RU-$v-medium.tar.bz2" || { echo "skip $v"; continue; }
+            rm -rf x && mkdir x && tar xjf m.tar.bz2 -C x
+            d=$(ls -d x/*/ | head -1)
+            mkdir -p p/$v && cp "$d"/*.onnx p/$v/model.onnx && cp "$d"/tokens.txt p/$v/ && cp -r "$d"/espeak-ng-data p/$v/
+            (cd p/$v && zip -qr9 ../../voice-$v.zip .)
+            rm -rf x m.tar.bz2; ls -la voice-$v.zip
+          done
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd out
+          gh release delete voices -y --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
+          gh release create voices voice-*.zip --repo "$GITHUB_REPOSITORY" --title "Нейроголоса Piper (ru)" --notes "Голоса Piper (MIT/CC0) для приложения: тянутся приложением один раз."

@@ -74,6 +74,18 @@ public class VoiceSettingsActivity extends Activity {
         voiceIds.add(""); voiceNames.add("По умолчанию (системный)");
         spVoice = spin(voiceNames, 0); root.addView(spVoice);
 
+        root.addView(label("🧠 Нейроголос (звучит живее, работает офлайн)"));
+        final Spinner spNeu = spin(java.util.Arrays.asList(Neural.NAMES), sp.getInt("v_neural", 0)); root.addView(spNeu);
+        final TextView neuSt = new TextView(this); neuSt.setTextSize(13); neuSt.setPadding(0, 6, 0, 6); root.addView(neuSt);
+        final Button neuDl = new Button(this); neuDl.setText("⬇ Скачать выбранный голос (~65 МБ, лучше по Wi-Fi)"); root.addView(neuDl);
+        final Runnable neuRefresh = new Runnable() { public void run() {
+            String v = Neural.selected(sp);
+            neuDl.setVisibility(v.length() == 0 ? View.GONE : View.VISIBLE);
+            neuSt.setText(v.length() == 0 ? "Сейчас читает системный голос." : Neural.busy ? Neural.status : Neural.ready(VoiceSettingsActivity.this, v) ? "Голос скачан ✓ — будет читать ответы." : (Neural.status.length() > 0 ? Neural.status : "Не скачан. Пока читает системный голос."));
+        } };
+        final android.os.Handler hh = new android.os.Handler();
+        hh.post(new Runnable() { public void run() { neuRefresh.run(); hh.postDelayed(this, 500); } });
+        neuDl.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { String id = Neural.selected(sp); if (id.length() > 0) Neural.download(getApplicationContext(), id, null); } });
         final CheckBox cbSmart = new CheckBox(this); cbSmart.setText("Умные команды (ИИ): вопросы о делах, время, погода, готово/отложить, отмена"); cbSmart.setChecked(sp.getBoolean("v_smart", true)); root.addView(cbSmart);
         final CheckBox cbBeep = new CheckBox(this); cbBeep.setText("Сигнал перед записью"); cbBeep.setChecked(sp.getBoolean("v_beep", true)); root.addView(cbBeep);
 
@@ -106,12 +118,14 @@ public class VoiceSettingsActivity extends Activity {
             public void onItemSelected(AdapterView<?> p, View v, int i, long id) { save.run(); }
             public void onNothingSelected(AdapterView<?> p) {}
         };
-        spList.setOnItemSelectedListener(ch); spDue.setOnItemSelectedListener(ch); spSay.setOnItemSelectedListener(ch); spRate.setOnItemSelectedListener(ch); spVoice.setOnItemSelectedListener(ch);
+        spList.setOnItemSelectedListener(ch); spDue.setOnItemSelectedListener(ch); spSay.setOnItemSelectedListener(ch); spRate.setOnItemSelectedListener(ch); spNeu.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() { public void onItemSelected(AdapterView<?> p, View v, int i, long id) { sp.edit().putInt("v_neural", i).apply(); Neural.status = ""; neuRefresh.run(); } public void onNothingSelected(AdapterView<?> p) {} }); spVoice.setOnItemSelectedListener(ch);
         CompoundButton.OnCheckedChangeListener cc = new CompoundButton.OnCheckedChangeListener() { public void onCheckedChanged(CompoundButton v, boolean c) { save.run(); } };
         cbMy.setOnCheckedChangeListener(cc); cbBeep.setOnCheckedChangeListener(cc); cbSmart.setOnCheckedChangeListener(cc);
         test.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
             save.run(); VoiceAddActivity.applyVoice(tts, sp);
-            tts.speak("Записано. Позвонить Иванову по поводу щита.", TextToSpeech.QUEUE_FLUSH, null, "t");
+            final String nv = Neural.selected(sp); final float[] rr = {0.85f, 1.0f, 1.2f, 1.4f};
+            if (nv.length() > 0 && Neural.ready(VoiceSettingsActivity.this, nv)) Neural.speak(VoiceSettingsActivity.this, nv, "Записано. Позвонить Иванову по поводу щита.", rr[Math.max(0, Math.min(3, sp.getInt("v_rate", 1)))], new Neural.Done() { public void end(boolean ok) { } });
+            else tts.speak("Записано. Позвонить Иванову по поводу щита.", TextToSpeech.QUEUE_FLUSH, null, "t");
         } });
     }
 

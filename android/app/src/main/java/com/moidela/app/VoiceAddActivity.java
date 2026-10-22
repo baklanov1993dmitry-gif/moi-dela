@@ -248,8 +248,17 @@ public class VoiceAddActivity extends Activity {
         try { if (sr != null) { sr.cancel(); } } catch (Exception e) {}
         long d = 0;
         if (btRoute || prevMode >= 0) { releaseBt(); btRoute = false; prevMode = -1; d = 700; }   // ответ читаем в обычном (чистом, стерео) режиме наушников — без перескоков звука из «телефонного» канала
-        h.postDelayed(new Runnable() { public void run() { tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); } }, d);
-        h.postDelayed(new Runnable() { public void run() { finish(); } }, 25000);
+        final String nv = Neural.selected(Store.p(this));
+        final boolean neural = nv.length() > 0 && Neural.ready(this, nv);
+        final float[] rr = {0.85f, 1.0f, 1.2f, 1.4f};
+        final float spd = rr[Math.max(0, Math.min(3, Store.p(this).getInt("v_rate", 1)))];
+        h.postDelayed(new Runnable() { public void run() {
+            if (neural) Neural.speak(VoiceAddActivity.this, nv, t, spd, new Neural.Done() { public void end(boolean ok) {
+                h.post(new Runnable() { public void run() { finish(); } });   // если нейроголос не сработал — молча завершаем, задача уже сохранена
+            } });
+            else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok");
+        } }, d);
+        h.postDelayed(new Runnable() { public void run() { finish(); } }, 30000);
     }
     private void finishSoon() { h.postDelayed(new Runnable() { public void run() { finish(); } }, 500); }
 

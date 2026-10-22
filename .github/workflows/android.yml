@@ -14,6 +14,11 @@ jobs:
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.5" }
+      - name: Движок нейроголоса (sherpa-onnx, arm64)
+        run: |
+          curl -fsSL -o /tmp/sh.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-android.tar.bz2
+          mkdir -p android/app/src/main/jniLibs && tar xjf /tmp/sh.tar.bz2 -C android/app/src/main/jniLibs --strip-components=1 ./jniLibs/arm64-v8a
+          rm -f android/app/src/main/jniLibs/arm64-v8a/*cxx-api.so; ls -la android/app/src/main/jniLibs/arm64-v8a
       - name: Keystore
         env:
           KS: ${{ secrets.KEYSTORE_B64 }}
