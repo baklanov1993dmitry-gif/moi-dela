@@ -239,7 +239,7 @@ public class VoiceAddActivity extends Activity {
     private java.util.ArrayList<String[]> findAll(String spoken) {
         java.util.ArrayList<String[]> res = new java.util.ArrayList<String[]>();
         String[] tk = spoken.toLowerCase(Locale.ROOT).replaceAll("[^а-яa-z0-9ё ]", " ").trim().split("\\s+"); if (tk.length == 0 || tk[0].length() == 0) return res;
-        java.util.LinkedHashMap<String, String> hit = new java.util.LinkedHashMap<String, String>();
+        java.util.LinkedHashMap<String, String> hit = new java.util.LinkedHashMap<String, String>(), allN = new java.util.LinkedHashMap<String, String>();
         android.database.Cursor cu = null;
         try {
             cu = getContentResolver().query(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, new String[]{android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER, android.provider.ContactsContract.CommonDataKinds.Phone.TYPE}, null, null, null);
@@ -249,9 +249,10 @@ public class VoiceAddActivity extends Activity {
                 if (!all) continue;
                 boolean mob = cu.getInt(2) == android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE;
                 if (!hit.containsKey(nm) || mob) hit.put(nm, cu.getString(1));
+                allN.put(nm, (allN.containsKey(nm) ? allN.get(nm) + "|" : "") + cu.getString(1));
             }
         } catch (Exception e) { return res; } finally { if (cu != null) cu.close(); }
-        for (String k : hit.keySet()) res.add(new String[]{k, hit.get(k)});
+        for (String k : hit.keySet()) res.add(new String[]{k, hit.get(k), allN.get(k)});
         return res;
     }
     private static String digits(String n) { String d = n == null ? "" : n.replaceAll("\\D", ""); return d.length() > 10 ? d.substring(d.length() - 10) : d; }
@@ -260,17 +261,25 @@ public class VoiceAddActivity extends Activity {
         if (!hasPerm(Manifest.permission.READ_CALL_LOG)) return -1;
         android.database.Cursor cu = null;
         try {
-            cu = getContentResolver().query(android.provider.CallLog.Calls.CONTENT_URI, new String[]{android.provider.CallLog.Calls.NUMBER}, null, null, android.provider.CallLog.Calls.DATE + " DESC LIMIT 300");
-            while (cu != null && cu.moveToNext()) { String d = digits(cu.getString(0)); if (d.length() < 6) continue; for (int i = 0; i < l.size(); i++) if (digits(l.get(i)[1]).equals(d)) return i; }
+            cu = getContentResolver().query(android.provider.CallLog.Calls.CONTENT_URI, new String[]{android.provider.CallLog.Calls.NUMBER, android.provider.CallLog.Calls.CACHED_NAME}, null, null, android.provider.CallLog.Calls.DATE + " DESC LIMIT 500");
+            while (cu != null && cu.moveToNext()) {
+                String d = digits(cu.getString(0)), cn = cu.getString(1) == null ? "" : cu.getString(1).trim();
+                for (int i = 0; i < l.size(); i++) {
+                    if (cn.length() > 0 && cn.equalsIgnoreCase(l.get(i)[0])) return i;
+                    if (d.length() >= 6) for (String n : l.get(i)[2].split("\\|")) if (digits(n).equals(d)) return i;
+                }
+            }
         } catch (Exception e) {} finally { if (cu != null) cu.close(); }
         return -1;
     }
+    private boolean logAsked = false;
     private interface Pick { void on(String[] c); }
     /** подбирает контакт: один — сразу; несколько — тот, кому звонили последним; иначе переспрашивает голосом (до двух попыток) */
     private void resolve(final String name, final Pick cb) {
         final java.util.ArrayList<String[]> l = findAll(name);
         if (l.size() == 0) { speakAndEnd("Не нашёл контакт " + name + "."); return; }
         if (l.size() == 1) { cb.on(l.get(0)); return; }
+        if (!hasPerm(Manifest.permission.READ_CALL_LOG) && !logAsked && Build.VERSION.SDK_INT >= 23) { logAsked = true; pendingPerm = new Runnable() { public void run() { resolve(name, cb); } }; done = false; tv.setText("Разрешите доступ к журналу звонков — чтобы звонить тому, кому звонили последним."); requestPermissions(new String[]{Manifest.permission.READ_CALL_LOG}, 8); return; }
         int last = lastCalled(l);
         if (last >= 0) { cb.on(l.get(last)); return; }
         ask(l, 0, cb);
@@ -282,13 +291,15 @@ public class VoiceAddActivity extends Activity {
         sb.append(". Кому?");
         afterSpeech = new Runnable() { public void run() {
             listenOnce(new Cb() { public void on(String ans) {
-                String a = ans.toLowerCase(Locale.ROOT).replace('ё', 'е'); int pick = -1;
+                final String heard = ans; String a = ans.toLowerCase(Locale.ROOT).replace('ё', 'е'); int pick = -1; tv.setText(ans);
                 if (a.matches(".*(отмен|не надо|стоп|ничего).*")) { speakAndEnd("Отменил."); return; }
+                java.util.regex.Matcher dm = java.util.regex.Pattern.compile("(?:^|[^0-9])([1-4])(?:[^0-9]|$)").matcher(a); if (dm.find()) { int q = Integer.parseInt(dm.group(1)) - 1; if (q < n) pick = q; }
+                String[] W = {"один", "два", "три", "четыр"}; for (int i = 0; i < n && pick < 0; i++) if (a.matches(".*(^|[^а-я])" + W[i] + ".*")) pick = i;
                 for (int i = 0; i < n && pick < 0; i++) if (a.contains(ORD[i].replace('ё', 'е'))) pick = i;
                 if (pick < 0) { int bestN = 0; for (int i = 0; i < n; i++) { int m = 0; for (String t : l.get(i)[0].toLowerCase(Locale.ROOT).replace('ё', 'е').split("\\s+")) if (t.length() > 1 && a.contains(stem(t))) m++; if (m > bestN) { bestN = m; pick = i; } else if (m == bestN && m > 0) pick = -2 - i; } if (pick <= -2) pick = -1; }
                 if (pick >= 0) { cb.on(l.get(pick)); return; }
                 if (attempt < 1) { ask(l, attempt + 1, cb); return; }
-                speakAndEnd("Не разобрал. Отменил.");
+                speakAndEnd("Не разобрал: " + heard + ". Отменил.");
             } });
         } };
         speakAndEnd(sb.toString());
