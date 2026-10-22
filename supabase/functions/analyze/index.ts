@@ -23,13 +23,19 @@ SYS.nutrition_report = `Ты — клинически мыслящий нутр�
 ## Опора — 3–5 коротких ссылок на источники (организация, год, тезис), без выдуманных цифр.
 Правила: не придумывай то, чего нет в данных; если дней записи мало или данные неполные — скажи это в начале; не ставь диагнозов и не назначай лекарства/добавки в дозах, при тревожных признаках (очень низкие ккал <1200, длительный сильный дефицит) мягко советуй врача/диетолога. Различай факты из данных и оценки.`;
 
+let groqErr = "";
 async function groq(sys: string, user: string): Promise<{ text: string; model: string } | null> {
-  const k = Deno.env.get("GROQ_API_KEY"); if (!k) return null;
-  for (const model of ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]) {
+  const k = Deno.env.get("GROQ_API_KEY"); if (!k) { groqErr = "GROQ_API_KEY не задан"; return null; }
+  const pref = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant", "openai/gpt-oss-20b", "qwen/qwen3-32b"];
+  let models = pref;
+  try { const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { Authorization: "Bearer " + k } }); if (r.ok) { const ids = ((await r.json()).data || []).map((m: any) => m.id); const f = pref.filter((m) => ids.includes(m)); if (f.length) models = f; else groqErr = "нет подходящих моделей Groq"; } else groqErr = "Groq models " + r.status; } catch (e) { groqErr = "Groq models: " + String(e).slice(0, 60); }
+  for (const model of models) {
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + k, "content-type": "application/json" }, body: JSON.stringify({ model, temperature: 0.3, messages: [{ role: "system", content: sys }, { role: "user", content: user }] }) });
-      if (!r.ok) continue; const j = await r.json().catch(() => ({})); const t = j?.choices?.[0]?.message?.content; if (t) return { text: String(t).trim(), model };
-    } catch { /* следующая */ }
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { groqErr = "Groq " + r.status + " " + String(j?.error?.message || "").slice(0, 100) + " [" + model + "]"; continue; }
+      const t = j?.choices?.[0]?.message?.content; if (t) return { text: String(t).replace(/<think>[\s\S]*?<\/think>/g, "").trim(), model: model.replace(/^.*\//, "") };
+    } catch (e) { groqErr = "Groq: " + String(e).slice(0, 80); }
   }
   return null;
 }
@@ -50,7 +56,7 @@ async function gemini(sys: string, body: string, search = false, label = "Дан
     lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
     if (!/demand|overload|unavailable|try again|not found|no longer|quota|rate|permission|403|503|429|404/i.test(lastErr + r.status)) break;
   }
-  if (lastErr) { const g = await groq(sys, label + body); if (g) return g; throw new Error(lastErr); }
+  if (lastErr) { const g = await groq(sys, label + body); if (g) return g; throw new Error(lastErr + " | запасной ИИ: " + (groqErr || "нет ответа")); }
   const grab = (o: any, out: string[]) => {
     if (!o || typeof o !== "object") return;
     if (Array.isArray(o)) { o.forEach((x) => grab(x, out)); return; }
