@@ -11,21 +11,21 @@ const durMin = (str: string): number => {   // «20 минут», «полтор
   const n = m[1] ? (W[m[1].toLowerCase()] ?? parseFloat(m[1].replace(",", "."))) : 1; if (!(n > 0)) return 0;
   return Math.round(n * (/^ч/i.test(m[2]) ? 60 : 1));
 };
-async function askAI(sys: string, user: string): Promise<string | null> {   // Gemini -> запасной Groq
-  const gk = Deno.env.get("GEMINI_API_KEY");
-  if (gk) for (const model of [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter((m) => m) as string[]) {
+async function askAI(sys: string, user: string): Promise<string | null> {   // Groq (быстрый) -> Gemini, таймауты чтобы телефон не ждал
+  const qk = Deno.env.get("GROQ_API_KEY");
+  if (qk) for (const model of ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant"]) {
     try {
-      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", { method: "POST", headers: { "x-goog-api-key": gk, "content-type": "application/json" }, body: JSON.stringify({ model, input: [{ type: "text", text: sys + "\n\n" + user }] }) });
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + qk, "content-type": "application/json" }, body: JSON.stringify({ model, temperature: 0.2, messages: [{ role: "system", content: sys }, { role: "user", content: user }] }), signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue; const j = await r.json().catch(() => ({})); const t = j?.choices?.[0]?.message?.content; if (t) return String(t);
+    } catch { /* дальше */ }
+  }
+  const gk = Deno.env.get("GEMINI_API_KEY");
+  if (gk) for (const model of [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash"].filter((m) => m) as string[]) {
+    try {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", { method: "POST", headers: { "x-goog-api-key": gk, "content-type": "application/json" }, body: JSON.stringify({ model, input: [{ type: "text", text: sys + "\n\n" + user }] }), signal: AbortSignal.timeout(6000) });
       if (!r.ok) continue; const j = await r.json().catch(() => ({})); const parts: string[] = [];
       const grab = (o: any) => { if (!o || typeof o !== "object") return; if (Array.isArray(o)) { o.forEach(grab); return; } if (/thought|reason/i.test(String(o.type || ""))) return; if (typeof o.text === "string") parts.push(o.text); for (const k of Object.keys(o)) if (k !== "text" && typeof o[k] === "object") grab(o[k]); };
       grab(j.steps ?? j.outputs ?? j); if (parts.length) return parts.join("\n");
-    } catch { /* дальше */ }
-  }
-  const qk = Deno.env.get("GROQ_API_KEY");
-  if (qk) for (const model of ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]) {
-    try {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + qk, "content-type": "application/json" }, body: JSON.stringify({ model, temperature: 0.2, messages: [{ role: "system", content: sys }, { role: "user", content: user }] }) });
-      if (!r.ok) continue; const j = await r.json().catch(() => ({})); const t = j?.choices?.[0]?.message?.content; if (t) return String(t);
     } catch { /* дальше */ }
   }
   return null;
