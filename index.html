@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 08:40";
+const BUILD = "22.10 08:58";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3349,6 +3349,7 @@ select.inp option{color:#111}
 .estchip{padding:5px 10px;border-radius:8px;font-size:calc(12.5px*var(--z,1));background:var(--card);border:1px solid var(--ln);cursor:pointer}
 .estchip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 .ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:70;display:flex;align-items:center;justify-content:center;padding:14px}
+@media(min-width:761px){.sheet.sset{height:min(680px,90vh)}}   /* окно настроек не прыгает по высоте при смене вкладок */
 .sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
 .lbl{font-size:calc(12px*var(--z,1));color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
 @media(max-width:760px){#toasts{bottom:100px!important}}
@@ -3820,7 +3821,7 @@ function settingsHTML() {
     '<div class="sacc"><span class="av">' + esc((S.user ? S.user.email : "?").slice(0, 2).toUpperCase()) + '</span><span><b>' + esc((S.user ? S.user.email : "").split("@")[0]) + "</b><br>" + esc(S.user ? S.user.email : "") + "</span></div>" +
     '<div class="sub" style="margin:10px 0;color:var(--sub);line-height:1.5">' + esc(S.user ? S.user.email : "") + "<br>задач: " + Object.keys(S.tasks).length + " · сборка " + BUILD + "</div>" +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="sync">🔄 Обновить с сервера</button><button class="btn ghost" data-a="ping">📡 Проверить связь</button><button class="btn ghost" data-a="logout" style="color:#d13438">Выйти</button></div>' + mfaSettingsHTML();
-  return '<div class="ovl" data-a="ovl"><div class="sheet' + (freshS ? " fade" : "") + '">' + (isMobile() ? '<div class="shead"><button class="ibtn" data-a="closeSettings">' + ic("arrowl", 22) + '</button><div style="flex:1;font-size:calc(22px*var(--z,1))">' + (smenu ? "Параметры" : esc((TABS.filter(t => t[0] === tab)[0] || ["", ""])[1].replace(/^\S+\s/, ""))) + '</div></div>' : '<div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>') +
+  return '<div class="ovl" data-a="ovl"><div class="sheet sset' + (freshS ? " fade" : "") + '">' + (isMobile() ? '<div class="shead"><button class="ibtn" data-a="closeSettings">' + ic("arrowl", 22) + '</button><div style="flex:1;font-size:calc(22px*var(--z,1))">' + (smenu ? "Параметры" : esc((TABS.filter(t => t[0] === tab)[0] || ["", ""])[1].replace(/^\S+\s/, ""))) + '</div></div>' : '<div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>') +
     (isMobile() ? "" : '<div class="stabs">' + TABS.map(t => '<button class="stab' + (tab === t[0] ? " on" : "") + '" data-a="stab" data-v="' + t[0] + '">' + t[1] + "</button>").join("") + "</div>") + b +
     '<div id="msg" style="margin-top:10px;min-height:18px;font-size:calc(13px*var(--z,1));white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
 }
