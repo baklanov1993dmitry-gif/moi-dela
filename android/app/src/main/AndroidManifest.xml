@@ -112,10 +112,6 @@
         </receiver>
         <activity android:name=".JournalActivity" android:exported="true" android:label="Журнал"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" android:windowSoftInputMode="adjustResize" android:excludeFromRecents="true" />
-        <service android:name=".QsJournal" android:exported="true" android:label="@string/tile_journal"
-            android:icon="@drawable/ic_tile_jr" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
-        </service>
         <service android:name=".ListService" android:permission="android.permission.BIND_REMOTEVIEWS" android:exported="false" />
         <activity android:name=".ListConfig" android:exported="true" android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" android:excludeFromRecents="true">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
