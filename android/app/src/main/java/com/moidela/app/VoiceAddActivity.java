@@ -233,9 +233,10 @@ public class VoiceAddActivity extends Activity {
 
     // ---------- управление телефоном: звонок и SMS по имени из контактов ----------
     private static String stem(String w) { w = w.toLowerCase(Locale.ROOT); return w.length() > 5 ? w.substring(0, w.length() - 2) : w.length() > 3 ? w.substring(0, w.length() - 1) : w; }
-    /** ищет контакт по произнесённому имени («Ивану Петрову», «жене»); возвращает {имя, номер} | {"?", список} | null */
-    private String[] findContact(String spoken) {
-        String[] tk = spoken.toLowerCase(Locale.ROOT).replaceAll("[^а-яa-z0-9ё ]", " ").trim().split("\\s+"); if (tk.length == 0 || tk[0].length() == 0) return null;
+    /** все контакты, подходящие под произнесённое имя: список {имя, номер} */
+    private java.util.ArrayList<String[]> findAll(String spoken) {
+        java.util.ArrayList<String[]> res = new java.util.ArrayList<String[]>();
+        String[] tk = spoken.toLowerCase(Locale.ROOT).replaceAll("[^а-яa-z0-9ё ]", " ").trim().split("\\s+"); if (tk.length == 0 || tk[0].length() == 0) return res;
         java.util.LinkedHashMap<String, String> hit = new java.util.LinkedHashMap<String, String>();
         android.database.Cursor cu = null;
         try {
@@ -247,26 +248,63 @@ public class VoiceAddActivity extends Activity {
                 boolean mob = cu.getInt(2) == android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE;
                 if (!hit.containsKey(nm) || mob) hit.put(nm, cu.getString(1));
             }
-        } catch (Exception e) { return null; } finally { if (cu != null) cu.close(); }
-        if (hit.size() == 0) return null;
-        if (hit.size() == 1) { Object k = hit.keySet().iterator().next(); return new String[]{(String) k, hit.get(k)}; }
-        StringBuilder sb = new StringBuilder(); int n = 0; for (String k : hit.keySet()) { if (n++ > 0) sb.append(", "); sb.append(k); if (n == 3) break; }
-        return new String[]{"?", sb.toString()};
+        } catch (Exception e) { return res; } finally { if (cu != null) cu.close(); }
+        for (String k : hit.keySet()) res.add(new String[]{k, hit.get(k)});
+        return res;
     }
+    private static String digits(String n) { String d = n == null ? "" : n.replaceAll("\\D", ""); return d.length() > 10 ? d.substring(d.length() - 10) : d; }
+    /** кому из списка звонили/писали последним (по журналу звонков) — индекс или -1 */
+    private int lastCalled(java.util.ArrayList<String[]> l) {
+        if (!hasPerm(Manifest.permission.READ_CALL_LOG)) return -1;
+        android.database.Cursor cu = null;
+        try {
+            cu = getContentResolver().query(android.provider.CallLog.Calls.CONTENT_URI, new String[]{android.provider.CallLog.Calls.NUMBER}, null, null, android.provider.CallLog.Calls.DATE + " DESC LIMIT 300");
+            while (cu != null && cu.moveToNext()) { String d = digits(cu.getString(0)); if (d.length() < 6) continue; for (int i = 0; i < l.size(); i++) if (digits(l.get(i)[1]).equals(d)) return i; }
+        } catch (Exception e) {} finally { if (cu != null) cu.close(); }
+        return -1;
+    }
+    private interface Pick { void on(String[] c); }
+    /** подбирает контакт: один — сразу; несколько — тот, кому звонили последним; иначе переспрашивает голосом (до двух попыток) */
+    private void resolve(final String name, final Pick cb) {
+        final java.util.ArrayList<String[]> l = findAll(name);
+        if (l.size() == 0) { speakAndEnd("Не нашёл контакт " + name + "."); return; }
+        if (l.size() == 1) { cb.on(l.get(0)); return; }
+        int last = lastCalled(l);
+        if (last >= 0) { cb.on(l.get(last)); return; }
+        ask(l, 0, cb);
+    }
+    private static final String[] ORD = {"перв", "втор", "трет", "четвёрт", "пят"};
+    private void ask(final java.util.ArrayList<String[]> l, final int attempt, final Pick cb) {
+        final int n = Math.min(l.size(), 4); StringBuilder sb = new StringBuilder("Нашёл нескольких: ");
+        for (int i = 0; i < n; i++) { if (i > 0) sb.append(", "); sb.append(i + 1).append(" — ").append(l.get(i)[0]); }
+        sb.append(". Кому?");
+        afterSpeech = new Runnable() { public void run() {
+            listenOnce(new Cb() { public void on(String ans) {
+                String a = ans.toLowerCase(Locale.ROOT).replace('ё', 'е'); int pick = -1;
+                if (a.matches(".*(отмен|не надо|стоп|ничего).*")) { speakAndEnd("Отменил."); return; }
+                for (int i = 0; i < n && pick < 0; i++) if (a.contains(ORD[i].replace('ё', 'е'))) pick = i;
+                if (pick < 0) { int bestN = 0; for (int i = 0; i < n; i++) { int m = 0; for (String t : l.get(i)[0].toLowerCase(Locale.ROOT).replace('ё', 'е').split("\\s+")) if (t.length() > 1 && a.contains(stem(t))) m++; if (m > bestN) { bestN = m; pick = i; } else if (m == bestN && m > 0) pick = -2 - i; } if (pick <= -2) pick = -1; }
+                if (pick >= 0) { cb.on(l.get(pick)); return; }
+                if (attempt < 1) { ask(l, attempt + 1, cb); return; }
+                speakAndEnd("Не разобрал. Отменил.");
+            } });
+        } };
+        speakAndEnd(sb.toString());
+    }
+    private boolean permAsked = false;
     private boolean need(final String[] perms, final Runnable again) {
         if (Build.VERSION.SDK_INT < 23) return true;
         java.util.ArrayList<String> miss = new java.util.ArrayList<String>();
         for (String p : perms) if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) miss.add(p);
-        if (miss.isEmpty()) return true;
+        if (miss.isEmpty() || permAsked) return true;
+        permAsked = true;
         pendingPerm = again; done = false; tv.setText("Нужен доступ к контактам/звонкам — разрешите на экране.");
         requestPermissions(miss.toArray(new String[0]), 8); return false;
     }
     private void doCall(final String name) {
-        if (!need(new String[]{Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE}, new Runnable() { public void run() { doCall(name); } })) return;
+        if (!need(new String[]{Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE, Manifest.permission.READ_CALL_LOG}, new Runnable() { public void run() { doCall(name); } })) return;
         if (!hasPerm(Manifest.permission.READ_CONTACTS)) { speakAndEnd("Нет доступа к контактам."); return; }
-        final String[] c = findContact(name);
-        if (c == null) { speakAndEnd("Не нашёл контакт " + name + "."); return; }
-        if ("?".equals(c[0])) { speakAndEnd("Нашёл несколько: " + c[1] + ". Назовите точнее."); return; }
+        resolve(name, new Pick() { public void on(final String[] c) {
         afterSpeech = new Runnable() { public void run() {
             try {
                 Intent i = new Intent(hasPerm(Manifest.permission.CALL_PHONE) ? Intent.ACTION_CALL : Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + android.net.Uri.encode(c[1])));
@@ -275,14 +313,13 @@ public class VoiceAddActivity extends Activity {
             finish();
         } };
         speakAndEnd("Звоню: " + c[0] + ".");
+        } });
     }
     private boolean hasPerm(String p) { return Build.VERSION.SDK_INT < 23 || checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED; }
     private void doSms(final String name, final String text) {
-        if (!need(new String[]{Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS}, new Runnable() { public void run() { doSms(name, text); } })) return;
+        if (!need(new String[]{Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS, Manifest.permission.READ_CALL_LOG}, new Runnable() { public void run() { doSms(name, text); } })) return;
         if (!hasPerm(Manifest.permission.READ_CONTACTS)) { speakAndEnd("Нет доступа к контактам."); return; }
-        final String[] c = findContact(name);
-        if (c == null) { speakAndEnd("Не нашёл контакт " + name + "."); return; }
-        if ("?".equals(c[0])) { speakAndEnd("Нашёл несколько: " + c[1] + ". Назовите точнее."); return; }
+        resolve(name, new Pick() { public void on(final String[] c) {
         afterSpeech = new Runnable() { public void run() {
             listenOnce(new Cb() { public void on(String ans) {
                 if (!ans.toLowerCase(Locale.ROOT).matches("^(да|давай|отправ|ага|угу|верно|конечно|подтверждаю|ок).*")) { speakAndEnd("Отменил."); return; }
@@ -298,6 +335,7 @@ public class VoiceAddActivity extends Activity {
             } });
         } };
         speakAndEnd("Сообщение для " + c[0] + ": " + text + ". Отправить?");
+        } });
     }
 
     private void saveSimple(final String raw) {
