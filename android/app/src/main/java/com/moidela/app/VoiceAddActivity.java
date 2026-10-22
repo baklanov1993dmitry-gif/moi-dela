@@ -66,11 +66,55 @@ public class VoiceAddActivity extends Activity {
         else speakAndEnd("Нет доступа к микрофону. Разрешите его в настройках приложения.");
     }
 
+    // --- микрофон и звук именно наушников (Bluetooth-гарнитура), если она подключена ---
+    private boolean btRoute; private int prevMode = -1; private android.content.BroadcastReceiver scoRx;
+    private void routeBt(final Runnable next) {
+        final boolean[] fired = {false};
+        final Runnable once = new Runnable() { public void run() { if (!fired[0]) { fired[0] = true; next.run(); } } };
+        try {
+            final AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (!Store.p(this).getBoolean("v_bt", true)) { once.run(); return; }
+            if (Build.VERSION.SDK_INT >= 31) {
+                android.media.AudioDeviceInfo dev = null;
+                for (android.media.AudioDeviceInfo d : am.getAvailableCommunicationDevices()) { int t = d.getType(); if (t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO || t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) { dev = d; break; } }
+                if (dev == null) { once.run(); return; }
+                prevMode = am.getMode(); am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                btRoute = am.setCommunicationDevice(dev);
+                h.postDelayed(once, btRoute ? 700 : 0); return;
+            }
+            if (!am.isBluetoothScoAvailableOffCall()) { once.run(); return; }
+            scoRx = new android.content.BroadcastReceiver() { public void onReceive(Context c, Intent in) {
+                if (in.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1) == AudioManager.SCO_AUDIO_STATE_CONNECTED) { btRoute = true; h.post(once); }
+            } };
+            registerReceiver(scoRx, new android.content.IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED));
+            prevMode = am.getMode(); am.setMode(AudioManager.MODE_IN_COMMUNICATION); am.startBluetoothSco(); am.setBluetoothScoOn(true);
+            h.postDelayed(once, 2500);
+        } catch (Exception e) { once.run(); }
+    }
+    private void releaseBt() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (scoRx != null) { try { unregisterReceiver(scoRx); } catch (Exception e) {} scoRx = null; }
+            if (btRoute || prevMode >= 0) {
+                if (Build.VERSION.SDK_INT >= 31) am.clearCommunicationDevice(); else { am.stopBluetoothSco(); am.setBluetoothScoOn(false); }
+                if (prevMode >= 0) am.setMode(prevMode);
+            }
+        } catch (Exception e) {}
+    }
+
     private void startListen() {
         if (started) return; started = true;
         if (!SpeechRecognizer.isRecognitionAvailable(this)) { speakAndEnd("Распознавание речи недоступно на телефоне."); return; }
-        if (Store.p(this).getBoolean("v_beep", true)) try { new ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_BEEP, 150); } catch (Exception e) {}
-        try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(60); } catch (Exception e) {}
+        routeBt(new Runnable() { public void run() {
+            // уверенный сигнал «запись пошла»: громко, двойной, в наушники; вибро на телефоне
+            try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(80); } catch (Exception e) {}
+            long wait = 0;
+            if (Store.p(VoiceAddActivity.this).getBoolean("v_beep", true)) try { new ToneGenerator(btRoute ? AudioManager.STREAM_VOICE_CALL : AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP2, 350); wait = 600; } catch (Exception e) {}
+            h.postDelayed(new Runnable() { public void run() { if (!done) beginRecognize(); } }, wait);
+        } });
+    }
+
+    private void beginRecognize() {
         sr = SpeechRecognizer.createSpeechRecognizer(this);
         sr.setRecognitionListener(new RecognitionListener() {
             public void onReadyForSpeech(Bundle p) {}
@@ -199,11 +243,12 @@ public class VoiceAddActivity extends Activity {
     }
 
     private void speakAndEnd(String t) { done = true; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, 700); return; } if (ttsReady) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
-    private void say(String t) { if (tts == null) { finish(); return; } tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); h.postDelayed(new Runnable() { public void run() { finish(); } }, 12000); }
+    private void say(String t) { if (tts == null) { finish(); return; } android.os.Bundle tb = new android.os.Bundle(); if (btRoute) tb.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL); tts.speak(t, TextToSpeech.QUEUE_FLUSH, tb, "ok"); h.postDelayed(new Runnable() { public void run() { finish(); } }, 12000); }
     private void finishSoon() { h.postDelayed(new Runnable() { public void run() { finish(); } }, 500); }
 
     @Override protected void onDestroy() {
         h.removeCallbacksAndMessages(null);
+        releaseBt();
         try { if (sr != null) { sr.cancel(); sr.destroy(); } } catch (Exception e) {}
         try { if (tts != null) { tts.stop(); tts.shutdown(); } } catch (Exception e) {}
         super.onDestroy();
