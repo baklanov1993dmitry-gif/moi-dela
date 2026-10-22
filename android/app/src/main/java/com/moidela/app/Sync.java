@@ -43,7 +43,7 @@ final class Sync {
             JSONObject vc = o.optJSONObject("vcfg");   // настройки голоса с сайта: берём, если они новее локальных
             if (vc != null && vc.optLong("ts", 0) > Store.p(c).getLong("v_ts", 0)) {
                 Store.p(c).edit().putString("v_list", vc.optString("list", "")).putInt("v_due", vc.optInt("due", 1)).putBoolean("v_myday", vc.optBoolean("myday", false))
-                    .putInt("v_say", vc.optInt("say", 0)).putInt("v_rate", vc.optInt("rate", 1)).putBoolean("v_beep", vc.optBoolean("beep", true)).putLong("v_ts", vc.optLong("ts", 0)).apply();
+                    .putInt("v_say", vc.optInt("say", 0)).putInt("v_rate", vc.optInt("rate", 1)).putBoolean("v_beep", vc.optBoolean("beep", true)).putBoolean("v_smart", vc.optBoolean("smart", true)).putLong("v_ts", vc.optLong("ts", 0)).apply();
             }
         } catch (Exception e) { /* кривой ответ — оставляем прежнее */ }
         W.refreshAll(c);

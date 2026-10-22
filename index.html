@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 09:04";
+const BUILD = "22.10 09:44";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4200,7 +4200,7 @@ async function vcLoad() {
   VC.busy = false; renderSoon();
 }
 function vcGet() {
-  const c = Object.assign({ list: null, due: 1, myday: false, say: 0, rate: 1, beep: true }, VC.cfg || {});
+  const c = Object.assign({ list: null, due: 1, myday: false, say: 0, rate: 1, beep: true, smart: true }, VC.cfg || {});
   if (c.list === null || c.list === undefined) { const m = listsArr().find(l => /свои дела/i.test(l.name)); c.list = m ? m.id : ""; }
   return c;
 }
@@ -4218,6 +4218,7 @@ function vcHTML() {
     '<label class="vc-r"><span>Ещё и в «Мой день»</span><input type="checkbox" class="vc-in" data-k="myday"' + (c.myday ? " checked" : "") + '></label>' +
     '<label class="vc-r"><span>Подтверждение голосом</span>' + sel("say", [[0, "Повторять задачу целиком"], [1, "Только «Записано»"], [2, "Молча (сигнал и вибрация)"]], c.say) + "</label>" +
     '<label class="vc-r"><span>Скорость речи</span>' + sel("rate", [[0, "Медленно"], [1, "Обычно"], [2, "Быстро"], [3, "Очень быстро"]], c.rate) + "</label>" +
+    '<label class="vc-r"><span>Умные команды (ИИ): дела, время, погода, готово/отложить, отмена</span><input type="checkbox" class="vc-in" data-k="smart"' + (c.smart ? " checked" : "") + '></label>' +
     '<label class="vc-r"><span>Сигнал перед записью</span><input type="checkbox" class="vc-in" data-k="beep"' + (c.beep ? " checked" : "") + '></label></div>';
 }
 function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { acts.qaopen(); if (voiceAuto && micOK()) setTimeout(() => micToggle("qa-input", true), 500); } catch (e) {} }

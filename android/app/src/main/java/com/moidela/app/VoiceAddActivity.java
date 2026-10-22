@@ -132,7 +132,47 @@ public class VoiceAddActivity extends Activity {
         return new String[]{title, due};
     }
 
+    /** «бортовой компьютер»: фразу разбирает ИИ на сервере (device?a=cmd) — запись, вопросы о делах, время, погода, готово/отложить/отмена */
     private void save(final String raw) {
+        final Context c = getApplicationContext();
+        final android.content.SharedPreferences sp = Store.p(c);
+        if (!sp.getBoolean("v_smart", true)) { saveSimple(raw); return; }
+        done = true; tv.setText(raw);
+        new Thread(new Runnable() { public void run() {
+            String res = null;
+            try {
+                long now = System.currentTimeMillis();
+                JSONObject j = new JSONObject().put("text", raw);
+                if (now - sp.getLong("v_last_ts", 0) < 10 * 60000 && sp.getString("v_last_id", "").length() > 0)
+                    j.put("last", new JSONObject().put("id", sp.getString("v_last_id", "")).put("title", sp.getString("v_last_title", "")));
+                if (now - sp.getLong("v_added_ts", 0) < 15 * 60000 && sp.getString("v_added_id", "").length() > 0)
+                    j.put("added", new JSONObject().put("id", sp.getString("v_added_id", "")));
+                String lid = sp.getString("v_list", "");
+                if (!sp.contains("v_list")) { try { JSONArray la = new JSONObject(sp.getString("data", "{}")).optJSONArray("lists"); if (la != null) for (int i = 0; i < la.length(); i++) if (la.optJSONObject(i).optString("name").toLowerCase(Locale.ROOT).contains("свои дела")) { lid = la.optJSONObject(i).optString("id"); break; } } catch (Exception e) {} }
+                if (lid.length() > 0) j.put("list_id", lid);
+                j.put("dm", sp.getInt("v_due", 1)).put("myday", sp.getBoolean("v_myday", false));
+                res = Net.post(Store.api(c, "cmd", ""), j.toString());
+            } catch (Exception e) {}
+            final String r = res;
+            h.post(new Runnable() { public void run() {
+                if (r == null) { speakAndEnd("Нет связи. Не получилось."); return; }
+                try {
+                    JSONObject o = new JSONObject(r); String sayTxt = o.optString("speak", "Готово."); String it = o.optString("intent", "");
+                    long now = System.currentTimeMillis();
+                    android.content.SharedPreferences.Editor ed = sp.edit();
+                    if (o.optString("id").length() > 0) ed.putString("v_last_id", o.optString("id")).putString("v_last_title", o.optString("title")).putLong("v_last_ts", now);
+                    if (o.optBoolean("added", false)) ed.putString("v_added_id", o.optString("id")).putLong("v_added_ts", now);
+                    if (o.optBoolean("undone", false)) ed.remove("v_added_id");
+                    ed.apply();
+                    if ("add".equals(it)) { int sm = sp.getInt("v_say", 0); sayTxt = sm == 0 ? sayTxt : sm == 1 ? "Записано." : ""; Sync.run(c); }
+                    else if ("done".equals(it) || "snooze".equals(it) || "tomorrow".equals(it) || "undo".equals(it)) Sync.run(c);
+                    speakAndEnd(sayTxt);
+                } catch (Exception e) { speakAndEnd("Не понял ответ сервера."); }
+            } });
+        } }).start();
+    }
+
+    private void saveSimple(final String raw) {
         done = true; final String[] pd = new String[]{raw, null}; final Context c = getApplicationContext();
         String t0 = pd[0]; if (t0.length() > 0) t0 = t0.substring(0, 1).toUpperCase(Locale.ROOT) + t0.substring(1);
         final String title = t0; tv.setText(title);

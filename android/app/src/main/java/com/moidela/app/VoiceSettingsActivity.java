@@ -74,6 +74,7 @@ public class VoiceSettingsActivity extends Activity {
         voiceIds.add(""); voiceNames.add("По умолчанию (системный)");
         spVoice = spin(voiceNames, 0); root.addView(spVoice);
 
+        final CheckBox cbSmart = new CheckBox(this); cbSmart.setText("Умные команды (ИИ): вопросы о делах, время, погода, готово/отложить, отмена"); cbSmart.setChecked(sp.getBoolean("v_smart", true)); root.addView(cbSmart);
         final CheckBox cbBeep = new CheckBox(this); cbBeep.setText("Сигнал перед записью"); cbBeep.setChecked(sp.getBoolean("v_beep", true)); root.addView(cbBeep);
 
         Button test = new Button(this); test.setText("▶ Проверить голос"); root.addView(test);
@@ -93,11 +94,11 @@ public class VoiceSettingsActivity extends Activity {
         final Runnable save = new Runnable() { public void run() {
             sp.edit().putString("v_list", listIds.get(Math.max(0, spList.getSelectedItemPosition()))).putInt("v_due", spDue.getSelectedItemPosition())
                 .putBoolean("v_myday", cbMy.isChecked()).putInt("v_say", spSay.getSelectedItemPosition()).putInt("v_rate", spRate.getSelectedItemPosition())
-                .putString("v_voice", voiceIds.get(Math.max(0, Math.min(voiceIds.size() - 1, spVoice.getSelectedItemPosition())))).putBoolean("v_beep", cbBeep.isChecked()).putLong("v_ts", System.currentTimeMillis()).apply();
+                .putString("v_voice", voiceIds.get(Math.max(0, Math.min(voiceIds.size() - 1, spVoice.getSelectedItemPosition())))).putBoolean("v_beep", cbBeep.isChecked()).putBoolean("v_smart", cbSmart.isChecked()).putLong("v_ts", System.currentTimeMillis()).apply();
             final android.content.Context c = getApplicationContext();
             new Thread(new Runnable() { public void run() { try {   // отправляем на сервер, чтобы настройки были видны и на сайте
                 JSONObject j = new JSONObject().put("list", sp.getString("v_list", "")).put("due", sp.getInt("v_due", 1)).put("myday", sp.getBoolean("v_myday", false))
-                    .put("say", sp.getInt("v_say", 0)).put("rate", sp.getInt("v_rate", 1)).put("beep", sp.getBoolean("v_beep", true)).put("ts", sp.getLong("v_ts", 0));
+                    .put("say", sp.getInt("v_say", 0)).put("rate", sp.getInt("v_rate", 1)).put("beep", sp.getBoolean("v_beep", true)).put("smart", sp.getBoolean("v_smart", true)).put("ts", sp.getLong("v_ts", 0));
                 Net.post(Store.api(c, "vset", ""), j.toString());
             } catch (Exception e) {} } }).start();
         } };
@@ -107,7 +108,7 @@ public class VoiceSettingsActivity extends Activity {
         };
         spList.setOnItemSelectedListener(ch); spDue.setOnItemSelectedListener(ch); spSay.setOnItemSelectedListener(ch); spRate.setOnItemSelectedListener(ch); spVoice.setOnItemSelectedListener(ch);
         CompoundButton.OnCheckedChangeListener cc = new CompoundButton.OnCheckedChangeListener() { public void onCheckedChanged(CompoundButton v, boolean c) { save.run(); } };
-        cbMy.setOnCheckedChangeListener(cc); cbBeep.setOnCheckedChangeListener(cc);
+        cbMy.setOnCheckedChangeListener(cc); cbBeep.setOnCheckedChangeListener(cc); cbSmart.setOnCheckedChangeListener(cc);
         test.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
             save.run(); VoiceAddActivity.applyVoice(tts, sp);
             tts.speak("Записано. Позвонить Иванову по поводу щита.", TextToSpeech.QUEUE_FLUSH, null, "t");
