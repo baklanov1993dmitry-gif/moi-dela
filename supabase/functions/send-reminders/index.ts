@@ -64,6 +64,18 @@ Deno.serve(async (req) => {
         }
       }
     } catch (err) { console.error("nudge " + (err as Error).message); }
+    // Несколько напоминаний у задачи: когда ближайшее (remind_at) отработало 3+ минуты назад, ставим следующее из очереди remind_queue
+    try {
+      const nowQ = Date.now();
+      const { data: qs } = await sb.from("tasks").select("id,remind_at,remind_queue").eq("done", false)
+        .lte("remind_at", new Date(nowQ - 3 * 60e3).toISOString()).gt("remind_at", new Date(nowQ - 7 * 864e5).toISOString());
+      for (const t of qs ?? []) {
+        const q: string[] = Array.isArray(t.remind_queue) ? t.remind_queue : []; if (!q.length) continue;
+        const fresh = q.filter((x) => Date.parse(x) > nowQ - 3600e3).sort();
+        const next = fresh.shift();
+        await sb.from("tasks").update(next ? { remind_at: next, remind_queue: fresh, remind_sent_for: null } : { remind_queue: [] }).eq("id", t.id);
+      }
+    } catch (err) { console.error("queue " + (err as Error).message); }
     const now = new Date(), since = new Date(now.getTime() - 24 * 3600e3);
     const { data: tasks, error } = await sb.from("tasks")
       .select("id,user_id,title,remind_at,remind_sent_for,due,list_id,remind_via")

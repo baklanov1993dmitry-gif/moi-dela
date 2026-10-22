@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 08:30";
+const BUILD = "22.10 08:36";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -469,7 +469,7 @@ function nextDue(t) {
 const OWNER_EMAILS = ["baklanov-dmitry@mail.ru"];   // полный функционал только у этих аккаунтов
 try { const _fu = new URLSearchParams(location.search).get("full"); if (_fu === "1") localStorage.setItem("mytasks_full", "1"); else if (_fu === "0") localStorage.removeItem("mytasks_full"); } catch (e) {}   // запасной ключ владельца: ?full=1
 const isLite = () => { try { if (localStorage.getItem("mytasks_full") === "1") return false; } catch (e) {} return !!(S.user && S.user.email && OWNER_EMAILS.indexOf(String(S.user.email).toLowerCase()) < 0); };
-const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "repeat_rule", "files", "plan_start", "parent_id"];
+const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "remind_queue", "repeat_rule", "files", "plan_start", "parent_id"];
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
 let OR = (() => { try { return localStorage.getItem("mytasks_or") === "1"; } catch (e) { return false; } })();
@@ -3117,7 +3117,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .qrow{gap:14px;padding:4px 0 6px}
 .qrow .rad{width:28px;height:28px;border-color:var(--sub);opacity:.7}
 .qrow input{font-size:calc(20px*var(--z,1));height:48px}
-.micb{border:0;background:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px;flex-shrink:0}.micb.rec{background:#d13438;animation:micp 1s infinite}@keyframes micp{50%{opacity:.5}}.qsend{width:44px;height:44px;border-radius:6px;background:var(--ln);color:var(--sub)} .qsend.on{background:var(--acc);color:#fff}
+.rx-box{margin:2px 0 8px 44px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}.rx-l{font-size:12px;color:var(--sub)}.rx-ch{display:flex;gap:6px;flex-wrap:wrap}.rx-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--acc);color:var(--acc);border-radius:14px;padding:2px 4px 2px 10px;font-size:13px}.rx-chip button{border:0;background:none;color:inherit;cursor:pointer;padding:2px 6px;opacity:.7}.rx-add{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.micb{border:0;background:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px;flex-shrink:0}.micb.rec{background:#d13438;animation:micp 1s infinite}@keyframes micp{50%{opacity:.5}}.qsend{width:44px;height:44px;border-radius:6px;background:var(--ln);color:var(--sub)} .qsend.on{background:var(--acc);color:#fff}
 .qchips{gap:4px;margin:0 -16px;padding:2px 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
 .qchips::-webkit-scrollbar{display:none}
 .qchip{border:0;background:transparent;padding:10px 12px;border-radius:8px;gap:8px;font-size:calc(17px*var(--z,1));color:var(--sub)} .qchip svg{width:22px;height:22px}
@@ -3709,7 +3709,7 @@ function detailHTML(t) {
   return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + '</button><span class="mdl">' + (S.lists[t.list_id] ? esc((S.lists[t.list_id].icon && S.lists[t.list_id].icon !== "🗂️" ? S.lists[t.list_id].icon : "") + S.lists[t.list_id].name) : "") + "</span></div>" : "") + '<div class="dscroll" id="dscroll">' + subCrumb(t) +
     '<div class="dcard dtc"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div></div>" + subBlock(t) +
     '<div class="dcard">' +
-    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : t.remind_place ? "📍 Рядом с: " + esc(placeName(t.remind_place) || "местом") : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at || t.remind_place ? "act" : "", t.remind_at ? "clrremind" : "") +
+    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : t.remind_place ? "📍 Рядом с: " + esc(placeName(t.remind_place) || "местом") : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at || t.remind_place ? "act" : "", t.remind_at ? "clrremind" : "") + remExtraHTML(t, id) +
     row("cal", di ? esc(di.txt) : "Срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
     row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") +
     row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") +
@@ -4166,6 +4166,24 @@ function micToggle(inpId, auto) {
       setTimeout(() => { const j = $(inpId); if (!stop && j && j.value === v && ui.qa) { const f = $("qaform"); if (f && f.requestSubmit) f.requestSubmit(); } }, 3000);
     } else i.focus(); };
   try { r.start(); VR = r; document.querySelectorAll(".micb").forEach(b => b.classList.add("rec")); toast("🎤 Говори…"); } catch (e) { VR = null; }
+}
+// ---- несколько напоминаний: ближайшее в remind_at, остальные по порядку в remind_queue (сервер сам переставляет следующее) ----
+function remAdd(id, iso) {
+  const t = S.tasks[id]; if (!t) return; const now = Date.now() - 60000;
+  const all = [t.remind_at].concat(t.remind_queue || []).concat([iso]).filter(x => x && Date.parse(x) > now);
+  const u = Array.from(new Set(all.map(x => new Date(x).toISOString()))).sort();
+  if (!u.length) return;
+  patchTask(id, { remind_at: u[0], remind_queue: u.slice(1) }); applyLoud(id); askNotify();
+}
+function remExtraHTML(t, id) {
+  if (!t.remind_at && !(t.remind_queue || []).length) return "";
+  const q = t.remind_queue || [];
+  const chips = q.map((x, i) => '<span class="rx-chip">' + esc(fmtRemind(x).replace("Напомнить в ", "")) + '<button data-a="remxdel" data-id="' + id + '" data-i="' + i + '" title="Убрать">✕</button></span>').join("");
+  const op = ui.remx === id;
+  const nm = Date.now(), mk = (lab, m) => '<button class="tool" data-a="remxadd" data-id="' + id + '" data-m="' + m + '">' + lab + "</button>";
+  return '<div class="rx-box">' + (chips ? '<div class="rx-l">Ещё напоминания:</div><div class="rx-ch">' + chips + "</div>" : "") +
+    '<button class="tool" data-a="remxopen" data-id="' + id + '">' + (op ? "Скрыть" : "＋ Ещё напоминание") + "</button>" +
+    (op ? '<div class="rx-add">' + mk("через 30 мин", 30) + mk("через 1 ч", 60) + mk("через 3 ч", 180) + mk("завтра 9:00", "tom") + '<input type="datetime-local" id="remx-in" class="ng-in"><button class="tool" data-a="remxadd" data-id="' + id + '" data-m="in">Добавить</button></div>' : "") + "</div>";
 }
 function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { acts.qaopen(); if (voiceAuto && micOK()) setTimeout(() => micToggle("qa-input", true), 500); } catch (e) {} }
 function shareMaybe() {
@@ -4637,6 +4655,16 @@ const acts = {
   qaopen() { ui.qaText = ""; ui.qa = { due: null, remind_at: null, repeat_rule: null, my: view === "myday", starred: view === "starred" }; closePop(); render(); const i = $("qa-input"); if (i) i.focus(); },
   openadd() { jset("mytasks_openadd", !jget("mytasks_openadd", false)); toast(jget("mytasks_openadd", false) ? "При запуске приложения сразу откроется «Новая задача» (удобно для голосовой команды «Открой Мои дела»)" : "Выключено"); render(); },
   voiceset() { location.href = "moidela://voice"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
+  remxopen(a) { ui.remx = ui.remx === a.dataset.id ? null : a.dataset.id; render(); },
+  remxdel(a) { const t = S.tasks[a.dataset.id]; if (!t) return; const q = (t.remind_queue || []).slice(); q.splice(+a.dataset.i, 1); patchTask(t.id, { remind_queue: q }); render(); },
+  remxadd(a) {
+    const id = a.dataset.id, m = a.dataset.m; let d;
+    if (m === "in") { const v = ($("remx-in") || {}).value; if (!v) { toast("Выбери дату и время"); return; } d = new Date(v); }
+    else if (m === "tom") { d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); }
+    else d = new Date(Date.now() + (+m) * 60000);
+    if (isNaN(d) || d.getTime() < Date.now() - 60000) { toast("Это время уже прошло"); return; }
+    d.setSeconds(0, 0); remAdd(id, d.toISOString()); ui.remx = null; toast("Добавлено напоминание"); render();
+  },
   qamic() { micToggle("qa-input"); },
   nmic() { micToggle("newtask"); },
   qaclose(a, e) { if (e.target !== a) return; ui.qa = null; closePop(); render(); },
