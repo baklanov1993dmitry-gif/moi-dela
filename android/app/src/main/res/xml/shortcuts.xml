@@ -12,4 +12,7 @@
     <shortcut android:shortcutId="add" android:enabled="true" android:icon="@drawable/sc_tasks" android:shortcutShortLabel="@string/sc_add_s" android:shortcutLongLabel="@string/sc_add_l">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="com.moidela.app" android:targetClass="com.moidela.app.QuickAddActivity" />
     </shortcut>
+    <shortcut android:shortcutId="voice" android:enabled="true" android:icon="@drawable/sc_tasks" android:shortcutShortLabel="@string/sc_voice_s" android:shortcutLongLabel="@string/sc_voice_l">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.moidela.app" android:targetClass="com.moidela.app.VoiceAddActivity" />
+    </shortcut>
 </shortcuts>

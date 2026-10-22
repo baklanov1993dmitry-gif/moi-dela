@@ -16,4 +16,6 @@
     <string name="w_quick_desc">Быстро записать дело текстом или голосом</string>
     <string name="tile_journal">Журнал: таймер</string>
     <string name="w_journal_desc">Таймер для журнала: начать дело, потом остановить и записать с темой и оценкой 🟢⚪🔴</string>
+    <string name="sc_voice_s">Голосом</string>
+    <string name="sc_voice_l">Записать дело голосом</string>
 </resources>
