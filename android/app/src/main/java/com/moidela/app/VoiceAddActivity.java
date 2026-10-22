@@ -51,8 +51,8 @@ public class VoiceAddActivity extends Activity {
         } });
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             public void onStart(String id) {}
-            public void onDone(String id) { h.post(new Runnable() { public void run() { finish(); } }); }
-            public void onError(String id) { h.post(new Runnable() { public void run() { finish(); } }); }
+            public void onDone(String id) { h.post(new Runnable() { public void run() { endSpeech(); } }); }
+            public void onError(String id) { h.post(new Runnable() { public void run() { endSpeech(); } }); }
         });
         if (!Store.linked(this)) { speakAndEnd("Приложение не привязано к аккаунту. Откройте Мои дела."); return; }
         if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -62,11 +62,14 @@ public class VoiceAddActivity extends Activity {
     }
 
     @Override public void onRequestPermissionsResult(int rc, String[] p, int[] r) {
+        if (rc == 8) { Runnable x = pendingPerm; pendingPerm = null; if (x != null) x.run(); return; }
         if (rc == 7 && r.length > 0 && r[0] == PackageManager.PERMISSION_GRANTED) startListen();
         else speakAndEnd("Нет доступа к микрофону. Разрешите его в настройках приложения.");
     }
 
     // --- микрофон и звук именно наушников (Bluetooth-гарнитура), если она подключена ---
+    interface Cb { void on(String t); }
+    private Cb confirmCb; private Runnable afterSpeech, pendingPerm; private int sayGen = 0;
     private boolean btRoute; private int prevMode = -1; private android.content.BroadcastReceiver scoRx;
     private void routeBt(final Runnable next) {
         final boolean[] fired = {false};
@@ -114,7 +117,16 @@ public class VoiceAddActivity extends Activity {
         } });
     }
 
+    private void listenOnce(final Cb cb) {   // второй вопрос (подтверждение): снова через наушники, короткий сигнал
+        confirmCb = cb; done = false;
+        routeBt(new Runnable() { public void run() {
+            try { new ToneGenerator(btRoute ? AudioManager.STREAM_VOICE_CALL : AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP, 200); } catch (Exception e) {}
+            h.postDelayed(new Runnable() { public void run() { if (!done) beginRecognize(); } }, 400);
+        } });
+    }
+
     private void beginRecognize() {
+        try { if (sr != null) { sr.cancel(); sr.destroy(); } } catch (Exception e) {}
         sr = SpeechRecognizer.createSpeechRecognizer(this);
         sr.setRecognitionListener(new RecognitionListener() {
             public void onReadyForSpeech(Bundle p) {}
@@ -124,10 +136,11 @@ public class VoiceAddActivity extends Activity {
             public void onEndOfSpeech() { tv.setText("…"); }
             public void onPartialResults(Bundle p) { ArrayList<String> a = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION); if (a != null && a.size() > 0) tv.setText(a.get(0)); }
             public void onEvent(int t, Bundle p) {}
-            public void onError(int e) { speakAndEnd(e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ? "Не расслышал. Повторите." : "Не получилось записать голос."); }
+            public void onError(int e) { if (confirmCb != null) { confirmCb = null; speakAndEnd("Не расслышал. Отменяю."); return; } speakAndEnd(e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ? "Не расслышал. Повторите." : "Не получилось записать голос."); }
             public void onResults(Bundle r) {
                 ArrayList<String> a = r.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 String t = a != null && a.size() > 0 ? a.get(0).trim() : "";
+                if (confirmCb != null) { Cb c = confirmCb; confirmCb = null; done = true; c.on(t.length() == 0 ? "нет" : t); return; }
                 if (t.length() == 0) { speakAndEnd("Не расслышал. Повторите."); return; }
                 save(t);
             }
@@ -208,12 +221,83 @@ public class VoiceAddActivity extends Activity {
                     if (o.optBoolean("added", false)) ed.putString("v_added_id", o.optString("id")).putLong("v_added_ts", now);
                     if (o.optBoolean("undone", false)) ed.remove("v_added_id");
                     ed.apply();
+                    if ("call".equals(it)) { doCall(o.optString("name")); return; }
+                    if ("sms".equals(it)) { doSms(o.optString("name"), o.optString("text")); return; }
                     if ("add".equals(it)) { int sm = sp.getInt("v_say", 0); sayTxt = sm == 0 ? sayTxt : sm == 1 ? "Записано." : ""; Sync.run(c); }
                     else if ("done".equals(it) || "snooze".equals(it) || "tomorrow".equals(it) || "undo".equals(it)) Sync.run(c);
                     speakAndEnd(sayTxt);
                 } catch (Exception e) { speakAndEnd("Не понял ответ сервера."); }
             } });
         } }).start();
+    }
+
+    // ---------- управление телефоном: звонок и SMS по имени из контактов ----------
+    private static String stem(String w) { w = w.toLowerCase(Locale.ROOT); return w.length() > 5 ? w.substring(0, w.length() - 2) : w.length() > 3 ? w.substring(0, w.length() - 1) : w; }
+    /** ищет контакт по произнесённому имени («Ивану Петрову», «жене»); возвращает {имя, номер} | {"?", список} | null */
+    private String[] findContact(String spoken) {
+        String[] tk = spoken.toLowerCase(Locale.ROOT).replaceAll("[^а-яa-z0-9ё ]", " ").trim().split("\\s+"); if (tk.length == 0 || tk[0].length() == 0) return null;
+        java.util.LinkedHashMap<String, String> hit = new java.util.LinkedHashMap<String, String>();
+        android.database.Cursor cu = null;
+        try {
+            cu = getContentResolver().query(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, new String[]{android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER, android.provider.ContactsContract.CommonDataKinds.Phone.TYPE}, null, null, null);
+            while (cu != null && cu.moveToNext()) {
+                String nm = cu.getString(0) == null ? "" : cu.getString(0), low = nm.toLowerCase(Locale.ROOT).replace('ё', 'е'); boolean all = true;
+                for (String t : tk) { String st = stem(t).replace('ё', 'е'); if (!(low.startsWith(st) || low.contains(" " + st))) { all = false; break; } }
+                if (!all) continue;
+                boolean mob = cu.getInt(2) == android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE;
+                if (!hit.containsKey(nm) || mob) hit.put(nm, cu.getString(1));
+            }
+        } catch (Exception e) { return null; } finally { if (cu != null) cu.close(); }
+        if (hit.size() == 0) return null;
+        if (hit.size() == 1) { Object k = hit.keySet().iterator().next(); return new String[]{(String) k, hit.get(k)}; }
+        StringBuilder sb = new StringBuilder(); int n = 0; for (String k : hit.keySet()) { if (n++ > 0) sb.append(", "); sb.append(k); if (n == 3) break; }
+        return new String[]{"?", sb.toString()};
+    }
+    private boolean need(final String[] perms, final Runnable again) {
+        if (Build.VERSION.SDK_INT < 23) return true;
+        java.util.ArrayList<String> miss = new java.util.ArrayList<String>();
+        for (String p : perms) if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) miss.add(p);
+        if (miss.isEmpty()) return true;
+        pendingPerm = again; done = false; tv.setText("Нужен доступ к контактам/звонкам — разрешите на экране.");
+        requestPermissions(miss.toArray(new String[0]), 8); return false;
+    }
+    private void doCall(final String name) {
+        if (!need(new String[]{Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE}, new Runnable() { public void run() { doCall(name); } })) return;
+        if (!hasPerm(Manifest.permission.READ_CONTACTS)) { speakAndEnd("Нет доступа к контактам."); return; }
+        final String[] c = findContact(name);
+        if (c == null) { speakAndEnd("Не нашёл контакт " + name + "."); return; }
+        if ("?".equals(c[0])) { speakAndEnd("Нашёл несколько: " + c[1] + ". Назовите точнее."); return; }
+        afterSpeech = new Runnable() { public void run() {
+            try {
+                Intent i = new Intent(hasPerm(Manifest.permission.CALL_PHONE) ? Intent.ACTION_CALL : Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + android.net.Uri.encode(c[1])));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i);
+            } catch (Exception e) {}
+            finish();
+        } };
+        speakAndEnd("Звоню: " + c[0] + ".");
+    }
+    private boolean hasPerm(String p) { return Build.VERSION.SDK_INT < 23 || checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED; }
+    private void doSms(final String name, final String text) {
+        if (!need(new String[]{Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS}, new Runnable() { public void run() { doSms(name, text); } })) return;
+        if (!hasPerm(Manifest.permission.READ_CONTACTS)) { speakAndEnd("Нет доступа к контактам."); return; }
+        final String[] c = findContact(name);
+        if (c == null) { speakAndEnd("Не нашёл контакт " + name + "."); return; }
+        if ("?".equals(c[0])) { speakAndEnd("Нашёл несколько: " + c[1] + ". Назовите точнее."); return; }
+        afterSpeech = new Runnable() { public void run() {
+            listenOnce(new Cb() { public void on(String ans) {
+                if (!ans.toLowerCase(Locale.ROOT).matches("^(да|давай|отправ|ага|угу|верно|конечно|подтверждаю|ок).*")) { speakAndEnd("Отменил."); return; }
+                try {
+                    if (hasPerm(Manifest.permission.SEND_SMS)) {
+                        android.telephony.SmsManager sm = android.telephony.SmsManager.getDefault();
+                        sm.sendMultipartTextMessage(c[1], null, sm.divideMessage(text), null, null);
+                        speakAndEnd("Отправлено.");
+                    } else {   // нет права на отправку — открываем SMS с готовым текстом
+                        Intent i = new Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("smsto:" + android.net.Uri.encode(c[1]))); i.putExtra("sms_body", text); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); finish();
+                    }
+                } catch (Exception e) { speakAndEnd("Не получилось отправить."); }
+            } });
+        } };
+        speakAndEnd("Сообщение для " + c[0] + ": " + text + ". Отправить?");
     }
 
     private void saveSimple(final String raw) {
@@ -243,8 +327,10 @@ public class VoiceAddActivity extends Activity {
     }
 
     private void speakAndEnd(String t) { done = true; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, 700); return; } if (ttsReady) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
+    private void endSpeech() { Runnable r = afterSpeech; afterSpeech = null; if (r != null) r.run(); else finish(); }
     private void say(final String t) {
         if (tts == null) { finish(); return; }
+        final int gen = ++sayGen;
         try { if (sr != null) { sr.cancel(); } } catch (Exception e) {}
         long d = 0;
         if (btRoute || prevMode >= 0) { releaseBt(); btRoute = false; prevMode = -1; d = 700; }   // ответ читаем в обычном (чистом, стерео) режиме наушников — без перескоков звука из «телефонного» канала
@@ -254,11 +340,11 @@ public class VoiceAddActivity extends Activity {
         final float spd = rr[Math.max(0, Math.min(3, Store.p(this).getInt("v_rate", 1)))];
         h.postDelayed(new Runnable() { public void run() {
             if (neural) Neural.speak(VoiceAddActivity.this, nv, t, spd, new Neural.Done() { public void end(boolean ok) {
-                h.post(new Runnable() { public void run() { if (ok) finish(); else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); } });   // облако/нейро не вышли (нет сети) — читает системный голос
+                h.post(new Runnable() { public void run() { if (ok) endSpeech(); else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); } });   // облако/нейро не вышли (нет сети) — читает системный голос
             } });
             else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok");
         } }, d);
-        h.postDelayed(new Runnable() { public void run() { finish(); } }, 30000);
+        h.postDelayed(new Runnable() { public void run() { if (gen == sayGen) finish(); } }, 30000);
     }
     private void finishSoon() { h.postDelayed(new Runnable() { public void run() { finish(); } }, 500); }
 

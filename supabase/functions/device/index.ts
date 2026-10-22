@@ -4,6 +4,32 @@ const ok = (o: unknown = {}, s = 200) => new Response(JSON.stringify(o), { statu
 const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
 const sha = async (s: string) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
 const ymdz = (ms: number) => new Date(ms + 7 * 3600e3).toISOString().slice(0, 10);
+const durMin = (str: string): number => {   // «20 минут», «полтора часа», «час», «полчаса» -> минуты
+  const W: Record<string, number> = { один: 1, одну: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, десять: 10, пятнадцать: 15, двадцать: 20, тридцать: 30, сорок: 40, полтора: 1.5 };
+  if (/полчаса/i.test(str)) return 30;
+  const m = /(?:(\d+(?:[.,]\d+)?|[а-яё]+)\s*)?(часа|часов|час|ч|минут[ыу]?|мин)(?![а-яё])/i.exec(str); if (!m) return 0;
+  const n = m[1] ? (W[m[1].toLowerCase()] ?? parseFloat(m[1].replace(",", "."))) : 1; if (!(n > 0)) return 0;
+  return Math.round(n * (/^ч/i.test(m[2]) ? 60 : 1));
+};
+async function askAI(sys: string, user: string): Promise<string | null> {   // Gemini -> запасной Groq
+  const gk = Deno.env.get("GEMINI_API_KEY");
+  if (gk) for (const model of [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter((m) => m) as string[]) {
+    try {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", { method: "POST", headers: { "x-goog-api-key": gk, "content-type": "application/json" }, body: JSON.stringify({ model, input: [{ type: "text", text: sys + "\n\n" + user }] }) });
+      if (!r.ok) continue; const j = await r.json().catch(() => ({})); const parts: string[] = [];
+      const grab = (o: any) => { if (!o || typeof o !== "object") return; if (Array.isArray(o)) { o.forEach(grab); return; } if (/thought|reason/i.test(String(o.type || ""))) return; if (typeof o.text === "string") parts.push(o.text); for (const k of Object.keys(o)) if (k !== "text" && typeof o[k] === "object") grab(o[k]); };
+      grab(j.steps ?? j.outputs ?? j); if (parts.length) return parts.join("\n");
+    } catch { /* дальше */ }
+  }
+  const qk = Deno.env.get("GROQ_API_KEY");
+  if (qk) for (const model of ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]) {
+    try {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + qk, "content-type": "application/json" }, body: JSON.stringify({ model, temperature: 0.2, messages: [{ role: "system", content: sys }, { role: "user", content: user }] }) });
+      if (!r.ok) continue; const j = await r.json().catch(() => ({})); const t = j?.choices?.[0]?.message?.content; if (t) return String(t);
+    } catch { /* дальше */ }
+  }
+  return null;
+}
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   const url = new URL(req.url), a = url.searchParams.get("a") || "";
@@ -65,6 +91,13 @@ Deno.serve(async (req) => {
         const title = rest.replace(/^[\s,.:—-]+|[\s,.:—-]+$/g, "").replace(/\s{2,}/g, " ");
         return { intent: "journal", title: title ? title[0].toUpperCase() + title.slice(1) : "", minutes: mins };
       }
+      let m2: RegExpExecArray | null;
+      if ((m2 = /^(?:позвони|набери|вызови|звони)\s+(?:пожалуйста\s+)?(.+)$/i.exec(tx.trim()))) return { intent: "call", name: m2[1].replace(/\s+на\s+(мобильный|рабочий|домашний)$/i, "").trim() };
+      if ((m2 = /^(?:напиши|отправь\s+(?:сообщение|смс)|смс)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim()))) return { intent: "sms", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
+      if ((m2 = /^(?:поставь\s+)?таймер(?:\s+на)?\s+(.+)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: "Таймер" };
+      if ((m2 = /^напомни(?:\s+мне)?\s+через\s+((?:\d+(?:[.,]\d+)?\s*|[а-яё]+\s+)?(?:часа|часов|час|минут[ыу]?|мин)(?![а-яё])|полчаса)\s*[,:]?\s*(.*)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: (m2[2] || "Напоминание").trim().replace(/^./, (c) => c.toUpperCase()) };
+      if (/^(съел[аи]?|поел[аи]?|выпил[аи]?|перекусил[аи]?|позавтракал[аи]?|пообедал[аи]?|поужинал[аи]?|на (завтрак|обед|ужин|перекус)|в питание|добавь в питание)(?![а-яё])/i.test(tx.trim())) return { intent: "food", text: tx.trim() };
+      if (/(сколько|что).*(калори|ккал|белк|съел)|итоги питания|питание за сегодня/i.test(tx)) return { intent: "foodsum" };
       return /который час|сколько времени|какое число|какой день/.test(t) ? { intent: "time" } : /погод/.test(t) ? { intent: "weather", day: /завтра/.test(t) ? "tomorrow" : "today" } : /ближайш|что на сегодня|что у меня|какие дела|что по делам/.test(t) ? { intent: "read_today" } : /что дальше|следующ.* напоминан|ближайш.* напоминан/.test(t) ? { intent: "read_next" } : /сколько дел/.test(t) ? { intent: "count" } : /^(готово|сделал|сделано|выполнено|выполнил)/.test(t) ? { intent: "done", target: "last" } : /^отложи/.test(t) ? { intent: "snooze", target: "last", minutes: /полчаса|30 минут/.test(t) ? 30 : /2 часа|два часа/.test(t) ? 120 : 60 } : /перенеси.*завтра|на завтра$/.test(t) && /^перенеси/.test(t) ? { intent: "tomorrow", target: "last" } : /^(отмена|отмени|удали последн)/.test(t) ? { intent: "undo" } : /что (ты )?умеешь|^помощь|какие команды/.test(t) ? { intent: "help" } : { intent: "add", title: tx.replace(/^(запиши|запись|добавь|новая задача)[,:]?\s*/i, "") };
     };
     const hasTimeWords = /завтра|сегодня|послезавтра|через|понедельник|вторник|сред[ауы]|четверг|пятниц|суббот|воскресень|утром|вечером|днём|днем|ночью|\d{1,2}[:.]\d{2}|\bв \d|\d+ (час|минут|дн|недел)/i.test(text);
@@ -141,7 +174,37 @@ Deno.serve(async (req) => {
         const h = Math.floor(mn / 60), m = mn % 60;
         return done("В журнале: " + ttl + ", " + (h ? h + " " + nm(h, "час", "часа", "часов") + (m ? " " : "") : "") + (m ? m + " " + nm(m, "минута", "минуты", "минут") : "") + ".");
       }
-      case "help": return done("Можно сказать: в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
+      case "call": case "sms": return ok({ intent: I.intent, name: String(I.name || "").slice(0, 80), text: String(I.text || "").slice(0, 600), speak: "" });
+      case "timer": {
+        const mn = Math.round(Number(I.minutes) || 0); if (mn < 1 || mn > 1440) return done("Не понял, на сколько поставить.");
+        const rem = new Date(nowMs + mn * 60e3).toISOString(), title = String(I.title || "Таймер").slice(0, 200);
+        const t = { id: crypto.randomUUID(), user_id: uid, title, list_id: null, due: today, note: "", done: false, parent_id: null, category: null, starred: false, my_day: false, my_day_date: null, steps: [], est_minutes: null, status: "active", remind_at: rem, repeat_rule: null, files: [], plan_start: null, created_at: new Date().toISOString() };
+        const r = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(t) });
+        if (!r.ok) return done("Не получилось поставить таймер.");
+        const h = Math.floor(mn / 60), m = mn % 60;
+        return done((title === "Таймер" ? "Таймер на " : "Напомню через ") + (h ? h + " " + nm(h, "час", "часа", "часов") + (m ? " " : "") : "") + (m ? m + " " + nm(m, "минуту", "минуты", "минут") : "") + (title === "Таймер" ? "." : ": " + title + "."), { id: t.id, title, added: true });
+      }
+      case "food": {
+        const out = await askAI("Ты диетолог-помощник. По фразе человека оцени, что он съел. Ответь ТОЛЬКО JSON без пояснений и markdown: {\"items\":[{\"name\":\"название с заглавной\",\"grams\":число,\"kcal\":число,\"p\":число,\"f\":число,\"c\":число}]} — значения на всю порцию (kcal ккал, p белки, f жиры, c углеводы в граммах). Если порция не названа, возьми типичную. Не более 8 позиций. Блюда россии учитывай.", "Фраза: " + String(I.text || text));
+        const mj = out && /\{[\s\S]*\}/.exec(out); let items: any[] = [];
+        try { items = mj ? (JSON.parse(mj[0]).items || []) : []; } catch { items = []; }
+        items = items.filter((x) => x && x.name && Number(x.kcal) >= 0).slice(0, 8);
+        if (!items.length) return done("Не удалось оценить еду. Повторите или внесите вручную.");
+        const rows = items.map((x) => ({ id: crypto.randomUUID(), user_id: uid, day: today, t: hm(nowMs), name: String(x.name).slice(0, 120), grams: Math.round(Number(x.grams) || 0), kcal: Math.round(Number(x.kcal) || 0), p: Math.round((Number(x.p) || 0) * 10) / 10, f: Math.round((Number(x.f) || 0) * 10) / 10, c: Math.round((Number(x.c) || 0) * 10) / 10 }));
+        const r = await fetch(base + "food_log", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(rows) });
+        if (!r.ok) return done("Не получилось записать в питание.");
+        const sum = rows.reduce((a, x) => a + x.kcal, 0), sp2 = rows.reduce((a, x) => a + x.p, 0);
+        let tot = "";
+        try { const tr = await fetch(base + "food_log?select=kcal,p&user_id=eq." + uid + "&day=eq." + today, { headers: hd }); const ta: any[] = tr.ok ? await tr.json() : []; tot = " Всего за сегодня " + Math.round(ta.reduce((a, x) => a + Number(x.kcal), 0)) + " ккал, белка " + Math.round(ta.reduce((a, x) => a + Number(x.p), 0)) + " г."; } catch { /* без итога */ }
+        return done("Записал: " + rows.map((x) => x.name.toLowerCase()).join(", ") + ". Это примерно " + sum + " ккал, белка " + Math.round(sp2) + " г." + tot);
+      }
+      case "foodsum": {
+        const tr = await fetch(base + "food_log?select=kcal,p,f,c&user_id=eq." + uid + "&day=eq." + today, { headers: hd }); const ta: any[] = tr.ok ? await tr.json() : [];
+        if (!ta.length) return done("Сегодня в питании пока ничего не записано.");
+        const S = (k: string) => Math.round(ta.reduce((a, x) => a + Number(x[k]), 0));
+        return done("За сегодня " + S("kcal") + " ккал. Белка " + S("p") + " граммов, жиров " + S("f") + ", углеводов " + S("c") + ".");
+      }
+      case "help": return done("Можно сказать: съел и что съел; таймер на 20 минут; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
       default: break;
     }
     // add
