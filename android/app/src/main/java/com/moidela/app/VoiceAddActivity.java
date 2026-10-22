@@ -243,7 +243,14 @@ public class VoiceAddActivity extends Activity {
     }
 
     private void speakAndEnd(String t) { done = true; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, 700); return; } if (ttsReady) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
-    private void say(String t) { if (tts == null) { finish(); return; } android.os.Bundle tb = new android.os.Bundle(); if (btRoute) tb.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL); tts.speak(t, TextToSpeech.QUEUE_FLUSH, tb, "ok"); h.postDelayed(new Runnable() { public void run() { finish(); } }, 12000); }
+    private void say(final String t) {
+        if (tts == null) { finish(); return; }
+        try { if (sr != null) { sr.cancel(); } } catch (Exception e) {}
+        long d = 0;
+        if (btRoute || prevMode >= 0) { releaseBt(); btRoute = false; prevMode = -1; d = 700; }   // ответ читаем в обычном (чистом, стерео) режиме наушников — без перескоков звука из «телефонного» канала
+        h.postDelayed(new Runnable() { public void run() { tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); } }, d);
+        h.postDelayed(new Runnable() { public void run() { finish(); } }, 25000);
+    }
     private void finishSoon() { h.postDelayed(new Runnable() { public void run() { finish(); } }, 500); }
 
     @Override protected void onDestroy() {
