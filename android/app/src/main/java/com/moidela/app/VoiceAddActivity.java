@@ -117,17 +117,18 @@ public class VoiceAddActivity extends Activity {
         } });
     }
 
+    private int confirmRetry = 0;
     private void listenOnce(final Cb cb) {   // второй вопрос (подтверждение): снова через наушники, короткий сигнал
-        confirmCb = cb; done = false;
+        confirmCb = cb; done = false; confirmRetry = 0;
         routeBt(new Runnable() { public void run() {
-            try { new ToneGenerator(btRoute ? AudioManager.STREAM_VOICE_CALL : AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP, 200); } catch (Exception e) {}
-            h.postDelayed(new Runnable() { public void run() { if (!done) beginRecognize(); } }, 400);
+            try { new ToneGenerator(btRoute ? AudioManager.STREAM_VOICE_CALL : AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP2, 250); } catch (Exception e) {}
+            h.postDelayed(new Runnable() { public void run() { if (!done) beginRecognize(); } }, 800);
         } });
     }
 
     private void beginRecognize() {
         try { if (sr != null) { sr.cancel(); sr.destroy(); } } catch (Exception e) {}
-        sr = SpeechRecognizer.createSpeechRecognizer(this);
+        sr = SpeechRecognizer.createSpeechRecognizer(this); final SpeechRecognizer me = sr;
         sr.setRecognitionListener(new RecognitionListener() {
             public void onReadyForSpeech(Bundle p) {}
             public void onBeginningOfSpeech() {}
@@ -136,8 +137,9 @@ public class VoiceAddActivity extends Activity {
             public void onEndOfSpeech() { tv.setText("…"); }
             public void onPartialResults(Bundle p) { ArrayList<String> a = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION); if (a != null && a.size() > 0) tv.setText(a.get(0)); }
             public void onEvent(int t, Bundle p) {}
-            public void onError(int e) { if (confirmCb != null) { confirmCb = null; speakAndEnd("Не расслышал. Отменяю."); return; } speakAndEnd(e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ? "Не расслышал. Повторите." : "Не получилось записать голос."); }
+            public void onError(int e) { if (me != sr || done) return; if (confirmCb != null) { if (confirmRetry++ < 1) { try { new ToneGenerator(AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP2, 250); } catch (Exception x) {} h.postDelayed(new Runnable() { public void run() { if (!done && confirmCb != null) beginRecognize(); } }, 600); return; } confirmCb = null; speakAndEnd("Не расслышал. Отменяю."); return; } speakAndEnd(e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ? "Не расслышал. Повторите." : "Не получилось записать голос."); }
             public void onResults(Bundle r) {
+                if (me != sr || done) return;
                 ArrayList<String> a = r.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 String t = a != null && a.size() > 0 ? a.get(0).trim() : "";
                 if (confirmCb != null) { Cb c = confirmCb; confirmCb = null; done = true; c.on(t.length() == 0 ? "нет" : t); return; }
@@ -370,6 +372,8 @@ public class VoiceAddActivity extends Activity {
         if (tts == null) { finish(); return; }
         final int gen = ++sayGen;
         try { if (sr != null) { sr.cancel(); } } catch (Exception e) {}
+        try { tts.stop(); } catch (Exception e) {}
+        Neural.stopAll();
         long d = 0;
         if (btRoute || prevMode >= 0) { releaseBt(); btRoute = false; prevMode = -1; d = 700; }   // ответ читаем в обычном (чистом, стерео) режиме наушников — без перескоков звука из «телефонного» канала
         final String nv = Neural.selected(Store.p(this));
@@ -378,7 +382,7 @@ public class VoiceAddActivity extends Activity {
         final float spd = rr[Math.max(0, Math.min(3, Store.p(this).getInt("v_rate", 1)))];
         h.postDelayed(new Runnable() { public void run() {
             if (neural) Neural.speak(VoiceAddActivity.this, nv, t, spd, new Neural.Done() { public void end(boolean ok) {
-                h.post(new Runnable() { public void run() { if (ok) endSpeech(); else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); } });   // облако/нейро не вышли (нет сети) — читает системный голос
+                h.post(new Runnable() { public void run() { if (gen != sayGen) return; if (ok) endSpeech(); else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); } });   // облако/нейро не вышли (нет сети) — читает системный голос
             } });
             else tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok");
         } }, d);

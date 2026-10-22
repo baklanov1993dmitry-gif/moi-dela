@@ -78,7 +78,11 @@ final class Neural {
 
     /** Озвучить текст (в фоне, потоково). onEnd вызывается всегда; ok=false — не вышло (можно прочитать системным голосом). */
     interface Done { void end(boolean ok); }
+    private static volatile int token = 0; private static volatile android.media.MediaPlayer curMp = null; private static volatile AudioTrack curAt = null;
+    /** прервать любую текущую озвучку (чтобы голоса не накладывались) */
+    static void stopAll() { token++; try { if (curMp != null) curMp.stop(); } catch (Throwable e) {} try { if (curAt != null) { curAt.pause(); curAt.flush(); } } catch (Throwable e) {} }
     private static void cloud(final Context ctx, final String v, final String text, final float speed, final Done end) {
+        final int my = ++token;
         new Thread(new Runnable() { public void run() {
             boolean ok = false; File f = null;
             try {
@@ -89,12 +93,12 @@ final class Neural {
                 final Object lock = new Object(); final boolean[] fin = {false};
                 android.media.MediaPlayer mp = new android.media.MediaPlayer();
                 mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
-                mp.setDataSource(f.getPath()); mp.prepare();
+                mp.setDataSource(f.getPath()); mp.prepare(); if (my != token) { try { mp.release(); } catch (Throwable e) {} return; } curMp = mp;
                 mp.setOnCompletionListener(new android.media.MediaPlayer.OnCompletionListener() { public void onCompletion(android.media.MediaPlayer m) { synchronized (lock) { fin[0] = true; lock.notifyAll(); } } });
                 mp.start();
                 synchronized (lock) { long t0 = System.currentTimeMillis(); while (!fin[0] && System.currentTimeMillis() - t0 < 25000) lock.wait(500); }
                 try { mp.release(); } catch (Throwable e) {}
-                ok = true;
+                if (curMp == mp) curMp = null; ok = my == token;
             } catch (Throwable e) { ok = false; }
             finally { end.end(ok); }
         } }).start();
