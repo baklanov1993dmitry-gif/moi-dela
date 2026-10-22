@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 08:36";
+const BUILD = "22.10 08:40";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1528,7 +1528,7 @@ function dtpInit(p, t) {
   const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
   let date = null, time = null;
   if (p.type === "due") date = t && t.due || null;
-  else if (t && t.remind_at) { const d = new Date(t.remind_at); date = isoLocal(d); time = hm(d.getHours() * 60 + d.getMinutes()); }
+  else if (t && (ui.remXi != null ? (ui.remXi >= 0 ? (t.remind_queue || [])[ui.remXi] : null) : t.remind_at)) { const d = new Date(ui.remXi != null ? t.remind_queue[ui.remXi] : t.remind_at); date = isoLocal(d); time = hm(d.getHours() * 60 + d.getMinutes()); }
   else { let m = roundUp(nowMin + 60, 30); date = today; if (m >= 1440 - 30) { date = addDays(today, 1); m = 9 * 60; } time = hm(m); }
   const base = parseISO(date || today);
   ref.date = date; ref.time = time; ref.y = base.getFullYear(); ref.m = base.getMonth();
@@ -1685,6 +1685,7 @@ const dtpActs = {
   },
   drel(a) {
     const x = new Date(Date.now() + (+a.dataset.v) * 60000); x.setSeconds(0, 0);
+    if (ui.remXi != null) { remPut(dtpId(), x.toISOString()); dtpDone(); return; }
     patchTask(dtpId(), { remind_at: x.toISOString() }); applyLoud(dtpId()); askNotify(); dtpDone();
   },
   dok() {
@@ -1693,11 +1694,12 @@ const dtpActs = {
     if (parseTimeText(D.time) == null) return toast("Время нужно в виде 18:30 или 1830");
     const iso = dtpIso();
     if (Date.parse(iso) < Date.now() - 60000) return toast("Это время уже прошло — выберите позже");
+    if (ui.remXi != null) { remPut(dtpId(), iso); dtpDone(); return; }
     patchTask(dtpId(), RV ? { remind_at: iso, remind_via: D.via && D.via !== "tg" ? D.via : null } : { remind_at: iso }); applyLoud(dtpId()); askNotify(); dtpDone();
   },
   dplace(a) { const id = a.dataset.v || null; patchTask(dtpId(), { remind_place: id }); if (id) { try { if (typeof Notification !== "undefined") askNotify(); } catch (e) {} toast("📍 Напомню в Telegram, когда окажешься рядом: " + placeName(id)); } dtpDone(); },
   dmap() { const id = dtpId(); dtpDone(); mapPick(id); },
-  dclear() { const D = ui.dtp; if (!D) return; if (D.mode === "due") setDue(dtpId(), null); else patchTask(dtpId(), { remind_at: null }); dtpDone(); },
+  dclear() { const D = ui.dtp; if (!D) return; if (ui.remXi != null && ui.remXi >= 0) { const t = S.tasks[dtpId()]; if (t) { const q = (t.remind_queue || []).slice(); q.splice(ui.remXi, 1); patchTask(t.id, { remind_queue: q }); } ui.remXi = null; dtpDone(); return; } if (D.mode === "due") setDue(dtpId(), null); else patchTask(dtpId(), { remind_at: null }); dtpDone(); },
   dtpclose() { ui.dtp = null; closePop(); render(); },
   // шаги ±15 минут у полей времени в «Дне»
   tstep(a) {
@@ -4175,15 +4177,16 @@ function remAdd(id, iso) {
   if (!u.length) return;
   patchTask(id, { remind_at: u[0], remind_queue: u.slice(1) }); applyLoud(id); askNotify();
 }
+function remPut(id, iso) {   // из того же окна выбора, что и у первого напоминания: новое или замена существующего из очереди
+  const t = S.tasks[id]; if (!t) return; const xi = ui.remXi; ui.remXi = null;
+  if (xi != null && xi >= 0) { const q = (t.remind_queue || []).slice(); q.splice(xi, 1); t.remind_queue = q; }
+  remAdd(id, iso);
+}
 function remExtraHTML(t, id) {
   if (!t.remind_at && !(t.remind_queue || []).length) return "";
   const q = t.remind_queue || [];
-  const chips = q.map((x, i) => '<span class="rx-chip">' + esc(fmtRemind(x).replace("Напомнить в ", "")) + '<button data-a="remxdel" data-id="' + id + '" data-i="' + i + '" title="Убрать">✕</button></span>').join("");
-  const op = ui.remx === id;
-  const nm = Date.now(), mk = (lab, m) => '<button class="tool" data-a="remxadd" data-id="' + id + '" data-m="' + m + '">' + lab + "</button>";
-  return '<div class="rx-box">' + (chips ? '<div class="rx-l">Ещё напоминания:</div><div class="rx-ch">' + chips + "</div>" : "") +
-    '<button class="tool" data-a="remxopen" data-id="' + id + '">' + (op ? "Скрыть" : "＋ Ещё напоминание") + "</button>" +
-    (op ? '<div class="rx-add">' + mk("через 30 мин", 30) + mk("через 1 ч", 60) + mk("через 3 ч", 180) + mk("завтра 9:00", "tom") + '<input type="datetime-local" id="remx-in" class="ng-in"><button class="tool" data-a="remxadd" data-id="' + id + '" data-m="in">Добавить</button></div>' : "") + "</div>";
+  return q.map((x, i) => '<div class="drow act" data-a="remxpop" data-p="remind" data-id="' + id + '" data-xi="' + i + '">' + ic("bell", 18) + '<span class="dtx">' + esc(fmtRemind(x)) + '</span><button class="xbtn" data-a="remxdel" data-id="' + id + '" data-i="' + i + '" title="Убрать">' + ic("x", 15) + "</button></div>").join("") +
+    '<div class="drow" data-a="remxpop" data-p="remind" data-id="' + id + '" data-xi="-1">' + ic("plus", 18) + '<span class="dtx">Ещё напоминание</span></div>';
 }
 function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { acts.qaopen(); if (voiceAuto && micOK()) setTimeout(() => micToggle("qa-input", true), 500); } catch (e) {} }
 function shareMaybe() {
@@ -4629,7 +4632,7 @@ function onBack() {
 }
 
 /* ----- действия по клику ----- */
-const closePop = () => { ui.pop = null; ui.dtp = null; };
+const closePop = () => { ui.pop = null; ui.dtp = null; ui.remXi = null; };
 const goView = v => { if (v !== view) { ui.vfade = 1; mClear(); } view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
 const patchTask = (id, o) => { const d = draftOf(id); if (d) Object.assign(d, o); else upd(id, o); };
 const setDue = (id, v) => {
@@ -4655,16 +4658,8 @@ const acts = {
   qaopen() { ui.qaText = ""; ui.qa = { due: null, remind_at: null, repeat_rule: null, my: view === "myday", starred: view === "starred" }; closePop(); render(); const i = $("qa-input"); if (i) i.focus(); },
   openadd() { jset("mytasks_openadd", !jget("mytasks_openadd", false)); toast(jget("mytasks_openadd", false) ? "При запуске приложения сразу откроется «Новая задача» (удобно для голосовой команды «Открой Мои дела»)" : "Выключено"); render(); },
   voiceset() { location.href = "moidela://voice"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
-  remxopen(a) { ui.remx = ui.remx === a.dataset.id ? null : a.dataset.id; render(); },
+  remxpop(a, e) { ui.remXi = +a.dataset.xi; acts.pop(a, e); if (!ui.pop) ui.remXi = null; },
   remxdel(a) { const t = S.tasks[a.dataset.id]; if (!t) return; const q = (t.remind_queue || []).slice(); q.splice(+a.dataset.i, 1); patchTask(t.id, { remind_queue: q }); render(); },
-  remxadd(a) {
-    const id = a.dataset.id, m = a.dataset.m; let d;
-    if (m === "in") { const v = ($("remx-in") || {}).value; if (!v) { toast("Выбери дату и время"); return; } d = new Date(v); }
-    else if (m === "tom") { d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); }
-    else d = new Date(Date.now() + (+m) * 60000);
-    if (isNaN(d) || d.getTime() < Date.now() - 60000) { toast("Это время уже прошло"); return; }
-    d.setSeconds(0, 0); remAdd(id, d.toISOString()); ui.remx = null; toast("Добавлено напоминание"); render();
-  },
   qamic() { micToggle("qa-input"); },
   nmic() { micToggle("newtask"); },
   qaclose(a, e) { if (e.target !== a) return; ui.qa = null; closePop(); render(); },
