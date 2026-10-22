@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 13:37";
+const BUILD = "22.10 13:43";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -483,7 +483,7 @@ function rvSet(ok) { if (ok === RV) return; RV = ok; COLS.tasks = tcols(); try {
 function rpSet(ok) { if (ok === RP) return; RP = ok; COLS.tasks = tcols(); try { localStorage.setItem("mytasks_rp", ok ? "1" : "0"); } catch (e) {} }
 function toRow(tbl, o) {
   const r = {}; COLS[tbl].forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
-  if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.steps = r.steps || []; r.files = r.files || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
+  if (tbl === "tasks") { r.note = r.note == null ? "" : r.note; r.remind_queue = Array.isArray(r.remind_queue) ? r.remind_queue : []; r.steps = r.steps || []; r.files = r.files || []; r.done = !!r.done; r.starred = !!r.starred; r.my_day = !!r.my_day; r.status = r.status || "active"; r.title = r.title || "(без названия)"; }
   else if (tbl === "time_log") { r.title = r.title || ""; r.note = r.note || ""; }
   else if (tbl === "foods" || tbl === "food_log" || tbl === "weight_log" || tbl === "user_settings") { if (r.portions === null) r.portions = []; if (r.data === null) r.data = {}; }
   else { r.icon = r.icon == null ? "🗂️" : r.icon; r.position = r.position || 0; r.name = r.name || "Список"; }
