@@ -225,6 +225,17 @@ Deno.serve(async (req) => {
     if (!r.ok) return ok({ intent: "add", speak: "Не получилось записать.", error: "db" }, 500);
     return done("Записано. " + title + (rem ? ". Напоминание в " + hm(Date.parse(rem)) : due === today ? ". На сегодня" : due === tomorrow ? ". На завтра" : "") + ".", { id: t.id, title, added: true });
   }
+  if (a === "gdiag") {   // диагностика Gemini: сырые ответы Google по каждой модели (ключ не показываем)
+    const gk = Deno.env.get("GEMINI_API_KEY"); if (!gk) return ok({ error: "GEMINI_API_KEY не задан" });
+    const out: any[] = [];
+    for (const model of [Deno.env.get("GEMINI_MODEL") || "", "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"].filter((m) => m)) {
+      for (const [ep, body] of [["interactions", { model, input: [{ type: "text", text: "Скажи: ок" }] }], [`models/${model}:generateContent`, { contents: [{ parts: [{ text: "Скажи: ок" }] }] }]] as any[]) {
+        try { const r = await fetch("https://generativelanguage.googleapis.com/v1beta/" + ep, { method: "POST", headers: { "x-goog-api-key": gk, "content-type": "application/json" }, body: JSON.stringify(body) }); const t = await r.text(); out.push({ model, ep: ep.split("/")[0], status: r.status, body: t.slice(0, 350) }); } catch (e) { out.push({ model, ep, err: String(e).slice(0, 200) }); }
+      }
+    }
+    try { const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100", { headers: { "x-goog-api-key": gk } }); const j = await r.json().catch(() => ({})); out.push({ list: r.status, names: (j.models || []).map((m: any) => String(m.name).replace("models/", "")).filter((n: string) => /flash|pro/.test(n)).slice(0, 40), err: j.error?.message?.slice(0, 200) }); } catch (e) { out.push({ list_err: String(e).slice(0, 200) }); }
+    return ok({ diag: out });
+  }
   if (a === "tts") {   // озвучка Яндекс SpeechKit v3: {text, voice, speed} -> {audio: base64 mp3}. Секреты YANDEX_API_KEY, YANDEX_FOLDER_ID
     const yk = Deno.env.get("YANDEX_API_KEY"), yf = Deno.env.get("YANDEX_FOLDER_ID");
     if (!yk || !yf) return ok({ error: "no_keys" }, 501);
