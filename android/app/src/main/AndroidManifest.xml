@@ -81,6 +81,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity android:name=".VoiceSettingsActivity" android:exported="true" android:label="Голос · настройки" android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="moidela" android:host="voice" />
+            </intent-filter>
+        </activity>
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".ActionReceiver" android:exported="false" />
         <receiver android:name=".JournalNotifReceiver" android:exported="false" />

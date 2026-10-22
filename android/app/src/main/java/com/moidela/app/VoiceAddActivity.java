@@ -20,6 +20,7 @@ import android.speech.tts.UtteranceProgressListener;
 import android.view.Gravity;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -40,9 +41,12 @@ public class VoiceAddActivity extends Activity {
         super.onCreate(b);
         if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
         tv = new TextView(this); tv.setTextSize(22); tv.setGravity(Gravity.CENTER); tv.setPadding(60, 60, 60, 60); tv.setText("🎤 Говорите…");
-        setContentView(tv);
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this); box.setOrientation(android.widget.LinearLayout.VERTICAL); box.addView(tv);
+        android.widget.Button gear = new android.widget.Button(this); gear.setText("⚙ Настройки"); box.addView(gear);
+        gear.setOnClickListener(new android.view.View.OnClickListener() { public void onClick(android.view.View v) { startActivity(new Intent(VoiceAddActivity.this, VoiceSettingsActivity.class)); finish(); } });
+        setContentView(box);
         tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() { public void onInit(int s) {
-            if (s == TextToSpeech.SUCCESS) { tts.setLanguage(new Locale("ru", "RU")); ttsReady = true; if (pendingSpeak != null) say(pendingSpeak); }
+            if (s == TextToSpeech.SUCCESS) { applyVoice(tts, Store.p(VoiceAddActivity.this)); ttsReady = true; if (pendingSpeak != null) say(pendingSpeak); }
             else if (pendingSpeak != null) finishSoon();
         } });
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
@@ -65,7 +69,7 @@ public class VoiceAddActivity extends Activity {
     private void startListen() {
         if (started) return; started = true;
         if (!SpeechRecognizer.isRecognitionAvailable(this)) { speakAndEnd("Распознавание речи недоступно на телефоне."); return; }
-        try { new ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_BEEP, 150); } catch (Exception e) {}
+        if (Store.p(this).getBoolean("v_beep", true)) try { new ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_BEEP, 150); } catch (Exception e) {}
         try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(60); } catch (Exception e) {}
         sr = SpeechRecognizer.createSpeechRecognizer(this);
         sr.setRecognitionListener(new RecognitionListener() {
@@ -92,6 +96,15 @@ public class VoiceAddActivity extends Activity {
         i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
         sr.startListening(i);
         h.postDelayed(new Runnable() { public void run() { if (!done && sr != null) sr.stopListening(); } }, 20000);
+    }
+
+    static void applyVoice(TextToSpeech t, android.content.SharedPreferences sp) {
+        try {
+            t.setLanguage(new Locale("ru", "RU"));
+            float[] r = {0.8f, 1.0f, 1.25f, 1.5f}; t.setSpeechRate(r[Math.max(0, Math.min(3, sp.getInt("v_rate", 1)))]);
+            String vn = sp.getString("v_voice", "");
+            if (vn.length() > 0) for (android.speech.tts.Voice v : t.getVoices()) if (vn.equals(v.getName())) { t.setVoice(v); break; }
+        } catch (Exception e) {}
     }
 
     /** срок из фразы: сегодня / завтра / послезавтра / через N дней / в понедельник… (только день, без времени) */
@@ -127,18 +140,25 @@ public class VoiceAddActivity extends Activity {
             String res = null;
             try {
                 JSONObject j = new JSONObject().put("title", title);
-                j.put("myday", true);   // всегда в «Мой день» со сроком сегодня
+                android.content.SharedPreferences sp = Store.p(c);
+                String lid = sp.getString("v_list", "");
+                if (!sp.contains("v_list")) { try { JSONArray la = new JSONObject(sp.getString("data", "{}")).optJSONArray("lists"); if (la != null) for (int i = 0; i < la.length(); i++) if (la.optJSONObject(i).optString("name").toLowerCase(Locale.ROOT).contains("свои дела")) { lid = la.optJSONObject(i).optString("id"); break; } } catch (Exception e) {} }
+                if (lid.length() > 0) j.put("list_id", lid);
+                int dm = sp.getInt("v_due", 1);
+                if (dm == 1) j.put("today", true);
+                else if (dm == 2) { Calendar cc = Calendar.getInstance(); cc.add(Calendar.DAY_OF_MONTH, 1); j.put("due", String.format(Locale.US, "%04d-%02d-%02d", cc.get(Calendar.YEAR), cc.get(Calendar.MONTH) + 1, cc.get(Calendar.DAY_OF_MONTH))); }
+                if (sp.getBoolean("v_myday", false)) j.put("myday", true);
                 res = Net.post(Store.api(c, "add", ""), j.toString());
             } catch (Exception e) {}
             final boolean ok = res != null;
             if (ok) Sync.run(c);
             h.post(new Runnable() { public void run() {
-                speakAndEnd(ok ? "Записано. " + title : "Нет связи. Не записалось.");
+                int sm = Store.p(c).getInt("v_say", 0); speakAndEnd(!ok ? "Нет связи. Не записалось." : sm == 0 ? "Записано. " + title : sm == 1 ? "Записано." : "");
             } });
         } }).start();
     }
 
-    private void speakAndEnd(String t) { done = true; if (tv != null) tv.setText(t); if (ttsReady) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
+    private void speakAndEnd(String t) { done = true; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, 700); return; } if (ttsReady) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
     private void say(String t) { if (tts == null) { finish(); return; } tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "ok"); h.postDelayed(new Runnable() { public void run() { finish(); } }, 12000); }
     private void finishSoon() { h.postDelayed(new Runnable() { public void run() { finish(); } }, 500); }
 
