@@ -63,7 +63,7 @@ window.APP_CONFIG = {
 </script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 13:43";
+const BUILD = "22.10 16:08";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -498,7 +498,7 @@ function errText(e) {
   const m = (e && (e.message || e.error_description)) || String(e);
   if (/fetch|network|Load failed|abort/i.test(m)) return "нет связи";
   if (/JWT|expired|token/i.test(m)) return "сессия истекла — войдите заново";
-  if (/column|schema cache/i.test(m)) return "в базе нет поля: " + ((/'([\w.]+)' column|column "?([\w.]+)"?/i.exec(m) || [])[1] || (/column "?([\w.]+)/i.exec(m) || [])[1] || String(m).slice(0, 70)) + " — нужна свежая миграция (последняя v25)";
+  if (/column|schema cache/i.test(m)) return "в базе нет поля: " + ((/'([\w.]+)' column|column "?([\w.]+)"?/i.exec(m) || [])[1] || (/column "?([\w.]+)/i.exec(m) || [])[1] || String(m).slice(0, 70)) + " — нужна свежая миграция (последняя v26)";
   return String(m).slice(0, 90);
 }
 function setSync(state, msg) { sync = { state, msg: msg || "" }; updateSyncUI(); }
@@ -1003,7 +1003,9 @@ const pushOn = () => !!jget(PUSH_KEY, false);
 const b64u = s => { const b = (s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"), r = atob(b); return Uint8Array.from(r, c => c.charCodeAt(0)); };
 async function savePushSub(sub) {
   const j = sub.toJSON();
-  return sb.from("push_subs").upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_id: S.user.id }, { onConflict: "endpoint" });
+  const r = await sb.from("push_subs").upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_id: S.user.id }, { onConflict: "endpoint" });
+  if (!r.error) return r;
+  return sb.rpc("push_claim", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });   // подписка этого браузера могла быть у другого аккаунта
 }
 async function pushDiag() {
   const L = [], np = "Notification" in window ? Notification.permission : "нет API";
