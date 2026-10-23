@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 22:14";
+const BUILD = "23.10 22:37";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -926,10 +926,10 @@ async function fileTransfer(files) {   // файлы с компьютера б�
   if (!l) { l = { id: uid(), name: "Файлы", icon: "📎", position: listsArr().length, created_at: nowISO(), group_name: null, color: null }; S.lists[l.id] = l; mark("lists", l.id, "u"); }
   const d = new Date(), z = n => String(n).padStart(2, "0");
   const t = addTask({ list_id: l.id, title: (files.length === 1 ? files[0].name : "Файлы " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + ":" + z(d.getMinutes())).slice(0, 200) });
-  goView("list:" + l.id); render(); let n = 0;
+  goView("files"); render(); let n = 0;
   n = await uploadAll(files, t.id);
   if (!n) { upd(t.id, {}); }
-  toast(n ? "Готово: " + n + " файл(ов) в списке «Файлы» — на телефоне они тоже будут" : "Ничего не загрузилось");
+  toast(n ? "Готово: " + n + " файл(ов) в «Файлах» — на телефоне они тоже будут" : "Ничего не загрузилось");
 }
 async function openFile(i) {
   const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
@@ -962,8 +962,8 @@ async function imgHydrate() {
     document.querySelectorAll("img.athumb[data-path]").forEach(im => { const u = imgUrl(im.dataset.path); if (u && !im.getAttribute("src")) im.src = u; });
   } catch (e) {}
 }
-async function viewImage(i) {   // крупный просмотр поверх всего (Esc или клик — закрыть)
-  const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
+async function viewImage(i) { const t = S.tasks[selId], f = t && t.files[i]; if (f) return viewImageF(f); }
+async function viewImageF(f) {   // крупный просмотр поверх всего (Esc или клик — закрыть)
   let u = imgUrl(f.path); if (!u) { try { const r = await sb.storage.from("attachments").createSignedUrl(f.path, 3600); u = r.data && r.data.signedUrl; } catch (e) {} }
   if (!u) return toast("Не удалось открыть картинку");
   const o = document.createElement("div"); o.className = "lbox";
@@ -998,6 +998,36 @@ document.addEventListener("paste", e => {   // Ctrl+V: картинка/файл
   const named = fs.map(f => (/^image\//.test(f.type) && (!f.name || /^image\.\w+$/i.test(f.name))) ? new File([f], "Снимок " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + "-" + z(d.getMinutes()) + (/jpe?g$/.test(f.type) ? ".jpg" : ".png"), { type: f.type }) : f);
   if (open) { uploadAll(named, selId); } else fileTransfer(named);
 });
+/* ----- раздел «Файлы»: хранилище (внутри — задачи списка «Файлы», поэтому «Поделиться» с телефона и синк работают как раньше) ----- */
+const filesList = () => listsArr().find(x => /^файлы$/i.test(x.name));
+function filesAll() {
+  const l = filesList(), out = []; if (!l) return out;
+  Object.values(S.tasks).forEach(t => { if (t.list_id === l.id && !t.parent_id && t.files) t.files.forEach((f, i) => out.push({ f, t, i })); });
+  return out.sort((a, b) => String(b.t.created_at || "").localeCompare(String(a.t.created_at || "")) || a.i - b.i);
+}
+const fExt = f => ((f.name.match(/\.([A-Za-z0-9]{1,6})$/) || [, ""])[1] || "файл").toUpperCase();
+function filesMainHTML(vi) {
+  const q = (ui.fq || "").trim().toLowerCase(), all = filesAll(), rows = q ? all.filter(x => x.f.name.toLowerCase().indexOf(q) >= 0) : all, z = "var(--z,1)";
+  const dt = iso => { if (!iso) return ""; const d = new Date(iso); return d.getDate() + " " + MONS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); };
+  const card = x => '<div class="fcard" data-fk="' + x.t.id + ':' + x.i + '">' +
+    (isImg(x.f) ? '<div class="fth" data-a="fopen" data-t="' + x.t.id + '" data-i="' + x.i + '"><img class="athumb" data-path="' + esc(x.f.path) + '" alt=""' + (imgUrl(x.f.path) ? ' src="' + esc(imgUrl(x.f.path)) + '"' : "") + "></div>"
+      : '<div class="fth fico" data-a="fopen" data-t="' + x.t.id + '" data-i="' + x.i + '">' + ic("clip", 30) + "<b>" + esc(fExt(x.f)) + "</b></div>") +
+    '<div class="fnm" title="' + esc(x.f.name) + '">' + esc(x.f.name) + '</div><div class="fsb">' + fmtSize(x.f.size || 0) + (x.t.created_at ? " · " + dt(x.t.created_at) : "") + "</div>" +
+    '<div class="fact"><button class="btn" data-a="fdl" data-t="' + x.t.id + '" data-i="' + x.i + '" title="Скачать">' + ic("dl", 16) + ' Скачать</button><button class="xbtn" data-a="fdel" data-t="' + x.t.id + '" data-i="' + x.i + '" title="Удалить">' + ic("trash", 16) + "</button></div></div>";
+  return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, rows.length, "") + '<div class="mhead' + (isMobile() ? " mhide" : "") + '"><h1>' + ic("clip", 22) + "<span>Файлы</span></h1><span class=\"sp\"></span></div>" +
+    '<div class="scroll" id="list"><div style="padding:6px 16px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" data-a="fpick">' + ic("plus", 16) + " Загрузить</button>" +
+    '<div class="searchbox" style="flex:1;min-width:150px;max-width:360px">' + ic("search", 16) + '<input id="fq" placeholder="Поиск по названию" autocomplete="off" value="' + esc(ui.fq || "") + '"></div>' +
+    '<span style="color:var(--sub);font-size:calc(13px*' + z + ')">' + (all.length ? all.length + " шт. · " + fmtSize(all.reduce((a, x) => a + (x.f.size || 0), 0)) : "") + "</span></div>" +
+    (rows.length ? '<div class="fgrid">' + rows.map(card).join("") + "</div>" : '<div style="text-align:center;padding:60px 16px;color:var(--sub)">' + (all.length ? "Ничего не найдено" : "Пока пусто. Перетащи файлы в окно, вставь Ctrl+V или нажми «Загрузить». С телефона — «Поделиться» → Мои дела.") + "</div>") +
+    "</div></div>" + (setTimeout(imgHydrate, 0), "");
+}
+async function fileDownload(f) {
+  try {
+    const r = await sb.storage.from("attachments").createSignedUrl(f.path, 120, { download: f.name });
+    if (r.error || !r.data) return toast("Не удалось скачать");
+    const a = document.createElement("a"); a.href = r.data.signedUrl; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { toast("Не удалось скачать: " + errText(e)); }
+}
 const fmtSize = b => b >= 1073741824 ? (b / 1073741824).toFixed(1).replace(/\.0$/, "").replace(".", ",") + " ГБ" : b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
 
 /* ----- уведомления и напоминания ----- */
@@ -2453,6 +2483,7 @@ function desktopInit(app) {
 const mCSS = `
 .taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
 .mtop.msb{animation:msbin .15s ease-out;background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} @keyframes msbin{from{opacity:0}} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:14px 16px 90px} .fcard{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:4px;min-width:0} .fth{height:110px;border-radius:10px;overflow:hidden;background:var(--bg2,rgba(127,127,127,.1));display:flex;align-items:center;justify-content:center;cursor:pointer} .fth img{width:100%;height:100%;object-fit:cover} .fth.fico{flex-direction:column;gap:4px;color:var(--sub)} .fth.fico b{font-size:calc(12px*var(--z,1));letter-spacing:.5px} .fnm{font-size:calc(13.5px*var(--z,1));font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px} .fsb{font-size:calc(12px*var(--z,1));color:var(--sub);padding:0 2px} .fact{display:flex;gap:6px;align-items:center;margin-top:2px} .fact .btn{flex:1;padding:6px 8px;font-size:calc(13px*var(--z,1));display:inline-flex;align-items:center;justify-content:center;gap:6px} .fact .xbtn{flex:0 0 auto;display:inline-flex}
 .mtop.msb .mcnt{color:#fff} .smode{display:inline-flex;border:1px solid var(--ln);border-radius:16px;overflow:hidden;background:var(--card)} .smode button{padding:5px 12px;font-size:calc(12.5px*var(--z,1));color:var(--sub);cursor:pointer;white-space:nowrap} .smode button.on{background:var(--acc);color:#fff}
 .btn,.jr-chip,.tool,.mt{transition:transform .22s cubic-bezier(.34,1.56,.64,1)} .btn:active,.jr-chip:active,.tool:active,.mt:active{transform:scale(.95)}
 .sbgrip{cursor:grab;touch-action:none;padding:2px 6px;color:var(--sub);font-weight:700;letter-spacing:-2px;user-select:none;align-self:center} .sbgrip:active{cursor:grabbing} .sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
@@ -3709,6 +3740,7 @@ function viewInfo() {
   if (view === "team") return { svg: "users", name: "Команда", sub: "Сотрудники: выбери человека — увидишь его дела (только чтение)" };
   if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
   if (view === "food") return { svg: "food", name: "Питание", sub: "КБЖУ, вода и вес" };
+  if (view === "files") return { svg: "clip", name: "Файлы", sub: "Хранилище: с компьютера на телефон и обратно" };
   if (view === "notes") return { svg: "bulb", name: "Заметки", sub: "Мысли, идеи, наблюдения — только для тебя" };
   if (view === "health") return { svg: "heart", name: "Здоровье", sub: "Дневник самочувствия — только для тебя" };
   if (view === "journal") return { svg: "note", name: "Журнал", sub: "Что делал: со временем или за период" };
@@ -3858,7 +3890,7 @@ function leftHTML(c) {
     return '<div class="sech" data-a="stoggle" data-g="§' + k + '"><span class="tx">' + title + "</span>" + (col ? '<span class="pv">' + items.map(i => '<i style="color:' + i[3] + '">' + ic(i[1], 15) + "</i>").join("") + "</span>" : "") + ic(col ? "chevr" : "chevd", 14) + "</div>" +
       (col ? "" : '<div class="sbody">' + items.map(i => sm(i[0], i[1], i[2], 0, i[3])).join("") + extra + "</div>");
   };
-  const ls = listsArr().sort((a, b) => (a.group_name === ARCH) - (b.group_name === ARCH)), seen = new Set(); let tree = "";   // архив — в самом низу
+  const ls = listsArr().filter(x => !/^файлы$/i.test(x.name)).sort((a, b) => (a.group_name === ARCH) - (b.group_name === ARCH)), seen = new Set(); let tree = "";   // архив — в самом низу
   for (const l of ls) {
     const g = l.group_name;
     if (!g) { tree += lc(l); continue; }
@@ -3869,7 +3901,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + (PR.showDay ? sm("day", "clock", "День по часам", 0, "#0f6cbd") : "") +
+    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + (PR.showDay ? sm("day", "clock", "День по часам", 0, "#0f6cbd") : "") + (isLite() ? "" : sm("files", "clip", "Файлы", filesAll().length, "#69797e")) +
     (isLite() ? "" : sec("dia", "Дневники", [["journal", "note", "Журнал", "#8764b8"], ["food", "food", "Питание", "#e3680c"], ["health", "heart", "Здоровье", "#e5484d"], ["notes", "bulb", "Заметки", "#2b88d8"]], S.user ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") +
       sec("wrk", "Работа", [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"]], "")) + (isLite() ? sm("week", "ccheck", "Итоги недели", 0, "#038387") : "") +
     '<div class="sech nocl"><span class="tx">Списки</span></div>' + tree + "</div>" +
@@ -4572,7 +4604,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { ng
 function appHTML() {
   if (view.indexOf("list:") === 0 && !S.lists[view.slice(5)]) view = HOME();
   if (view === "myday" && !PR.myday) view = "all";
-  if (!ui.vfix && S.user) { ui.vfix = 1; if (view === "all" || view === "starred" || (view === "day" && !PR.showDay)) view = HOME(); }   // этих пунктов в меню больше нет
+  if (!ui.vfix && S.user) { ui.vfix = 1; if (view === "all" || view === "starred" || (view === "day" && !PR.showDay)) view = HOME();
+    { const fl = filesList(); if (fl && view === "list:" + fl.id) view = "files"; } }   // этих пунктов в меню больше нет
   if (view === "search" && !ui.q) view = prevView || HOME();
   if (selId && !S.tasks[selId]) selId = null;
   const c = { myday: 0, starred: 0, someday: 0, all: 0, planned: 0 }, items = [], done = [];
@@ -4590,7 +4623,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function morphKeep(o, n, keep, nk) {
@@ -4948,6 +4981,15 @@ const acts = {
   qaclose(a, e) { if (e.target !== a) return; ui.qa = null; closePop(); render(); },
   qatog(a) { const f = a.dataset.f; ui.qa[f] = !ui.qa[f]; render(); const i = $("qa-input"); if (i) i.focus(); },
   msearch() { ui.left = false; ui.msearch = true; render(); const q = $("q"); if (q) q.focus(); },
+  fpick() { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.onchange = () => { if (i.files.length) fileTransfer(i.files); }; i.click(); },
+  fopen(a) { const t = S.tasks[a.dataset.t], f = t && t.files && t.files[+a.dataset.i]; if (!f) return; if (isImg(f)) viewImageF(f); else fileDownload(f); },
+  fdl(a) { const t = S.tasks[a.dataset.t], f = t && t.files && t.files[+a.dataset.i]; if (f) fileDownload(f); },
+  fdel(a) {
+    const t = S.tasks[a.dataset.t], i = +a.dataset.i, f = t && t.files && t.files[i]; if (!f) return;
+    if (!confirm("Удалить «" + f.name + "» из хранилища?")) return;
+    if (t.files.length === 1) deleteTask(t.id); else { try { sb.storage.from("attachments").remove([f.path]); } catch (e) {} ui.st = undefined; upd(t.id, { files: t.files.filter((x, k) => k !== i) }); }
+    toast("Файл удалён"); render();
+  },
   sfstar() { ui.sf = ui.sf || {}; ui.sf.s = !ui.sf.s; render(); },
   sfclr() { ui.sf = null; render(); },
   smode(a) { PR.sm = a.dataset.v === "a" ? "a" : "t"; savePrefs(); render(); },
@@ -6498,6 +6540,7 @@ function init() {
     if (e.target.id === "newtask") { (ui.dd || (ui.dd = newDD())).text = e.target.value; }
     if (e.target.id && e.target.id.indexOf("jr-") === 0) { jrInput(e.target); return; }
     if (e.target.id && e.target.id.indexOf("nu-") === 0) { nuInput(e.target); return; }
+    if (e.target.id === "fq") { ui.fq = e.target.value; clearTimeout(qt); qt = setTimeout(renderSoon, 130); return; }
     if (e.target.id === "ds-q") { dayInput("ds-q", e.target.value); return; }
     if (e.target.id === "qa-input") { ui.qaText = e.target.value; const sb = document.querySelector(".qsend"); if (sb) sb.classList.toggle("on", !!e.target.value.trim()); return; }   // черновик текста не теряется при выборе даты/времени
     if (e.target.id !== "q") return;
