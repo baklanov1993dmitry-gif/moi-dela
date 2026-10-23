@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
@@ -60,6 +61,16 @@ public class VoiceSettingsActivity extends Activity {
             new AlertDialog.Builder(VoiceSettingsActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle(label)
                 .setSingleChoiceItems(items.toArray(new String[0]), sel[0], new DialogInterface.OnClickListener() { public void onClick(DialogInterface d, int i) { sel[0] = i; d.dismiss(); show.run(); pick.on(i); saveAll.run(); } })
                 .setNegativeButton("Отмена", null).show();
+        } });
+        c.addView(r);
+    }
+    private void timeRow(LinearLayout c, final String label, final String key, final int def) {
+        final TextView r = new TextView(this); r.setTextSize(16); r.setTextColor(TX); r.setPadding(dp(16), dp(14), dp(16), dp(14));
+        final Runnable show = new Runnable() { public void run() { int m = sp.getInt(key, def); r.setText(label + "   " + String.format(Locale.ROOT, "%02d:%02d", m / 60, m % 60) + "  ›"); } };
+        show.run();
+        r.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
+            int m = sp.getInt(key, def);
+            new android.app.TimePickerDialog(VoiceSettingsActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert, new android.app.TimePickerDialog.OnTimeSetListener() { public void onTimeSet(android.widget.TimePicker p, int h, int mi) { sp.edit().putInt(key, h * 60 + mi).apply(); show.run(); VoiceWindow.refresh(getApplicationContext()); } }, m / 60, m % 60, true).show();
         } });
         c.addView(r);
     }
@@ -129,6 +140,20 @@ public class VoiceSettingsActivity extends Activity {
         sw(c3, "Микрофон наушников (если подключены)", sp.getBoolean("v_bt", true), "v_bt"); divider(c3);
         sw(c3, "Умные команды (ИИ)", sp.getBoolean("v_smart", true), "v_smart");
         note(c3, "Спросить время, погоду, «что на сегодня», «готово», «отложи», «в журнал …, 40 минут».");
+
+        // --- 4. окно голоса по расписанию
+        LinearLayout c4 = card(root, "Окно голоса по расписанию");
+        Switch wsw = sw(c4, "Кнопка «Сказать» в шторке по расписанию", sp.getBoolean("v_win", false), "v_win");
+        wsw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() { public void onCheckedChanged(CompoundButton b2, boolean on) {
+            sp.edit().putBoolean("v_win", on).apply(); VoiceWindow.refresh(getApplicationContext());
+            if (on && Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 31);
+        } });
+        divider(c4);
+        timeRow(c4, "С", "v_win_from", 18 * 60); divider(c4);
+        timeRow(c4, "До", "v_win_to", 23 * 60); divider(c4);
+        Switch wd = sw(c4, "Только по будням", sp.getBoolean("v_win_wd", true), "v_win_wd");
+        wd.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() { public void onCheckedChanged(CompoundButton b2, boolean on) { sp.edit().putBoolean("v_win_wd", on).apply(); VoiceWindow.refresh(getApplicationContext()); } });
+        note(c4, "В это время в шторке висит закреплённая кнопка: один тап — и сразу запись голосом. Вне окна уведомления нет, микрофон сам ничего не слушает.");
 
         TextView tip = new TextView(this); tip.setText("Как запускать: двойное касание наушника (если назначено «Мои дела · Голосом» в Huawei AI Life), иконка «Мои дела · Голосом» на экране или ярлык при долгом нажатии на значок приложения.");
         tip.setTextSize(13); tip.setTextColor(DIM); tip.setPadding(dp(8), dp(20), dp(8), 0); root.addView(tip);
