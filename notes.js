@@ -192,17 +192,26 @@ window.NOTES_INIT = function (X) {
     return h;
   }
 
-  /* ---------- граф: узлы «оседают» на глазах ---------- */
+  /* ---------- граф: «созвездие» — цветные светящиеся узлы, текучие связи ---------- */
   let G = null, GRAF = 0;
+  const PAL = ["#ff7a59", "#ffc233", "#34d399", "#38bdf8", "#818cf8", "#e879f9", "#fb7185", "#2dd4bf"], NEUT = "#9db4d8", DONE = "#4ade80";
+  const rgb = h => [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)];
+  const mixc = (h, t, a) => { const c = rgb(h).map(v => Math.round(t >= 0 ? v + (255 - v) * t : v * (1 + t))); return "rgba(" + c + "," + (a == null ? 1 : a) + ")"; };
+  const SPR = {};
+  function spr(h) { if (SPR[h]) return SPR[h]; const s = 96, o = document.createElement("canvas"); o.width = o.height = s; const c = o.getContext("2d"), g = c.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2); g.addColorStop(0, mixc(h, 0, .9)); g.addColorStop(.35, mixc(h, 0, .32)); g.addColorStop(1, mixc(h, 0, 0)); c.fillStyle = g; c.fillRect(0, 0, s, s); return (SPR[h] = o); }
   function buildGraph() {
     const E = engine(), notes = Object.values(NT.items).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 140), ids = new Set(notes.map(n => n.id)), nodes = [], idx = {}, links = [];
     const R = 60, ang = i => i * 2.399963;
-    notes.forEach(n => { const i = nodes.length; idx[n.id] = i; nodes.push({ t: "n", id: n.id, x: Math.cos(ang(i)) * R * Math.sqrt(i + 1) * 0.4, y: Math.sin(ang(i)) * R * Math.sqrt(i + 1) * 0.4, vx: 0, vy: 0, d: 0 }); });
     const tc = {}; notes.forEach(n => (n.tags || []).forEach(t => { tc[t] = (tc[t] || 0) + 1; }));
-    Object.keys(tc).slice(0, 40).forEach(t => { const i = nodes.length; idx["#" + t] = i; nodes.push({ t: "g", id: t, x: Math.cos(ang(i)) * R * 0.5, y: Math.sin(ang(i)) * R * 0.5, vx: 0, vy: 0, d: tc[t] }); });
-    notes.forEach(n => (n.tags || []).forEach(t => { if (idx["#" + t] != null) { links.push([idx[n.id], idx["#" + t], 1]); nodes[idx[n.id]].d++; } }));
-    E.edges.forEach(e => { if (ids.has(e[0]) && ids.has(e[1])) { links.push([idx[e[0]], idx[e[1]], 0.6]); nodes[idx[e[0]]].d++; nodes[idx[e[1]]].d++; } });
-    G = { nodes, links, step: 0, sel: -1, sc: 1, ox: 0, oy: 0, W: 700, H: 440 };
+    const tl = Object.keys(tc).sort((a, b) => tc[b] - tc[a]).slice(0, 40), col = {}; tl.forEach((t, i) => { col[t] = PAL[i % PAL.length]; });
+    const mk = (o, i) => Object.assign(o, { vx: 0, vy: 0, h: 0, a: 1, ph: i * 1.7 });
+    notes.forEach(n => { const i = nodes.length; idx[n.id] = i; const t0 = (n.tags || []).find(t => col[t]); nodes.push(mk({ t: "n", id: n.id, c: n.task_id ? DONE : (t0 ? col[t0] : NEUT), done: !!n.task_id, x: Math.cos(ang(i)) * R * Math.sqrt(i + 1) * 0.4, y: Math.sin(ang(i)) * R * Math.sqrt(i + 1) * 0.4, d: 0 }, i)); });
+    tl.forEach(t => { const i = nodes.length; idx["#" + t] = i; nodes.push(mk({ t: "g", id: t, c: col[t], x: Math.cos(ang(i)) * R * 0.5, y: Math.sin(ang(i)) * R * 0.5, d: tc[t] }, i)); });
+    notes.forEach(n => (n.tags || []).forEach(t => { if (idx["#" + t] != null) { links.push([idx[n.id], idx["#" + t], 1, 0]); nodes[idx[n.id]].d++; } }));
+    E.edges.forEach(e => { if (ids.has(e[0]) && ids.has(e[1])) { links.push([idx[e[0]], idx[e[1]], 0.6, 1]); nodes[idx[e[0]]].d++; nodes[idx[e[1]]].d++; } });
+    const nb = nodes.map(() => new Set()); links.forEach(l => { nb[l[0]].add(l[1]); nb[l[1]].add(l[0]); });
+    const stars = []; for (let i = 0; i < 46; i++) stars.push([((i * 7919) % 1000) / 1000, ((i * 104729) % 997) / 997, 0.5 + (i % 3) * 0.5, i * 0.9]);
+    G = { nodes, links, nb, stars, step: 0, sel: -1, hov: -1, drag: null, rip: null, live: false, fixed: false, sc: 1, ox: 0, oy: 0, W: 700, H: 440 };
   }
   function stepGraph(n) {
     const nodes = G.nodes, links = G.links;
@@ -210,34 +219,94 @@ window.NOTES_INIT = function (X) {
       const k = Math.max(0.04, 1 - G.step / 280);
       for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) { const a = nodes[i], b = nodes[j]; let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy + 0.01; if (d2 > 40000) continue; const f = 900 / d2, d = Math.sqrt(d2); dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; }
       links.forEach(l => { const a = nodes[l[0]], b = nodes[l[1]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = (d - 55) * 0.02 * l[2]; dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; });
-      nodes.forEach(nd => { nd.vx -= nd.x * 0.004; nd.vy -= nd.y * 0.004; nd.x += Math.max(-8, Math.min(8, nd.vx)) * k; nd.y += Math.max(-8, Math.min(8, nd.vy)) * k; nd.vx *= 0.6; nd.vy *= 0.6; });
+      nodes.forEach((nd, i) => { if (G.drag && G.drag.i === i) return; nd.vx -= nd.x * 0.004; nd.vy -= nd.y * 0.004; nd.x += Math.max(-8, Math.min(8, nd.vx)) * k; nd.y += Math.max(-8, Math.min(8, nd.vy)) * k; nd.vx *= 0.6; nd.vy *= 0.6; });
     }
   }
   function fitGraph(snap) {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; G.nodes.forEach(n => { x0 = Math.min(x0, n.x); x1 = Math.max(x1, n.x); y0 = Math.min(y0, n.y); y1 = Math.max(y1, n.y); });
-    const sc = Math.min((G.W - 90) / Math.max(1, x1 - x0), (G.H - 70) / Math.max(1, y1 - y0), 2.2), ox = G.W / 2 - (x0 + x1) / 2 * sc, oy = G.H / 2 - (y0 + y1) / 2 * sc, e = snap ? 1 : 0.18;
+    const sc = Math.min((G.W - 100) / Math.max(1, x1 - x0), (G.H - 80) / Math.max(1, y1 - y0), 2.2), ox = G.W / 2 - (x0 + x1) / 2 * sc, oy = G.H / 2 - (y0 + y1) / 2 * sc, e = snap ? 1 : 0.18;
     G.sc += (sc - G.sc) * e; G.ox += (ox - G.ox) * e; G.oy += (oy - G.oy) * e;
   }
-  function drawGraph() {
-    const cv = $("nt-cv"); if (!cv || !G) return false; const r = window.devicePixelRatio || 1, wcss = G.W, hcss = G.H;
-    if (cv.width !== Math.round(wcss * r) || cv.height !== Math.round(hcss * r)) { cv.width = Math.round(wcss * r); cv.height = Math.round(hcss * r); cv.style.height = hcss + "px"; }
-    const c = cv.getContext("2d"), k = r, cs = getComputedStyle(cv), ink = cs.color, acc = (getComputedStyle($("app")).getPropertyValue("--acc") || "#2b88d8").trim() || "#2b88d8";
-    c.setTransform(k, 0, 0, k, 0, 0); c.clearRect(0, 0, G.W, G.H);
-    const P = n => [n.x * G.sc + G.ox, n.y * G.sc + G.oy];
-    G.links.forEach(l => { const a = P(G.nodes[l[0]]), b = P(G.nodes[l[1]]), hi = G.sel >= 0 && (l[0] === G.sel || l[1] === G.sel); c.globalAlpha = hi ? 0.9 : 0.22; c.strokeStyle = hi ? acc : ink; c.lineWidth = hi ? 1.6 : 1; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); });
-    G.nodes.forEach((n, i) => { const p = P(n), rad = n.t === "g" ? 6 + Math.min(10, n.d * 1.4) : 4 + Math.min(6, n.d * 0.8); n.p = p; n.r = rad; c.beginPath(); c.arc(p[0], p[1], rad, 0, 7); c.fillStyle = n.t === "g" ? "#e3680c" : (NT.items[n.id] && NT.items[n.id].task_id ? "#2f9e44" : acc); c.globalAlpha = G.sel >= 0 && i !== G.sel ? 0.5 : 1; c.fill(); if (i === G.sel) { c.globalAlpha = 1; c.strokeStyle = ink; c.lineWidth = 2; c.stroke(); } });
-    c.globalAlpha = 1; c.font = "600 12.5px system-ui,sans-serif"; c.fillStyle = ink; G.nodes.forEach(n => { if (n.t === "g") c.fillText("#" + n.id, n.p[0] + n.r + 4, n.p[1] + 4); });
+  function updGraph(snap) {   // плавные «пружинки»: наведение и приглушение чужих узлов
+    const f = G.drag ? G.drag.i : (G.sel >= 0 ? G.sel : G.hov), e = snap ? 1 : 0.16;
+    G.nodes.forEach((n, i) => { const ta = f < 0 || i === f || G.nb[f].has(i) ? 1 : 0.16, th = i === G.hov || i === G.sel || (G.drag && G.drag.i === i) ? 1 : 0; n.a += (ta - n.a) * e; n.h += (th - n.h) * e; });
+  }
+  function drawGraph(t) {
+    const cv = $("nt-cv"); if (!cv || !G) return false; t = t || 0; const r = window.devicePixelRatio || 1, W = G.W, H = G.H, live = G.live;
+    if (cv.width !== Math.round(W * r) || cv.height !== Math.round(H * r)) { cv.width = Math.round(W * r); cv.height = Math.round(H * r); cv.style.height = H + "px"; }
+    const c = cv.getContext("2d"); c.setTransform(r, 0, 0, r, 0, 0); c.setLineDash([]); c.globalAlpha = 1;
+    const bg = c.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#141c3a"); bg.addColorStop(1, "#0a0f22"); c.fillStyle = bg; c.fillRect(0, 0, W, H);
+    [[.18, .22, "#6d5bff"], [.84, .3, "#ff5fa2"], [.55, .88, "#19c6b7"]].forEach((b, i) => { const x = W * (b[0] + Math.sin(t / 5200 + i * 2) * .05), y = H * (b[1] + Math.cos(t / 6100 + i * 3) * .05), rr = Math.max(W, H) * .55, g = c.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, mixc(b[2], 0, .3)); g.addColorStop(1, mixc(b[2], 0, 0)); c.fillStyle = g; c.fillRect(0, 0, W, H); });
+    G.stars.forEach(s => { c.globalAlpha = live ? .25 + .35 * Math.abs(Math.sin(t / 1300 + s[3])) : .4; c.fillStyle = "#fff"; c.beginPath(); c.arc(s[0] * W, s[1] * H, s[2] * .8, 0, 7); c.fill(); }); c.globalAlpha = 1;
+    const N = G.nodes, P = n => [n.x * G.sc + G.ox, n.y * G.sc + G.oy], f = G.drag ? G.drag.i : (G.sel >= 0 ? G.sel : G.hov);
+    G.links.forEach((l, li) => {
+      const A = N[l[0]], B = N[l[1]], a = P(A), b = P(B), hi = f >= 0 && (l[0] === f || l[1] === f), vis = Math.min(A.a, B.a), dx = b[0] - a[0], dy = b[1] - a[1], sg = (l[0] + l[1]) % 2 ? 1 : -1, cx = (a[0] + b[0]) / 2 - dy * .13 * sg, cy = (a[1] + b[1]) / 2 + dx * .13 * sg;
+      const g = c.createLinearGradient(a[0], a[1], b[0], b[1]); g.addColorStop(0, mixc(A.c, .25)); g.addColorStop(1, mixc(B.c, .25));
+      c.globalAlpha = (hi ? .95 : l[3] ? .3 : .42) * vis; c.strokeStyle = g; c.lineWidth = hi ? 2 : l[3] ? 1 : 1.3;
+      if (hi || l[3]) { c.setLineDash(hi ? [3, 8] : [2, 6]); c.lineDashOffset = live ? -t / (hi ? 28 : 70) : 0; } else c.setLineDash([]);
+      c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(cx, cy, b[0], b[1]); c.stroke();
+      if (hi && live) { const u = ((t / 1500) + li * .137) % 1, q = 1 - u, px = q * q * a[0] + 2 * q * u * cx + u * u * b[0], py = q * q * a[1] + 2 * q * u * cy + u * u * b[1]; c.setLineDash([]); c.globalAlpha = .9; c.drawImage(spr(A.c), px - 9, py - 9, 18, 18); }
+    });
+    c.setLineDash([]);
+    const order = N.map((n, i) => i).sort((i, j) => (N[i].t === "g") - (N[j].t === "g") || N[i].h - N[j].h);
+    order.forEach(i => {
+      const n = N[i], p = P(n), hub = n.t === "g", br = live ? 1 + .06 * Math.sin(t / 900 + n.ph) : 1, base = hub ? 9 + Math.min(11, n.d * 1.5) : 4.5 + Math.min(5, n.d * .7), rad = base * (1 + .35 * n.h) * br;
+      n.p = p; n.r = base;
+      c.globalAlpha = Math.min(1, (hub ? .75 : .55) * n.a * (1 + n.h * .5)); c.drawImage(spr(n.c), p[0] - rad * 3, p[1] - rad * 3, rad * 6, rad * 6);
+      c.globalAlpha = n.a;
+      const g = c.createRadialGradient(p[0] - rad * .35, p[1] - rad * .4, rad * .1, p[0], p[1], rad); g.addColorStop(0, mixc(n.c, .8)); g.addColorStop(.5, mixc(n.c, 0)); g.addColorStop(1, mixc(n.c, -.35));
+      c.fillStyle = g; c.beginPath(); c.arc(p[0], p[1], rad, 0, 7); c.fill();
+      if (hub) { c.strokeStyle = mixc(n.c, .5, .55); c.lineWidth = 1.2; c.beginPath(); c.arc(p[0], p[1], rad + 4 + (live ? 2 * Math.sin(t / 700 + n.ph) : 0), 0, 7); c.stroke(); }
+      if (n.done) { c.strokeStyle = "#fff"; c.lineWidth = 1.6; c.lineCap = "round"; c.beginPath(); c.moveTo(p[0] - rad * .45, p[1]); c.lineTo(p[0] - rad * .1, p[1] + rad * .35); c.lineTo(p[0] + rad * .5, p[1] - rad * .35); c.stroke(); }
+      if (i === G.sel) { c.strokeStyle = "#fff"; c.globalAlpha = 1; c.lineWidth = 2; c.beginPath(); c.arc(p[0], p[1], rad + 5, 0, 7); c.stroke(); }
+    });
+    if (G.rip && live) { const age = (t - G.rip.t) / 750, n = N[G.rip.i]; if (age >= 0 && age < 1 && n && n.p) { c.globalAlpha = (1 - age) * .7; c.strokeStyle = mixc(n.c, .5); c.lineWidth = 2; c.beginPath(); c.arc(n.p[0], n.p[1], n.r + 6 + age * 34, 0, 7); c.stroke(); } }
+    c.globalAlpha = 1; c.lineJoin = "round"; c.textBaseline = "alphabetic";
+    const lab = (txt, x, y, al, fs, ctr) => { c.font = "600 " + fs + "px system-ui,sans-serif"; c.textAlign = ctr ? "center" : "left"; c.globalAlpha = al; c.lineWidth = 3.5; c.strokeStyle = "rgba(10,14,32,.8)"; c.strokeText(txt, x, y); c.fillStyle = "#fff"; c.fillText(txt, x, y); };
+    N.forEach(n => { if (n.t === "g") lab("#" + n.id, n.p[0] + n.r + 9, n.p[1] + 4, Math.max(.3, n.a), 13, false); });
+    if (f >= 0) { [f].concat([...G.nb[f]].slice(0, W < 600 ? 3 : 8)).forEach(i => { const n = N[i], m = n.t === "n" ? NT.items[n.id] : null; if (!m || !n.p) return; const s = (m.text || "").replace(/\s+/g, " ").replace(/#[\p{L}\p{N}_-]+/gu, "").trim(), tx = s.length > 26 ? s.slice(0, 25) + "…" : s; if (tx) lab(tx, Math.max(60, Math.min(W - 60, n.p[0])), n.p[1] + n.r + 17, 1, 11.5, true); }); }
+    c.globalAlpha = 1; c.textAlign = "left";
     return true;
   }
   function sizeGraph() { const cv = $("nt-cv"); if (!cv || !G) return; const w = Math.max(280, cv.parentNode.clientWidth || cv.clientWidth || 700); G.W = w; G.H = w < 600 ? Math.round(w * 1.15) : Math.round(w * 0.58); }
+  function pokeGraph() { if (G && !G.live) { updGraph(true); drawGraph(0); } }
   function runGraph() {
-    const my = ++GRAF; if (!G) return; sizeGraph(); if (!anim()) { stepGraph(280); fitGraph(true); drawGraph(); return; }
-    fitGraph(true); const tick = () => { if (my !== GRAF || !$("nt-cv")) return; stepGraph(3); fitGraph(false); drawGraph(); if (G.step < 280 || Math.abs(G.sc) < 0.01) requestAnimationFrame(tick); else { fitGraph(true); drawGraph(); } }; requestAnimationFrame(tick);
+    const my = ++GRAF; if (!G) return; sizeGraph();
+    if (!anim()) { stepGraph(280); fitGraph(true); G.live = false; updGraph(true); drawGraph(0); return; }
+    G.live = true; fitGraph(true); let last = 0;
+    const tick = ts => {
+      if (my !== GRAF || !$("nt-cv")) return; requestAnimationFrame(tick);
+      if (!fine() && ts - last < 30) return; last = ts;
+      if (G.step < 280) { stepGraph(3); if (!G.fixed) fitGraph(false); } else if (!G.fixed) { fitGraph(true); G.fixed = true; }
+      updGraph(false); drawGraph(ts);
+    };
+    requestAnimationFrame(tick);
   }
   function graphHTML() {
     if (Object.keys(NT.items).length < 2) return '<div class="nt-empty"><b>Граф появится позже</b><span>Когда будет хотя бы пара заметок.</span></div>';
     buildGraph();
-    return '<div class="nt-gw"><canvas id="nt-cv"></canvas></div><div class="nt-legend"><i style="background:#e3680c"></i>теги<i style="background:var(--acc)"></i>заметки<i style="background:#2f9e44"></i>стали задачей<span>Тапни по точке</span></div><div id="nt-gsel"></div>';
+    return '<div class="nt-gw"><canvas id="nt-cv"></canvas></div><div class="nt-legend"><i class="h"></i>тег<i class="n"></i>заметка<i class="d"></i>стала задачей<span>тапни или потяни точку</span></div><div id="nt-gsel"></div>';
+  }
+  function gPick(x, y) { let best = -1, bd = 1e9; G.nodes.forEach((n, i) => { if (!n.p) return; const d = (n.p[0] - x) ** 2 + (n.p[1] - y) ** 2, R = (n.r || 8) + (fine() ? 9 : 15); if (d < R * R && d < bd) { bd = d; best = i; } }); return best; }
+  function gXY(e) { const r = $("nt-cv").getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  function gClick(e) {
+    const cv = e.target && e.target.id === "nt-cv" ? e.target : null; if (!cv || !G) return;
+    if (G.suppress) { G.suppress = false; return; }
+    const xy = gXY(e), best = gPick(xy[0], xy[1]); G.sel = best === G.sel ? -1 : best; if (G.sel >= 0) G.rip = { i: G.sel, t: performance.now() }; pokeGraph();
+    const box = $("nt-gsel"); if (!box) return; if (G.sel < 0) { box.innerHTML = ""; return; } const n = G.nodes[G.sel], st = ' style="--gc:' + n.c + '"', rel = G.nb[G.sel].size;
+    if (n.t === "g") box.innerHTML = '<div class="nt-gcard"' + st + '><div class="nt-tx">' + hashLink(n.id) + " · " + n.d + " " + plural(n.d, "заметка", "заметки", "заметок") + '</div><div class="nt-acts show"><button class="nt-a" data-a="nttag" data-t="' + esc(n.id) + '"><span>Показать заметки</span></button></div></div>';
+    else { const m = NT.items[n.id]; box.innerHTML = m ? '<div class="nt-gcard"' + st + '><div class="nt-meta">' + dayParts(dayKey(m.created_at))[0] + ", " + hhmm(m.created_at) + (rel ? " · связей: " + rel : "") + '</div><div class="nt-tx">' + fmtBody(m.text) + '</div><div class="nt-acts show"><button class="nt-a" data-a="ntfocus" data-id="' + m.id + '"><span>Открыть в ленте</span></button></div></div>' : ""; }
+  }
+  function gPtr(e) {
+    const cv = e.target && e.target.id === "nt-cv" ? e.target : null; if (!G || (!cv && !G.drag) || e.pointerType !== "mouse") return;
+    if (e.type === "pointerdown") { const xy = gXY(e), i = gPick(xy[0], xy[1]); if (i >= 0) { G.drag = { i, x: xy[0], y: xy[1], moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } return; }
+    if (e.type === "pointermove") {
+      const xy = gXY(e);
+      if (G.drag) { const d = G.drag, n = G.nodes[d.i]; if (!d.moved && Math.hypot(xy[0] - d.x, xy[1] - d.y) < 4) return; d.moved = true; n.x = (xy[0] - G.ox) / G.sc; n.y = (xy[1] - G.oy) / G.sc; n.vx = n.vy = 0; G.step = Math.min(G.step, 225); if (!G.live) stepGraph(8); pokeGraph(); return; }
+      const i = gPick(xy[0], xy[1]); if (i !== G.hov) { G.hov = i; cv.style.cursor = i >= 0 ? "pointer" : "default"; pokeGraph(); } return;
+    }
+    if (e.type === "pointerup" || e.type === "pointercancel") { if (G.drag) { if (G.drag.moved) G.suppress = true; G.drag = null; pokeGraph(); } return; }
+    if (e.type === "pointerout" && G.hov >= 0 && !G.drag) { G.hov = -1; pokeGraph(); }
   }
 
   /* ---------- сборка экрана ---------- */
@@ -318,13 +387,9 @@ window.NOTES_INIT = function (X) {
   document.addEventListener("dblclick", e => { if (!fine()) return; const b = e.target && e.target.closest && e.target.closest(".nt-bd[data-id]"); if (b && !e.target.closest("a")) { window.getSelection && window.getSelection().removeAllRanges(); A.ntedit({ dataset: { id: b.dataset.id } }); } });
   document.addEventListener("click", e => {
     if (NT.menu && !(e.target.closest && e.target.closest(".nt-menu, [data-a=ntmenu]"))) { NT.menu = false; const m = document.querySelector(".nt-menu"); if (m) m.remove(); const bb = document.querySelector("[data-a=ntmenu]"); if (bb) bb.classList.remove("on"); }
-    const cv = e.target && e.target.id === "nt-cv" ? e.target : null; if (!cv || !G) return;
-    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let best = -1, bd = 24 * 24;
-    G.nodes.forEach((n, i) => { if (!n.p) return; const d = (n.p[0] - x) ** 2 + (n.p[1] - y) ** 2; if (d < bd) { bd = d; best = i; } }); G.sel = best; drawGraph(); const box = $("nt-gsel"); if (!box) return;
-    if (best < 0) { box.innerHTML = ""; return; } const n = G.nodes[best];
-    if (n.t === "g") box.innerHTML = '<div class="nt-gcard"><div class="nt-tx">' + hashLink(n.id) + " · " + n.d + " " + plural(n.d, "заметка", "заметки", "заметок") + '</div><div class="nt-acts show"><button class="nt-a" data-a="nttag" data-t="' + esc(n.id) + '"><span>Показать заметки</span></button></div></div>';
-    else { const m = NT.items[n.id]; box.innerHTML = m ? '<div class="nt-gcard"><div class="nt-meta">' + dayParts(dayKey(m.created_at))[0] + ", " + hhmm(m.created_at) + '</div><div class="nt-tx">' + fmtBody(m.text) + '</div><div class="nt-acts show"><button class="nt-a" data-a="ntfocus" data-id="' + m.id + '"><span>Открыть в ленте</span></button></div></div>' : ""; }
+    gClick(e);
   });
+  ["pointerdown", "pointermove", "pointerup", "pointercancel", "pointerout"].forEach(ev => document.addEventListener(ev, gPtr));
   window.addEventListener("online", () => { flush(); });
   window.addEventListener("resize", () => { if (G && $("nt-cv")) { sizeGraph(); fitGraph(true); drawGraph(); } });
   return { html };

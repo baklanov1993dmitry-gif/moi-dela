@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 09:55";
+const BUILD = "23.10 10:10";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2517,11 +2517,15 @@ const jrCSS = `
 .nt-th-m{font-size:13.5px;color:var(--sub)}
 .nt-th-b{display:flex;flex-wrap:wrap;gap:2px;margin:6px 0 0 -10px}
 .nt-tagcloud{display:flex;flex-wrap:wrap;gap:7px}
-.nt-gw{margin-top:8px;border-radius:18px;background:var(--hov);overflow:hidden;color:var(--tx)}
-#nt-cv{display:block;width:100%;cursor:pointer;touch-action:manipulation}
+.nt-gw{margin-top:8px;border-radius:22px;background:#0d1226;overflow:hidden;color:#fff;box-shadow:0 14px 34px -16px rgba(60,70,160,.55),inset 0 0 0 1px rgba(255,255,255,.07)}
+#nt-cv{display:block;width:100%;cursor:default;touch-action:pan-y}
 .nt-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:13px;color:var(--sub);margin:12px 2px}
-.nt-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:10px}.nt-legend span{margin-left:auto}
-.nt-gcard{margin-top:6px;padding:14px 16px;border-radius:16px;background:var(--hov)}
+.nt-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:10px}.nt-legend i:first-child{margin-left:0}.nt-legend span{margin-left:auto}
+.nt-legend i.h{background:radial-gradient(circle at 35% 30%,#ffd9a8,#ff7a59 55%,#b24a2e);box-shadow:0 0 0 3px rgba(255,122,89,.22)}
+.nt-legend i.n{background:radial-gradient(circle at 35% 30%,#c9f1ff,#38bdf8 55%,#1d7aa3);box-shadow:0 0 8px rgba(56,189,248,.6)}
+.nt-legend i.d{background:radial-gradient(circle at 35% 30%,#d3ffe4,#4ade80 55%,#23924c);box-shadow:0 0 8px rgba(74,222,128,.6)}
+.nt-gcard{margin-top:6px;padding:14px 16px;border-radius:16px;background:var(--hov);border-left:4px solid var(--gc,var(--acc))}
+@media (prefers-reduced-motion:no-preference){.nt-gcard{animation:nt-gin .32s cubic-bezier(.3,1.5,.5,1)}@keyframes nt-gin{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}}
 .nt-meta{font-size:12.5px;color:var(--sub);margin-bottom:4px}
 .nt-view.in{animation:ntin .28s cubic-bezier(.2,.8,.2,1)}
 @keyframes ntin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
