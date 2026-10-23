@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 10:26";
+const BUILD = "23.10 10:43";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -350,6 +350,7 @@ const IC = {
   star: '<polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   tag: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.2"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   link: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
   clip: '<path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -643,7 +644,18 @@ function uBtn() {
   b.style.display = "block"; clearTimeout(uTm); uTm = setTimeout(uBtn.hide, 6000);
 }
 uBtn.hide = () => { const b = document.getElementById("ubtn"); if (b) b.style.display = "none"; };
+/* ссылки и пути (\\сервер\папка, C:\…, https://…) из названия уезжают в заметку — там они показываются чипами */
+function splitLinks(title, note) {
+  let t = String(title || ""), found = [];
+  t = t.replace(/https?:\/\/[^\s<>"')\]]+/g, x => { found.push(x.replace(/[.,;:!?]+$/, "")); return ""; });
+  t = t.replace(/(^|[\s(])((?:\\\\[^\s\\][^\n]*)|(?:[A-Za-z]:\\[^\n]*))/g, (m, p, x) => { found.push(x.trim()); return p; });
+  if (!found.length) return { title: title, note: note };
+  t = t.replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").replace(/[\s:;,—-]+$/, "").trim();
+  const n0 = String(note || ""), add = found.filter(x => n0.indexOf(x) < 0);
+  return { title: t || "Ссылка", note: add.length ? (n0 ? n0.replace(/\n+$/, "") + "\n" : "") + add.join("\n") : n0 };
+}
 function addTask(f) {
+  if (f && f.title) f = Object.assign({}, f, splitLinks(f.title, f.note));
   const t = Object.assign({ id: uid(), parent_id: null, list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [], plan_start: null }, f);
   S.tasks[t.id] = t; uRec(t.id, null, true); mark("tasks", t.id, "u"); return t;
 }
@@ -3116,6 +3128,7 @@ function parseEst(s) {
 }
 const estFull = m => !m ? "" : (m % 480 === 0 ? m / 480 + "д" : m % 60 === 0 ? m / 60 + "ч" : m + "м");
 const subActs = {
+  copypath(el) { const p = el.dataset.p || ""; const ok = () => toast("Путь скопирован — вставь в «Проводник» (Win+R или адресная строка)"); try { navigator.clipboard.writeText(p).then(ok, () => toast("Не удалось скопировать")); } catch (e) { toast("Не удалось скопировать"); } },
   notefull() { ui.noteFull = true; render(); },
   notefullclose() { ui.noteFull = false; render(); },
   subtog(a) {
@@ -5302,8 +5315,11 @@ function jrWeekData(m0, end0) {
 }
 const vLine = n => /^(https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+)[ \t]*\n?/i.exec(n || "");
 const noteLinksHTML = n => {
-  const u = [...new Set((String(n || "").match(/https?:\/\/[^\s<>"')\]]+/g) || []).map(x => x.replace(/[.,;:!?]+$/, "")))].slice(0, 12);
-  return u.length ? '<div class="nlinks">' + u.map(x => { let h = x, p = ""; try { const o = new URL(x); h = o.hostname.replace(/^www\./, ""); p = (o.pathname + o.search).replace(/^\/$/, ""); } catch (e) {} return '<a class="nlink" href="' + esc(x) + '" target="_blank" rel="noopener noreferrer" title="' + esc(x) + '">' + ic("link", 13) + "<b>" + esc(h) + "</b>" + (p ? "<i>" + esc(p.length > 28 ? p.slice(0, 27) + "…" : p) + "</i>" : "") + "</a>"; }).join("") + "</div>" : "";
+  const src = String(n || ""), u = [...new Set((src.match(/https?:\/\/[^\s<>"')\]]+/g) || []).map(x => x.replace(/[.,;:!?]+$/, "")))].slice(0, 12);
+  const fp = [...new Set((src.match(/(?:^|\n)\s*((?:\\\\[^\s\\][^\n]*)|(?:[A-Za-z]:\\[^\n]*))/g) || []).map(x => x.trim()))].slice(0, 12);
+  const web = u.map(x => { let h = x, p = ""; try { const o = new URL(x); h = o.hostname.replace(/^www\./, ""); p = (o.pathname + o.search).replace(/^\/$/, ""); } catch (e) {} return '<a class="nlink" href="' + esc(x) + '" target="_blank" rel="noopener noreferrer" title="' + esc(x) + '">' + ic("link", 13) + "<b>" + esc(h) + "</b>" + (p ? "<i>" + esc(p.length > 28 ? p.slice(0, 27) + "…" : p) + "</i>" : "") + "</a>"; });
+  const files = fp.map(x => { const seg = x.split("\\").filter(Boolean), last = seg[seg.length - 1] || x, par = seg.length > 1 ? seg[seg.length - 2] : ""; return '<a class="nlink nfile" href="#" data-a="copypath" data-p="' + esc(x) + '" title="' + esc(x) + '\n(нажми — скопировать путь)">' + ic("folder", 13) + "<b>" + esc(last.length > 24 ? last.slice(0, 23) + "…" : last) + "</b>" + (par ? "<i>…\\" + esc(par.length > 18 ? par.slice(0, 17) + "…" : par) + "</i>" : "") + "</a>"; });
+  const all = files.concat(web); return all.length ? '<div class="nlinks">' + all.join("") + "</div>" : "";
 };
 const noteView = t => { const m = vLine(t.note); return m ? String(t.note).slice(m[0].length).replace(/^\n+/, "") : (t.note || ""); };
 const noteSet = (t, v) => { const m = vLine(t.note); return m ? m[1] + "\n\n" + v : v; };
@@ -6209,7 +6225,7 @@ Object.assign(acts, {
 function nuAddWater(ml) { const N = NUN(), o = { id: uid(), day: N.day, t: nowHM(), name: "__water", grams: ml, kcal: 0, p: 0, f: 0, c: 0, food_id: null, created_at: nowISO() }; S.food_log[o.id] = o; mark("food_log", o.id, "u"); render(); }
 
 const changes = {
-  "d-title"(v) { if (v.trim()) upd(selId, { title: v.trim() }); renderSoon(); },
+  "d-title"(v) { if (v.trim()) { const t0 = S.tasks[selId], r = splitLinks(v.trim(), t0 && t0.note); upd(selId, r.note !== (t0 && t0.note || "") ? { title: r.title, note: r.note } : { title: r.title }); } renderSoon(); },
   "d-cat"(v) { upd(selId, { category: v.trim().replace(/^#/, "") || null }); renderSoon(); },
   "d-list"(v) { upd(selId, { list_id: v || null }); renderSoon(); },
   "d-note"(v) { const t = S.tasks[selId]; if (t) upd(selId, { note: noteSet(t, v) }); renderSoon(); },
