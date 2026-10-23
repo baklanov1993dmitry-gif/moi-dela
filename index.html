@@ -61,9 +61,10 @@ window.APP_CONFIG = {
   VAPID_PUBLIC: "BGtIMldeDlbm6FW6-b73N5hAZdjI3bDscBZQMNgauRtIar29wYpRi6St8bknZGttuwMRVNtIGLEEp8uD66vKa-c"
 };
 </script>
+<script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "22.10 22:50";
+const BUILD = "23.10 09:30";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2433,6 +2434,23 @@ const addCSS = `
 }
 `;
 const jrCSS = `
+.nt-comp{border:1px solid var(--ln);border-radius:12px;padding:10px;margin:0 0 10px;background:var(--solid,transparent)}
+.nt-ta{width:100%;resize:vertical;min-height:64px;line-height:1.45;font-size:calc(13.5px*var(--z,1))}
+.nt-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.nt-row .btn{height:34px;min-height:0;padding:0 16px}
+.nt-hint{font-size:calc(11px*var(--z,1));opacity:.5}
+.nt-find{margin:0 0 8px}.nt-find .inp{width:100%}
+.nt-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.nt-tag{display:inline-block;padding:2px 9px;border-radius:99px;background:rgba(43,136,216,.12);color:#2b88d8;font-size:calc(12px*var(--z,1));cursor:pointer;text-decoration:none}
+.nt-tag i{font-style:normal;opacity:.6}.nt-tag.on{background:#2b88d8;color:#fff}
+.nt-day{font-size:calc(11.5px*var(--z,1));font-weight:600;opacity:.55;margin:14px 2px 6px;text-transform:uppercase;letter-spacing:.04em}
+.nt-card{border:1px solid var(--ln);border-radius:12px;padding:10px 12px;margin:0 0 8px;background:var(--solid,transparent)}
+.nt-card.pin{border-color:rgba(43,136,216,.5)}
+.nt-tx{font-size:calc(13.5px*var(--z,1));line-height:1.5;word-break:break-word}
+.nt-meta{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:calc(11px*var(--z,1));opacity:.75}
+.nt-b{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border-radius:7px;opacity:.65;font-size:calc(11px*var(--z,1))}
+.nt-b:hover{opacity:1;background:rgba(127,127,127,.15)}
+.nt-lnk{color:#107c10}.nt-lnk.done{opacity:.6}
 .jr-box{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--solid,transparent);font-size:calc(12.2px*var(--z,1))}
 .jr-f{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .jr-f .inp{font-size:calc(12.2px*var(--z,1))}
@@ -3492,6 +3510,7 @@ function viewInfo() {
   if (view === "team") return { svg: "users", name: "Команда", sub: "Сотрудники: выбери человека — увидишь его дела (только чтение)" };
   if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
   if (view === "food") return { svg: "food", name: "Питание", sub: "КБЖУ, вода и вес" };
+  if (view === "notes") return { svg: "bulb", name: "Заметки", sub: "Мысли, идеи, наблюдения — только для тебя" };
   if (view === "journal") return { svg: "note", name: "Журнал", sub: "Что делал: со временем или за период" };
   if (view === "starred") return { svg: "star", name: "Важно" };
   if (view === "planned") return { svg: "cal", name: "Запланировано" };
@@ -3502,9 +3521,9 @@ function viewInfo() {
 }
 function mtopHTML(vi, cnt, extra) {
   if (!isMobile()) return "";
-  if (mIds().length && view !== "journal" && view !== "food") return '<div class="mtop msb"><button class="ibtn" data-a="mclear" title="Снять выделение">' + ic("x", 22) + '</button><span class="mcnt">' + mIds().length + '</span><span style="flex:1"></span><button class="ibtn" data-a="mmore" title="Действия">' + ic("dotsv", 22) + "</button></div>";
+  if (mIds().length && view !== "journal" && view !== "food" && view !== "notes") return '<div class="mtop msb"><button class="ibtn" data-a="mclear" title="Снять выделение">' + ic("x", 22) + '</button><span class="mcnt">' + mIds().length + '</span><span style="flex:1"></span><button class="ibtn" data-a="mmore" title="Действия">' + ic("dotsv", 22) + "</button></div>";
   if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
-  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + (extra || "") + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
+  return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + (extra || "") + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" || view === "notes" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
 function lheadHTML() {
   if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
@@ -3644,7 +3663,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
+    (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") + sm("notes", "bulb", "Заметки", 0, "#2b88d8")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="newgroup" title="Новая группа">' + ic("fplus", 18) + "</button></div></div>";
@@ -4349,7 +4368,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function morphKeep(o, n, keep, nk) {
@@ -4470,7 +4489,7 @@ function menuSlideOpen() {
 }
 function render() {
   want = false;
-  if (isLite()) { if (view === "journal" || view === "food" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
+  if (isLite()) { if (view === "journal" || view === "food" || view === "notes" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
   try { updBadge(); } catch (e) {}
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
@@ -6293,6 +6312,7 @@ async function checkBuild() {
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
 if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
+const NTM = window.NOTES_INIT ? window.NOTES_INIT({ S, ic, esc, $, render, toast, addTask, micToggle, micOK, mtopHTML, uid, nowISO, todayISO, addDays, parseISO, pad2, WDS, goView, acts, sb: () => sb, view: () => view, sel: id => { selId = id; } }) : null;
 init();
 
 })();
