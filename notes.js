@@ -210,7 +210,7 @@ window.NOTES_INIT = function (X) {
     notes.forEach(n => (n.tags || []).forEach(t => { if (idx["#" + t] != null) { links.push([idx[n.id], idx["#" + t], 1, 0]); nodes[idx[n.id]].d++; } }));
     E.edges.forEach(e => { if (ids.has(e[0]) && ids.has(e[1])) { links.push([idx[e[0]], idx[e[1]], 0.6, 1]); nodes[idx[e[0]]].d++; nodes[idx[e[1]]].d++; } });
     const nb = nodes.map(() => new Set()); links.forEach(l => { nb[l[0]].add(l[1]); nb[l[1]].add(l[0]); });
-    const stars = []; for (let i = 0; i < 46; i++) stars.push([((i * 7919) % 1000) / 1000, ((i * 104729) % 997) / 997, 0.5 + (i % 3) * 0.5, i * 0.9]);
+    const stars = []; for (let i = 0; i < 80; i++) stars.push([((i * 7919) % 1000) / 1000, ((i * 104729) % 997) / 997, 0.5 + (i % 3) * 0.5, i * 0.9]);
     G = { nodes, links, nb, stars, step: 0, sel: -1, hov: -1, drag: null, rip: null, live: false, fixed: false, sc: 1, ox: 0, oy: 0, zm: 1, px: 0, py: 0, ptr: {}, W: 700, H: 440 };
   }
   function stepGraph(n) {
@@ -240,7 +240,7 @@ window.NOTES_INIT = function (X) {
     const c = cv.getContext("2d"); c.setTransform(r, 0, 0, r, 0, 0); c.setLineDash([]); c.globalAlpha = 1;
     const bg = c.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#141c3a"); bg.addColorStop(1, "#0a0f22"); c.fillStyle = bg; c.fillRect(0, 0, W, H);
     [[.18, .22, "#6d5bff"], [.84, .3, "#ff5fa2"], [.55, .88, "#19c6b7"]].forEach((b, i) => { const x = W * (b[0] + Math.sin(t / 5200 + i * 2) * .05), y = H * (b[1] + Math.cos(t / 6100 + i * 3) * .05), rr = Math.max(W, H) * .55, g = c.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, mixc(b[2], 0, .3)); g.addColorStop(1, mixc(b[2], 0, 0)); c.fillStyle = g; c.fillRect(0, 0, W, H); });
-    G.stars.forEach(s => { c.globalAlpha = live ? .25 + .35 * Math.abs(Math.sin(t / 1300 + s[3])) : .4; c.fillStyle = "#fff"; c.beginPath(); c.arc(s[0] * W, s[1] * H, s[2] * .8, 0, 7); c.fill(); }); c.globalAlpha = 1;
+    G.stars.forEach((s, i) => { const tw = live ? Math.pow(.5 + .5 * Math.sin(t / (420 + (i % 7) * 140) + s[3]), 2) : .5; c.globalAlpha = .12 + .88 * tw; c.fillStyle = i % 5 === 0 ? "#cfe4ff" : i % 5 === 1 ? "#ffe9c9" : "#fff"; const rr = s[2] * (.7 + .5 * tw); c.beginPath(); c.arc(s[0] * W, s[1] * H, rr, 0, 7); c.fill(); if (i % 4 === 0 && tw > .6) { c.globalAlpha = (tw - .6) * 1.4; c.fillRect(s[0] * W - rr * 3, s[1] * H - .4, rr * 6, .8); c.fillRect(s[0] * W - .4, s[1] * H - rr * 3, .8, rr * 6); } }); c.globalAlpha = 1;
     const N = G.nodes, P = n => gP(n), f = G.drag ? G.drag.i : (G.sel >= 0 ? G.sel : G.hov);
     G.links.forEach((l, li) => {
       const A = N[l[0]], B = N[l[1]], a = P(A), b = P(B), hi = f >= 0 && (l[0] === f || l[1] === f), vis = Math.min(A.a, B.a), dx = b[0] - a[0], dy = b[1] - a[1], sg = (l[0] + l[1]) % 2 ? 1 : -1, cx = (a[0] + b[0]) / 2 - dy * .13 * sg, cy = (a[1] + b[1]) / 2 + dx * .13 * sg;
