@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 11:58";
+const BUILD = "23.10 21:23";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -95,6 +95,11 @@ const atTime = (isoDate, h) => { const d = parseISO(isoDate); d.setHours(h, 0, 0
 // поиск: режим «t» — только название (и тема), «a» — везде: ещё и заметки (PR.sm, переключатель над результатами)
 function srchHit(t) {
   const q = (ui.q || "").trim().toLowerCase(); if (!q) return 0;
+  const f = ui.sf;
+  if (f && (f.l || f.c || f.s)) {   // фильтры поиска: список / тема / только важные (подзадача наследует от родителя)
+    const pt = t.parent_id && S.tasks[t.parent_id], lid = t.list_id || (pt && pt.list_id), cat = t.category || (pt && pt.category) || "";
+    if ((f.l && lid !== f.l) || (f.c && cat !== f.c) || (f.s && !t.starred && !(pt && pt.starred))) return 0;
+  }
   if ((t.title + " " + (t.category || "")).toLowerCase().indexOf(q) >= 0) return 2;
   return PR.sm === "a" && String(t.note || "").toLowerCase().indexOf(q) >= 0 ? 1 : 0;
 }
@@ -102,7 +107,17 @@ function srchSnip(t) {
   const q = (ui.q || "").trim().toLowerCase(), n = String(t.note || "").replace(/\s+/g, " "), i = n.toLowerCase().indexOf(q); if (i < 0) return "";
   return (i > 24 ? "…" : "") + n.slice(Math.max(0, i - 24), i + q.length + 40).trim() + (n.length > i + q.length + 40 ? "…" : "");
 }
-const srchModeHTML = () => '<span class="smode" role="group" aria-label="Где искать"><button data-a="smode" data-v="t" class="' + (PR.sm !== "a" ? "on" : "") + '">Только названия</button><button data-a="smode" data-v="a" class="' + (PR.sm === "a" ? "on" : "") + '">Везде, с заметками</button></span>';
+function srchModeHTML() {
+  const f = ui.sf || {}, cats = [...new Set(Object.values(S.tasks).map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru"));
+  const sty = 'style="font:inherit;font-size:calc(12.5px*var(--z,1));padding:5px 8px;border:1px solid var(--ln);border-radius:16px;background:var(--card);color:var(--tx);max-width:160px"';
+  const ls = listsArr().map(l => '<option value="' + l.id + '"' + (f.l === l.id ? " selected" : "") + ">" + esc((l.group_name ? l.group_name + " / " : "") + l.name) + "</option>").join("");
+  const cs = cats.map(c => '<option value="' + esc(c) + '"' + (f.c === c ? " selected" : "") + ">" + esc(c) + "</option>").join("");
+  return '<span class="smode" role="group" aria-label="Где искать"><button data-a="smode" data-v="t" class="' + (PR.sm !== "a" ? "on" : "") + '">Только названия</button><button data-a="smode" data-v="a" class="' + (PR.sm === "a" ? "on" : "") + '">Везде, с заметками</button></span>' +
+    ' <select id="sf-l" ' + sty + ' title="Искать в списке"><option value="">Все списки</option>' + ls + "</select>" +
+    (cats.length ? ' <select id="sf-c" ' + sty + ' title="Искать в теме"><option value="">Все темы</option>' + cs + "</select>" : "") +
+    ' <span class="smode"><button data-a="sfstar" class="' + (f.s ? "on" : "") + '">★ Важные</button></span>' +
+    (f.l || f.c || f.s ? ' <button class="qx" data-a="sfclr" style="color:var(--sub)" title="Сбросить фильтры">' + ic("x", 14) + "</button>" : "");
+}
 function dueInfo(t) {
   if (!t.due) return null;
   const od = !t.done && t.due < today, d = parseISO(t.due), mob = isMobile();
@@ -149,7 +164,7 @@ const savePrefs = () => jset(LSK.prefs, PR);
 let view = jget(LSK.view, "all"), prevView = "all", selId = null;
 if (view === "planned") view = "all";   // вкладку «Запланировано» убрали
 try { const _ap = new URLSearchParams(location.search).get("app"); if (_ap === "journal" || _ap === "food") view = _ap; else if (_ap === "tasks" && (view === "journal" || view === "food")) view = "planned"; } catch (e) {}   // три ярлыка: ?app=journal|food|tasks
-const HOME = () => PR.myday ? "myday" : "all";
+const HOME = () => { if (PR.myday) return "myday"; const l = listsArr().filter(x => x.group_name !== ARCH)[0]; return l ? "list:" + l.id : "all"; };
 if (view === "myday" && !PR.myday) view = "all";
 const ui = { qa: null, msearch: false, left: false, settings: false, limit: 300, doneLimit: 30, msg: "", msgOk: true, busy: false, q: "", pop: null, sugg: false, alerts: [], gcol: {}, day: null, dsheet: null };
 let sync = { state: "ok", msg: "" };
@@ -3821,7 +3836,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (isLite() || PR.ritHide ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("starred", "star", "Важно", c.starred, "#d13438") + sm("all", "inbox", "Все задачи", c.all, "#69797e") +
+    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + (PR.showDay ? sm("day", "clock", "День по часам", 0, "#0f6cbd") : "") +
     (isLite() ? "" : sec("dia", "Дневники", [["journal", "note", "Журнал", "#8764b8"], ["food", "food", "Питание", "#e3680c"], ["health", "heart", "Здоровье", "#e5484d"], ["notes", "bulb", "Заметки", "#2b88d8"]], S.user ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") +
       sec("wrk", "Работа", [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"]], "")) + (isLite() ? sm("week", "ccheck", "Итоги недели", 0, "#038387") : "") +
     '<div class="sech nocl"><span class="tx">Списки</span></div>' + tree + "</div>" +
@@ -4004,9 +4019,10 @@ function settingsHTML() {
     '<label class="swrow" style="margin-top:12px"><input type="checkbox" id="s-glass"' + (TH.glass ? " checked" : "") + "> Стеклянные панели (размытие фона)</label>";
   else if (tab === "work") b =
     sec("Рабочий день (для плана и сетки «День»)", '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">' + sel("s-ds", PR.dayStart, [6,7,8,9,10].map(h => [h, "с " + h + ":00"])) + sel("s-de", PR.dayEnd, [14,15,16,17,18,19,20,21,22].map(h => [h, "до " + h + ":00"])) + sel("s-rs", PR.reserve, [0,10,20,25,30,40].map(p => [p, "резерв " + p + "%"])) + "</div>") +
-    (isLite() ? "" : '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-ritshow"' + (!PR.ritHide ? " checked" : "") + '> Показывать «План на сегодня» (кнопка в меню)</label><label class="swrow"' + (PR.ritHide ? ' style="opacity:.5"' : "") + '><input type="checkbox" id="s-rit"' + (!PR.ritOff && !PR.ritHide ? " checked" : "") + (PR.ritHide ? " disabled" : "") + '> Утренний план сам открывается при первом входе за день</label>') +
+    (isLite() ? "" : '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-rit"' + (!PR.ritOff && !PR.ritHide ? " checked" : "") + '> Утренний план сам открывается при первом входе за день</label>') +
     '<div class="lbl" style="margin-top:10px">Напоминать о задачах без движения</div>' + sel("s-stall", PR.stall === 0 ? 0 : (PR.stall || 3), [[0, "Не напоминать"], [2, "через 2 дня"], [3, "через 3 дня"], [5, "через 5 дней"], [7, "через неделю"]]) +
-    '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
+    '<label class="swrow" style="margin-top:14px"><input type="checkbox" id="s-showday"' + (PR.showDay ? " checked" : "") + '> Показывать «День по часам» в меню</label>' +
+    '<label class="swrow"><input type="checkbox" id="s-myday"' + (PR.myday ? " checked" : "") + '> Показывать раздел «Мой день»</label>' +
     '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Мой день» — это список на сегодня, который каждое утро начинается с нуля: вы сами выбираете, что берёте в работу сегодня. Если вам хватает «Запланировано» (по датам), оставьте выключенным.</div>';
   else if (tab === "notif") b =
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="notify">🔔 Разрешить уведомления</button><button class="btn ghost" data-a="openadd">' + (jget("mytasks_openadd", false) ? "✅" : "⬜") + ' Запуск сразу с окном «Новая задача»</button>' + (/Android/i.test(navigator.userAgent) ? '<button class="btn ghost" data-a="voiceset">🎤 Настройки голосового добавления</button>' : "") + '<button class="btn ghost" data-a="pushtog">' + (pushOn() ? "📲 Пуши в фоне: ВКЛ (выключить)" : "📲 Включить пуши в фоне") + '</button><button class="btn ghost" data-a="pushdiag">🩺 Проверка пушей</button><button class="btn ghost" data-a="gdiag">🧠 Проверка Gemini</button><button class="btn ghost" data-a="devlink">🤖 Подключить Android-приложение</button></div>' +
@@ -4522,6 +4538,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { ng
 function appHTML() {
   if (view.indexOf("list:") === 0 && !S.lists[view.slice(5)]) view = HOME();
   if (view === "myday" && !PR.myday) view = "all";
+  if (!ui.vfix && S.user) { ui.vfix = 1; if (view === "all" || view === "starred" || (view === "day" && !PR.showDay)) view = HOME(); }   // этих пунктов в меню больше нет
   if (view === "search" && !ui.q) view = prevView || HOME();
   if (selId && !S.tasks[selId]) selId = null;
   const c = { myday: 0, starred: 0, someday: 0, all: 0, planned: 0 }, items = [], done = [];
@@ -4864,7 +4881,7 @@ function onBack() {
 
 /* ----- действия по клику ----- */
 const closePop = () => { ui.pop = null; ui.dtp = null; ui.remXi = null; };
-const goView = v => { if (v !== view) { ui.vfade = 1; mClear(); } view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
+const goView = v => { if (v !== view) { ui.vfade = 1; mClear(); } ui.sf = null; view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
 const patchTask = (id, o) => { const d = draftOf(id); if (d) Object.assign(d, o); else upd(id, o); };
 const setDue = (id, v) => {
   const map = { today: today, tom: addDays(today, 1), week: nextMonday(), clear: null };
@@ -4897,6 +4914,8 @@ const acts = {
   qaclose(a, e) { if (e.target !== a) return; ui.qa = null; closePop(); render(); },
   qatog(a) { const f = a.dataset.f; ui.qa[f] = !ui.qa[f]; render(); const i = $("qa-input"); if (i) i.focus(); },
   msearch() { ui.left = false; ui.msearch = true; render(); const q = $("q"); if (q) q.focus(); },
+  sfstar() { ui.sf = ui.sf || {}; ui.sf.s = !ui.sf.s; render(); },
+  sfclr() { ui.sf = null; render(); },
   smode(a) { PR.sm = a.dataset.v === "a" ? "a" : "t"; savePrefs(); render(); },
   msclose() { ui.msearch = false; ui.q = ""; if (view === "search") view = prevView || HOME(); render(); },
   sgadd(a) { setMyDay(a.dataset.id, true); render(); },
@@ -6427,9 +6446,10 @@ function init() {
     if (id === "jr-jump") { const v = e.target.value; if (v) { const J = jrState(); J.vd = v; J.hist = false; J.an = false; render(); } return; }
     if (id === "jr-per") { jrState().per = e.target.value; jrState().lim = 40; render(); return; }
     if (id === "jr-file") { const f = e.target.files && e.target.files[0]; if (f) jrImport(f); e.target.value = ""; return; }
-    if (id === "s-ritshow") { PR.ritHide = !e.target.checked; savePrefs(); render(); return; }
-    if (id === "s-rit") { PR.ritOff = !e.target.checked; savePrefs(); render(); return; }
-    if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView("all"); render(); return; }
+    if (id === "s-showday") { PR.showDay = e.target.checked; if (!PR.showDay && view === "day") goView(HOME()); savePrefs(); render(); return; }
+    if (id === "sf-l" || id === "sf-c") { ui.sf = ui.sf || {}; ui.sf[id === "sf-l" ? "l" : "c"] = e.target.value; render(); return; }
+    if (id === "s-rit") { PR.ritOff = !e.target.checked; if (e.target.checked) PR.ritHide = false; savePrefs(); render(); return; }
+    if (id === "s-myday") { PR.myday = e.target.checked; savePrefs(); if (!PR.myday && view === "myday") goView(HOME()); render(); return; }
     if (id === "s-bgfile") { const f = e.target.files && e.target.files[0]; if (f) bgFromFile(f); return; }
     if (id === "s-glass") { TH.glass = e.target.checked; saveTheme(); render(); return; }
     if (id === "s-keyson") { PR.keysOff = !e.target.checked; savePrefs(); render(); return; }
