@@ -92,6 +92,8 @@ Deno.serve(async (req) => {
     // --- 1. намерение: Gemini, а если недоступен — простые правила ---
     const rulesOf = (tx: string): any => {
       const t = tx.toLowerCase();
+      const nmm = /^(?:новая\s+|запиши\s+|добавь\s+)?(?:заметк[ауие]|мысль)[,:]?\s*(.+)$/i.exec(tx.trim());
+      if (nmm) return { intent: "note", text: nmm[1].trim() };
       const jm = /^(?:в\s+)?журнал[,:]?\s*(.+)$/i.exec(tx.trim());
       if (jm) {
         let rest = jm[1], mins = 0;
@@ -218,6 +220,14 @@ Deno.serve(async (req) => {
           const c = w.current, d = w.daily; return done("Сейчас " + sg(c.temperature_2m) + ", " + WC(c.weather_code) + ", ощущается как " + sg(c.apparent_temperature) + ", ветер " + r0(c.wind_speed_10m) + " метров в секунду. Сегодня от " + sg(d.temperature_2m_min[0]) + " до " + sg(d.temperature_2m_max[0]) + ", осадки " + r0(d.precipitation_probability_max[0]) + " процентов.");
         } catch { return done("Не получилось узнать погоду."); }
       }
+      case "note": {
+        const t = String(I.text || "").trim().slice(0, 4000);
+        if (!t) return done("Не расслышал, что записать в заметки.");
+        const tg = [...new Set((t.match(/(?:^|\s)#([\p{L}\d_-]{2,30})/gu) || []).map((x) => x.trim().slice(1).toLowerCase()))];
+        const nr = await fetch(base + "notes", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ id: crypto.randomUUID(), user_id: uid, text: t[0].toUpperCase() + t.slice(1), tags: tg }) });
+        if (!nr.ok) return done("Не получилось записать заметку.");
+        return done("Записал в заметки.");
+      }
       case "journal": {
         const mn = Math.round(Number(I.minutes) || 0), ttl = String(I.title || "").trim().slice(0, 500);
         if (!ttl) return done("Не расслышал, что записать в журнал.");
@@ -274,7 +284,7 @@ Deno.serve(async (req) => {
         const S = (k: string) => Math.round(ta.reduce((a, x) => a + Number(x[k]), 0));
         return done("За сегодня " + S("kcal") + " ккал. Белка " + S("p") + " граммов, жиров " + S("f") + ", углеводов " + S("c") + ".");
       }
-      case "help": return done("Можно сказать: «напиши в телеграм Мартынову: …»; спроси и вопрос; съел и что съел; таймер на 20 минут; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
+      case "help": return done("Можно сказать: «заметка …» — записать мысль; «напиши в телеграм Мартынову: …»; спроси и вопрос; съел и что съел; таймер на 20 минут; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
       default: break;
     }
     // add

@@ -139,7 +139,7 @@ public class VoiceSettingsActivity extends Activity {
         sw(c3, "Сигнал перед записью", sp.getBoolean("v_beep", true), "v_beep"); divider(c3);
         sw(c3, "Микрофон наушников (если подключены)", sp.getBoolean("v_bt", true), "v_bt"); divider(c3);
         sw(c3, "Умные команды (ИИ)", sp.getBoolean("v_smart", true), "v_smart");
-        note(c3, "Спросить время, погоду, «что на сегодня», «готово», «отложи», «в журнал …, 40 минут».");
+        note(c3, "Спросить время, погоду, «что на сегодня», «готово», «отложи», «в журнал …, 40 минут», «заметка …» (попадёт в раздел «Заметки»).");
 
         // --- 4. окно голоса по расписанию
         LinearLayout c4 = card(root, "Окно голоса по расписанию");
