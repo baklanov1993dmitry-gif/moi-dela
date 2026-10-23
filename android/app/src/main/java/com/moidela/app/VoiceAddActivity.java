@@ -77,6 +77,9 @@ public class VoiceAddActivity extends Activity {
         try {
             final AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             if (!Store.p(this).getBoolean("v_bt", true)) { once.run(); return; }
+            // запуск ярлыком (долгий тап) или иконкой — телефон в руке, пишем с его микрофона; наушники — для ассистента/двойного тапа
+            String act = getIntent() == null ? null : getIntent().getAction();
+            if (Intent.ACTION_VIEW.equals(act) || Intent.ACTION_MAIN.equals(act)) { once.run(); return; }
             if (Build.VERSION.SDK_INT >= 31) {
                 android.media.AudioDeviceInfo dev = null;
                 for (android.media.AudioDeviceInfo d : am.getAvailableCommunicationDevices()) { int t = d.getType(); if (t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO || t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) { dev = d; break; } }
