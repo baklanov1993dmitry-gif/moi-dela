@@ -200,6 +200,7 @@ window.NOTES_INIT = function (X) {
   const SPR = {};
   function spr(h) { if (SPR[h]) return SPR[h]; const s = 96, o = document.createElement("canvas"); o.width = o.height = s; const c = o.getContext("2d"), g = c.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2); g.addColorStop(0, mixc(h, 0, .9)); g.addColorStop(.35, mixc(h, 0, .32)); g.addColorStop(1, mixc(h, 0, 0)); c.fillStyle = g; c.fillRect(0, 0, s, s); return (SPR[h] = o); }
   function buildGraph() {
+    let G0 = 0;
     const E = engine(), notes = Object.values(NT.items).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 140), ids = new Set(notes.map(n => n.id)), nodes = [], idx = {}, links = [];
     const R = 60, ang = i => i * 2.399963;
     const tc = {}; notes.forEach(n => (n.tags || []).forEach(t => { tc[t] = (tc[t] || 0) + 1; }));
@@ -210,9 +211,27 @@ window.NOTES_INIT = function (X) {
     notes.forEach(n => (n.tags || []).forEach(t => { if (idx["#" + t] != null) { links.push([idx[n.id], idx["#" + t], 1, 0]); nodes[idx[n.id]].d++; } }));
     E.edges.forEach(e => { if (ids.has(e[0]) && ids.has(e[1])) { links.push([idx[e[0]], idx[e[1]], 0.6, 1]); nodes[idx[e[0]]].d++; nodes[idx[e[1]]].d++; } });
     const nb = nodes.map(() => new Set()); links.forEach(l => { nb[l[0]].add(l[1]); nb[l[1]].add(l[0]); });
+    // стартовая раскладка без лишних пересечений: теги по кольцу (родственные рядом), заметки — у своих тегов
+    (function () {
+      const m = tl.length; if (!m) return;
+      const w = {}; notes.forEach(n => { const ts = (n.tags || []).filter(t => idx["#" + t] != null); ts.forEach(x => ts.forEach(y => { if (x !== y) w[x + "|" + y] = (w[x + "|" + y] || 0) + 1; })); });
+      const left = new Set(tl), ord = []; let cur = tl[0]; left.delete(cur); ord.push(cur);
+      while (left.size) { let best = null, bw = -1; left.forEach(t => { const v = (w[cur + "|" + t] || 0) * 1000 + tc[t]; if (v > bw) { bw = v; best = t; } }); ord.push(best); left.delete(best); cur = best; }
+      const Rt = Math.max(90, m * 17), pos = {}; ord.forEach((t, i) => { const a = i / m * Math.PI * 2 - Math.PI / 2; pos[t] = [Math.cos(a) * Rt, Math.sin(a) * Rt, a]; const nd = nodes[idx["#" + t]]; nd.x = pos[t][0]; nd.y = pos[t][1]; });
+      const kids = {}, loose = [];
+      notes.forEach(n => { const ts = (n.tags || []).filter(t => pos[t]), nd = nodes[idx[n.id]];
+        if (ts.length === 1) (kids[ts[0]] = kids[ts[0]] || []).push(nd);
+        else if (ts.length > 1) { let x = 0, y = 0; ts.forEach(t => { x += pos[t][0]; y += pos[t][1]; }); nd.x = x / ts.length * 0.55 + (Math.random() - .5) * 8; nd.y = y / ts.length * 0.55 + (Math.random() - .5) * 8; }
+        else loose.push(nd); });
+      Object.keys(kids).forEach(t => { const arr = kids[t], a0 = pos[t][2]; arr.forEach((nd, k) => { const a = a0 + (k - (arr.length - 1) / 2) * 0.28, r = Rt + 46 + 12 * Math.sqrt(k); nd.x = Math.cos(a) * r; nd.y = Math.sin(a) * r; }); });
+      loose.forEach((nd, k) => { const a = k / Math.max(1, loose.length) * Math.PI * 2 + 0.3, r = Rt * 0.45; nd.x = Math.cos(a) * r * (k % 2 ? 0.5 : 1); nd.y = Math.sin(a) * r * (k % 2 ? 0.5 : 1); });
+      G0 = 150;
+    })();
+    const sv = jg("nt:gpos", {}); nodes.forEach(nd => { const q = sv[nd.t === "n" ? nd.id : "#" + nd.id]; if (q) { nd.x = q[0]; nd.y = q[1]; nd.pin = true; } });
     const stars = []; let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 280; i++) { const u = rnd(), r = 0.35 + Math.pow(u, 7) * 1.5; stars.push({ x: rnd(), y: rnd(), r, d: 0.1 + Math.min(0.7, r * 0.42), ph: rnd() * 6.28, sp: 500 + rnd() * 1800, k: i % 9 === 0 ? 1 : i % 9 === 1 ? 2 : 0, big: r > 1.15 }); }
     G = { nodes, links, nb, stars, step: 0, sel: -1, hov: -1, drag: null, rip: null, live: false, fixed: false, sc: 1, ox: 0, oy: 0, zm: 1, px: 0, py: 0, ptr: {}, W: 700, H: 440 };
+    G.step = G0;
   }
   function stepGraph(n) {
     const nodes = G.nodes, links = G.links;
@@ -220,7 +239,7 @@ window.NOTES_INIT = function (X) {
       const k = Math.max(0.04, 1 - G.step / 280);
       for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) { const a = nodes[i], b = nodes[j]; let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy + 0.01; if (d2 > 40000) continue; const f = 900 / d2, d = Math.sqrt(d2); dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; }
       links.forEach(l => { const a = nodes[l[0]], b = nodes[l[1]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = (d - 62) * 0.02 * l[2]; dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; });
-      nodes.forEach((nd, i) => { if (G.drag && G.drag.i === i) return; nd.vx -= nd.x * 0.004; nd.vy -= nd.y * 0.004; nd.x += Math.max(-8, Math.min(8, nd.vx)) * k; nd.y += Math.max(-8, Math.min(8, nd.vy)) * k; nd.vx *= 0.6; nd.vy *= 0.6; });
+      nodes.forEach((nd, i) => { if (G.drag && G.drag.i === i) return; if (nd.pin) { nd.vx = nd.vy = 0; return; } nd.vx -= nd.x * 0.004; nd.vy -= nd.y * 0.004; nd.x += Math.max(-8, Math.min(8, nd.vx)) * k; nd.y += Math.max(-8, Math.min(8, nd.vy)) * k; nd.vx *= 0.6; nd.vy *= 0.6; });
     }
   }
   function fitGraph(snap) {
@@ -301,7 +320,7 @@ window.NOTES_INIT = function (X) {
   function graphHTML() {
     if (Object.keys(NT.items).length < 2) return '<div class="nt-empty"><b>Граф появится позже</b><span>Когда будет хотя бы пара заметок.</span></div>';
     buildGraph();
-    return '<div class="nt-gw"><canvas id="nt-cv"></canvas><div class="nt-zb"><button data-a="ntzoom" data-z="1.5" aria-label="Приблизить">+</button><button data-a="ntzoom" data-z="0.67" aria-label="Отдалить">−</button><button data-a="ntzoom" data-z="0" aria-label="Сбросить">⤢</button></div></div><div class="nt-legend"><i class="h"></i>тег<i class="n"></i>заметка<i class="d"></i>стала задачей<span>колесо/щипок — масштаб, тяни фон — двигай</span></div><div id="nt-gsel"></div>';
+    return '<div class="nt-gw"><canvas id="nt-cv"></canvas><div class="nt-zb"><button data-a="ntzoom" data-z="1.5" aria-label="Приблизить">+</button><button data-a="ntzoom" data-z="0.67" aria-label="Отдалить">−</button><button data-a="ntzoom" data-z="0" aria-label="Сбросить">⤢</button><button data-a="ntgreset" aria-label="Пересобрать раскладку" title="Пересобрать раскладку">↺</button></div></div><div class="nt-legend"><i class="h"></i>тег<i class="n"></i>заметка<i class="d"></i>стала задачей<span>колесо/щипок — масштаб, тяни фон — двигай</span></div><div id="nt-gsel"></div>';
   }
   function gPick(x, y) { let best = -1, bd = 1e9; G.nodes.forEach((n, i) => { if (!n.p) return; const d = (n.p[0] - x) ** 2 + (n.p[1] - y) ** 2, R = (n.r || 8) + (fine() ? 9 : 15); if (d < R * R && d < bd) { bd = d; best = i; } }); return best; }
   function gXY(e) { const r = $("nt-cv").getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
@@ -335,7 +354,7 @@ window.NOTES_INIT = function (X) {
     }
     if (T === "pointerup" || T === "pointercancel") {
       delete G.ptr[e.pointerId]; if (Object.keys(G.ptr).length < 2) G.pinch = 0;
-      if (G.drag) { if (G.drag.moved) G.suppress = true; G.drag = null; }
+      if (G.drag) { if (G.drag.moved) { G.suppress = true; const nd = G.nodes[G.drag.i]; if (nd) { nd.pin = true; const sv = jg("nt:gpos", {}); sv[nd.t === "n" ? nd.id : "#" + nd.id] = [Math.round(nd.x * 10) / 10, Math.round(nd.y * 10) / 10]; js("nt:gpos", sv); } } G.drag = null; }
       if (G.pan) { if (G.pan.moved) G.suppress = true; G.pan = null; }
       if (!Object.keys(G.ptr).length && G.suppress) setTimeout(() => { if (G) G.suppress = false; }, 60);
       pokeGraph(); return;
@@ -390,6 +409,7 @@ window.NOTES_INIT = function (X) {
     ntclshow(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; NT.cl = c.notes.map(n => n.id); NT.focus = null; NT.tag = ""; NT.q = ""; NT.mode = "feed"; NT.fadeIn = true; render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntcldis(a) { const d = dismissed(); d[a.dataset.k] = 1; js("mytasks_notes_dis", d); rerenderKeep(); },
     ntcltask(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; const t = addTask({ title: "Заняться: " + c.label, note: c.notes.map(n => "• " + n.text.replace(/\s+/g, " ").slice(0, 160)).join("\n") }); c.notes.forEach(n => { n.task_id = t.id; put(n); }); rerenderKeep(); toast("Задача создана из " + c.notes.length + " заметок", { buttons: [["Открыть", () => { goView("all"); X.sel(t.id); render(); }]] }); },
+    ntgreset() { js("nt:gpos", {}); render(); },
     ntzoom(a) { if (!G) return; const z = +a.dataset.z; if (!z) { G.zm = 1; G.px = G.py = 0; pokeGraph(); } else zoomAt(z, G.W / 2, G.H / 2); },
     ntmode(a) { const m = a.dataset.v; if (m === NT.mode) return; NT.mode = m; NT.focus = null; NT.cl = null; NT.open = null; NT.edit = null; NT.fadeIn = true; closeMenu(); render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntsearch() { if (NT.sOpen && !NT.q) { NT.sOpen = false; render(); return; } NT.sOpen = true; NT.mode = "feed"; render(); setTimeout(() => { const x = $("nt-q"); if (x) x.focus(); }, 0); },
