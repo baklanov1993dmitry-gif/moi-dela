@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 10:43";
+const BUILD = "23.10 10:45";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3080,9 +3080,9 @@ function passFlt(t) {
   if (f.rem && !t.remind_at) return false;
   if (f.cat && (t.category || "").toLowerCase().split(",").map(x => x.trim()).indexOf(f.cat) < 0) return false;
   switch (f.date) {
-    case "over": if (!(t.due && t.due < today)) return false; break;
+    case "over": if (t.done || !(t.due && t.due < today)) return false; break;   // выполненная не может быть просроченной
     case "today": if (t.due !== today) return false; break;
-    case "todover": if (!(t.due && t.due <= today)) return false; break;
+    case "todover": if (!(t.due && (t.done ? t.due === today : t.due <= today))) return false; break;
     case "tom": if (t.due !== addDays(today, 1)) return false; break;
     case "week": if (!(t.due && t.due >= today && t.due <= addDays(today, 7))) return false; break;
     case "nodue": if (t.due) return false; break;
