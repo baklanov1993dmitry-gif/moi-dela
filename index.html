@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 10:46";
+const BUILD = "23.10 10:56";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3445,7 +3445,7 @@ const CSS = `
 .nfoot{display:none}
 body.dropfile::after{content:"Отпусти файл — он прикрепится к открытой задаче или попадёт в список «Файлы»";position:fixed;inset:10px;z-index:9998;border:3px dashed var(--acc);border-radius:16px;background:rgba(61,143,224,.10);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--acc);pointer-events:none;text-align:center;padding:20px}
 .imgrow{align-items:flex-start;gap:8px}.athumb{display:block;max-width:calc(100% - 36px);max-height:220px;border-radius:8px;object-fit:contain;background:var(--hov);cursor:zoom-in;min-height:40px;min-width:60px}.lbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out}.lbox img{max-width:94vw;max-height:90vh;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5)}.lbdl{position:absolute;right:16px;top:14px;color:#fff;background:rgba(255,255,255,.16);padding:7px 14px;border-radius:18px;font-size:14px;text-decoration:none}
-.dcard.grow{position:relative}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
+.dcard.grow{position:relative}.dcard.grow .notearea{padding-top:38px}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
 .nfull{position:fixed;left:0;right:0;top:0;bottom:0;z-index:58;background:var(--solid);display:flex;flex-direction:column}
 .nfull .nh{display:flex;align-items:center;gap:12px;padding:12px 12px 8px;font-size:calc(18px*var(--z,1));flex-shrink:0}
 .nfull .nh span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3867,13 +3867,13 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => fileRowHTML(f, i)).join("") + "</div>" : "") +
-    '<div class="dcard grow">' + (isMobile() ? "" : '<button class="nexp" data-a="notefull" title="Развернуть заметку на весь экран (Esc — закрыть)">⤢ Развернуть</button>') + '<textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea>' + noteLinksHTML(t.note) + '<div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
+    '<div class="dcard grow">' + '<button class="nexp" data-a="notefull" title="Развернуть заметку на весь экран (Esc — закрыть)">⤢ Развернуть</button>' + '<textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea>' + noteLinksHTML(t.note) + '<div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
   if (!ui.noteFull || !selId || !S.tasks[selId]) return "";
   const t = S.tasks[selId];
-  return '<div class="nfull"><div class="nh"><button class="ibtn" data-a="notefullclose">' + ic("arrowl", 22) + "</button><span>" + esc(t.title) + '</span></div><textarea id="d-note" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea><div class="nb">Создано ' + esc(fmtShort(t.created_at)) + "</div></div>";
+  return '<div class="nfull"><div class="nh"><button class="ibtn" data-a="notefullclose">' + ic("arrowl", 22) + "</button><span>" + esc(t.title) + '</span></div><textarea id="d-note" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea>' + noteLinksHTML(t.note) + '<div class="nb">Создано ' + esc(fmtShort(t.created_at)) + "</div></div>";
 }
 function popHTML() {
   const p = ui.pop; if (!p) return "";
