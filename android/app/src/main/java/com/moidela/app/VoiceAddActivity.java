@@ -412,9 +412,19 @@ public class VoiceAddActivity extends Activity {
         } }).start();
     }
 
-    private void speakAndEnd(String t) { done = true; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, 700); return; } if (ttsReady) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
+    private void speakAndEnd(String t) { done = true; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, 700); return; } if (ttsReady || handheld()) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
     private void endSpeech() { Runnable r = afterSpeech; afterSpeech = null; if (r != null) r.run(); else finish(); }
+    /** запуск ярлыком/иконкой — телефон в руке: ответ только текстом, без озвучки */
+    private boolean handheld() { String a = getIntent() == null ? null : getIntent().getAction(); return Intent.ACTION_VIEW.equals(a) || Intent.ACTION_MAIN.equals(a); }
     private void say(final String t) {
+        if (handheld()) {
+            final int g = ++sayGen;
+            if (tv != null) tv.setText(t);
+            try { if (sr != null) sr.cancel(); } catch (Exception e) {}
+            long d = afterSpeech != null ? 400 : Math.min(12000, 2500 + 60L * t.length());   // ждём ответа — слушаем сразу; иначе даём время прочитать
+            h.postDelayed(new Runnable() { public void run() { if (g == sayGen) endSpeech(); } }, d);
+            return;
+        }
         if (tts == null) { finish(); return; }
         final int gen = ++sayGen;
         try { if (sr != null) { sr.cancel(); } } catch (Exception e) {}
