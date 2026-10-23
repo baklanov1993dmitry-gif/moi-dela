@@ -92,7 +92,7 @@ window.NOTES_INIT = function (X) {
   }
   function tabs() {
     const t = (k, n) => '<button class="nt-tab' + (NT.mode === k ? " on" : "") + '" data-a="ntmode" data-v="' + k + '">' + n + "</button>";
-    return '<div class="nt-tabs">' + t("feed", "Лента") + t("themes", "Темы") + t("graph", "Граф") + '<span style="flex:1"></span><button class="nt-b" data-a="ntexp" data-v="zip" title="Папка .md-файлов (для Obsidian)">⬇ .md</button><button class="nt-b" data-a="ntexp" data-v="one" title="Один файл">⬇ 1 файл</button></div>';
+    return '<div class="nt-tabs">' + t("feed", "Лента") + t("themes", "Темы") + t("graph", "Граф") + '<span style="flex:1"></span><button class="nt-b" data-a="ntai" title="Автотеги через ИИ">🏷 ИИ: ' + (aiOn() ? "вкл" : "выкл") + '</button><button class="nt-b" data-a="ntexp" data-v="zip" title="Папка .md-файлов (для Obsidian)">⬇ .md</button><button class="nt-b" data-a="ntexp" data-v="one" title="Один файл">⬇ 1 файл</button></div>';
   }
   function themesHTML() {
     const E = engine(), items = Object.values(NT.items), now = Date.now(), wk = items.filter(n => now - new Date(n.created_at) < 7 * 864e5), pw = items.filter(n => { const d = now - new Date(n.created_at); return d >= 7 * 864e5 && d < 14 * 864e5; });
@@ -106,9 +106,26 @@ window.NOTES_INIT = function (X) {
     E.clusters.slice(0, 20).forEach(c => { h += '<div class="nt-card"><div class="nt-tx"><b>' + esc(c.label) + '</b></div><div class="nt-meta"><span>' + c.notes.length + " " + plural(c.notes.length, "заметка", "заметки", "заметок") + " · " + shortD(c.first) + " → " + shortD(c.last) + (c.linked ? " · есть задача" : "") + '</span><span style="flex:1"></span>' + (c.linked ? "" : '<button class="nt-b" data-a="ntcltask" data-k="' + c.key + '">' + ic("ccheck", 16) + ' в задачу</button>') + '<button class="nt-b" data-a="ntclshow" data-k="' + c.key + '">Показать</button></div></div>'; });
     const all = {}; items.forEach(n => (n.tags || []).forEach(t => { all[t] = (all[t] || 0) + 1; }));
     const tl = Object.entries(all).sort((a, b) => b[1] - a[1]);
-    h += '<div class="nt-day">Теги</div><div class="nt-tags">' + (tl.length ? tl.map(t => '<a class="nt-tag" data-a="nttag" data-t="' + esc(t[0]) + '">#' + esc(t[0]) + " <i>" + t[1] + "</i></a>").join("") : '<span class="nt-hint">Добавляй #теги в текст — они соберутся здесь.</span>') + "</div>";
+    h += '<div class="nt-day">Теги</div><div style="margin:0 0 6px"><button class="btn" style="height:30px;min-height:0;padding:0 12px" data-a="ntretag">🏷 Расставить теги в старых заметках</button></div><div class="nt-tags">' + (tl.length ? tl.map(t => '<a class="nt-tag" data-a="nttag" data-t="' + esc(t[0]) + '">#' + esc(t[0]) + " <i>" + t[1] + "</i></a>").join("") : '<span class="nt-hint">Добавляй #теги в текст — они соберутся здесь.</span>') + "</div>";
     return h;
   }
+
+  /* ---------- авто-теги ---------- */
+  const aiOn = () => { try { return localStorage.getItem("mytasks_nt_ai") !== "0"; } catch (e) { return true; } };
+  const allTags = () => { const c = {}; Object.values(NT.items).forEach(n => (n.tags || []).forEach(t => { c[t] = (c[t] || 0) + 1; })); return c; };
+  function localTags(text) {   // существующие теги, чьи слова встречаются в тексте
+    const ws = (text.toLowerCase().match(/[\p{L}]{4,}/gu) || []).map(w => stemOf(w)), out = [];
+    Object.keys(allTags()).forEach(t => { const ts = t.split("_").map(w => stemOf(w)); if (ts.every(x => ws.indexOf(x) >= 0) && out.length < 3) out.push(t); });
+    return out;
+  }
+  const union = (a, b) => { const r = (a || []).slice(); (b || []).forEach(x => { if (r.indexOf(x) < 0) r.push(x); }); return r; };
+  async function aiTags(n) {
+    const sb = sbg(); if (!sb || !S.user) return [];
+    try { const ss = (await sb.auth.getSession()).data.session; if (!ss) return []; const ctl = new AbortController(); setTimeout(() => ctl.abort(), 15000);
+      const r = await fetch(sb.supabaseUrl + "/functions/v1/device?a=ntag", { method: "POST", signal: ctl.signal, headers: { Authorization: "Bearer " + ss.access_token, apikey: sb.supabaseKey, "content-type": "application/json" }, body: JSON.stringify({ text: n.text, tags: Object.keys(allTags()) }) });
+      const j = await r.json(); return Array.isArray(j.tags) ? j.tags : []; } catch (e) { return []; }
+  }
+  async function autoTag(n) { const t = await aiTags(n); if (t.length && NT.items[n.id]) { n.tags = union(n.tags, t); n.updated_at = nowISO(); put(n); const el = $("nt-tx"); if (viewg() === "notes" && !NT.edit && (!el || !el.value)) render(); } return t.length; }
   /* ---------- граф ---------- */
   let G = null;
   function buildGraph() {
@@ -149,11 +166,12 @@ window.NOTES_INIT = function (X) {
   function dl(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
   const stamp = n => { const d = new Date(n.created_at); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "-" + pad2(d.getHours()) + pad2(d.getMinutes()); };
 
+  const autoChips = n => { const inTx = tagsOf(n.text), extra = (n.tags || []).filter(t => inTx.indexOf(t) < 0); return extra.length ? '<div class="nt-auto">' + extra.map(t => '<a class="nt-tag" data-a="nttag" data-t="' + esc(t) + '">#' + esc(t) + "</a>").join("") + "</div>" : ""; };
   function card(n) {
     if (NT.edit === n.id) return '<div class="nt-card edit"><textarea id="nt-ed" class="inp nt-ta" rows="4">' + esc(n.text) + '</textarea><div class="nt-row"><button class="btn" data-a="ntedsave" data-id="' + n.id + '">Сохранить</button><button class="linkbtn" data-a="ntedcancel">Отмена</button></div></div>';
     const tm = new Date(n.created_at), hh = pad2(tm.getHours()) + ":" + pad2(tm.getMinutes());
     const task = n.task_id && S.tasks[n.task_id];
-    return '<div class="nt-card' + (n.pinned ? " pin" : "") + '"><div class="nt-tx">' + fmtText(n.text) + '</div><div class="nt-meta"><span>' + (n.pinned ? "📌 " : "") + hh + '</span>' +
+    return '<div class="nt-card' + (n.pinned ? " pin" : "") + '"><div class="nt-tx">' + fmtText(n.text) + "</div>" + autoChips(n) + '<div class="nt-meta"><span>' + (n.pinned ? "📌 " : "") + hh + '</span>' +
       (task ? '<span class="nt-lnk' + (task.done ? " done" : "") + '" title="Связанная задача">' + (task.done ? "✓ " : "→ ") + "задача" + "</span>" : "") +
       '<span style="flex:1"></span>' + ((engine().nb[n.id] || []).length ? '<button class="nt-b" data-a="ntrel" data-id="' + n.id + '" title="Похожие мысли">🔗 ' + engine().nb[n.id].length + "</button>" : "") +
       (task ? "" : '<button class="nt-b" data-a="nttask" data-id="' + n.id + '" title="Сделать задачей">' + ic("ccheck", 16) + " в задачу</button>") +
@@ -179,13 +197,13 @@ window.NOTES_INIT = function (X) {
   }
 
   const A = {
-    ntadd() { const el = $("nt-tx"), t = (el ? el.value : NT.tx).trim(); if (!t) { toast("Пусто"); return; } boot(); const now = nowISO(); put({ id: uid(), text: t, tags: tagsOf(t), task_id: null, pinned: false, created_at: now, updated_at: now }, "u"); NT.tx = ""; render(); setTimeout(() => { const x = $("nt-tx"); if (x) x.focus(); }, 0); },
+    ntadd() { const el = $("nt-tx"), t = (el ? el.value : NT.tx).trim(); if (!t) { toast("Пусто"); return; } boot(); const now = nowISO(); const own = tagsOf(t), nn = { id: uid(), text: t, tags: own.length ? own : localTags(t), task_id: null, pinned: false, created_at: now, updated_at: now }; put(nn, "u"); if (!own.length && aiOn()) autoTag(nn); NT.tx = ""; render(); setTimeout(() => { const x = $("nt-tx"); if (x) x.focus(); }, 0); },
     ntmic() { micToggle("nt-tx"); },
     nttag(a) { NT.tag = a.dataset.t || ""; NT.mode = "feed"; NT.focus = null; NT.cl = null; render(); },
     ntpin(a) { const n = NT.items[a.dataset.id]; if (!n) return; n.pinned = !n.pinned; put(n); render(); },
     ntedit(a) { NT.edit = a.dataset.id; render(); setTimeout(() => { const x = $("nt-ed"); if (x) { x.focus(); x.setSelectionRange(x.value.length, x.value.length); } }, 0); },
     ntedcancel() { NT.edit = null; render(); },
-    ntedsave(a) { const n = NT.items[a.dataset.id], x = $("nt-ed"); if (!n || !x) return; const t = x.value.trim(); if (!t) { toast("Пусто"); return; } n.text = t; n.tags = tagsOf(t); n.updated_at = nowISO(); NT.edit = null; put(n); render(); },
+    ntedsave(a) { const n = NT.items[a.dataset.id], x = $("nt-ed"); if (!n || !x) return; const t = x.value.trim(); if (!t) { toast("Пусто"); return; } const oldIn = tagsOf(n.text), keep = (n.tags || []).filter(x => oldIn.indexOf(x) < 0); n.text = t; n.tags = union(tagsOf(t), keep); n.updated_at = nowISO(); NT.edit = null; put(n); render(); },
     ntdel(a) { const id = a.dataset.id, n = NT.items[id]; if (!n) return; delete NT.items[id]; NT.pend[id] = "d"; save(); render(); toast("Заметка удалена", { buttons: [["Вернуть", () => { NT.items[id] = n; NT.pend[id] = "u"; save(); flush(); render(); }]] }); setTimeout(() => { if (NT.pend[id] === "d") flush(); }, 6500); },
     nttask(a) { const n = NT.items[a.dataset.id]; if (!n || n.task_id) return; const lines = n.text.split("\n"), title = lines[0].replace(/#[\p{L}\d_-]+/gu, "").trim().slice(0, 120) || "Из заметки", rest = lines.slice(1).join("\n").trim(); const t = addTask({ title, note: rest }); n.task_id = t.id; put(n); render(); toast("Задача создана", { buttons: [["Открыть", () => { goView("all"); X.sel(t.id); render(); }]] }); },
     ntmode(a) { NT.mode = a.dataset.v; NT.focus = null; render(); },
@@ -199,6 +217,8 @@ window.NOTES_INIT = function (X) {
       if (a.dataset.v === "one") { dl(new Blob([all.map(n => "## " + new Date(n.created_at).toLocaleString("ru-RU") + (n.tags.length ? "  " + n.tags.map(t => "#" + t).join(" ") : "") + "\n\n" + n.text + "\n").join("\n---\n\n")], { type: "text/markdown" }), "zametki.md"); toast("Выгружено: " + all.length); return; }
       const used = {}, files = all.map(n => { let nm = stamp(n) + "-" + slug(n.text); if (used[nm]) nm += "-" + (++used[nm]); else used[nm] = 1; return { name: "zametki/" + nm + ".md", data: utf8(mdOf(n)) }; });
       dl(new Blob([zipStore(files)], { type: "application/zip" }), "zametki.zip"); toast("Папка .md: " + all.length + " файлов — открой в Obsidian или дай Claude"); },
+    ntai() { try { localStorage.setItem("mytasks_nt_ai", aiOn() ? "0" : "1"); } catch (e) {} toast(aiOn() ? "ИИ-теги включены: текст новой заметки уходит ИИ только для подбора тегов" : "ИИ-теги выключены (только совпадения со старыми тегами)"); render(); },
+    async ntretag() { const todo = Object.values(NT.items).filter(n => !(n.tags || []).length).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 40); if (!todo.length) { toast("Все заметки уже с тегами"); return; } toast("Размечаю " + todo.length + " заметок…"); let k = 0; for (const n of todo) { const l = localTags(n.text); if (l.length) { n.tags = l; put(n); k++; } else if (await autoTag(n)) k++; } render(); toast("Теги проставлены: " + k + " из " + todo.length); },
     ntretry() { NT.missing = false; NT.loaded = false; load(); render(); }
   };
   Object.assign(acts, A);

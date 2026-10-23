@@ -11,6 +11,13 @@ const durMin = (str: string): number => {   // «20 минут», «полтор
   const n = m[1] ? (W[m[1].toLowerCase()] ?? parseFloat(m[1].replace(",", "."))) : 1; if (!(n > 0)) return 0;
   return Math.round(n * (/^ч/i.test(m[2]) ? 60 : 1));
 };
+async function suggestTags(text: string, existing: string[]): Promise<string[]> {   // 1–3 коротких тега; существующие в приоритете
+  const t = text.trim().slice(0, 1500); if (t.length < 8) return [];
+  const ex = [...new Set(existing.map((x) => String(x).toLowerCase()))].slice(0, 60);
+  const out = await askAI("Ты расставляешь теги для личной заметки на русском. Верни ТОЛЬКО JSON-массив из 1–3 тегов: строчные, одно слово (или два через _), существительные в именительном падеже, без #. Если подходит существующий тег из списка — бери его. Имя человека — тоже тег. Новые теги только если существующие не подходят. Существующие теги: " + (ex.join(", ") || "нет"), t);
+  if (!out) return [];
+  try { const m = /\[[\s\S]*?\]/.exec(out); const arr = JSON.parse(m ? m[0] : "[]"); return [...new Set(arr.map((x: any) => String(x).toLowerCase().replace(/^#/, "").replace(/[^\p{L}\d_-]+/gu, "_").replace(/^_+|_+$/g, "").slice(0, 30)).filter((x: string) => x.length >= 2))].slice(0, 3) as string[]; } catch { return []; }
+}
 async function askAI(sys: string, user: string): Promise<string | null> {   // Groq (быстрый) -> Gemini, таймауты чтобы телефон не ждал
   const qk = Deno.env.get("GROQ_API_KEY");
   if (qk) for (const model of ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant"]) {
@@ -45,6 +52,13 @@ Deno.serve(async (req) => {
     const ir = await fetch(base + "device_keys", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ user_id: u.id, key_hash: await sha(key) }) });
     if (!ir.ok) return ok({ error: "db " + (await ir.text()).slice(0, 200) }, 500);
     return ok({ key, base: SU });
+  }
+  if (a === "ntag") {   // авто-теги для заметки: text, tags (уже существующие) -> {tags:[…]}; вход по сессии
+    const au = req.headers.get("authorization") || "";
+    const ur = await fetch(SU + "/auth/v1/user", { headers: { Authorization: au, apikey: Deno.env.get("SUPABASE_ANON_KEY") || sk } });
+    const u1 = ur.ok ? await ur.json() : null; if (!u1 || !u1.id) return ok({ error: "auth" }, 401);
+    let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
+    return ok({ tags: await suggestTags(String(b.text || ""), Array.isArray(b.tags) ? b.tags : []) });
   }
   if (a === "gdiag") {   // диагностика Gemini: сырые ответы Google по каждой модели (ключ не показываем)
     const au = req.headers.get("authorization") || "";
@@ -224,6 +238,7 @@ Deno.serve(async (req) => {
         const t = String(I.text || "").trim().slice(0, 4000);
         if (!t) return done("Не расслышал, что записать в заметки.");
         const tg = [...new Set((t.match(/(?:^|\s)#([\p{L}\d_-]{2,30})/gu) || []).map((x) => x.trim().slice(1).toLowerCase()))];
+        if (!tg.length) { try { const er = await fetch(base + "notes?select=tags&user_id=eq." + uid + "&order=created_at.desc&limit=150", { headers: hd }); const ej: any[] = er.ok ? await er.json() : []; tg.push(...await suggestTags(t, ej.flatMap((x) => x.tags || []))); } catch { /* без тегов */ } }
         const nr = await fetch(base + "notes", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ id: crypto.randomUUID(), user_id: uid, text: t[0].toUpperCase() + t.slice(1), tags: tg }) });
         if (!nr.ok) return done("Не получилось записать заметку.");
         return done("Записал в заметки.");

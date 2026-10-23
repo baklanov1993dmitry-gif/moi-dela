@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 09:35";
+const BUILD = "23.10 09:41";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2459,6 +2459,7 @@ const jrCSS = `
 .nt-ret-t{font-size:calc(14px*var(--z,1))}.nt-ret-s{font-size:calc(12px*var(--z,1));opacity:.75;margin-top:2px}
 .nt-ret .nt-row{flex-wrap:wrap}
 .nt-wk{border:1px solid var(--ln);border-radius:12px;padding:10px 12px;margin:0 0 6px;font-size:calc(12.5px*var(--z,1));line-height:1.7}
+.nt-auto{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .nt-rel{margin-top:6px;border-top:1px dashed var(--ln);padding-top:6px}
 .nt-rl{font-size:calc(12px*var(--z,1));opacity:.8;padding:3px 0;cursor:pointer}.nt-rl i{font-style:normal;opacity:.55;margin-right:4px}.nt-rl:hover{color:#2b88d8}
 .nt-gw{border:1px solid var(--ln);border-radius:12px;overflow:hidden;background:var(--solid,transparent)}
