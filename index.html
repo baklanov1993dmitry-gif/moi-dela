@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 11:43";
+const BUILD = "23.10 11:51";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3398,6 +3398,11 @@ const CSS = `
 .chip .em{width:20px;flex-shrink:0;display:inline-flex;justify-content:center;font-size:calc(16px*var(--z,1))}
 .chip .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip .n{color:var(--tx);font-size:calc(13px*var(--z,1))}
+.sech{display:flex;align-items:center;gap:6px;height:36px;padding:0 20px 0 22px;margin-top:8px;font-size:calc(11px*var(--z,1));font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--sub);cursor:pointer;user-select:none}
+.sech .tx{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sech .pv{display:inline-flex;gap:7px;opacity:.85}.sech .pv i{display:inline-flex}.sech.nocl{cursor:default;margin-top:12px;border-top:1px solid var(--ln);padding-top:6px;height:42px}
+@media(hover:hover){.sech:not(.nocl):hover{color:var(--tx)}}
+.railed .sech{display:none}
+@media(max-width:760px){.sech{height:44px;font-size:calc(12px*var(--z,1));padding-left:18px}.sech.nocl{height:50px}}
 .ghead{display:flex;align-items:center;gap:4px;height:44px;padding:0 20px 0 22px;font-size:calc(14px*var(--z,1));font-weight:700;cursor:pointer}
 .ghead .tx{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ghead .ibtn{width:26px;height:26px;opacity:0}.ghead:hover .ibtn{opacity:1}
@@ -3799,6 +3804,12 @@ function weekMainHTML(vi) {
 function leftHTML(c) {
   const sm = (v, svg, name, n, color) => '<div class="chip ' + (view === v || (v === "team" && view.indexOf("team:") === 0) ? "on" : "") + '" data-a="view" data-v="' + v + '" title="' + name + '"><span class="em" style="color:' + color + '">' + ic(svg, 18) + '</span><span class="tx">' + name + '</span><span class="n">' + (n || "") + "</span></div>";
   const lc = l => '<div class="chip ' + (view === "list:" + l.id ? "on" : "") + '" data-a="view" data-v="list:' + l.id + '" data-lid="' + l.id + '" title="' + esc(l.name) + '">' + listIcon(l) + '<span class="tx">' + esc(l.name) + '</span><span class="n">' + (c["list:" + l.id] || "") + "</span></div>";
+  const inSec = v => view === v || (v === "team" && view.indexOf("team") === 0);
+  const sec = (k, title, items, extra) => {   // сворачиваемый раздел меню; свёрнутый показывает значки пунктов; раздел с открытым экраном раскрывается сам
+    const on = items.some(i => inSec(i[0])), col = !(PR.rail && !isMobile()) && !on && PR.collapsed["§" + k] !== false;
+    return '<div class="sech" data-a="stoggle" data-g="§' + k + '"><span class="tx">' + title + "</span>" + (col ? '<span class="pv">' + items.map(i => '<i style="color:' + i[3] + '">' + ic(i[1], 15) + "</i>").join("") + "</span>" : "") + ic(col ? "chevr" : "chevd", 14) + "</div>" +
+      (col ? "" : '<div class="sbody">' + items.map(i => sm(i[0], i[1], i[2], 0, i[3])).join("") + extra + "</div>");
+  };
   const ls = listsArr().sort((a, b) => (a.group_name === ARCH) - (b.group_name === ARCH)), seen = new Set(); let tree = "";   // архив — в самом низу
   for (const l of ls) {
     const g = l.group_name;
@@ -3810,9 +3821,10 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") + sm("notes", "bulb", "Заметки", 0, "#2b88d8") + sm("health", "heart", "Здоровье", 0, "#e5484d")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
-    sm("all", "inbox", "Все задачи", c.all, "#69797e") +
-    '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
+    (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("starred", "star", "Важно", c.starred, "#d13438") + sm("all", "inbox", "Все задачи", c.all, "#69797e") +
+    (isLite() ? "" : sec("dia", "Дневники", [["journal", "note", "Журнал", "#8764b8"], ["food", "food", "Питание", "#e3680c"], ["health", "heart", "Здоровье", "#e5484d"], ["notes", "bulb", "Заметки", "#2b88d8"]], S.user ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") +
+      sec("wrk", "Работа", [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"]], "")) + (isLite() ? sm("week", "ccheck", "Итоги недели", 0, "#038387") : "") +
+    '<div class="sech nocl"><span class="tx">Списки</span></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="pop" data-p="ngroup" title="Новая группа списков">' + ic("fplus", 18) + "</button></div></div>";
 }
 function metaHTML(t, showList, orphan) {
@@ -4870,6 +4882,7 @@ const acts = {
   menu() { if (!ui.left && menuSlideOpen()) return; ui.left = !ui.left; render(); },
   rail() { if (innerWidth <= 760) { ui.left = false; } else PR.rail = !PR.rail; savePrefs(); render(); },
   wkrefresh() { wkLoad(true); render(); },
+  stoggle(a) { const g = a.dataset.g; PR.collapsed[g] = PR.collapsed[g] === false; savePrefs(); render(); },
   gtoggle(a) { const g = a.dataset.g; PR.collapsed[g] = g === ARCH ? PR.collapsed[g] === false : !PR.collapsed[g]; savePrefs(); render(); },
   ggtoggle(a) { const k = a.dataset.k; ui.gcol[k] = !ui.gcol[k]; render(); },
   grid(a) { PR.grid[view] = a.dataset.v === "1"; savePrefs(); render(); },
