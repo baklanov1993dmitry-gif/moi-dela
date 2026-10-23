@@ -199,7 +199,12 @@ window.NOTES_INIT = function (X) {
   const mixc = (h, t, a) => { const c = rgb(h).map(v => Math.round(t >= 0 ? v + (255 - v) * t : v * (1 + t))); return "rgba(" + c + "," + (a == null ? 1 : a) + ")"; };
   const SPR = {};
   function spr(h) { if (SPR[h]) return SPR[h]; const s = 96, o = document.createElement("canvas"); o.width = o.height = s; const c = o.getContext("2d"), g = c.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2); g.addColorStop(0, mixc(h, 0, .9)); g.addColorStop(.35, mixc(h, 0, .32)); g.addColorStop(1, mixc(h, 0, 0)); c.fillStyle = g; c.fillRect(0, 0, s, s); return (SPR[h] = o); }
+  // синхронизация раскладки между устройствами: user_settings, ключ notes:gpos
+  let gTm = 0, gPulled = false;
+  function gSave() { js("nt:gposT", Date.now()); clearTimeout(gTm); gTm = setTimeout(async () => { try { const sb = sbg(); if (!sb || !S.user) return; await sb.from("user_settings").upsert({ user_id: S.user.id, key: "notes:gpos", data: { t: jg("nt:gposT", 0), pos: jg("nt:gpos", {}) }, updated_at: nowISO() }, { onConflict: "user_id,key" }); } catch (e) {} }, 1200); }
+  async function gPull() { if (gPulled) return; gPulled = true; try { const sb = sbg(); if (!sb || !S.user) return; const r = await sb.from("user_settings").select("data").eq("user_id", S.user.id).eq("key", "notes:gpos").maybeSingle(); const d = !r.error && r.data && r.data.data; if (d && d.pos && (d.t || 0) > jg("nt:gposT", 0)) { js("nt:gpos", d.pos); js("nt:gposT", d.t || 1); if (viewg() === "notes" && NT.mode === "graph" && G && !G.drag) render(); } } catch (e) { gPulled = false; } }
   function buildGraph() {
+    gPull();
     let G0 = 0;
     const E = engine(), notes = Object.values(NT.items).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 140), ids = new Set(notes.map(n => n.id)), nodes = [], idx = {}, links = [];
     const R = 60, ang = i => i * 2.399963;
@@ -354,7 +359,7 @@ window.NOTES_INIT = function (X) {
     }
     if (T === "pointerup" || T === "pointercancel") {
       delete G.ptr[e.pointerId]; if (Object.keys(G.ptr).length < 2) G.pinch = 0;
-      if (G.drag) { if (G.drag.moved) { G.suppress = true; const nd = G.nodes[G.drag.i]; if (nd) { nd.pin = true; const sv = jg("nt:gpos", {}); sv[nd.t === "n" ? nd.id : "#" + nd.id] = [Math.round(nd.x * 10) / 10, Math.round(nd.y * 10) / 10]; js("nt:gpos", sv); } } G.drag = null; }
+      if (G.drag) { if (G.drag.moved) { G.suppress = true; const nd = G.nodes[G.drag.i]; if (nd) { nd.pin = true; const sv = jg("nt:gpos", {}); sv[nd.t === "n" ? nd.id : "#" + nd.id] = [Math.round(nd.x * 10) / 10, Math.round(nd.y * 10) / 10]; js("nt:gpos", sv); gSave(); } } G.drag = null; }
       if (G.pan) { if (G.pan.moved) G.suppress = true; G.pan = null; }
       if (!Object.keys(G.ptr).length && G.suppress) setTimeout(() => { if (G) G.suppress = false; }, 60);
       pokeGraph(); return;
@@ -409,7 +414,7 @@ window.NOTES_INIT = function (X) {
     ntclshow(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; NT.cl = c.notes.map(n => n.id); NT.focus = null; NT.tag = ""; NT.q = ""; NT.mode = "feed"; NT.fadeIn = true; render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntcldis(a) { const d = dismissed(); d[a.dataset.k] = 1; js("mytasks_notes_dis", d); rerenderKeep(); },
     ntcltask(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; const t = addTask({ title: "Заняться: " + c.label, note: c.notes.map(n => "• " + n.text.replace(/\s+/g, " ").slice(0, 160)).join("\n") }); c.notes.forEach(n => { n.task_id = t.id; put(n); }); rerenderKeep(); toast("Задача создана из " + c.notes.length + " заметок", { buttons: [["Открыть", () => { goView("all"); X.sel(t.id); render(); }]] }); },
-    ntgreset() { js("nt:gpos", {}); render(); },
+    ntgreset() { js("nt:gpos", {}); gSave(); render(); },
     ntzoom(a) { if (!G) return; const z = +a.dataset.z; if (!z) { G.zm = 1; G.px = G.py = 0; pokeGraph(); } else zoomAt(z, G.W / 2, G.H / 2); },
     ntmode(a) { const m = a.dataset.v; if (m === NT.mode) return; NT.mode = m; NT.focus = null; NT.cl = null; NT.open = null; NT.edit = null; NT.fadeIn = true; closeMenu(); render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntsearch() { if (NT.sOpen && !NT.q) { NT.sOpen = false; render(); return; } NT.sOpen = true; NT.mode = "feed"; render(); setTimeout(() => { const x = $("nt-q"); if (x) x.focus(); }, 0); },
