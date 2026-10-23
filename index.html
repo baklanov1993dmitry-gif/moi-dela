@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 11:06";
+const BUILD = "23.10 11:09";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4630,6 +4630,7 @@ function render() {
   try { updBadge(); } catch (e) {}
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
+  let rs = null; if (ae && ae.classList && ae.classList.contains("rte") && ae.id && app.contains(ae)) { try { rteFlush(); const sl = getSelection(); if (sl.rangeCount) { const r0 = sl.getRangeAt(0); rs = [ae.id, rteCount(ae, r0.startContainer, r0.startOffset), rteCount(ae, r0.endContainer, r0.endOffset), ae.scrollTop]; } } catch (e) {} }   // редактор заметки: сохраняем и позицию курсора
   let fv, fs, fe; if (fid) { fv = ae.value; try { fs = ae.selectionStart; fe = ae.selectionEnd; } catch (e) {} }
   const sc = {}; ["lscroll", "list", "dscroll", "dayscroll"].forEach(id => { const e = $(id); if (e) sc[id] = e.scrollTop; });
   today = todayISO();
@@ -4646,6 +4647,7 @@ function render() {
   try { if (kbKeep && ui.qa) { const qi = $("qa-input"); if (qi && document.activeElement !== qi) { qi.focus({ preventScroll: true }); const L = qi.value.length; qi.setSelectionRange(L, L); } } } catch (e) {}
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
+  if (rs) { try { const n = $(rs[0]); if (n) { n.focus({ preventScroll: true }); const a = rtePlace(n, rs[1]), b = rtePlace(n, rs[2]), r = document.createRange(); r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); n.scrollTop = rs[3]; } } catch (e) {} }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
   updateSyncUI(); dayAfterRender(); syncHistory(); fitPop(); nuAfter();
 }
@@ -5380,6 +5382,15 @@ function rteBar(full) {
     (full ? '<button type="button" tabindex="-1" data-a="notefullclose" title="Свернуть (Esc)">⤡</button>' : '<button type="button" tabindex="-1" data-a="notefull" title="Развернуть на весь экран (Esc — закрыть)">⤢</button>') +
     '<div class="rtp" data-q="f">' + RTC.map(c => '<i data-a="fmtc" data-k="f" data-c="' + c + '" style="background:' + c + '"></i>').join("") + '<i data-a="fmtc" data-k="f" data-c="" class="x" title="Обычный цвет">∅</i></div>' +
     '<div class="rtp" data-q="b">' + RTM.map(c => '<i data-a="fmtc" data-k="b" data-c="' + c + '" style="background:' + c + '"></i>').join("") + '<i data-a="fmtc" data-k="b" data-c="" class="x" title="Без выделения">∅</i></div></div>';
+}
+function rteCount(root, node, off) {
+  let n = 0, done = false; const cnt = x => { if (x.nodeType === 3) n += x.nodeValue.length; else if (x.nodeName === "BR") n += 1; else x.childNodes.forEach(cnt); };
+  const walk = x => { if (done) return; if (x === node) { if (x.nodeType === 3) n += off; else for (let i = 0; i < off; i++) cnt(x.childNodes[i]); done = true; return; } if (x.nodeType === 3) { n += x.nodeValue.length; return; } if (x.nodeName === "BR") { n += 1; return; } x.childNodes.forEach(walk); };
+  walk(root); return n;
+}
+function rtePlace(root, pos) {
+  let n = pos, res = null; const walk = x => { if (res) return; if (x.nodeType === 3) { if (n <= x.nodeValue.length) res = [x, n]; else n -= x.nodeValue.length; return; } if (x.nodeName === "BR") { if (n === 0) res = [x.parentNode, Array.prototype.indexOf.call(x.parentNode.childNodes, x)]; else n -= 1; return; } x.childNodes.forEach(walk); };
+  walk(root); return res || [root, root.childNodes.length];
 }
 let rteT = 0, rteP = null;
 function rteFlush() {
