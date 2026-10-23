@@ -254,8 +254,15 @@ public class VoiceAddActivity extends Activity {
             }
         } catch (Exception e) { return res; } finally { if (cu != null) cu.close(); }
         for (String k : hit.keySet()) res.add(new String[]{k, hit.get(k), allN.get(k)});
+        // точное совпадение имени важнее частичного: «Морковка» ≠ «Морковка МТС»
+        if (res.size() > 1) {
+            String sp = norm(spoken); java.util.ArrayList<String[]> ex = new java.util.ArrayList<String[]>();
+            for (String[] r : res) if (norm(r[0]).equals(sp)) ex.add(r);
+            if (!ex.isEmpty()) return ex;
+        }
         return res;
     }
+    private static String norm(String s) { return s == null ? "" : s.toLowerCase(Locale.ROOT).replace('ё', 'е').replaceAll("[^а-яa-z0-9 ]", " ").trim().replaceAll("\\s+", " "); }
     private static String digits(String n) { String d = n == null ? "" : n.replaceAll("\\D", ""); return d.length() > 10 ? d.substring(d.length() - 10) : d; }
     /** кому из списка звонили/писали последним (по журналу звонков) — индекс или -1 */
     private int lastCalled(java.util.ArrayList<String[]> l) {
@@ -287,9 +294,9 @@ public class VoiceAddActivity extends Activity {
     }
     private static final String[] ORD = {"перв", "втор", "трет", "четвёрт", "пят"};
     private void ask(final java.util.ArrayList<String[]> l, final int attempt, final Pick cb) {
-        final int n = Math.min(l.size(), 4); StringBuilder sb = new StringBuilder("Нашёл нескольких: ");
-        for (int i = 0; i < n; i++) { if (i > 0) sb.append(", "); sb.append(i + 1).append(" — ").append(l.get(i)[0]); }
-        sb.append(". Кому?");
+        final int n = Math.min(l.size(), 4); StringBuilder sb = new StringBuilder();
+        if (n == 2) sb.append("Кому: ").append(l.get(0)[0]).append(" или ").append(l.get(1)[0]).append("?");
+        else { sb.append("Нашёл нескольких: "); for (int i = 0; i < n; i++) { if (i > 0) sb.append(", "); sb.append(i + 1).append(" — ").append(l.get(i)[0]); } sb.append(". Кому?"); }
         afterSpeech = new Runnable() { public void run() {
             listenOnce(new Cb() { public void on(String ans) {
                 final String heard = ans; String a = ans.toLowerCase(Locale.ROOT).replace('ё', 'е'); int pick = -1; tv.setText(ans);
@@ -297,7 +304,17 @@ public class VoiceAddActivity extends Activity {
                 java.util.regex.Matcher dm = java.util.regex.Pattern.compile("(?:^|[^0-9])([1-4])(?:[^0-9]|$)").matcher(a); if (dm.find()) { int q = Integer.parseInt(dm.group(1)) - 1; if (q < n) pick = q; }
                 String[] W = {"один", "два", "три", "четыр"}; for (int i = 0; i < n && pick < 0; i++) if (a.matches(".*(^|[^а-я])" + W[i] + ".*")) pick = i;
                 for (int i = 0; i < n && pick < 0; i++) if (a.contains(ORD[i].replace('ё', 'е'))) pick = i;
-                if (pick < 0) { int bestN = 0; for (int i = 0; i < n; i++) { int m = 0; for (String t : l.get(i)[0].toLowerCase(Locale.ROOT).replace('ё', 'е').split("\\s+")) if (t.length() > 1 && a.contains(stem(t))) m++; if (m > bestN) { bestN = m; pick = i; } else if (m == bestN && m > 0) pick = -2 - i; } if (pick <= -2) pick = -1; }
+                if (pick < 0 && a.matches(".*(^|[^а-я])(просто|обычн|прост|без|друг).*")) { int sh = 0; for (int i = 1; i < n; i++) if (norm(l.get(i)[0]).length() < norm(l.get(sh)[0]).length()) sh = i; pick = sh; }
+                if (pick < 0) {
+                    int bestM = 0, bestU = 99; boolean tie = false;
+                    for (int i = 0; i < n; i++) {
+                        int m = 0, u = 0;
+                        for (String t : norm(l.get(i)[0]).split(" ")) { if (t.length() > 1 && a.contains(stem(t))) m++; else u++; }
+                        if (m > bestM || (m == bestM && m > 0 && u < bestU)) { bestM = m; bestU = u; pick = i; tie = false; }
+                        else if (m == bestM && m > 0 && u == bestU) tie = true;
+                    }
+                    if (tie) pick = -1;
+                }
                 if (pick >= 0) { cb.on(l.get(pick)); return; }
                 if (attempt < 1) { ask(l, attempt + 1, cb); return; }
                 speakAndEnd("Не разобрал: " + heard + ". Отменил.");
