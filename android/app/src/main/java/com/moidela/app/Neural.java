@@ -86,10 +86,23 @@ final class Neural {
         new Thread(new Runnable() { public void run() {
             boolean ok = false; File f = null;
             try {
-                String r = Net.post(Store.api(ctx.getApplicationContext(), "tts", ""), new org.json.JSONObject().put("text", text).put("voice", v.substring(2)).put("speed", speed).toString());
-                String b64 = r == null ? "" : new org.json.JSONObject(r).optString("audio", "");
-                if (b64.length() == 0) throw new Exception("no audio");
-                f = new File(ctx.getCacheDir(), "tts.mp3"); FileOutputStream o = new FileOutputStream(f); o.write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); o.close();
+                // кэш озвучки на диске: одинаковая фраза (текст+голос+скорость) синтезируется в облаке один раз и платится один раз
+                File cd = new File(ctx.getCacheDir(), "ttsc"); cd.mkdirs();
+                String key; try { java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1"); byte[] h = md.digest((v + "|" + speed + "|" + text).getBytes("UTF-8")); StringBuilder sb = new StringBuilder(); for (byte x : h) sb.append(String.format("%02x", x)); key = sb.toString(); } catch (Throwable e) { key = "x" + (v + speed + text).hashCode(); }
+                f = new File(cd, key + ".mp3");
+                if (f.exists() && f.length() > 0) { f.setLastModified(System.currentTimeMillis()); }
+                else {
+                    String r = Net.post(Store.api(ctx.getApplicationContext(), "tts", ""), new org.json.JSONObject().put("text", text).put("voice", v.substring(2)).put("speed", speed).toString());
+                    String b64 = r == null ? "" : new org.json.JSONObject(r).optString("audio", "");
+                    if (b64.length() == 0) throw new Exception("no audio");
+                    File tmp = new File(cd, key + ".tmp"); FileOutputStream o = new FileOutputStream(tmp); o.write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); o.close();
+                    if (!tmp.renameTo(f)) f = tmp;
+                    long tot = 0; File[] all = cd.listFiles(); if (all != null) for (File x : all) tot += x.length();
+                    if (tot > 30L * 1024 * 1024 && all != null) {   // больше 30 МБ — удаляем самые старые, пока не станет ~20 МБ
+                        java.util.Arrays.sort(all, new java.util.Comparator<File>() { public int compare(File x, File y) { return Long.compare(x.lastModified(), y.lastModified()); } });
+                        for (File x : all) { if (tot <= 20L * 1024 * 1024) break; if (x.equals(f)) continue; tot -= x.length(); x.delete(); }
+                    }
+                }
                 final Object lock = new Object(); final boolean[] fin = {false};
                 android.media.MediaPlayer mp = new android.media.MediaPlayer();
                 mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
