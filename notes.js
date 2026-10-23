@@ -211,26 +211,29 @@ window.NOTES_INIT = function (X) {
     E.edges.forEach(e => { if (ids.has(e[0]) && ids.has(e[1])) { links.push([idx[e[0]], idx[e[1]], 0.6, 1]); nodes[idx[e[0]]].d++; nodes[idx[e[1]]].d++; } });
     const nb = nodes.map(() => new Set()); links.forEach(l => { nb[l[0]].add(l[1]); nb[l[1]].add(l[0]); });
     const stars = []; for (let i = 0; i < 46; i++) stars.push([((i * 7919) % 1000) / 1000, ((i * 104729) % 997) / 997, 0.5 + (i % 3) * 0.5, i * 0.9]);
-    G = { nodes, links, nb, stars, step: 0, sel: -1, hov: -1, drag: null, rip: null, live: false, fixed: false, sc: 1, ox: 0, oy: 0, W: 700, H: 440 };
+    G = { nodes, links, nb, stars, step: 0, sel: -1, hov: -1, drag: null, rip: null, live: false, fixed: false, sc: 1, ox: 0, oy: 0, zm: 1, px: 0, py: 0, ptr: {}, W: 700, H: 440 };
   }
   function stepGraph(n) {
     const nodes = G.nodes, links = G.links;
     for (let s = 0; s < n && G.step < 280; s++, G.step++) {
       const k = Math.max(0.04, 1 - G.step / 280);
       for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) { const a = nodes[i], b = nodes[j]; let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy + 0.01; if (d2 > 40000) continue; const f = 900 / d2, d = Math.sqrt(d2); dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; }
-      links.forEach(l => { const a = nodes[l[0]], b = nodes[l[1]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = (d - 55) * 0.02 * l[2]; dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; });
+      links.forEach(l => { const a = nodes[l[0]], b = nodes[l[1]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = (d - 62) * 0.02 * l[2]; dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; });
       nodes.forEach((nd, i) => { if (G.drag && G.drag.i === i) return; nd.vx -= nd.x * 0.004; nd.vy -= nd.y * 0.004; nd.x += Math.max(-8, Math.min(8, nd.vx)) * k; nd.y += Math.max(-8, Math.min(8, nd.vy)) * k; nd.vx *= 0.6; nd.vy *= 0.6; });
     }
   }
   function fitGraph(snap) {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; G.nodes.forEach(n => { x0 = Math.min(x0, n.x); x1 = Math.max(x1, n.x); y0 = Math.min(y0, n.y); y1 = Math.max(y1, n.y); });
-    const sc = Math.min((G.W - 100) / Math.max(1, x1 - x0), (G.H - 80) / Math.max(1, y1 - y0), 2.2), ox = G.W / 2 - (x0 + x1) / 2 * sc, oy = G.H / 2 - (y0 + y1) / 2 * sc, e = snap ? 1 : 0.18;
+    const sc = Math.min((G.W - 80) / Math.max(1, x1 - x0), (G.H - 60) / Math.max(1, y1 - y0), 2.2), ox = G.W / 2 - (x0 + x1) / 2 * sc, oy = G.H / 2 - (y0 + y1) / 2 * sc, e = snap ? 1 : 0.18;
     G.sc += (sc - G.sc) * e; G.ox += (ox - G.ox) * e; G.oy += (oy - G.oy) * e;
   }
   function updGraph(snap) {   // плавные «пружинки»: наведение и приглушение чужих узлов
     const f = G.drag ? G.drag.i : (G.sel >= 0 ? G.sel : G.hov), e = snap ? 1 : 0.16;
     G.nodes.forEach((n, i) => { const ta = f < 0 || i === f || G.nb[f].has(i) ? 1 : 0.16, th = i === G.hov || i === G.sel || (G.drag && G.drag.i === i) ? 1 : 0; n.a += (ta - n.a) * e; n.h += (th - n.h) * e; });
   }
+  function gP(n) { const bx = n.x * G.sc + G.ox, by = n.y * G.sc + G.oy; return [(bx - G.W / 2) * G.zm + G.W / 2 + G.px, (by - G.H / 2) * G.zm + G.H / 2 + G.py]; }
+  function gInv(sx, sy) { const bx = (sx - G.W / 2 - G.px) / G.zm + G.W / 2, by = (sy - G.H / 2 - G.py) / G.zm + G.H / 2; return [(bx - G.ox) / G.sc, (by - G.oy) / G.sc]; }
+  function zoomAt(f, cx, cy) { const nz = Math.max(.6, Math.min(6, G.zm * f)), r = nz / G.zm; G.px = (cx - G.W / 2) - (cx - G.W / 2 - G.px) * r; G.py = (cy - G.H / 2) - (cy - G.H / 2 - G.py) * r; G.zm = nz; pokeGraph(); }
   function drawGraph(t) {
     const cv = $("nt-cv"); if (!cv || !G) return false; t = t || 0; const r = window.devicePixelRatio || 1, W = G.W, H = G.H, live = G.live;
     if (cv.width !== Math.round(W * r) || cv.height !== Math.round(H * r)) { cv.width = Math.round(W * r); cv.height = Math.round(H * r); cv.style.height = H + "px"; }
@@ -238,7 +241,7 @@ window.NOTES_INIT = function (X) {
     const bg = c.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#141c3a"); bg.addColorStop(1, "#0a0f22"); c.fillStyle = bg; c.fillRect(0, 0, W, H);
     [[.18, .22, "#6d5bff"], [.84, .3, "#ff5fa2"], [.55, .88, "#19c6b7"]].forEach((b, i) => { const x = W * (b[0] + Math.sin(t / 5200 + i * 2) * .05), y = H * (b[1] + Math.cos(t / 6100 + i * 3) * .05), rr = Math.max(W, H) * .55, g = c.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, mixc(b[2], 0, .3)); g.addColorStop(1, mixc(b[2], 0, 0)); c.fillStyle = g; c.fillRect(0, 0, W, H); });
     G.stars.forEach(s => { c.globalAlpha = live ? .25 + .35 * Math.abs(Math.sin(t / 1300 + s[3])) : .4; c.fillStyle = "#fff"; c.beginPath(); c.arc(s[0] * W, s[1] * H, s[2] * .8, 0, 7); c.fill(); }); c.globalAlpha = 1;
-    const N = G.nodes, P = n => [n.x * G.sc + G.ox, n.y * G.sc + G.oy], f = G.drag ? G.drag.i : (G.sel >= 0 ? G.sel : G.hov);
+    const N = G.nodes, P = n => gP(n), f = G.drag ? G.drag.i : (G.sel >= 0 ? G.sel : G.hov);
     G.links.forEach((l, li) => {
       const A = N[l[0]], B = N[l[1]], a = P(A), b = P(B), hi = f >= 0 && (l[0] === f || l[1] === f), vis = Math.min(A.a, B.a), dx = b[0] - a[0], dy = b[1] - a[1], sg = (l[0] + l[1]) % 2 ? 1 : -1, cx = (a[0] + b[0]) / 2 - dy * .13 * sg, cy = (a[1] + b[1]) / 2 + dx * .13 * sg;
       const g = c.createLinearGradient(a[0], a[1], b[0], b[1]); g.addColorStop(0, mixc(A.c, .25)); g.addColorStop(1, mixc(B.c, .25));
@@ -250,7 +253,7 @@ window.NOTES_INIT = function (X) {
     c.setLineDash([]);
     const order = N.map((n, i) => i).sort((i, j) => (N[i].t === "g") - (N[j].t === "g") || N[i].h - N[j].h);
     order.forEach(i => {
-      const n = N[i], p = P(n), hub = n.t === "g", br = live ? 1 + .06 * Math.sin(t / 900 + n.ph) : 1, base = hub ? 9 + Math.min(11, n.d * 1.5) : 4.5 + Math.min(5, n.d * .7), rad = base * (1 + .35 * n.h) * br;
+      const n = N[i], p = P(n), hub = n.t === "g", br = live ? 1 + .06 * Math.sin(t / 900 + n.ph) : 1, base = (hub ? 12 + Math.min(12, n.d * 1.7) : 7 + Math.min(6, n.d * .8)) * Math.min(1.9, Math.pow(G.zm, .55)), rad = base * (1 + .35 * n.h) * br;
       n.p = p; n.r = base;
       c.globalAlpha = Math.min(1, (hub ? .75 : .55) * n.a * (1 + n.h * .5)); c.drawImage(spr(n.c), p[0] - rad * 3, p[1] - rad * 3, rad * 6, rad * 6);
       c.globalAlpha = n.a;
@@ -263,12 +266,14 @@ window.NOTES_INIT = function (X) {
     if (G.rip && live) { const age = (t - G.rip.t) / 750, n = N[G.rip.i]; if (age >= 0 && age < 1 && n && n.p) { c.globalAlpha = (1 - age) * .7; c.strokeStyle = mixc(n.c, .5); c.lineWidth = 2; c.beginPath(); c.arc(n.p[0], n.p[1], n.r + 6 + age * 34, 0, 7); c.stroke(); } }
     c.globalAlpha = 1; c.lineJoin = "round"; c.textBaseline = "alphabetic";
     const lab = (txt, x, y, al, fs, ctr) => { c.font = "600 " + fs + "px system-ui,sans-serif"; c.textAlign = ctr ? "center" : "left"; c.globalAlpha = al; c.lineWidth = 3.5; c.strokeStyle = "rgba(10,14,32,.8)"; c.strokeText(txt, x, y); c.fillStyle = "#fff"; c.fillText(txt, x, y); };
-    N.forEach(n => { if (n.t === "g") lab("#" + n.id, n.p[0] + n.r + 9, n.p[1] + 4, Math.max(.3, n.a), 13, false); });
+    const zz = G.zm, hf = Math.min(17, 13 + zz);
+    N.forEach(n => { if (n.t === "g") lab("#" + n.id + (zz > 1.4 ? "  · " + n.d : ""), n.p[0] + n.r + 9, n.p[1] + 4, Math.max(.3, n.a), hf, false); });
+    if (zz >= 1.7 && f < 0) N.forEach(n => { const m = n.t === "n" ? NT.items[n.id] : null; if (!m || !n.p || n.p[0] < -20 || n.p[0] > W + 20 || n.p[1] < -20 || n.p[1] > H + 20) return; const s = (m.text || "").replace(/\s+/g, " ").replace(/#[\p{L}\p{N}_-]+/gu, "").trim(), L = zz >= 3 ? 44 : 22, tx = s.length > L ? s.slice(0, L - 1) + "…" : s; if (tx) lab(tx, n.p[0], n.p[1] + n.r + 15, Math.min(1, (zz - 1.5) / 1) * n.a, 11.5, true); if (zz >= 3) lab(dayParts(dayKey(m.created_at))[0], n.p[0], n.p[1] + n.r + 28, .75 * n.a, 10.5, true); });
     if (f >= 0) { [f].concat([...G.nb[f]].slice(0, W < 600 ? 3 : 8)).forEach(i => { const n = N[i], m = n.t === "n" ? NT.items[n.id] : null; if (!m || !n.p) return; const s = (m.text || "").replace(/\s+/g, " ").replace(/#[\p{L}\p{N}_-]+/gu, "").trim(), tx = s.length > 26 ? s.slice(0, 25) + "…" : s; if (tx) lab(tx, Math.max(60, Math.min(W - 60, n.p[0])), n.p[1] + n.r + 17, 1, 11.5, true); }); }
     c.globalAlpha = 1; c.textAlign = "left";
     return true;
   }
-  function sizeGraph() { const cv = $("nt-cv"); if (!cv || !G) return; const w = Math.max(280, cv.parentNode.clientWidth || cv.clientWidth || 700); G.W = w; G.H = w < 600 ? Math.round(w * 1.15) : Math.round(w * 0.58); }
+  function sizeGraph() { const cv = $("nt-cv"); if (!cv || !G) return; const w = Math.max(280, cv.parentNode.clientWidth || cv.clientWidth || 700); G.W = w; const vh = window.innerHeight || 800; G.H = w < 600 ? Math.max(440, Math.round(vh * 0.7)) : Math.max(460, Math.min(900, vh - 250)); }
   function pokeGraph() { if (G && !G.live) { updGraph(true); drawGraph(0); } }
   function runGraph() {
     const my = ++GRAF; if (!G) return; sizeGraph();
@@ -285,7 +290,7 @@ window.NOTES_INIT = function (X) {
   function graphHTML() {
     if (Object.keys(NT.items).length < 2) return '<div class="nt-empty"><b>Граф появится позже</b><span>Когда будет хотя бы пара заметок.</span></div>';
     buildGraph();
-    return '<div class="nt-gw"><canvas id="nt-cv"></canvas></div><div class="nt-legend"><i class="h"></i>тег<i class="n"></i>заметка<i class="d"></i>стала задачей<span>тапни или потяни точку</span></div><div id="nt-gsel"></div>';
+    return '<div class="nt-gw"><canvas id="nt-cv"></canvas><div class="nt-zb"><button data-a="ntzoom" data-z="1.5" aria-label="Приблизить">+</button><button data-a="ntzoom" data-z="0.67" aria-label="Отдалить">−</button><button data-a="ntzoom" data-z="0" aria-label="Сбросить">⤢</button></div></div><div class="nt-legend"><i class="h"></i>тег<i class="n"></i>заметка<i class="d"></i>стала задачей<span>колесо/щипок — масштаб, тяни фон — двигай</span></div><div id="nt-gsel"></div>';
   }
   function gPick(x, y) { let best = -1, bd = 1e9; G.nodes.forEach((n, i) => { if (!n.p) return; const d = (n.p[0] - x) ** 2 + (n.p[1] - y) ** 2, R = (n.r || 8) + (fine() ? 9 : 15); if (d < R * R && d < bd) { bd = d; best = i; } }); return best; }
   function gXY(e) { const r = $("nt-cv").getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
@@ -298,16 +303,35 @@ window.NOTES_INIT = function (X) {
     else { const m = NT.items[n.id]; box.innerHTML = m ? '<div class="nt-gcard"' + st + '><div class="nt-meta">' + dayParts(dayKey(m.created_at))[0] + ", " + hhmm(m.created_at) + (rel ? " · связей: " + rel : "") + '</div><div class="nt-tx">' + fmtBody(m.text) + '</div><div class="nt-acts show"><button class="nt-a" data-a="ntfocus" data-id="' + m.id + '"><span>Открыть в ленте</span></button></div></div>' : ""; }
   }
   function gPtr(e) {
-    const cv = e.target && e.target.id === "nt-cv" ? e.target : null; if (!G || (!cv && !G.drag) || e.pointerType !== "mouse") return;
-    if (e.type === "pointerdown") { const xy = gXY(e), i = gPick(xy[0], xy[1]); if (i >= 0) { G.drag = { i, x: xy[0], y: xy[1], moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } return; }
-    if (e.type === "pointermove") {
-      const xy = gXY(e);
-      if (G.drag) { const d = G.drag, n = G.nodes[d.i]; if (!d.moved && Math.hypot(xy[0] - d.x, xy[1] - d.y) < 4) return; d.moved = true; n.x = (xy[0] - G.ox) / G.sc; n.y = (xy[1] - G.oy) / G.sc; n.vx = n.vy = 0; G.step = Math.min(G.step, 225); if (!G.live) stepGraph(8); pokeGraph(); return; }
-      const i = gPick(xy[0], xy[1]); if (i !== G.hov) { G.hov = i; cv.style.cursor = i >= 0 ? "pointer" : "default"; pokeGraph(); } return;
+    const cv = e.target && e.target.id === "nt-cv" ? e.target : null; if (!G || (!cv && !G.drag && !G.pan)) return;
+    const mouse = e.pointerType === "mouse", T = e.type;
+    if (T === "pointerdown") {
+      const xy = gXY(e); G.ptr[e.pointerId] = xy; try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      const ids = Object.keys(G.ptr);
+      if (ids.length === 2) { const p = ids.map(k => G.ptr[k]); G.pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); G.drag = null; G.pan = null; G.suppress = true; return; }
+      const i = gPick(xy[0], xy[1]);
+      if (mouse && i >= 0) G.drag = { i, x: xy[0], y: xy[1], moved: false }; else G.pan = { x: xy[0], y: xy[1], px: G.px, py: G.py, moved: false };
+      return;
     }
-    if (e.type === "pointerup" || e.type === "pointercancel") { if (G.drag) { if (G.drag.moved) G.suppress = true; G.drag = null; pokeGraph(); } return; }
-    if (e.type === "pointerout" && G.hov >= 0 && !G.drag) { G.hov = -1; pokeGraph(); }
+    if (T === "pointermove") {
+      const xy = gXY(e); if (G.ptr[e.pointerId]) G.ptr[e.pointerId] = xy;
+      const ids = Object.keys(G.ptr);
+      if (ids.length === 2 && G.pinch) { const p = ids.map(k => G.ptr[k]), d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); if (d > 0) { zoomAt(d / G.pinch, (p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2); G.pinch = d; } return; }
+      if (G.drag) { const d = G.drag, n = G.nodes[d.i]; if (!d.moved && Math.hypot(xy[0] - d.x, xy[1] - d.y) < 4) return; d.moved = true; const q = gInv(xy[0], xy[1]); n.x = q[0]; n.y = q[1]; n.vx = n.vy = 0; G.step = Math.min(G.step, 225); if (!G.live) stepGraph(8); pokeGraph(); return; }
+      if (G.pan) { const d = G.pan; if (!d.moved && Math.hypot(xy[0] - d.x, xy[1] - d.y) < 5) return; d.moved = true; G.px = d.px + xy[0] - d.x; G.py = d.py + xy[1] - d.y; pokeGraph(); return; }
+      if (mouse && cv) { const i = gPick(xy[0], xy[1]); if (i !== G.hov) { G.hov = i; cv.style.cursor = i >= 0 ? "pointer" : "grab"; pokeGraph(); } }
+      return;
+    }
+    if (T === "pointerup" || T === "pointercancel") {
+      delete G.ptr[e.pointerId]; if (Object.keys(G.ptr).length < 2) G.pinch = 0;
+      if (G.drag) { if (G.drag.moved) G.suppress = true; G.drag = null; }
+      if (G.pan) { if (G.pan.moved) G.suppress = true; G.pan = null; }
+      if (!Object.keys(G.ptr).length && G.suppress) setTimeout(() => { if (G) G.suppress = false; }, 60);
+      pokeGraph(); return;
+    }
+    if (T === "pointerout" && mouse && G.hov >= 0 && !G.drag) { G.hov = -1; pokeGraph(); }
   }
+  function gWheel(e) { if (!G || !e.target || e.target.id !== "nt-cv") return; e.preventDefault(); const xy = gXY(e); zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0011)), xy[0], xy[1]); }
 
   /* ---------- сборка экрана ---------- */
   function html(vi) {
@@ -315,7 +339,7 @@ window.NOTES_INIT = function (X) {
     const head = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, 1, "");
     if (NT.missing) return head + '<div class="scroll" id="list"><div class="nt"><div class="nt-sheet"><div class="nt-empty"><b>Нужна настройка базы</b><span>Выполни <code>migration_v28.sql</code> в Supabase → SQL Editor, потом нажми «Проверить».</span><button class="nt-pri" data-a="ntretry">Проверить</button></div></div></div></div></div>';
     let content = NT.mode === "themes" ? themesHTML() : NT.mode === "graph" ? graphHTML() : returnCard() + stripHTML() + feedHTML();
-    const main = head + '<div class="scroll" id="list"><div class="nt"><div class="nt-sheet"><div class="nt-title"><h1>Заметки</h1><span>только для тебя</span></div>' + barHTML() + (NT.mode === "feed" ? composerHTML() : "") + '<div class="nt-view' + (NT.fadeIn ? " in" : "") + '" id="nt-view">' + content + "</div></div></div></div></div>";
+    const main = head + '<div class="scroll" id="list"><div class="nt' + (NT.mode === "graph" ? " wide" : "") + '"><div class="nt-sheet"><div class="nt-title"><h1>Заметки</h1><span>только для тебя</span></div>' + barHTML() + (NT.mode === "feed" ? composerHTML() : "") + '<div class="nt-view' + (NT.fadeIn ? " in" : "") + '" id="nt-view">' + content + "</div></div></div></div></div>";
     Promise.resolve().then(after);
     return main;
   }
@@ -355,6 +379,7 @@ window.NOTES_INIT = function (X) {
     ntclshow(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; NT.cl = c.notes.map(n => n.id); NT.focus = null; NT.tag = ""; NT.q = ""; NT.mode = "feed"; NT.fadeIn = true; render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntcldis(a) { const d = dismissed(); d[a.dataset.k] = 1; js("mytasks_notes_dis", d); rerenderKeep(); },
     ntcltask(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; const t = addTask({ title: "Заняться: " + c.label, note: c.notes.map(n => "• " + n.text.replace(/\s+/g, " ").slice(0, 160)).join("\n") }); c.notes.forEach(n => { n.task_id = t.id; put(n); }); rerenderKeep(); toast("Задача создана из " + c.notes.length + " заметок", { buttons: [["Открыть", () => { goView("all"); X.sel(t.id); render(); }]] }); },
+    ntzoom(a) { if (!G) return; const z = +a.dataset.z; if (!z) { G.zm = 1; G.px = G.py = 0; pokeGraph(); } else zoomAt(z, G.W / 2, G.H / 2); },
     ntmode(a) { const m = a.dataset.v; if (m === NT.mode) return; NT.mode = m; NT.focus = null; NT.cl = null; NT.open = null; NT.edit = null; NT.fadeIn = true; closeMenu(); render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntsearch() { if (NT.sOpen && !NT.q) { NT.sOpen = false; render(); return; } NT.sOpen = true; NT.mode = "feed"; render(); setTimeout(() => { const x = $("nt-q"); if (x) x.focus(); }, 0); },
     ntmenu() { NT.menu = !NT.menu; rerenderKeep(); },
@@ -390,6 +415,7 @@ window.NOTES_INIT = function (X) {
     gClick(e);
   });
   ["pointerdown", "pointermove", "pointerup", "pointercancel", "pointerout"].forEach(ev => document.addEventListener(ev, gPtr));
+  document.addEventListener("wheel", gWheel, { passive: false });
   window.addEventListener("online", () => { flush(); });
   window.addEventListener("resize", () => { if (G && $("nt-cv")) { sizeGraph(); fitGraph(true); drawGraph(); } });
   return { html };

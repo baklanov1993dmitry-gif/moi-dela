@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 10:10";
+const BUILD = "23.10 10:13";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2518,7 +2518,9 @@ const jrCSS = `
 .nt-th-b{display:flex;flex-wrap:wrap;gap:2px;margin:6px 0 0 -10px}
 .nt-tagcloud{display:flex;flex-wrap:wrap;gap:7px}
 .nt-gw{margin-top:8px;border-radius:22px;background:#0d1226;overflow:hidden;color:#fff;box-shadow:0 14px 34px -16px rgba(60,70,160,.55),inset 0 0 0 1px rgba(255,255,255,.07)}
-#nt-cv{display:block;width:100%;cursor:default;touch-action:pan-y}
+#nt-cv{display:block;width:100%;cursor:grab;touch-action:none}
+.nt-gw{position:relative}.nt-zb{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}.nt-zb button{width:38px;height:38px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:#fff;font-size:20px;line-height:1;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:transform .15s cubic-bezier(.3,1.6,.5,1),background .15s}.nt-zb button:active{transform:scale(.88);background:rgba(255,255,255,.25)}@media (hover:hover){.nt-zb button:hover{background:rgba(255,255,255,.2)}}
+.nt.wide{max-width:1280px}
 .nt-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:13px;color:var(--sub);margin:12px 2px}
 .nt-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:10px}.nt-legend i:first-child{margin-left:0}.nt-legend span{margin-left:auto}
 .nt-legend i.h{background:radial-gradient(circle at 35% 30%,#ffd9a8,#ff7a59 55%,#b24a2e);box-shadow:0 0 0 3px rgba(255,122,89,.22)}
