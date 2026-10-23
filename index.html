@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 22:37";
+const BUILD = "23.10 22:44";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1007,19 +1007,36 @@ function filesAll() {
 }
 const fExt = f => ((f.name.match(/\.([A-Za-z0-9]{1,6})$/) || [, ""])[1] || "файл").toUpperCase();
 function filesMainHTML(vi) {
-  const q = (ui.fq || "").trim().toLowerCase(), all = filesAll(), rows = q ? all.filter(x => x.f.name.toLowerCase().indexOf(q) >= 0) : all, z = "var(--z,1)";
-  const dt = iso => { if (!iso) return ""; const d = new Date(iso); return d.getDate() + " " + MONS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); };
-  const card = x => '<div class="fcard" data-fk="' + x.t.id + ':' + x.i + '">' +
-    (isImg(x.f) ? '<div class="fth" data-a="fopen" data-t="' + x.t.id + '" data-i="' + x.i + '"><img class="athumb" data-path="' + esc(x.f.path) + '" alt=""' + (imgUrl(x.f.path) ? ' src="' + esc(imgUrl(x.f.path)) + '"' : "") + "></div>"
-      : '<div class="fth fico" data-a="fopen" data-t="' + x.t.id + '" data-i="' + x.i + '">' + ic("clip", 30) + "<b>" + esc(fExt(x.f)) + "</b></div>") +
-    '<div class="fnm" title="' + esc(x.f.name) + '">' + esc(x.f.name) + '</div><div class="fsb">' + fmtSize(x.f.size || 0) + (x.t.created_at ? " · " + dt(x.t.created_at) : "") + "</div>" +
-    '<div class="fact"><button class="btn" data-a="fdl" data-t="' + x.t.id + '" data-i="' + x.i + '" title="Скачать">' + ic("dl", 16) + ' Скачать</button><button class="xbtn" data-a="fdel" data-t="' + x.t.id + '" data-i="' + x.i + '" title="Удалить">' + ic("trash", 16) + "</button></div></div>";
+  const q = (ui.fq || "").trim().toLowerCase(), all = filesAll(), z = "var(--z,1)", so = ui.fsort || "date";
+  let rows = q ? all.filter(x => x.f.name.toLowerCase().indexOf(q) >= 0) : all.slice();
+  if (so === "name") rows.sort((a, b) => a.f.name.localeCompare(b.f.name, "ru")); else if (so === "size") rows.sort((a, b) => (b.f.size || 0) - (a.f.size || 0));
+  const sl = ui.fsel, dt = iso => { if (!iso) return ""; const d = new Date(iso); return d.getDate() + " " + MONS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); };
+  const row = x => '<div class="frow' + (sl && sl.t === x.t.id && sl.i === x.i ? " on" : "") + '" data-a="fsel" data-t="' + x.t.id + '" data-i="' + x.i + '">' +
+    (isImg(x.f) ? '<img class="fthm athumb" data-path="' + esc(x.f.path) + '" alt=""' + (imgUrl(x.f.path) ? ' src="' + esc(imgUrl(x.f.path)) + '"' : "") + ">" : '<span class="fthm fico">' + esc(fExt(x.f).slice(0, 4)) + "</span>") +
+    '<div class="fmid"><div class="fnm" title="' + esc(x.f.name) + '">' + esc(x.f.name) + '</div><div class="fsb">' + fmtSize(x.f.size || 0) + (x.t.created_at ? " · " + dt(x.t.created_at) : "") + '</div></div>' +
+    '<button class="ibtn fdlb" data-a="fdl" data-t="' + x.t.id + '" data-i="' + x.i + '" title="Скачать">' + ic("dl", 18) + "</button></div>";
+  const sel = '<select id="fsort" style="font:inherit;font-size:calc(13px*' + z + ');padding:5px 8px;border:1px solid var(--ln);border-radius:16px;background:var(--card);color:var(--tx)" title="Сортировка">' + [["date", "Новые сверху"], ["name", "По названию"], ["size", "По размеру"]].map(o => '<option value="' + o[0] + '"' + (so === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, rows.length, "") + '<div class="mhead' + (isMobile() ? " mhide" : "") + '"><h1>' + ic("clip", 22) + "<span>Файлы</span></h1><span class=\"sp\"></span></div>" +
-    '<div class="scroll" id="list"><div style="padding:6px 16px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" data-a="fpick">' + ic("plus", 16) + " Загрузить</button>" +
-    '<div class="searchbox" style="flex:1;min-width:150px;max-width:360px">' + ic("search", 16) + '<input id="fq" placeholder="Поиск по названию" autocomplete="off" value="' + esc(ui.fq || "") + '"></div>' +
+    '<div class="scroll" id="list"><div style="padding:6px 16px 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" data-a="fpick">' + ic("plus", 16) + " Загрузить</button>" +
+    '<div class="searchbox" style="flex:1;min-width:150px;max-width:340px">' + ic("search", 16) + '<input id="fq" placeholder="Поиск по названию" autocomplete="off" value="' + esc(ui.fq || "") + '"></div>' + sel +
     '<span style="color:var(--sub);font-size:calc(13px*' + z + ')">' + (all.length ? all.length + " шт. · " + fmtSize(all.reduce((a, x) => a + (x.f.size || 0), 0)) : "") + "</span></div>" +
-    (rows.length ? '<div class="fgrid">' + rows.map(card).join("") + "</div>" : '<div style="text-align:center;padding:60px 16px;color:var(--sub)">' + (all.length ? "Ничего не найдено" : "Пока пусто. Перетащи файлы в окно, вставь Ctrl+V или нажми «Загрузить». С телефона — «Поделиться» → Мои дела.") + "</div>") +
+    (rows.length ? '<div class="flist">' + rows.map(row).join("") + "</div>" : '<div style="text-align:center;padding:60px 16px;color:var(--sub)">' + (all.length ? "Ничего не найдено" : "Пока пусто. Перетащи файлы в окно, вставь Ctrl+V или нажми «Загрузить». С телефона — «Поделиться» → Мои дела.") + "</div>") +
     "</div></div>" + (setTimeout(imgHydrate, 0), "");
+}
+function filesDetailHTML() {
+  const sl = ui.fsel, t = sl && S.tasks[sl.t], f = t && t.files && t.files[sl.i]; if (!f) return "";
+  const k = sl.t + ":" + sl.i, fresh = ui.fselLast !== k; ui.fselLast = k;
+  const d = t.created_at ? new Date(t.created_at) : null, pad2 = n => String(n).padStart(2, "0");
+  const info = (svg, txt) => '<div class="drow" style="cursor:default">' + ic(svg, 18) + '<span class="dtx">' + txt + "</span></div>";
+  const act = (svg, txt, a, cls) => '<div class="drow ' + (cls || "") + '" data-a="' + a + '" data-t="' + sl.t + '" data-i="' + sl.i + '">' + ic(svg, 18) + '<span class="dtx">' + txt + "</span></div>";
+  const img = isImg(f);
+  return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="fclose">' + ic("arrowl", 22) + '</button><span class="mdl">Файл</span></div>' : "") + '<div class="dscroll" id="dscroll">' +
+    '<div class="dcard">' + (img ? '<div class="fpv" data-a="fopen" data-t="' + sl.t + '" data-i="' + sl.i + '"><img class="athumb" data-path="' + esc(f.path) + '" alt=""' + (imgUrl(f.path) ? ' src="' + esc(imgUrl(f.path)) + '"' : "") + "></div>" : "") +
+    '<div style="padding:10px 14px"><input id="f-name" value="' + esc(f.name) + '" title="Название (можно переименовать)" style="width:100%;background:transparent;border:0;outline:0;font:inherit;font-weight:600;font-size:calc(17px*var(--z,1));color:inherit"></div></div>' +
+    '<div class="dcard">' + info("clip", "Тип: " + esc(fExt(f))) + info("sort", "Размер: " + fmtSize(f.size || 0) + (f.size ? " (" + f.size.toLocaleString("ru-RU") + " Б)" : "")) +
+    (d ? info("cal", "Загружен: " + d.getDate() + " " + MONS[d.getMonth()] + " " + d.getFullYear() + ", " + pad2(d.getHours()) + ":" + pad2(d.getMinutes())) : "") +
+    (t.files.length > 1 ? info("copy", "Загружен вместе ещё с " + (t.files.length - 1) + " файл(ами)") : "") + "</div>" +
+    '<div class="dcard">' + act("dl", "Скачать", "fdl") + (img ? act("img", "Открыть крупно", "fopen") : "") + act("link", "Скопировать ссылку (действует 1 час)", "fcopy") + act("trash", "Удалить", "fdel", "od") + "</div></div></div>" + (setTimeout(imgHydrate, 0), "");
 }
 async function fileDownload(f) {
   try {
@@ -2483,7 +2500,7 @@ function desktopInit(app) {
 const mCSS = `
 .taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
 .mtop.msb{animation:msbin .15s ease-out;background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} @keyframes msbin{from{opacity:0}} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
-.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:14px 16px 90px} .fcard{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:4px;min-width:0} .fth{height:110px;border-radius:10px;overflow:hidden;background:var(--bg2,rgba(127,127,127,.1));display:flex;align-items:center;justify-content:center;cursor:pointer} .fth img{width:100%;height:100%;object-fit:cover} .fth.fico{flex-direction:column;gap:4px;color:var(--sub)} .fth.fico b{font-size:calc(12px*var(--z,1));letter-spacing:.5px} .fnm{font-size:calc(13.5px*var(--z,1));font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px} .fsb{font-size:calc(12px*var(--z,1));color:var(--sub);padding:0 2px} .fact{display:flex;gap:6px;align-items:center;margin-top:2px} .fact .btn{flex:1;padding:6px 8px;font-size:calc(13px*var(--z,1));display:inline-flex;align-items:center;justify-content:center;gap:6px} .fact .xbtn{flex:0 0 auto;display:inline-flex}
+.flist{padding:0 8px 90px} .frow{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;cursor:pointer;min-width:0} .frow:hover{background:var(--hov,rgba(127,127,127,.1))} .frow.on{background:var(--sel,rgba(127,127,127,.16))} .fthm{width:38px;height:38px;border-radius:8px;object-fit:cover;flex:0 0 auto;background:rgba(127,127,127,.12)} .fthm.fico{display:flex;align-items:center;justify-content:center;font-size:calc(11px*var(--z,1));font-weight:700;color:var(--sub);letter-spacing:.3px} .fmid{flex:1;min-width:0} .fnm{font-size:calc(15px*var(--z,1));font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .fsb{font-size:calc(12.5px*var(--z,1));color:var(--sub)} .fdlb{flex:0 0 auto} .fpv{padding:8px} .fpv img{width:100%;max-height:240px;object-fit:contain;border-radius:10px;cursor:zoom-in;display:block}
 .mtop.msb .mcnt{color:#fff} .smode{display:inline-flex;border:1px solid var(--ln);border-radius:16px;overflow:hidden;background:var(--card)} .smode button{padding:5px 12px;font-size:calc(12.5px*var(--z,1));color:var(--sub);cursor:pointer;white-space:nowrap} .smode button.on{background:var(--acc);color:#fff}
 .btn,.jr-chip,.tool,.mt{transition:transform .22s cubic-bezier(.34,1.56,.64,1)} .btn:active,.jr-chip:active,.tool:active,.mt:active{transform:scale(.95)}
 .sbgrip{cursor:grab;touch-action:none;padding:2px 6px;color:var(--sub);font-weight:700;letter-spacing:-2px;user-select:none;align-self:center} .sbgrip:active{cursor:grabbing} .sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
@@ -4623,7 +4640,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (view === "files" ? filesDetailHTML() : selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function morphKeep(o, n, keep, nk) {
@@ -4916,7 +4933,7 @@ function exportJson() {
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
 let hDepth = 0, hSkip = 0;
-const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (mIds().length ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (mIds().length ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (view === "files" && ui.fsel ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() { return innerLayers0() + (ui.settings && !ui.smenu ? 1 : 0); }   // подраздел настроек — свой слой «Назад»
 function innerLayers0() {
   if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
@@ -4941,14 +4958,14 @@ function onBack() {
   if (hSkip > 0) { hSkip--; return; }
   if (hDepth > 0) hDepth--;
   if (innerBack()) { render(); return; }
-  if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (mIds().length) mClear(); else if (ui.qa) ui.qa = null; else if (ui.settings) { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; }
+  if (view === "files" && ui.fsel) ui.fsel = null; else if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (mIds().length) mClear(); else if (ui.qa) ui.qa = null; else if (ui.settings) { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; }
   else if (selId) { if (fastClose()) return; selId = null; } else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) { if (menuSlideOpen()) return; ui.left = true; }
   render();
 }
 
 /* ----- действия по клику ----- */
 const closePop = () => { ui.pop = null; ui.dtp = null; ui.remXi = null; };
-const goView = v => { if (v !== view) { ui.vfade = 1; mClear(); } ui.sf = null; view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
+const goView = v => { if (v !== view) { ui.vfade = 1; mClear(); } ui.sf = null; ui.fsel = null; view = v; ui.fresh = null; jset(LSK.view, view); selId = null; ui.left = false; ui.limit = 300; ui.q = ""; ui.sugg = false; ui.msearch = false; };
 const patchTask = (id, o) => { const d = draftOf(id); if (d) Object.assign(d, o); else upd(id, o); };
 const setDue = (id, v) => {
   const map = { today: today, tom: addDays(today, 1), week: nextMonday(), clear: null };
@@ -4982,13 +4999,19 @@ const acts = {
   qatog(a) { const f = a.dataset.f; ui.qa[f] = !ui.qa[f]; render(); const i = $("qa-input"); if (i) i.focus(); },
   msearch() { ui.left = false; ui.msearch = true; render(); const q = $("q"); if (q) q.focus(); },
   fpick() { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.onchange = () => { if (i.files.length) fileTransfer(i.files); }; i.click(); },
+  fsel(a) { ui.fsel = { t: a.dataset.t, i: +a.dataset.i }; render(); },
+  fclose() { ui.fsel = null; render(); },
+  async fcopy(a) {
+    const t = S.tasks[a.dataset.t], f = t && t.files && t.files[+a.dataset.i]; if (!f) return;
+    try { const r = await sb.storage.from("attachments").createSignedUrl(f.path, 3600, { download: f.name }); if (r.error || !r.data) return toast("Не удалось сделать ссылку"); await navigator.clipboard.writeText(r.data.signedUrl); toast("Ссылка скопирована — действует 1 час"); } catch (e) { toast("Не удалось скопировать: " + errText(e)); }
+  },
   fopen(a) { const t = S.tasks[a.dataset.t], f = t && t.files && t.files[+a.dataset.i]; if (!f) return; if (isImg(f)) viewImageF(f); else fileDownload(f); },
   fdl(a) { const t = S.tasks[a.dataset.t], f = t && t.files && t.files[+a.dataset.i]; if (f) fileDownload(f); },
   fdel(a) {
     const t = S.tasks[a.dataset.t], i = +a.dataset.i, f = t && t.files && t.files[i]; if (!f) return;
     if (!confirm("Удалить «" + f.name + "» из хранилища?")) return;
     if (t.files.length === 1) deleteTask(t.id); else { try { sb.storage.from("attachments").remove([f.path]); } catch (e) {} ui.st = undefined; upd(t.id, { files: t.files.filter((x, k) => k !== i) }); }
-    toast("Файл удалён"); render();
+    ui.fsel = null; toast("Файл удалён"); render();
   },
   sfstar() { ui.sf = ui.sf || {}; ui.sf.s = !ui.sf.s; render(); },
   sfclr() { ui.sf = null; render(); },
@@ -6522,6 +6545,8 @@ function init() {
     if (id === "jr-jump") { const v = e.target.value; if (v) { const J = jrState(); J.vd = v; J.hist = false; J.an = false; render(); } return; }
     if (id === "jr-per") { jrState().per = e.target.value; jrState().lim = 40; render(); return; }
     if (id === "jr-file") { const f = e.target.files && e.target.files[0]; if (f) jrImport(f); e.target.value = ""; return; }
+    if (id === "fsort") { ui.fsort = e.target.value; render(); return; }
+    if (id === "f-name") { const sl = ui.fsel, t = sl && S.tasks[sl.t], nm = e.target.value.trim().slice(0, 200); if (t && t.files && t.files[sl.i] && nm) { const fl = t.files.map((x, k) => k === sl.i ? Object.assign({}, x, { name: nm }) : x); ui.st = undefined; upd(t.id, t.files.length === 1 ? { files: fl, title: nm } : { files: fl }); } render(); return; }
     if (id === "s-showday") { PR.showDay = e.target.checked; if (!PR.showDay && view === "day") goView(HOME()); savePrefs(); render(); return; }
     if (id === "sf-l" || id === "sf-c") { ui.sf = ui.sf || {}; ui.sf[id === "sf-l" ? "l" : "c"] = e.target.value; render(); return; }
     if (id === "s-rit") { PR.ritOff = !e.target.checked; if (e.target.checked) PR.ritHide = false; savePrefs(); render(); return; }
