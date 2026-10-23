@@ -11,12 +11,12 @@ const durMin = (str: string): number => {   // «20 минут», «полтор
   const n = m[1] ? (W[m[1].toLowerCase()] ?? parseFloat(m[1].replace(",", "."))) : 1; if (!(n > 0)) return 0;
   return Math.round(n * (/^ч/i.test(m[2]) ? 60 : 1));
 };
-async function suggestTags(text: string, existing: string[]): Promise<string[]> {   // 1–3 коротких тега; существующие в приоритете
+async function suggestTags(text: string, existing: string[]): Promise<string[]> {   // один самый точный тег; существующие в приоритете
   const t = text.trim().slice(0, 1500); if (t.length < 8) return [];
   const ex = [...new Set(existing.map((x) => String(x).toLowerCase()))].slice(0, 60);
-  const out = await askAI("Ты расставляешь теги для личной заметки на русском. Верни ТОЛЬКО JSON-массив из 1–3 тегов: строчные, одно слово (или два через _), существительные в именительном падеже, без #. Если подходит существующий тег из списка — бери его. Имя человека — тоже тег. Новые теги только если существующие не подходят. Существующие теги: " + (ex.join(", ") || "нет"), t);
+  const out = await askAI("Ты расставляешь теги для личной заметки на русском. Верни ТОЛЬКО JSON-массив ровно из ОДНОГО тега — самого точного по смыслу: строчные, одно слово (или два через _), существительные в именительном падеже, без #. Если подходит существующий тег из списка — бери его. Имя человека — тоже тег. Новые теги только если существующие не подходят. Существующие теги: " + (ex.join(", ") || "нет"), t);
   if (!out) return [];
-  try { const m = /\[[\s\S]*?\]/.exec(out); const arr = JSON.parse(m ? m[0] : "[]"); return [...new Set(arr.map((x: any) => String(x).toLowerCase().replace(/^#/, "").replace(/[^\p{L}\d_-]+/gu, "_").replace(/^_+|_+$/g, "").slice(0, 30)).filter((x: string) => x.length >= 2))].slice(0, 3) as string[]; } catch { return []; }
+  try { const m = /\[[\s\S]*?\]/.exec(out); const arr = JSON.parse(m ? m[0] : "[]"); return [...new Set(arr.map((x: any) => String(x).toLowerCase().replace(/^#/, "").replace(/[^\p{L}\d_-]+/gu, "_").replace(/^_+|_+$/g, "").slice(0, 30)).filter((x: string) => x.length >= 2))].slice(0, 1) as string[]; } catch { return []; }
 }
 async function askAI(sys: string, user: string): Promise<string | null> {   // Groq (быстрый) -> Gemini, таймауты чтобы телефон не ждал
   const qk = Deno.env.get("GROQ_API_KEY");
