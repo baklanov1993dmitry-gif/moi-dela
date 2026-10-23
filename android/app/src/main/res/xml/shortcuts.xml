@@ -6,9 +6,6 @@
     <shortcut android:shortcutId="add" android:enabled="true" android:icon="@drawable/sc_tasks" android:shortcutShortLabel="@string/sc_add_s" android:shortcutLongLabel="@string/sc_add_l">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="com.moidela.app" android:targetClass="com.moidela.app.QuickAddActivity" />
     </shortcut>
-    <shortcut android:shortcutId="tasks" android:enabled="true" android:icon="@drawable/sc_tasks" android:shortcutShortLabel="@string/sc_tasks_s" android:shortcutLongLabel="@string/sc_tasks_l">
-        <intent android:action="android.intent.action.VIEW" android:data="https://moi-dela.pages.dev/?app=tasks" android:targetPackage="com.moidela.app" android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity" />
-    </shortcut>
     <shortcut android:shortcutId="journal" android:enabled="true" android:icon="@drawable/sc_journal" android:shortcutShortLabel="@string/sc_journal_s" android:shortcutLongLabel="@string/sc_journal_l">
         <intent android:action="android.intent.action.VIEW" android:data="https://moi-dela.pages.dev/?app=journal" android:targetPackage="com.moidela.app" android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity" />
     </shortcut>

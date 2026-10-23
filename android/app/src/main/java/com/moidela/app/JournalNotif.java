@@ -23,9 +23,9 @@ final class JournalNotif {
     static void update(Context c) {
         Context a = c.getApplicationContext();
         SharedPreferences sp = Store.p(a);
-        if (!sp.getBoolean("jn_on", false)) return;
         NotificationManager nm = (NotificationManager) a.getSystemService(Context.NOTIFICATION_SERVICE);
         long st = sp.getLong("jt_start", 0);
+        if (st <= 0) { try { nm.cancel(ID); } catch (Throwable e) {} return; }   // постоянную кнопку «Начать» в шторке больше не показываем — только пока идёт таймер
         String title = sp.getString("jt_title", "");
         if (Build.VERSION.SDK_INT >= 26) {
             if (nm.getNotificationChannel(CH_RUN) == null) {
