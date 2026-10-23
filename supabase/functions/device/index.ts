@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
       }
       let m2: RegExpExecArray | null;
       if ((m2 = /^(?:позвони|набери|вызови|звони)\s+(?:пожалуйста\s+)?(.+)$/i.exec(tx.trim()))) return { intent: "call", name: m2[1].replace(/\s+на\s+(мобильный|рабочий|домашний)$/i, "").trim() };
+      if ((m2 = /^(?:напиши|отправь|пошли)\s+в\s+(?:телеграм+|телегу|тг)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim())) || (m2 = /^(?:напиши|отправь|пошли)\s+(.+?)\s+в\s+(?:телеграм+|телегу|тг)(?:\s*[:,—]\s*|\s+что\s+|\s+)(.+)$/i.exec(tx.trim())) || (m2 = /^(?:передай|скажи)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim()))) return { intent: "tg", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
       if ((m2 = /^(?:напиши|отправь\s+(?:сообщение|смс)|смс)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim()))) return { intent: "sms", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
       if ((m2 = /^(?:поставь\s+)?таймер(?:\s+на)?\s+(.+)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: "Таймер" };
       if ((m2 = /^напомни(?:\s+мне)?\s+через\s+((?:\d+(?:[.,]\d+)?\s*|[а-яё]+\s+)?(?:часа|часов|час|минут[ыу]?|мин)(?![а-яё])|полчаса)\s*[,:]?\s*(.*)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: (m2[2] || "Напоминание").trim().replace(/^./, (c) => c.toUpperCase()) };
@@ -234,6 +235,15 @@ Deno.serve(async (req) => {
         if (ans.length > 240) { const cut = ans.slice(0, 240), k = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? ")); ans = k > 80 ? cut.slice(0, k + 1) : cut.replace(/\s+\S*$/, "") + "."; }
         return done(ans);
       }
+      case "tg": {   // сообщение сотруднику через Telegram-бота: находим подтверждённого человека по имени, дальше телефон спрашивает «Отправить?» и зовёт a=tgsend
+        const ppr = await fetch(base + "tg_people?select=id,alias&user_id=eq." + uid + "&approved=eq.true", { headers: hd }), ppl: any[] = ppr.ok ? await ppr.json() : [];
+        const stem = (w: string) => { w = w.toLowerCase().replace(/ё/g, "е"); return w.length > 5 ? w.slice(0, -2) : w.length > 3 ? w.slice(0, -1) : w; };
+        const tk = String(I.name || "").toLowerCase().replace(/[^а-яa-z0-9ё ]/g, " ").trim().split(/\s+/).filter(Boolean);
+        const hit = ppl.filter((p) => tk.length && tk.every((t) => String(p.alias || "").toLowerCase().replace(/ё/g, "е").split(/\s+/).some((w: string) => w.startsWith(stem(t)))));
+        if (!ppl.length) return done("Пока никто не подключён к боту. Пусть сотрудники нажмут «Старт» у бота.");
+        if (hit.length !== 1) return done(hit.length ? "Подходит несколько: " + hit.map((p) => p.alias).join(", ") + ". Назовите точнее." : "Не нашёл в Telegram: " + I.name + ".");
+        return ok({ intent: "tg", pid: hit[0].id, name: hit[0].alias, text: String(I.text || "").slice(0, 1000), speak: "" });
+      }
       case "call": case "sms": return ok({ intent: I.intent, name: String(I.name || "").slice(0, 80), text: String(I.text || "").slice(0, 600), speak: "" });
       case "timer": {
         const mn = Math.round(Number(I.minutes) || 0); if (mn < 1 || mn > 1440) return done("Не понял, на сколько поставить.");
@@ -264,7 +274,7 @@ Deno.serve(async (req) => {
         const S = (k: string) => Math.round(ta.reduce((a, x) => a + Number(x[k]), 0));
         return done("За сегодня " + S("kcal") + " ккал. Белка " + S("p") + " граммов, жиров " + S("f") + ", углеводов " + S("c") + ".");
       }
-      case "help": return done("Можно сказать: спроси и вопрос; съел и что съел; таймер на 20 минут; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
+      case "help": return done("Можно сказать: «напиши в телеграм Мартынову: …»; спроси и вопрос; съел и что съел; таймер на 20 минут; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
       default: break;
     }
     // add
@@ -276,6 +286,17 @@ Deno.serve(async (req) => {
     const r = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(t) });
     if (!r.ok) return ok({ intent: "add", speak: "Не получилось записать.", error: "db" }, 500);
     return done("Записано. " + title + (rem ? ". Напоминание в " + hm(Date.parse(rem)) : due === today ? ". На сегодня" : due === tomorrow ? ". На завтра" : "") + ".", { id: t.id, title, added: true });
+  }
+  if (a === "tgsend") {   // отправка сообщения сотруднику ботом: {pid, text}
+    const tg = Deno.env.get("TG_TOKEN"); if (!tg) return ok({ error: "no_bot" }, 501);
+    let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
+    const pid = String(b.pid || ""), text = String(b.text || "").trim().slice(0, 1000);
+    if (!/^[0-9a-f-]{36}$/i.test(pid) || !text) return ok({ error: "bad" }, 400);
+    const pr = await fetch(base + "tg_people?select=chat_id&id=eq." + pid + "&user_id=eq." + uid + "&approved=eq.true", { headers: hd }), prow = pr.ok ? (await pr.json())[0] : null;
+    if (!prow) return ok({ error: "no_person" }, 404);
+    const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const r = await fetch("https://api.telegram.org/bot" + tg + "/sendMessage", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: prow.chat_id, parse_mode: "HTML", text: "💬 <b>Дмитрий:</b>\n" + esc(text) }) });
+    return ok({ ok: r.ok }, r.ok ? 200 : 502);
   }
   if (a === "tts") {   // озвучка Яндекс SpeechKit v3: {text, voice, speed} -> {audio: base64 mp3}. Секреты YANDEX_API_KEY, YANDEX_FOLDER_ID
     const yk = Deno.env.get("YANDEX_API_KEY"), yf = Deno.env.get("YANDEX_FOLDER_ID");

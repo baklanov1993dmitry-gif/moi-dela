@@ -225,6 +225,7 @@ public class VoiceAddActivity extends Activity {
                     ed.apply();
                     if ("call".equals(it)) { doCall(o.optString("name")); return; }
                     if ("sms".equals(it)) { doSms(o.optString("name"), o.optString("text")); return; }
+                    if ("tg".equals(it) && o.optString("pid").length() > 0) { doTg(o.optString("pid"), o.optString("name"), o.optString("text")); return; }
                     if ("add".equals(it)) { int sm = sp.getInt("v_say", 0); sayTxt = sm == 0 ? sayTxt : sm == 1 ? "Записано." : ""; Sync.run(c); }
                     else if ("done".equals(it) || "snooze".equals(it) || "tomorrow".equals(it) || "undo".equals(it)) Sync.run(c);
                     speakAndEnd(sayTxt);
@@ -327,6 +328,20 @@ public class VoiceAddActivity extends Activity {
         } };
         speakAndEnd("Звоню: " + c[0] + ".");
         } });
+    }
+    private void doTg(final String pid, final String name, final String text) {   // сообщение сотруднику через Telegram-бота, с подтверждением
+        afterSpeech = new Runnable() { public void run() {
+            listenOnce(new Cb() { public void on(String ans) {
+                if (!ans.toLowerCase(Locale.ROOT).matches("^(да|давай|отправ|ага|угу|верно|конечно|подтверждаю|ок).*")) { speakAndEnd("Отменил."); return; }
+                final Context c = getApplicationContext();
+                new Thread(new Runnable() { public void run() {
+                    String r = null; try { r = Net.post(Store.api(c, "tgsend", ""), new JSONObject().put("pid", pid).put("text", text).toString()); } catch (Exception e) {}
+                    final boolean ok = r != null && r.contains("\"ok\":true");
+                    h.post(new Runnable() { public void run() { speakAndEnd(ok ? "Отправлено." : "Не получилось отправить."); } });
+                } }).start();
+            } });
+        } };
+        speakAndEnd("Сообщение для " + name + " в Телеграм: " + text + ". Отправить?");
     }
     private boolean hasPerm(String p) { return Build.VERSION.SDK_INT < 23 || checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED; }
     private void doSms(final String name, final String text) {

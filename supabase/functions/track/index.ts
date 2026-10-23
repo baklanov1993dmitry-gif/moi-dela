@@ -110,7 +110,30 @@ async function raHandle(url: URL): Promise<Response> {
 async function tgHandle(base: string, hd: Record<string, string>, user: string, u: TRow) {
   const owner = Deno.env.get("TG_CHAT"); if (!owner) return;
   const cq = u.callback_query as TRow | undefined, msg = (cq ? cq.message : u.message) as TRow | undefined;
-  const from = String((cq ? cq.from?.id : msg?.chat?.id) ?? ""); if (from !== owner) return;   // отвечаем только владельцу
+  const from = String((cq ? cq.from?.id : msg?.chat?.id) ?? "");
+  if (from !== owner) {   // сотрудник нажал «Старт» у бота: записываем и просим владельца подтвердить и назвать
+    if (cq || !msg?.chat?.id) return;
+    const f = (msg.from || {}) as TRow, nm = [f.first_name, f.last_name].filter(Boolean).join(" ") || "Без имени", un = f.username ? "@" + f.username : "", chatId = msg.chat.id;
+    const exr = await fetch(base + "tg_people?select=id,approved&user_id=eq." + user + "&chat_id=eq." + chatId, { headers: hd });
+    const ex = exr.ok ? await exr.json() as TRow[] : [];
+    if (ex[0]) { await tgApi("sendMessage", { chat_id: chatId, text: ex[0].approved ? "Я на связи 🙂 Сообщения будут приходить сюда." : "Запрос уже отправлен — ждём подтверждения 🙂" }); return; }
+    const ir = await fetch(base + "tg_people", { method: "POST", headers: { ...hd, Prefer: "return=representation" }, body: JSON.stringify({ user_id: user, chat_id: chatId, tg_name: nm, tg_username: un }) });
+    const row = ir.ok ? (await ir.json() as TRow[])[0] : null;
+    await tgApi("sendMessage", { chat_id: chatId, text: "Привет, " + (f.first_name || nm) + "! Запрос отправлен, после подтверждения сюда будут приходить сообщения." });
+    if (row) await tgApi("sendMessage", { chat_id: owner, text: "👤 Новый контакт: " + nm + " " + un + "\nОтветьте на это сообщение именем, как будете называть его голосом (например: Мартынов). Если не знаете такого — ответьте «нет».\n#p" + row.id });
+    return;
+  }
+  // владелец ответил на «Новый контакт» — присваиваем имя и подтверждаем
+  const rpl = msg?.reply_to_message as TRow | undefined, rmm = rpl ? /#p([0-9a-f-]{36})/.exec(String(rpl.text || "")) : null;
+  if (rmm && msg && !cq) {
+    const ans = String(msg.text || "").trim().slice(0, 60), pr = await fetch(base + "tg_people?select=chat_id&id=eq." + rmm[1] + "&user_id=eq." + user, { headers: hd }), prow = pr.ok ? (await pr.json() as TRow[])[0] : null;
+    if (!prow) { await tgApi("sendMessage", { chat_id: owner, text: "Такого контакта уже нет." }); return; }
+    if (!ans || /^(нет|no|-)$/i.test(ans)) { await fetch(base + "tg_people?id=eq." + rmm[1], { method: "DELETE", headers: hd }); await tgApi("sendMessage", { chat_id: owner, text: "Удалил запрос." }); return; }
+    await fetch(base + "tg_people?id=eq." + rmm[1], { method: "PATCH", headers: hd, body: JSON.stringify({ alias: ans, approved: true }) });
+    await tgApi("sendMessage", { chat_id: prow.chat_id, text: "✅ Подтверждено. Теперь сообщения от Дмитрия будут приходить сюда." });
+    await tgApi("sendMessage", { chat_id: owner, text: "✅ Готово. Теперь голосом: «Напиши в телеграм " + ans + ": …»" });
+    return;
+  }
   if (cq) {
     const [act, id] = String(cq.data || "").split(":"), t = await tgGetTask(base, hd, user, id);
     const chat = msg?.chat?.id, mid = msg?.message_id;
@@ -125,6 +148,11 @@ async function tgHandle(base: string, hd: Record<string, string>, user: string, 
     return;
   }
   const text = String(msg?.text || "").trim().toLowerCase().replace(/[.!\s]+$/g, "");
+  if (/^(\/start|\/people|люди|контакты)$/.test(text)) {   // ссылка на бота для сотрудников + список подтверждённых
+    const me = await (await tgApi("getMe", {})).json().catch(() => ({})), lr = await fetch(base + "tg_people?select=alias,tg_name,approved&user_id=eq." + user + "&order=created_at.asc", { headers: hd }), ppl = lr.ok ? await lr.json() as TRow[] : [];
+    await tgApi("sendMessage", { chat_id: owner, text: "Ссылка для сотрудников (пусть нажмут «Старт»):\nhttps://t.me/" + (me?.result?.username || "?") + "\n\nКонтакты:\n" + (ppl.length ? ppl.map((x) => (x.approved ? "✅ " + x.alias + " (" + x.tg_name + ")" : "⏳ " + x.tg_name + " — ждёт ответа на уведомление")).join("\n") : "пока никого"), disable_web_page_preview: true });
+    return;
+  }
   if (/^(ок|окей|ok|okay|да|готово|сделал|сделала|сделано|выполнено|✅|👍|\+)$/.test(text)) {
     const t = await tgLastReminded(base, hd, user);
     if (!t) { await tgApi("sendMessage", { chat_id: owner, text: "Нет невыполненных напоминаний за последние сутки 🙂" }); return; }
