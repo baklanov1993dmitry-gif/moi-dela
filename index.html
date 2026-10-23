@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 11:27";
+const BUILD = "23.10 11:43";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -350,6 +350,7 @@ const IC = {
   star: '<polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   tag: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.2"/>',
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   link: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
   clip: '<path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
@@ -3656,6 +3657,7 @@ function viewInfo() {
   if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
   if (view === "food") return { svg: "food", name: "Питание", sub: "КБЖУ, вода и вес" };
   if (view === "notes") return { svg: "bulb", name: "Заметки", sub: "Мысли, идеи, наблюдения — только для тебя" };
+  if (view === "health") return { svg: "heart", name: "Здоровье", sub: "Дневник самочувствия — только для тебя" };
   if (view === "journal") return { svg: "note", name: "Журнал", sub: "Что делал: со временем или за период" };
   if (view === "starred") return { svg: "star", name: "Важно" };
   if (view === "planned") return { svg: "cal", name: "Запланировано" };
@@ -3666,7 +3668,7 @@ function viewInfo() {
 }
 function mtopHTML(vi, cnt, extra) {
   if (!isMobile()) return "";
-  if (mIds().length && view !== "journal" && view !== "food" && view !== "notes") return '<div class="mtop msb"><button class="ibtn" data-a="mclear" title="Снять выделение">' + ic("x", 22) + '</button><span class="mcnt">' + mIds().length + '</span><span style="flex:1"></span><button class="ibtn" data-a="mmore" title="Действия">' + ic("dotsv", 22) + "</button></div>";
+  if (mIds().length && view !== "journal" && view !== "food" && view !== "notes" && view !== "health") return '<div class="mtop msb"><button class="ibtn" data-a="mclear" title="Снять выделение">' + ic("x", 22) + '</button><span class="mcnt">' + mIds().length + '</span><span style="flex:1"></span><button class="ibtn" data-a="mmore" title="Действия">' + ic("dotsv", 22) + "</button></div>";
   if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
   return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + (extra || "") + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" || view === "notes" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
@@ -3808,7 +3810,7 @@ function leftHTML(c) {
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") + sm("notes", "bulb", "Заметки", 0, "#2b88d8")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
+    (isLite() ? "" : '<div class="chip" data-a="ritual" title="Утренний план"><span class="em" style="color:#e3680c">' + ic("sun", 18) + '</span><span class="tx">План на сегодня</span><span class="n"></span></div>') + (S.user && !isLite() ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") + (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + sm("day", "clock", "День по часам", 0, "#0f6cbd") + sm("week", "ccheck", "Итоги недели", 0, "#038387") + (isLite() ? "" : sm("team", "users", "Команда", 0, "#8764b8")) + (isLite() ? "" : sm("journal", "note", "Журнал", 0, "#8764b8") + sm("food", "food", "Питание", 0, "#e3680c") + sm("notes", "bulb", "Заметки", 0, "#2b88d8") + sm("health", "heart", "Здоровье", 0, "#e5484d")) +sm("starred", "star", "Важно", c.starred, "#d13438") +
     sm("all", "inbox", "Все задачи", c.all, "#69797e") +
     '<div style="height:1px;background:var(--ln);margin:6px 14px"></div>' + tree + "</div>" +
     '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="pop" data-p="ngroup" title="Новая группа списков">' + ic("fplus", 18) + "</button></div></div>";
@@ -4525,7 +4527,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function morphKeep(o, n, keep, nk) {
@@ -4646,8 +4648,9 @@ function menuSlideOpen() {
 }
 function render() {
   want = false;
-  if (isLite()) { if (view === "journal" || view === "food" || view === "notes" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
+  if (isLite()) { if (view === "journal" || view === "food" || view === "notes" || view === "health" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
   try { updBadge(); } catch (e) {}
+  if (view === "health" && !HLM) loadHealth();
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
   let rs = null; if (ae && ae.classList && ae.classList.contains("rte") && ae.id && app.contains(ae)) { try { rteFlush(); const sl = getSelection(); if (sl.rangeCount) { const r0 = sl.getRangeAt(0); rs = [ae.id, rteCount(ae, r0.startContainer, r0.startOffset), rteCount(ae, r0.endContainer, r0.endOffset), ae.scrollTop]; } } catch (e) {} }   // редактор заметки: сохраняем и позицию курсора
@@ -6551,6 +6554,13 @@ async function checkBuild() {
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
 if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
+let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
+function loadHealth() {
+  if (hlLoading || HLM) return; hlLoading = true;
+  const ok = () => { try { HLM = window.HEALTH_INIT({ S, ic, esc, $, render, toast, mtopHTML, uid, todayISO, addDays, parseISO, pad2, WDS, acts, mdOk, sb: () => sb, view: () => view }); } catch (e) { console.error(e); toast("Не удалось открыть «Здоровье»"); } hlLoading = false; render(); };
+  if (window.HEALTH_INIT) return ok();
+  const sc = document.createElement("script"); sc.src = "health.js"; sc.onload = ok; sc.onerror = () => { hlLoading = false; toast("Нет связи: «Здоровье» не загрузилось"); }; document.head.appendChild(sc);
+}
 const NTM = window.NOTES_INIT ? window.NOTES_INIT({ S, ic, esc, $, render, toast, addTask, micToggle, micOK, mtopHTML, uid, nowISO, todayISO, addDays, parseISO, pad2, WDS, goView, acts, zipStore, utf8, mdOk, rec: () => !!VR, sb: () => sb, view: () => view, sel: id => { selId = id; } }) : null;
 init();
 
