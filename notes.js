@@ -124,7 +124,7 @@ window.NOTES_INIT = function (X) {
   const mi = (n, s) => ic(n, s || 18);
   const pinSvg = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6zM12 14v7"/></svg>';
 
-  function autoTagsRow(n) { const inTx = tagsOf(n.text), extra = (n.tags || []).filter(t => inTx.indexOf(t) < 0); return extra.length ? '<div class="nt-tg">' + extra.map(t => hashLink(t, "nt-h2")).join("") + "</div>" : ""; }
+  function autoTagsRow(n) { const inTx = tagsOf(n.text), extra = (n.tags || []).filter(t => inTx.indexOf(t) < 0); return extra.length ? '<div class="nt-tg">' + extra.map(t => '<span class="nt-h2w">' + hashLink(t, "nt-h2") + '<button class="nt-x" data-a="ntuntag" data-id="' + n.id + '" data-t="' + esc(t) + '" aria-label="Убрать тег" title="Убрать тег">×</button></span>').join("") + "</div>" : ""; }
   function relBlock(n) {
     if (!NT.rel[n.id]) return ""; const nb = engine().nb[n.id] || []; if (!nb.length) return "";
     return '<div class="nt-rel">' + nb.slice(0, 4).map(e => { const m = NT.items[e[0]]; return m ? '<a class="nt-rl" data-a="ntfocus" data-id="' + m.id + '"><i>' + shortD(m.created_at) + "</i>" + esc(m.text.replace(/\s+/g, " ").slice(0, 110)) + "</a>" : ""; }).join("") + "</div>";
@@ -140,7 +140,7 @@ window.NOTES_INIT = function (X) {
   }
   function noteHTML(n) {
     const task = n.task_id && S.tasks[n.task_id], cls = "nt-n" + (n.pinned ? " pin" : "") + (task ? " task" + (task.done ? " done" : "") : "") + (NT.open === n.id ? " open" : "");
-    if (NT.edit === n.id) return '<article class="nt-n edit" data-id="' + n.id + '"><time>' + hhmm(n.created_at) + '</time><div class="nt-bd"><textarea id="nt-ed" class="nt-ta" rows="3">' + esc(n.text) + '</textarea><div class="nt-er"><button class="nt-pri" data-a="ntedsave" data-id="' + n.id + '">Сохранить</button><button class="nt-ghost" data-a="ntedcancel">Отмена</button><span class="nt-hint">Ctrl+Enter — сохранить, Esc — отмена</span></div></div></article>';
+    if (NT.edit === n.id) return '<article class="nt-n edit" data-id="' + n.id + '"><time>' + hhmm(n.created_at) + '</time><div class="nt-bd"><textarea id="nt-ed" class="nt-ta" rows="3">' + esc(n.text) + '</textarea>' + autoTagsRow(n) + '<div class="nt-er"><button class="nt-pri" data-a="ntedsave" data-id="' + n.id + '">Сохранить</button><button class="nt-ghost" data-a="ntedcancel">Отмена</button><span class="nt-hint">Ctrl+Enter — сохранить, Esc — отмена</span></div></div></article>';
     return '<article class="' + cls + '" data-id="' + n.id + '"><time>' + hhmm(n.created_at) + '</time><div class="nt-bd" data-a="ntopen" data-id="' + n.id + '"><div class="nt-tx">' + fmtBody(n.text) + "</div>" + autoTagsRow(n) + relBlock(n) + "</div>" + actsRow(n) + "</article>";
   }
   function composerHTML() {
@@ -402,6 +402,7 @@ window.NOTES_INIT = function (X) {
     nttag(a) { NT.tag = a.dataset.t || ""; NT.mode = "feed"; NT.focus = null; NT.cl = null; closeMenu(); render(); },
     ntpin(a) { const n = NT.items[a.dataset.id]; if (!n) return; n.pinned = !n.pinned; put(n); rerenderKeep(); },
     ntopen(a) { if (fine() || NT.edit) return; const id = a.dataset.id; NT.open = NT.open === id ? null : id; if (NT.open) NT.grow = id; rerenderKeep(); },
+    ntuntag(a) { const n = NT.items[a.dataset.id]; if (!n) return; const t = a.dataset.t; n.tags = (n.tags || []).filter(z => z !== t); n.updated_at = nowISO(); put(n); if (NT.edit === n.id) { const w = a.closest(".nt-h2w"); if (w) w.remove(); } else rerenderKeep(); toast("Тег #" + t + " убран"); },
     ntedit(a) { NT.edit = a.dataset.id; NT.open = null; render(); setTimeout(() => { const x = $("nt-ed"); if (x) { x.focus(); x.setSelectionRange(x.value.length, x.value.length); } }, 0); },
     ntedcancel() { NT.edit = null; rerenderKeep(); },
     ntedsave(a) { const n = NT.items[a.dataset.id], x = $("nt-ed"); if (!n || !x) return; const t = x.value.trim(); if (!t) { toast("Пусто — чтобы убрать заметку, нажми «Удалить»"); return; } const oldIn = tagsOf(n.text), keep = (n.tags || []).filter(z => oldIn.indexOf(z) < 0); n.text = t; n.tags = union(tagsOf(t), keep); n.updated_at = nowISO(); NT.edit = null; put(n); rerenderKeep(); },

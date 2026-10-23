@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 23:22";
+const BUILD = "23.10 23:25";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2611,7 +2611,7 @@ const jrCSS = `
 .nt-n.done .nt-tx{opacity:.65}
 .nt-h{color:var(--acc);font-weight:500;cursor:pointer;text-decoration:none}.nt-h:hover{text-decoration:underline}
 .nt-tg{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:5px}
-.nt-h2{font-size:13.5px;color:var(--sub);cursor:pointer;text-decoration:none;transition:color .15s}.nt-h2:hover{color:var(--acc)}
+.nt-h2{font-size:13.5px;color:var(--sub);cursor:pointer;text-decoration:none;transition:color .15s}.nt-h2:hover{color:var(--acc)}.nt-h2w{display:inline-flex;align-items:center;gap:1px;margin-right:6px}.nt-x{border:0;background:none;color:var(--sub);opacity:.55;font-size:16px;line-height:1;padding:2px 5px;cursor:pointer;border-radius:6px}.nt-x:hover{opacity:1;color:var(--acc)}
 .nt-rel{display:grid;gap:5px;margin-top:9px;padding-left:12px;border-left:2px solid var(--ln)}
 .nt-rl{font-size:14.5px;line-height:1.45;color:var(--sub);cursor:pointer;transition:color .15s}.nt-rl:hover{color:var(--tx)}
 .nt-rl i{font-style:normal;font-size:12px;color:var(--acc);margin-right:8px}
