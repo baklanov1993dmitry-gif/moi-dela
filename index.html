@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 21:23";
+const BUILD = "23.10 22:14";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -880,12 +880,45 @@ async function uploadFile(file, tid) {
   if (/^image\//.test(file.type)) file = await shrinkImage(file);
   if (file.size > 20 * 1024 * 1024) { toast("«" + file.name + "» больше 20 МБ"); return false; }
   const ext = (file.name.match(/\.[A-Za-z0-9]{1,8}$/) || [""])[0], path = S.user.id + "/" + t.id + "/" + uid() + ext;
-  toast("Загружаю «" + file.name + "»…");
+  const uk = uid(); UP.act[uk] = { name: file.name, loaded: 0, total: file.size || 1, tid: t.id }; UP.all++; upTick(true); render();
   try {
-    const r = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
+    let r = await xhrUpload(path, file, (l, tt) => { const a = UP.act[uk]; if (a) { a.loaded = l; a.total = tt || a.total; upTick(); } });
+    if (r.error && r.net) r = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });   // XHR не вышел (сеть/CORS) — штатный путь без процентов
     if (r.error) { toast("Не загрузилось: " + (/bucket/i.test(r.error.message) ? "нет хранилища — выполните migration_v2.sql" : /size|large|exceed/i.test(r.error.message) ? "файл слишком большой для хранилища" : r.error.message)); return false; }
     const cur = S.tasks[t.id] || t; ui.st = undefined; upd(t.id, { files: (cur.files || []).concat([{ name: file.name, path, size: file.size }]) }); render(); toast("Файл добавлен"); return true;
   } catch (e) { toast("Не загрузилось: " + errText(e)); return false; }
+  finally { delete UP.act[uk]; UP.done++; upTick(true); render(); }
+}
+/* прогресс загрузки: плашка внизу + «⬆ N%» в строке задачи; файлы грузятся по 3 параллельно */
+const UP = { act: {}, all: 0, done: 0 }; let upT = 0, upEl = null, upHide = 0;
+function upPct(tid) { let l = 0, t = 0; for (const k in UP.act) { const a = UP.act[k]; if (tid && a.tid !== tid) continue; l += a.loaded; t += a.total; } return t ? Math.min(99, Math.round(l * 100 / t)) : 0; }
+function upTick(force) {
+  const n = Date.now(); if (!force && n - upT < 120) return; upT = n;
+  const ks = Object.keys(UP.act);
+  document.querySelectorAll("[data-upl]").forEach(e => { e.textContent = "⬆ " + upPct(e.dataset.upl) + "%"; });
+  if (!ks.length) { if (upEl && !upHide) { upEl.firstChild.textContent = "✓ Загружено"; upEl.lastChild.firstChild.style.width = "100%"; upHide = setTimeout(() => { if (upEl) { upEl.remove(); upEl = null; } upHide = 0; UP.all = UP.done = 0; }, 1400); } return; }
+  if (upHide) { clearTimeout(upHide); upHide = 0; }
+  if (!upEl) { upEl = document.createElement("div"); upEl.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));z-index:9999;background:var(--card,#fff);color:var(--tx,#222);border:1px solid var(--ln,#ddd);border-radius:14px;padding:10px 14px;min-width:240px;max-width:90vw;box-shadow:0 6px 24px rgba(0,0,0,.2);font-size:13px;pointer-events:none"; upEl.innerHTML = '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div><div style="height:4px;border-radius:2px;background:var(--ln,#ddd);margin-top:7px;overflow:hidden"><div style="height:100%;width:0;background:var(--acc,#0f6cbd);transition:width .15s"></div></div>'; document.body.appendChild(upEl); }
+  const a = UP.act[ks[0]]; upEl.firstChild.textContent = "⬆ " + a.name + " · " + upPct() + "%" + (UP.all > 1 ? "  (" + Math.min(UP.done + 1, UP.all) + " из " + UP.all + ")" : "");
+  upEl.lastChild.firstChild.style.width = upPct() + "%";
+}
+function xhrUpload(path, file, onp) {
+  return new Promise(async res => {
+    let tok = ""; try { const g = await sb.auth.getSession(); tok = g.data.session.access_token; } catch (e) {}
+    if (!tok || !sb.supabaseUrl || !sb.supabaseKey) { res({ error: { message: "нет сессии" }, net: true }); return; }
+    const x = new XMLHttpRequest();
+    x.open("POST", sb.supabaseUrl + "/storage/v1/object/attachments/" + path.split("/").map(encodeURIComponent).join("/"));
+    x.setRequestHeader("Authorization", "Bearer " + tok); x.setRequestHeader("apikey", sb.supabaseKey); x.setRequestHeader("x-upsert", "false"); x.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    x.upload.onprogress = e => { if (e.lengthComputable) onp(e.loaded, e.total); };
+    x.onload = () => { if (x.status >= 200 && x.status < 300) res({}); else { let m = ""; try { m = JSON.parse(x.responseText).message || ""; } catch (e) {} res({ error: { message: m || "HTTP " + x.status }, net: x.status === 0 }); } };
+    x.onerror = () => res({ error: { message: "нет связи" }, net: true }); x.ontimeout = x.onerror; x.timeout = 10 * 60 * 1000;
+    x.send(file);
+  });
+}
+async function uploadAll(files, tid, conc) {   // по 3 файла одновременно; возвращает число успешных
+  files = [...files]; let n = 0, i = 0;
+  await Promise.all(Array.from({ length: Math.min(conc || 3, files.length) }, async () => { while (i < files.length) { const f = files[i++]; if (await uploadFile(f, tid)) n++; } }));
+  return n;
 }
 async function fileTransfer(files) {   // файлы с компьютера без открытой задачи: новая задача в списке «Файлы» + вложения (личная «перекидка» на телефон)
   files = [...files].filter(f => f && f.size >= 0); if (!files.length || !S.user) return;
@@ -894,7 +927,7 @@ async function fileTransfer(files) {   // файлы с компьютера б�
   const d = new Date(), z = n => String(n).padStart(2, "0");
   const t = addTask({ list_id: l.id, title: (files.length === 1 ? files[0].name : "Файлы " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + ":" + z(d.getMinutes())).slice(0, 200) });
   goView("list:" + l.id); render(); let n = 0;
-  for (const f of files) if (await uploadFile(f, t.id)) n++;
+  n = await uploadAll(files, t.id);
   if (!n) { upd(t.id, {}); }
   toast(n ? "Готово: " + n + " файл(ов) в списке «Файлы» — на телефоне они тоже будут" : "Ничего не загрузилось");
 }
@@ -963,7 +996,7 @@ document.addEventListener("paste", e => {   // Ctrl+V: картинка/файл
   if (!open && (typing || isMobile())) return;      // без открытой задачи — только если фокус не в поле ввода
   e.preventDefault(); const d = new Date(), z = n => String(n).padStart(2, "0");
   const named = fs.map(f => (/^image\//.test(f.type) && (!f.name || /^image\.\w+$/i.test(f.name))) ? new File([f], "Снимок " + z(d.getDate()) + "." + z(d.getMonth() + 1) + " " + z(d.getHours()) + "-" + z(d.getMinutes()) + (/jpe?g$/.test(f.type) ? ".jpg" : ".png"), { type: f.type }) : f);
-  if (open) { (async () => { for (const f of named) await uploadFile(f, selId); })(); } else fileTransfer(named);
+  if (open) { uploadAll(named, selId); } else fileTransfer(named);
 });
 const fmtSize = b => b >= 1073741824 ? (b / 1073741824).toFixed(1).replace(/\.0$/, "").replace(".", ",") + " ГБ" : b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
 
@@ -3846,6 +3879,7 @@ function metaHTML(t, showList, orphan) {
   const m = [], l = t.list_id && S.lists[t.list_id], di = dueInfo(t);
   { const sm0 = subMeta(t, orphan); if (sm0) m.push(sm0); }
   if (t.parent_id) { if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>"); if (t.note) m.push('<span class="mi">' + ic("note", 13) + "</span>"); return m.length ? '<div class="meta">' + m.join("") + "</div>" : ""; }
+  if (typeof UP !== "undefined" && Object.keys(UP.act).some(k => UP.act[k].tid === t.id)) m.unshift('<span class="mi" data-upl="' + t.id + '" style="color:var(--acc);font-weight:600">⬆ ' + upPct(t.id) + "%</span>");
   if (showList && l) m.push('<span class="mi">' + (l.icon ? esc(l.icon) : ic("list", 12)) + " " + esc(l.name) + "</span>");
   if (view === "search" && srchHit(t) === 1) { const sn = srchSnip(t); if (sn) m.push('<span class="mi" style="font-style:italic;opacity:.85;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ic("note", 12) + " " + esc(sn) + "</span>"); }
   if (PR.myday && inMyDay(t) && view !== "myday") m.push('<span class="mi">' + ic("sun", 13) + " Мой день</span>");
@@ -5043,7 +5077,7 @@ const acts = {
   clrremind() { upd(selId, { remind_at: null }); render(); },
   clrrepeat() { upd(selId, { repeat_rule: null }); render(); },
   est(a) { const t = S.tasks[selId], v = +a.dataset.v; if (t) { upd(t.id, { est_minutes: t.est_minutes === v ? null : v }); render(); } },
-  pickfile() { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.onchange = async () => { for (const f of [...i.files]) await uploadFile(f); }; i.click(); },
+  pickfile() { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.onchange = () => { uploadAll(i.files, selId); }; i.click(); },
   openfile(a) { openFile(+a.dataset.i); }, delfile(a, e) { e.stopPropagation(); if (confirm("Удалить файл?")) removeFile(+a.dataset.i); },
   pop(a, e) {
     const d = a.dataset, w = e._was;
@@ -6509,7 +6543,7 @@ function init() {
   document.addEventListener("drop", e => {
     if (!S.user || isLite() || !hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); document.body.classList.remove("dropfile");
     const fs = [...e.dataTransfer.files]; if (!fs.length) return;
-    if (selId && S.tasks[selId]) (async () => { for (const f of fs) await uploadFile(f, selId); })(); else fileTransfer(fs);
+    if (selId && S.tasks[selId]) uploadAll(fs, selId); else fileTransfer(fs);
   }, true);
   app.addEventListener("dragover", e => { if (e.target.closest && e.target.closest(".chip[data-lid]")) return; const r = e.target.closest && e.target.closest("#main .taskrow"); if (r && ui.dragId && r.dataset.id !== ui.dragId) { e.preventDefault(); document.querySelectorAll(".taskrow.dropb").forEach(x => { if (x !== r) x.classList.remove("dropb"); }); r.classList.add("dropb"); } });
   app.addEventListener("drop", e => { if (e.target.closest && e.target.closest(".chip[data-lid]")) return; const r = e.target.closest && e.target.closest("#main .taskrow"); if (r && ui.dragId && r.dataset.id !== ui.dragId) { e.preventDefault(); const d = ui.dragId; ui.dragId = null; ordDrop(d, r.dataset.id); } });
