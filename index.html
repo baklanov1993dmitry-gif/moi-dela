@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 09:30";
+const BUILD = "23.10 09:35";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2451,6 +2451,17 @@ const jrCSS = `
 .nt-b{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border-radius:7px;opacity:.65;font-size:calc(11px*var(--z,1))}
 .nt-b:hover{opacity:1;background:rgba(127,127,127,.15)}
 .nt-lnk{color:#107c10}.nt-lnk.done{opacity:.6}
+.nt-tabs{display:flex;gap:4px;align-items:center;margin:0 0 10px}
+.nt-tab{padding:5px 14px;border-radius:99px;font-size:calc(12.5px*var(--z,1));opacity:.7;border:1px solid transparent}
+.nt-tab.on{opacity:1;background:rgba(43,136,216,.14);color:#2b88d8;font-weight:600}
+.nt-ret{border:1px solid rgba(227,104,12,.45);background:rgba(227,104,12,.07);border-radius:12px;padding:10px 12px;margin:0 0 10px}
+.nt-ret-h{font-size:calc(11.5px*var(--z,1));font-weight:600;color:#e3680c;margin-bottom:4px}
+.nt-ret-t{font-size:calc(14px*var(--z,1))}.nt-ret-s{font-size:calc(12px*var(--z,1));opacity:.75;margin-top:2px}
+.nt-ret .nt-row{flex-wrap:wrap}
+.nt-wk{border:1px solid var(--ln);border-radius:12px;padding:10px 12px;margin:0 0 6px;font-size:calc(12.5px*var(--z,1));line-height:1.7}
+.nt-rel{margin-top:6px;border-top:1px dashed var(--ln);padding-top:6px}
+.nt-rl{font-size:calc(12px*var(--z,1));opacity:.8;padding:3px 0;cursor:pointer}.nt-rl i{font-style:normal;opacity:.55;margin-right:4px}.nt-rl:hover{color:#2b88d8}
+.nt-gw{border:1px solid var(--ln);border-radius:12px;overflow:hidden;background:var(--solid,transparent)}
 .jr-box{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--solid,transparent);font-size:calc(12.2px*var(--z,1))}
 .jr-f{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .jr-f .inp{font-size:calc(12.2px*var(--z,1))}
@@ -6312,7 +6323,7 @@ async function checkBuild() {
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
 if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
-const NTM = window.NOTES_INIT ? window.NOTES_INIT({ S, ic, esc, $, render, toast, addTask, micToggle, micOK, mtopHTML, uid, nowISO, todayISO, addDays, parseISO, pad2, WDS, goView, acts, sb: () => sb, view: () => view, sel: id => { selId = id; } }) : null;
+const NTM = window.NOTES_INIT ? window.NOTES_INIT({ S, ic, esc, $, render, toast, addTask, micToggle, micOK, mtopHTML, uid, nowISO, todayISO, addDays, parseISO, pad2, WDS, goView, acts, zipStore, utf8, sb: () => sb, view: () => view, sel: id => { selId = id; } }) : null;
 init();
 
 })();
