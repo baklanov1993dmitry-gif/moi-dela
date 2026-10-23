@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 10:56";
+const BUILD = "23.10 11:06";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -647,7 +647,7 @@ uBtn.hide = () => { const b = document.getElementById("ubtn"); if (b) b.style.di
 /* ссылки и пути (\\сервер\папка, C:\…, https://…) из названия уезжают в заметку — там они показываются чипами */
 function splitLinks(title, note) {
   let t = String(title || ""), found = [];
-  t = t.replace(/https?:\/\/[^\s<>"')\]]+/g, x => { found.push(x.replace(/[.,;:!?]+$/, "")); return ""; });
+  t = t.replace(/https?:\/\/[^\s<>"')\[\]]+/g, x => { found.push(x.replace(/[.,;:!?]+$/, "")); return ""; });
   t = t.replace(/(^|[\s(])((?:\\\\[^\s\\][^\n]*)|(?:[A-Za-z]:\\[^\n]*))/g, (m, p, x) => { found.push(x.trim()); return p; });
   if (!found.length) return { title: title, note: note };
   t = t.replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").replace(/[\s:;,—-]+$/, "").trim();
@@ -2153,7 +2153,7 @@ function hkRun(a) {
     case "open_note": case "edit_title": {
       if (!t) return need();
       const el = $(a === "open_note" ? "d-note" : "d-title"); if (!el) return false;
-      el.focus(); if (a === "open_note") { try { el.setSelectionRange(el.value.length, el.value.length); } catch (x) {} } else el.select();
+      el.focus(); if (a === "open_note") { try { if (el.isContentEditable) { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const q = getSelection(); q.removeAllRanges(); q.addRange(r); } else el.setSelectionRange(el.value.length, el.value.length); } catch (x) {} } else el.select();
       return true;
     }
     case "due_pick": if (!t) return need(); return popAt("due");
@@ -2199,7 +2199,7 @@ function hkKey(e) {
   const tg = e.target, tag = tg && tg.tagName, typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (tg && tg.isContentEditable);
   if (typing) {
     if (e.code === "Escape" && ui.noteFull) { e.preventDefault(); e.stopImmediatePropagation(); ui.noteFull = false; render(); return; }
-    if (e.code === "Escape" && tg && (tg.id === "d-note" || tg.id === "d-title")) { e.preventDefault(); e.stopImmediatePropagation(); tg.blur(); }   // Esc в заметке: просто выйти из ввода, карточка остаётся
+    if (e.code === "Escape" && tg && (tg.id === "d-note" || tg.id === "d-notef" || tg.id === "d-title")) { e.preventDefault(); e.stopImmediatePropagation(); tg.blur(); }   // Esc в заметке: просто выйти из ввода, карточка остаётся
     else if (tg && tg.id === "newtask" && !e.ctrlKey && !e.metaKey && !e.isComposing) {   // поле «Добавить задачу»: срок и важность не печатая слов
       const q = ui.dd || (ui.dd = newDD());
       if (e.altKey && /^Digit[0-8]$/.test(e.code)) { e.preventDefault(); e.stopImmediatePropagation(); const n = +e.code.slice(5); q.due = n === 0 ? null : n === 8 ? nextMonday() : addDays(today, n === 7 ? 7 : n - 1); render(); }
@@ -3140,8 +3140,11 @@ function parseEst(s) {
 const estFull = m => !m ? "" : (m % 480 === 0 ? m / 480 + "д" : m % 60 === 0 ? m / 60 + "ч" : m + "м");
 const subActs = {
   copypath(el) { const p = el.dataset.p || ""; const ok = () => toast("Путь скопирован — вставь в «Проводник» (Win+R или адресная строка)"); try { navigator.clipboard.writeText(p).then(ok, () => toast("Не удалось скопировать")); } catch (e) { toast("Не удалось скопировать"); } },
-  notefull() { ui.noteFull = true; render(); },
-  notefullclose() { ui.noteFull = false; render(); },
+  notefull() { rteFlush(); ui.noteFull = true; render(); [30, 150, 400].forEach(ms => setTimeout(() => { const e = $("d-notef"); if (e && document.activeElement !== e) { e.focus(); try { const r = document.createRange(); r.selectNodeContents(e); r.collapse(false); const q = getSelection(); q.removeAllRanges(); q.addRange(r); } catch (x) {} } }, ms)); },
+  notefullclose() { rteFlush(); ui.noteFull = false; render(); },
+  fmt(el) { const ed = el.closest(".rtw").querySelector(".rte"); if (ed) rteFmt(ed, el.dataset.c); },
+  fmtc(el) { const w = el.closest(".rtw"), ed = w.querySelector(".rte"); if (ed) rteFmt(ed, el.dataset.c, el.dataset.k); w.querySelectorAll(".rtp").forEach(p => p.classList.remove("show")); },
+  rtpop(el) { const w = el.closest(".rtw"), p = w.querySelector('.rtp[data-q="' + el.dataset.q + '"]'), on = p.classList.contains("show"); w.querySelectorAll(".rtp").forEach(x => x.classList.remove("show")); if (!on) p.classList.add("show"); },
   subtog(a) {
     const id = a.dataset.id, was = subOpen(S.tasks[id]); if (PR.subs === "top") PR.subOpen[id] = !PR.subOpen[id]; else PR.subClosed[id] = !PR.subClosed[id]; ui.subAdd = null; savePrefs();
     const k = mdKids(id);
@@ -3445,12 +3448,25 @@ const CSS = `
 .nfoot{display:none}
 body.dropfile::after{content:"Отпусти файл — он прикрепится к открытой задаче или попадёт в список «Файлы»";position:fixed;inset:10px;z-index:9998;border:3px dashed var(--acc);border-radius:16px;background:rgba(61,143,224,.10);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--acc);pointer-events:none;text-align:center;padding:20px}
 .imgrow{align-items:flex-start;gap:8px}.athumb{display:block;max-width:calc(100% - 36px);max-height:220px;border-radius:8px;object-fit:contain;background:var(--hov);cursor:zoom-in;min-height:40px;min-width:60px}.lbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out}.lbox img{max-width:94vw;max-height:90vh;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5)}.lbdl{position:absolute;right:16px;top:14px;color:#fff;background:rgba(255,255,255,.16);padding:7px 14px;border-radius:18px;font-size:14px;text-decoration:none}
-.dcard.grow{position:relative}.dcard.grow .notearea{padding-top:38px}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
+.dcard.grow{position:relative}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
 .nfull{position:fixed;left:0;right:0;top:0;bottom:0;z-index:58;background:var(--solid);display:flex;flex-direction:column}
 .nfull .nh{display:flex;align-items:center;gap:12px;padding:12px 12px 8px;font-size:calc(18px*var(--z,1));flex-shrink:0}
 .nfull .nh span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nfull textarea{flex:1;border:0;background:transparent;color:var(--tx);padding:14px 18px;font:inherit;font-size:calc(18px*var(--z,1));line-height:1.45;resize:none;outline:0}
 @media(min-width:900px){.nfull .nh,.nfull textarea,.nfull .nb{width:100%;max-width:1000px;margin-left:auto;margin-right:auto;box-sizing:border-box}.nfull textarea{font-size:calc(17px*var(--z,1));line-height:1.55}}
+.rtb{display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:5px 8px;border-bottom:1px solid var(--ln);position:relative;flex-shrink:0}
+.rtb button{min-width:32px;height:32px;padding:0 7px;border-radius:8px;color:var(--tx);font-size:calc(15px*var(--z,1));opacity:.85;cursor:pointer}
+.rtb button:hover{background:var(--hov);opacity:1}.rtb .sp{flex:1}
+.rtb button[data-a=notefull],.rtb button[data-a=notefullclose]{font-size:calc(18px*var(--z,1));color:var(--sub)}
+.rtp{display:none;position:absolute;top:100%;left:8px;z-index:6;background:var(--solid);border:1px solid var(--ln);border-radius:12px;padding:8px;gap:7px;flex-wrap:wrap;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:calc(100% - 16px)}
+.rtp.show{display:flex}.rtp i{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid var(--ln);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;color:var(--sub)}.rtp i:hover{transform:scale(1.15)}
+div.rte{white-space:pre-wrap;word-break:break-word;overflow-y:auto;outline:0;cursor:text;display:block}
+.rte:empty::before{content:attr(data-ph);color:var(--sub);pointer-events:none}
+.rte u{text-underline-offset:2px}
+.nfull .rtw{flex:1;min-height:0;display:flex;flex-direction:column}
+.nfull .rtb,.nfull .rte{width:100%;box-sizing:border-box}
+.nfull div.rte{flex:1;max-height:none;padding:14px 18px;font-size:calc(18px*var(--z,1));line-height:1.45}
+@media(min-width:900px){.nfull .rtb,.nfull .rte{max-width:1000px;margin-left:auto;margin-right:auto}.nfull div.rte{font-size:calc(17px*var(--z,1));line-height:1.55}}
 .nfull .nb{border-top:1px solid var(--ln);padding:14px 18px max(14px,env(safe-area-inset-bottom));color:var(--sub);font-size:calc(14px*var(--z,1))}
 .dtitle{display:flex;gap:12px;align-items:flex-start;padding:10px 14px}
 .ttlinp{flex:1;background:transparent;border:0;color:var(--tx);font:inherit;font-weight:600;font-size:calc(16px*var(--z,1));resize:none;overflow:hidden;line-height:1.3;padding:0;min-width:0}
@@ -3867,13 +3883,13 @@ function detailHTML(t) {
     '<div class="dcard"><div class="drow dgrid">' + ic("tag", 18) + '<input id="d-cat" placeholder="Категория" value="' + esc(t.category || "") + '">' + ic("list", 18) + lst + "</div>" +
     '<div class="drow" data-a="pop" data-p="estpick" data-id="' + id + '">' + ic("hourglass", 18) + '<span class="dtx">Сколько займёт</span><span class="estval ' + (t.est_minutes ? "on" : "") + '">' + (t.est_minutes ? fmtEst(t.est_minutes) : "—") + "</span></div></div>" +
     ((t.files || []).length ? '<div class="dcard">' + (t.files || []).map((f, i) => fileRowHTML(f, i)).join("") + "</div>" : "") +
-    '<div class="dcard grow">' + '<button class="nexp" data-a="notefull" title="Развернуть заметку на весь экран (Esc — закрыть)">⤢ Развернуть</button>' + '<textarea id="d-note" class="notearea" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea>' + noteLinksHTML(t.note) + '<div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
+    '<div class="dcard grow rtw">' + rteBar(false) + rteEd("d-note", t) + noteLinksHTML(t.note) + '<div class="nfoot"><span>Создано ' + esc(fmtShort(t.created_at)) + '</span>' + (ytUrl(t.note) ? '<button data-a="vsum" data-id="' + t.id + '">' + (VB[t.id] ? "⏳ Запрос идёт, до 2 мин…" : /Смысл видео ━━/.test(t.note || "") ? "🔄 Пересказать заново" : "🎬 Смысл видео") + '</button>' + (/Смысл видео ━━/.test(t.note || "") ? '<button data-a="vcopy" data-id="' + t.id + '" title="Скопировать весь текст и открыть режим ИИ Google">🤖 В ИИ Google</button><button data-a="vpdf" data-id="' + t.id + '" title="Сохранить пересказ как PDF — его можно загрузить в ИИ">📄 PDF</button>' : "") : "") + '<button data-a="notefull" title="Развернуть заметку на весь экран">⤢ Развернуть</button></div></div></div>' +
     '<div class="dfoot"><button class="ibtn" data-a="close" title="Закрыть панель">' + ic("panel", 18) + '</button><button class="ibtn" data-a="pickfile" title="Прикрепить файл">' + ic("clip", 18) + '</button><span class="sp">' + (t.status === "someday" ? "Когда-нибудь · " : "") + "Создано " + esc(fmtShort(t.created_at)) + '</span><button class="ibtn" data-a="delTask" title="Удалить задачу">' + ic("trash", 18) + "</button></div></div>";
 }
 function noteFullHTML() {
   if (!ui.noteFull || !selId || !S.tasks[selId]) return "";
   const t = S.tasks[selId];
-  return '<div class="nfull"><div class="nh"><button class="ibtn" data-a="notefullclose">' + ic("arrowl", 22) + "</button><span>" + esc(t.title) + '</span></div><textarea id="d-note" placeholder="Добавить заметку">' + esc(noteView(t)) + '</textarea>' + noteLinksHTML(t.note) + '<div class="nb">Создано ' + esc(fmtShort(t.created_at)) + "</div></div>";
+  return '<style>#body{visibility:hidden}</style><div class="nfull"><div class="nh"><button class="ibtn" data-a="notefullclose">' + ic("arrowl", 22) + "</button><span>" + esc(t.title) + '</span></div><div class="rtw">' + rteBar(true) + rteEd("d-notef", t) + "</div>" + noteLinksHTML(t.note) + '<div class="nb">Создано ' + esc(fmtShort(t.created_at)) + "</div></div>";
 }
 function popHTML() {
   const p = ui.pop; if (!p) return "";
@@ -5325,8 +5341,56 @@ function jrWeekData(m0, end0) {
   return { cat, tot, days: days.size, n, val, catx };
 }
 const vLine = n => /^(https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+)[ \t]*\n?/i.exec(n || "");
+/* ---------- редактор заметки: contenteditable, формат хранится в тексте как [b]..[/b] [i] [u] [s] [c=#hex] [m=#hex] ---------- */
+const RTAG = /\[\/?(?:b|i|u|s)\]|\[\/?[cm](?:=#[0-9a-fA-F]{3,8})?\]/g, plainNote = n => String(n || "").replace(RTAG, "");
+const rteHTML = src => esc(String(src || "")).replace(/\n/g, "<br>").replace(/\[(\/?)(b|i|u|s)\]/g, (m, sl, t) => sl ? "</" + t + ">" : "<" + t + ">").replace(/\[c=(#[0-9a-fA-F]{3,8})\]/g, '<span style="color:$1">').replace(/\[m=(#[0-9a-fA-F]{3,8})\]/g, '<span style="background-color:$1">').replace(/\[\/[cm]\]/g, "</span>");
+function rteSer(root) {
+  const base = (() => { try { return rteHex(getComputedStyle(root).color); } catch (e) { return ""; } })(), BL = /^(DIV|P|LI|UL|OL|H[1-6])$/;
+  const walk = n => {
+    let s = "";
+    n.childNodes.forEach(c => {
+      if (c.nodeType === 3) { s += c.nodeValue.replace(/\u00a0/g, " ").replace(/\[(\/?(?:b|i|u|s)|\/?[cm](?:=#[0-9a-fA-F]{3,8})?)\]/g, "[\u200b$1]"); return; }
+      if (c.nodeType !== 1) return;
+      const tg = c.tagName; if (tg === "BR") { s += "\n"; return; }
+      let inn = walk(c); const st = c.style || {}, ok = inn.replace(/[\s\u200b]/g, "") !== "";
+      if (ok) {
+        const td = (st.textDecorationLine || st.textDecoration || "");
+        if (tg === "B" || tg === "STRONG" || /^(bold|[6-9]00)$/.test(st.fontWeight)) inn = "[b]" + inn + "[/b]";
+        if (tg === "I" || tg === "EM" || st.fontStyle === "italic") inn = "[i]" + inn + "[/i]";
+        if (tg === "U" || /underline/.test(td)) inn = "[u]" + inn + "[/u]";
+        if (tg === "S" || tg === "STRIKE" || tg === "DEL" || /line-through/.test(td)) inn = "[s]" + inn + "[/s]";
+        const col = rteHex(st.color || (tg === "FONT" ? c.getAttribute("color") : "")); if (col && col !== base) inn = "[c=" + col + "]" + inn + "[/c]";
+        const bg = rteHex(st.backgroundColor); if (bg) inn = "[m=" + bg + "]" + inn + "[/m]";
+      }
+      if (BL.test(tg)) { if (s && !s.endsWith("\n")) s += "\n"; s += inn; if (!inn.endsWith("\n")) s += "\n"; } else s += inn;
+    });
+    return s;
+  };
+  return walk(root).replace(/\n+$/, "");
+}
+function rteHex(c) { c = String(c || "").trim(); if (!c || c === "transparent") return ""; const m = /^rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?/.exec(c); if (m) { if (m[4] != null && +m[4] === 0) return ""; return "#" + [1, 2, 3].map(i => (+m[i]).toString(16).padStart(2, "0")).join(""); } return /^#[0-9a-f]{6}$/i.test(c) ? c.toLowerCase() : ""; }
+const RTC = ["#e03131", "#f08c00", "#2f9e44", "#1c7ed6", "#7048e8", "#c2255c", "#868e96"], RTM = ["#ffe066", "#b2f2bb", "#a5d8ff", "#ffc9c9", "#d0bfff", "#ffd8a8"];
+const rteEd = (id, t) => '<div id="' + id + '" class="notearea rte" contenteditable="true" spellcheck="true" data-id="' + t.id + '" data-ph="Добавить заметку">' + rteHTML(noteView(t)) + "</div>";
+function rteBar(full) {
+  const b = (c, h, tt) => '<button type="button" tabindex="-1" data-a="fmt" data-c="' + c + '" title="' + tt + '">' + h + "</button>";
+  return '<div class="rtb">' + b("bold", "<b>B</b>", "Жирный (Ctrl+B)") + b("italic", "<i>I</i>", "Курсив (Ctrl+I)") + b("underline", "<u>U</u>", "Подчёркнутый (Ctrl+U)") + b("strikeThrough", "<s>S</s>", "Зачёркнутый") +
+    '<button type="button" tabindex="-1" data-a="rtpop" data-q="f" title="Цвет текста"><span style="border-bottom:3px solid #e03131;line-height:1">A</span></button>' +
+    '<button type="button" tabindex="-1" data-a="rtpop" data-q="b" title="Выделение маркером"><span style="background:#ffe066;color:#222;padding:0 4px;border-radius:3px;line-height:1.2">ab</span></button>' +
+    b("bul", "•≡", "Пункт списка") + b("removeFormat", "T<sub style=\"font-size:9px\">x</sub>", "Убрать оформление") + '<span class="sp"></span>' +
+    (full ? '<button type="button" tabindex="-1" data-a="notefullclose" title="Свернуть (Esc)">⤡</button>' : '<button type="button" tabindex="-1" data-a="notefull" title="Развернуть на весь экран (Esc — закрыть)">⤢</button>') +
+    '<div class="rtp" data-q="f">' + RTC.map(c => '<i data-a="fmtc" data-k="f" data-c="' + c + '" style="background:' + c + '"></i>').join("") + '<i data-a="fmtc" data-k="f" data-c="" class="x" title="Обычный цвет">∅</i></div>' +
+    '<div class="rtp" data-q="b">' + RTM.map(c => '<i data-a="fmtc" data-k="b" data-c="' + c + '" style="background:' + c + '"></i>').join("") + '<i data-a="fmtc" data-k="b" data-c="" class="x" title="Без выделения">∅</i></div></div>';
+}
+let rteT = 0, rteP = null;
+function rteFlush() {
+  clearTimeout(rteT); const el = rteP; rteP = null; if (!el || !S.user) return;
+  const t = S.tasks[el.dataset.id]; if (!t) return; const v = rteSer(el); if (v === noteView(t)) return;
+  upd(t.id, { note: noteSet(t, v) });
+}
+function rteInput(el) { rteP = el; clearTimeout(rteT); rteT = setTimeout(rteFlush, 500); if (!el.textContent && !el.querySelector("img")) el.innerHTML = ""; }
+const rteFmt = (ed, c, k) => { if (document.activeElement !== ed) ed.focus(); try { document.execCommand("styleWithCSS", false, true); } catch (e) {} if (c === "bul") document.execCommand("insertText", false, "• "); else if (k) document.execCommand(k === "f" ? "foreColor" : "hiliteColor", false, c || (k === "f" ? getComputedStyle(ed).color : "transparent")); else document.execCommand(c, false, null); rteInput(ed); };
 const noteLinksHTML = n => {
-  const src = String(n || ""), u = [...new Set((src.match(/https?:\/\/[^\s<>"')\]]+/g) || []).map(x => x.replace(/[.,;:!?]+$/, "")))].slice(0, 12);
+  const src = plainNote(n), u = [...new Set((src.match(/https?:\/\/[^\s<>"')\[\]]+/g) || []).map(x => x.replace(/[.,;:!?]+$/, "")))].slice(0, 12);
   const fp = [...new Set((src.match(/(?:^|\n)\s*((?:\\\\[^\s\\][^\n]*)|(?:[A-Za-z]:\\[^\n]*))/g) || []).map(x => x.trim()))].slice(0, 12);
   const web = u.map(x => { let h = x, p = ""; try { const o = new URL(x); h = o.hostname.replace(/^www\./, ""); p = (o.pathname + o.search).replace(/^\/$/, ""); } catch (e) {} return '<a class="nlink" href="' + esc(x) + '" target="_blank" rel="noopener noreferrer" title="' + esc(x) + '">' + ic("link", 13) + "<b>" + esc(h) + "</b>" + (p ? "<i>" + esc(p.length > 28 ? p.slice(0, 27) + "…" : p) + "</i>" : "") + "</a>"; });
   const files = fp.map(x => { const seg = x.split("\\").filter(Boolean), last = seg[seg.length - 1] || x, par = seg.length > 1 ? seg[seg.length - 2] : ""; return '<a class="nlink nfile" href="#" data-a="copypath" data-p="' + esc(x) + '" title="' + esc(x) + '\n(нажми — скопировать путь)">' + ic("folder", 13) + "<b>" + esc(last.length > 24 ? last.slice(0, 23) + "…" : last) + "</b>" + (par ? "<i>…\\" + esc(par.length > 18 ? par.slice(0, 17) + "…" : par) + "</i>" : "") + "</a>"; });
@@ -5334,7 +5398,7 @@ const noteLinksHTML = n => {
 };
 const noteView = t => { const m = vLine(t.note); return m ? String(t.note).slice(m[0].length).replace(/^\n+/, "") : (t.note || ""); };
 const noteSet = (t, v) => { const m = vLine(t.note); return m ? m[1] + "\n\n" + v : v; };
-const ytUrl = n => { if (isLite()) return ""; const m = String(n || "").match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
+const ytUrl = n => { if (isLite()) return ""; const m = plainNote(n).match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); return m ? m[0] : ""; };
 function videoCatchup() {   // видео в очереди без пересказа догоняем автоматически (не больше 2 попыток на видео)
   if (!S.user || document.hidden) return; PR.vtry = PR.vtry || {};
   const t = Object.values(S.tasks).find(x => !x.done && !x.parent_id && !VB[x.id] && ytUrl(x.note) && !/Смысл видео ━━/.test(x.note || "") && (PR.vtry[x.id] || 0) < 2);
@@ -6331,6 +6395,13 @@ function init() {
     else if (!v && view === "search") view = prevView || HOME();
     clearTimeout(qt); qt = setTimeout(renderSoon, 130);
   });
+  app.addEventListener("input", e => { const el = e.target; if (el.classList && el.classList.contains("rte")) rteInput(el); });
+  app.addEventListener("focusin", e => { const el = e.target; if (el.classList && el.classList.contains("rte")) { try { document.execCommand("defaultParagraphSeparator", false, "br"); } catch (x) {} } });
+  app.addEventListener("focusout", e => { const el = e.target; if (el.classList && el.classList.contains("rte")) { rteFlush(); } });
+  app.addEventListener("paste", e => { const el = e.target; if (!(el.classList && el.classList.contains("rte"))) return; const f = e.clipboardData && e.clipboardData.files; if (f && f.length) return; e.preventDefault(); const tx = (e.clipboardData && e.clipboardData.getData("text/plain")) || ""; if (tx) document.execCommand("insertText", false, tx.replace(/\r\n?/g, "\n")); });
+  app.addEventListener("mousedown", e => { if (e.target.closest && e.target.closest(".rtb button, .rtb i")) e.preventDefault(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) rteFlush(); });
+  window.addEventListener("pagehide", rteFlush);
   app.addEventListener("keydown", e => {
     const id = e.target.id;
     if (e.key === "Enter" && !e.isComposing) {
