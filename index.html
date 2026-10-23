@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 10:45";
+const BUILD = "23.10 10:46";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3079,10 +3079,21 @@ function passFlt(t) {
   if (f.star && !t.starred) return false;
   if (f.rem && !t.remind_at) return false;
   if (f.cat && (t.category || "").toLowerCase().split(",").map(x => x.trim()).indexOf(f.cat) < 0) return false;
+  if (t.done && f.date && f.date !== "nodue") {   // у выполненных фильтр по дате — по дате ЗАВЕРШЕНИЯ (done_at), а не по сроку
+    const x = t.done_at ? new Date(t.done_at) : null, D = x ? x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0") : (t.due || "");
+    if (!D) return false;
+    switch (f.date) {
+      case "over": return D < today;                          // завершены раньше сегодняшнего дня
+      case "today": return D === today;
+      case "todover": return D <= today;
+      case "tom": return false;                               // «завтра» для выполненных не бывает
+      case "week": return D >= addDays(today, -6) && D <= today;   // последние 7 дней
+    }
+  }
   switch (f.date) {
-    case "over": if (t.done || !(t.due && t.due < today)) return false; break;   // выполненная не может быть просроченной
+    case "over": if (!(t.due && t.due < today)) return false; break;
     case "today": if (t.due !== today) return false; break;
-    case "todover": if (!(t.due && (t.done ? t.due === today : t.due <= today))) return false; break;
+    case "todover": if (!(t.due && t.due <= today)) return false; break;
     case "tom": if (t.due !== addDays(today, 1)) return false; break;
     case "week": if (!(t.due && t.due >= today && t.due <= addDays(today, 7))) return false; break;
     case "nodue": if (t.due) return false; break;
@@ -3111,7 +3122,7 @@ function filterPopHTML() {
   const f = PR.flt[view] || {}, it = (k, v, label, on) => '<div class="pi" data-a="flt" data-k="' + k + '" data-v="' + esc(v) + '"><span style="width:20px">' + (on ? "☑" : "☐") + "</span>" + label + "</div>";
   const cats = {}; Object.values(S.tasks).forEach(t => { if (!t.done && t.category) t.category.split(",").forEach(c => { c = c.trim().toLowerCase(); if (c) cats[c] = (cats[c] || 0) + 1; }); });
   const cl = Object.keys(cats).sort((a, b) => cats[b] - cats[a]).slice(0, 12);
-  return '<div class="ptitle">Фильтры — все условия вместе</div>' + FLT_DATES.map(d => it("date", d[0], d[1], (f.date || "") === d[0])).join("") + '<div class="psep"></div>' +
+  return '<div class="ptitle">Фильтры — все условия вместе</div>' + '<div style="padding:0 14px 6px;font-size:12px;color:var(--sub)">У выполненных даты считаются по дню завершения: «Сегодня» — закрыты сегодня, «7 дней» — за последнюю неделю</div>' + FLT_DATES.map(d => it("date", d[0], d[1], (f.date || "") === d[0])).join("") + '<div class="psep"></div>' +
     it("star", "1", "Только важные", !!f.star) + it("rem", "1", "Только с напоминанием", !!f.rem) +
     (cl.length ? '<div class="psep"></div><div class="ptitle">Категория</div>' + cl.map(c => it("cat", c, "#" + esc(c), f.cat === c)).join("") : "") +
     '<div class="psep"></div><div class="pi" data-a="fltclr" data-k="all" style="color:var(--acc)">Сбросить фильтры</div>';
