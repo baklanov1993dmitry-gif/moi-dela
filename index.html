@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 13:44";
+const BUILD = "24.10 13:58";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3628,7 +3628,15 @@ select.inp option{color:#111}
 .estchip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 .ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:70;display:flex;align-items:center;justify-content:center;padding:14px}
 .sheet.sset{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-@media(min-width:761px){.sheet.sset{height:min(680px,90vh)}}   /* окно настроек не прыгает по высоте при смене вкладок */
+@media(min-width:761px){.sheet.sset{height:min(680px,90vh)}}
+.sheet.sdesk{width:min(960px,96vw);height:min(740px,92vh);padding:0;overflow:hidden;display:flex;flex-direction:column}
+.sdh{display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ln);font-weight:700;font-size:calc(18px*var(--z,1))}
+.sdb{flex:1;min-height:0;display:flex}.snav{flex:none;width:210px;padding:12px 10px;border-right:1px solid var(--ln);display:flex;flex-direction:column;gap:3px;overflow-y:auto;background:rgba(128,128,128,.05)}
+.snav .stab{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:10px;font-size:calc(14.5px*var(--z,1));white-space:nowrap;border:0;background:transparent;color:var(--tx);cursor:pointer}.snav .stab:hover{background:rgba(128,128,128,.12)}.snav .stab.on{background:var(--acc);color:#fff;font-weight:600}
+.spane{flex:1;min-width:0;overflow-y:auto;overscroll-behavior:contain;padding:18px 26px 22px}
+.spt{margin:0 0 6px;font-size:calc(26px*var(--z,1));font-weight:800;letter-spacing:-.01em}
+.sdesk .sgl{margin:26px 0 9px;padding-bottom:6px;border-bottom:2px solid var(--ln);font-size:calc(17px*var(--z,1));font-weight:700;letter-spacing:0;text-transform:none;color:var(--tx)}.sdesk .sgl:first-of-type{margin-top:14px}
+.sdesk .srt b{font-weight:500;font-size:calc(14px*var(--z,1))}.sdesk .srt span{font-size:calc(12px*var(--z,1))}.sdesk .srw{min-height:46px}   /* окно настроек не прыгает по высоте при смене вкладок */
 .sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
 .lbl{font-size:calc(12px*var(--z,1));color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
 .sset{margin:0 0 14px;border:1px solid var(--ln);border-radius:14px;overflow:hidden;background:var(--card)}.sset>h3{margin:0;padding:9px 14px;font-size:calc(11.5px*var(--z,1));letter-spacing:.08em;text-transform:uppercase;color:var(--acc);background:rgba(128,128,128,.09);font-weight:700;border-bottom:1px solid var(--ln)}.ssb{padding:12px 14px}.ssb .lbl{font-size:calc(13px*var(--z,1))!important;color:var(--sub);text-transform:none!important;letter-spacing:0!important;margin:12px 0 5px!important}.ssb .lbl:first-child{margin-top:0!important}
@@ -4162,9 +4170,9 @@ function settingsHTML() {
     G("Об аккаунте", R("Почта", "", '<span class="sv">' + esc(S.user ? S.user.email : "") + "</span>") + R("Задач в базе", "", '<span class="sv">' + Object.keys(S.tasks).length + "</span>") + R("Сборка", "", '<span class="sv">' + BUILD + "</span>")) +
     G("Синхронизация", R("Данные с сервера", "Принудительно обновить", BT("sync", "🔄 Обновить")) + R("Связь", "Проверить соединение", BT("ping", "📡 Проверить"))) +
     G("Сессия", R("Выход", "Завершить сеанс на этом устройстве", BT("logout", "Выйти", "color:#d13438"))) + mfaSettingsHTML();
-  return '<div class="ovl" data-a="ovl"><div class="sheet sset' + (freshS ? " fade" : "") + '">' + (isMobile() ? '<div class="shead"><button class="ibtn" data-a="closeSettings">' + ic("arrowl", 22) + '</button><div style="flex:1;font-size:calc(22px*var(--z,1))">' + (smenu ? "Параметры" : esc((TABS.filter(t => t[0] === tab)[0] || ["", ""])[1].replace(/^\S+\s/, ""))) + '</div></div>' : '<div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.25em">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>') +
-    (isMobile() ? "" : '<div class="stabs">' + TABS.map(t => '<button class="stab' + (tab === t[0] ? " on" : "") + '" data-a="stab" data-v="' + t[0] + '">' + t[1] + "</button>").join("") + "</div>") + b +
-    '<div id="msg" style="margin-top:10px;min-height:18px;font-size:calc(13px*var(--z,1));white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div></div></div>";
+  return '<div class="ovl" data-a="ovl"><div class="sheet sset' + (isMobile() ? "" : " sdesk") + (freshS ? " fade" : "") + '">' + (isMobile() ? '<div class="shead"><button class="ibtn" data-a="closeSettings">' + ic("arrowl", 22) + '</button><div style="flex:1;font-size:calc(22px*var(--z,1))">' + (smenu ? "Параметры" : esc((TABS.filter(t => t[0] === tab)[0] || ["", ""])[1].replace(/^\S+\s/, ""))) + '</div></div>' : '<div class="sdh"><div style="flex:1">Настройки</div><button class="btn ghost" data-a="closeSettings" style="padding:6px 10px">✕</button></div>') +
+    (isMobile() ? "" : '<div class="sdb"><nav class="snav">' + TABS.map(t => '<button class="stab' + (tab === t[0] ? " on" : "") + '" data-a="stab" data-v="' + t[0] + '">' + t[1] + "</button>").join("") + '</nav><div class="spane"><h2 class="spt">' + esc((TABS.filter(t => t[0] === tab)[0] || ["", ""])[1].replace(/^\S+\s/, "")) + "</h2>") + b +
+    '<div id="msg" style="margin-top:10px;min-height:18px;font-size:calc(13px*var(--z,1));white-space:pre-line;color:' + (ui.msgOk ? "#22c55e" : "#f87171") + '">' + esc(ui.msg) + "</div>" + (isMobile() ? "" : "</div></div>") + "</div></div>";
 }
 const msgHTML = () => '<div id="msg" style="margin-top:12px;min-height:20px;font-size:calc(13.5px*var(--z,1));color:' + (ui.msgOk ? "#16a34a" : "#dc2626") + '">' + esc(ui.msg) + "</div>";
 function authHTML() {
@@ -4352,12 +4360,12 @@ function trkDec6(str) {   // polyline с точностью 6 знаков (фо
 }
 function trkRuns(pts) {   // участки пути: граница — стоянка, длинная пауза или смена вида движения (пешком / вело / транспорт)
   const cls = v => v < 7 ? 0 : v < 28 ? 2 : 3, E = [];   // пешком / вело / самокат-трамвай (16–28) / транспорт
-  for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], gap = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000, d = trkDist(+a.lat, +a.lon, +b.lat, +b.lon), v = gap > 90 || b.vel == null ? (gap > 0 ? d / gap * 3.6 : 0) : b.vel; E.push({ d, v, gapBig: gap > 900 && d > 300, still: a.stay && b.stay }); }
+  for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], gap = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000, d = trkDist(+a.lat, +a.lon, +b.lat, +b.lon), v = gap > 90 || b.vel == null ? (gap > 0 ? d / gap * 3.6 : 0) : b.vel; const lng = gap > 900 && d > 300, jmp = !lng && gap > 90 && d > 400; E.push({ d, v, gapBig: lng || jmp, jump: jmp, still: a.stay && b.stay }); }   // jump: GPS пропал на минуты и точка «прыгнула» (метро, тоннель) }
   const c = E.map(e => cls(e.v)), sm = c.map((x, i) => { const w = c.slice(Math.max(0, i - 2), i + 3), n = [0, 0, 0, 0]; w.forEach(y => n[y]++); return n.indexOf(Math.max(...n)); });
   const runs = []; let cur = null;
   E.forEach((e, i) => {
     if (e.still || e.d < 25) { cur = null; return; }
-    if (!cur || cur.gap !== e.gapBig || (!e.gapBig && cur.cls !== sm[i])) { cur = { pts: [pts[i]], cls: sm[i], gap: e.gapBig, vs: [], dist: 0, t: 0 }; runs.push(cur); }
+    if (!cur || cur.gap !== e.gapBig || (!e.gapBig && cur.cls !== sm[i])) { cur = { pts: [pts[i]], cls: sm[i], gap: e.gapBig, jump: e.jump, vs: [], dist: 0, t: 0 }; runs.push(cur); }
     cur.pts.push(pts[i + 1]); cur.vs.push(e.v); cur.dist += e.d;
   });
   runs.forEach(r => { const v = r.vs.slice().sort((a, b) => a - b); r.v = v.length ? v[Math.min(v.length - 1, Math.floor(v.length * 0.75))] : 0;   /* 75-й процентиль: такси в пробке не «пешком» */ });
@@ -4409,34 +4417,45 @@ function trkOrder(map, r, col) {   // очерёдность: стрелки н�
 }
 /* метро: под землёй GPS молчит и между станциями получалась прямая «по воздуху» — рисуем по настоящей линии метро (OpenStreetMap, кэш на устройстве) */
 let TRK_METRO = null;
-function trkMetro(pts) {
+function trkMetro(pts) {   // пути метро (railway=subway) из OSM: массивы точек; несколько зеркал Overpass, кэш 30 дней
   if (TRK_METRO) return TRK_METRO;
   const la = pts.map(p => +p.lat), lo = pts.map(p => +p.lon), pad = 0.05, bb = [Math.min(...la) - pad, Math.min(...lo) - pad, Math.max(...la) + pad, Math.max(...lo) + pad].map(v => v.toFixed(2)).join(",");
-  const ck = "trk_metro_" + bb; let c = null; try { c = JSON.parse(localStorage.getItem(ck) || "null"); } catch (e) {}
-  if (c && Date.now() - c.t < 30 * 864e5) return (TRK_METRO = Promise.resolve(c.lines));
-  return (TRK_METRO = fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: "data=" + encodeURIComponent('[out:json][timeout:25];relation["route"="subway"](' + bb + ");out geom;") }).then(r => r.json()).then(j => {
-    const lines = [];
-    (j.elements || []).forEach(rel => {
-      let ch = [];
-      (rel.members || []).filter(m => m.type === "way" && m.geometry && m.geometry.length > 1).forEach(m => {
-        const g = m.geometry.map(q => [q.lat, q.lon]); if (!ch.length) { ch = g; return; }
-        const E = ch[ch.length - 1], d = (u, v) => Math.abs(u[0] - v[0]) + Math.abs(u[1] - v[1]);
-        if (d(E, g[0]) <= d(E, g[g.length - 1])) ch = ch.concat(g); else ch = ch.concat(g.slice().reverse());
-      });
-      if (ch.length > 3) lines.push(ch);
-    });
-    try { localStorage.setItem(ck, JSON.stringify({ t: Date.now(), lines })); } catch (e) {}
-    return lines;
-  }).catch(() => { TRK_METRO = null; return []; }));
+  const ck = "trk_metro2_" + bb; let c = null; try { c = JSON.parse(localStorage.getItem(ck) || "null"); } catch (e) {}
+  if (c && c.lines && c.lines.length && Date.now() - c.t < 30 * 864e5) return (TRK_METRO = Promise.resolve(c.lines));
+  const q = "data=" + encodeURIComponent('[out:json][timeout:25];way["railway"="subway"](' + bb + ");out geom;");
+  const mirrors = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+  const tryM = k => k >= mirrors.length ? Promise.resolve([]) : fetch(mirrors[k], { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: q }).then(r => { if (!r.ok) throw 0; return r.json(); }).then(j => {
+    const lines = (j.elements || []).filter(w => w.geometry && w.geometry.length > 1).map(w => w.geometry.map(g => [g.lat, g.lon]));
+    if (!lines.length) throw 0; return lines;
+  }).catch(() => tryM(k + 1));
+  return (TRK_METRO = tryM(0).then(lines => { if (lines.length) { try { localStorage.setItem(ck, JSON.stringify({ t: Date.now(), lines })); } catch (e) {} } else TRK_METRO = null; return lines; }));
 }
-function trkMetroFix(r, line, pts) {   // участок без GPS: если оба конца у линии метро — рисуем по ней
+let TRK_MG = null;   // граф путей метро: узлы по координатам, рёбра по соседним точкам
+function trkMetroGraph(lines) {
+  if (TRK_MG && TRK_MG.src === lines) return TRK_MG;
+  const id = new Map(), N = [], adj = [], key = q => q[0].toFixed(5) + "," + q[1].toFixed(5);
+  const node = q => { const k = key(q); let i = id.get(k); if (i === undefined) { i = N.length; id.set(k, i); N.push(q); adj.push([]); } return i; };
+  lines.forEach(w => { for (let i = 1; i < w.length; i++) { const a = node(w[i - 1]), b = node(w[i]); if (a === b) continue; const d = trkDist(w[i - 1][0], w[i - 1][1], w[i][0], w[i][1]); adj[a].push([b, d]); adj[b].push([a, d]); } });
+  return (TRK_MG = { src: lines, N, adj });
+}
+function trkMetroPath(G, A, B) {   // кратчайший путь по путям метро между ближайшими к A и B узлами; null если далеко или не связаны
+  const near = p => { let bi = -1, bd = 1e9; G.N.forEach((q, i) => { const d = trkDist(+p.lat, +p.lon, q[0], q[1]); if (d < bd) { bd = d; bi = i; } }); return { i: bi, d: bd }; };
+  const a = near(A), b = near(B); if (a.i < 0 || a.d > 1200 || b.d > 1200 || a.i === b.i) return null;
+  const dist = new Array(G.N.length).fill(1e12), prev = new Array(G.N.length).fill(-1), open = new Set([a.i]); dist[a.i] = 0;
+  while (open.size) { let u = -1, du = 1e13; open.forEach(i => { if (dist[i] < du) { du = dist[i]; u = i; } }); open.delete(u); if (u === b.i) break;
+    G.adj[u].forEach(([v, w]) => { if (du + w < dist[v]) { dist[v] = du + w; prev[v] = u; open.add(v); } }); }
+  if (prev[b.i] < 0) return null;
+  const out = []; for (let u = b.i; u >= 0; u = prev[u]) out.push(G.N[u]); return out.reverse();
+}
+function trkMetroFix(r, line, pts, fb) {   // участок без GPS (метро/тоннель): рисуем по путям метро, а не по прямой
   if (!r.pts || r.pts.length < 2) return;
-  const A = r.pts[0], B = r.pts[r.pts.length - 1], dA = (q, p) => trkDist(+p.lat, +p.lon, q[0], q[1]);
+  const A = r.pts[0], B = r.pts[r.pts.length - 1];
+  const say = t => { const e = $("trk-mm"); if (e) e.textContent = (e.textContent ? e.textContent + " · " : "") + t; };
   trkMetro(pts).then(lines => {
-    let best = null;
-    lines.forEach(L0 => { let ia = -1, ib = -1, da = 1e9, db = 1e9; L0.forEach((q, i) => { const x = dA(q, A), y = dA(q, B); if (x < da) { da = x; ia = i; } if (y < db) { db = y; ib = i; } });
-      if (da < 900 && db < 900 && ia !== ib && (!best || da + db < best.s)) best = { s: da + db, seg: ia < ib ? L0.slice(ia, ib + 1) : L0.slice(ib, ia + 1).reverse() }; });
-    if (best) { line.setLatLngs([[+A.lat, +A.lon]].concat(best.seg, [[+B.lat, +B.lon]])); line.setStyle({ color: "#8764b8", dashArray: "8 6" }); }
+    if (!lines.length) { say("метро: карта путей не загрузилась (Overpass)"); if (fb) fb(); return; }
+    const seg = trkMetroPath(trkMetroGraph(lines), A, B);
+    if (seg) { line.setLatLngs([[+A.lat, +A.lon]].concat(seg, [[+B.lat, +B.lon]])); line.setStyle({ color: "#8764b8", dashArray: "8 6", opacity: .95 }); say("метро: по путям"); }
+    else { say("метро: концы далеко от путей"); if (fb) fb(); }
   });
 }
 function trkMapDraw() {
@@ -4448,11 +4467,12 @@ function trkMapDraw() {
     const map = L.map(el, { zoomControl: true }); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
     const colr = v => v < 4 ? "#8a8a8a" : v < 7 ? "#107c10" : v < 28 ? "#e3680c" : "#2b7de9", ll = pts.map(b => [+b.lat, +b.lon]);
     MM.n = 0; MM.ok = 0; MM.why = {}; trkRuns(pts).forEach(r => {   // маршрут режем на участки по виду движения; каждый «прилипает» к дорогам
-      const line = L.polyline(r.pts.map(b => [+b.lat, +b.lon]), { color: colr(r.v), weight: 5, opacity: .85, dashArray: r.gap ? "2 9" : null, lineCap: "round" }).addTo(map);
+      const line = L.polyline(r.pts.map(b => [+b.lat, +b.lon]), { color: colr(r.v), weight: 5, opacity: .85, dashArray: r.gap && !r.jump ? "2 9" : null, lineCap: "round" }).addTo(map);
       trkOrder(map, r, colr(r.v));
-      if (r.gap) { try { trkMetroFix(r, line, pts); } catch (e) {} return; }
-      if (r.pts.length < 3 || r.v < 1) return;
-      MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n + (Object.keys(MM.why).length ? " (" + Object.keys(MM.why).map(k => k + " ×" + MM.why[k]).join(", ") + ")" : ""); if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } });
+      const matchRun = (min) => { if (r.pts.length < min || r.v < 1) return;
+      MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n + (Object.keys(MM.why).length ? " (" + Object.keys(MM.why).map(k => k + " ×" + MM.why[k]).join(", ") + ")" : ""); if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } }); };
+      if (r.gap) { try { trkMetroFix(r, line, pts, r.jump ? () => matchRun(2) : null); } catch (e) {} return; }
+      matchRun(3);
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
     let SN = 0; (TRK.D ? TRK.D.segs : []).forEach(g => { const m = (Date.parse(g.end) - Date.parse(g.start)) / 60000; if (g.key === "m" || g.key === "g" || m < 5) return; SN++; L.marker([g.lat, g.lon], { icon: L.divIcon({ className: "", html: '<div style="width:26px;height:26px;border-radius:50%;background:#222;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);text-align:center;line-height:22px;font-weight:800;font-size:14px;color:#fff">' + SN + "</div>", iconSize: [26, 26], iconAnchor: [30, 30] }), zIndexOffset: 1000 }).addTo(map).bindTooltip("№" + SN + " · " + (g.name ? esc(g.name) : "Остановка") + " · " + hm(g.start) + "–" + hm(g.end), { direction: "top" }).bindPopup(trkPopupEl({ lat: g.lat, lon: g.lon, name: g.name || "", info: hm(g.start) + "–" + hm(g.end) + " · " + Math.round(m) + " мин" })); });
@@ -6775,7 +6795,7 @@ async function checkBuild() {
   } catch (e) {}
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
-if (CFG0.TEST) window.__t = { TRK, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
+if (CFG0.TEST) window.__t = { TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
 let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
 function loadHealth() {
   if (hlLoading || HLM) return; hlLoading = true;
