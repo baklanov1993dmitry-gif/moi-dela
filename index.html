@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 14:09";
+const BUILD = "24.10 16:05";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4654,7 +4654,7 @@ function ritualHTML() {
     sec("over", "Хвосты: просрочено", d.over, "over", true, "Реши по каждой: на сегодня, на завтра, на неделю или убрать срок.") + todH +
     sec("stall", "Без движения " + d.N + "+ дн.", d.stall, "stall", false, "Давно не трогал. Закрой, назначь срок или оставь как есть.") +
     (empty ? '<div class="jr-empty">Всё чисто: хвостов и зависших нет 🎉</div>' : "") +
-    '<div class="rit-ft"><button class="btn" data-a="ritok" style="flex:1">Принять план</button></div></div></div>';
+    '<div class="rit-ft"><button class="btn" data-a="ritok" style="flex:1">Принять план</button><button class="btn ghost" data-a="ritnever" title="Можно вернуть в Настройки → Дела">Больше не показывать</button></div></div></div>';
 }
 function ritMaybe() {
   if (!S.user || isLite() || PR.ritOff || PR.ritHide || PR.ritDone === today || ui.rit || document.hidden || new Date().getHours() < 5) return;
@@ -5169,7 +5169,8 @@ const acts = {
     const r = await sb.from("places").insert({ name: n, lat: +p.lat, lon: +p.lon, r: 30 }); if (r.error) { toast("Не сохранилось: " + r.error.message); return; } toast("Место «" + n + "» сохранено"); trkLoad();
   },
   async trkdel(a, e) { e.preventDefault && e.preventDefault(); if (!confirm("Удалить место?")) return; await sb.from("places").delete().eq("id", a.dataset.i); trkLoad(); },
-  ritclose() { ui.rit = false; render(); },
+  ritclose() { PR.ritDone = today; savePrefs(); ui.rit = false; render(); },   // закрыл — сегодня больше не лезет
+  ritnever() { PR.ritOff = true; PR.ritDone = today; savePrefs(); ui.rit = false; toast("Окно выключено. Вернуть: Настройки → Дела → «Утренний план»"); render(); },
   tmallx(a) { TM.allx[a.dataset.id] = !TM.allx[a.dataset.id]; render(); },
   tmshowhid() { TM.showHid = !TM.showHid; render(); },
   tmhide(a) { const id = a.dataset.id, i = TM.hid.indexOf(id); if (i < 0) { const uu = (TM.users || []).find(x => x.id === id); if (!confirm("Убрать «" + (uu ? (uu.email || "").split("@")[0] : "сотрудника") + "» из списка команды?\nАккаунт не удаляется, вернуть можно кнопкой «Показать скрытых».")) return; } if (i >= 0) TM.hid.splice(i, 1); else TM.hid.push(id); try { localStorage.setItem("mytasks_tmhide", JSON.stringify(TM.hid)); } catch (e) {} if (i < 0 && view === "team:" + id) view = "team"; render(); },
@@ -5195,7 +5196,7 @@ const acts = {
   tmlist(a) { TM.lf[a.dataset.id] = a.dataset.v || null; render(); },
   ordtog(a) { ordToggle([a.dataset.id]); },
   ritfold(a) { ui.ritc = ui.ritc || {}; const k = a.dataset.k, cur = ui.ritc[k] === undefined ? a.dataset.d === "1" : ui.ritc[k]; ui.ritc[k] = !cur; render(); },
-  ritovl(a, e) { if (e.target === a) { ui.rit = false; render(); } },
+  ritovl(a, e) { if (e.target === a) { PR.ritDone = today; savePrefs(); ui.rit = false; render(); } },
   ritok() { PR.ritDone = today; savePrefs(); ui.rit = false; toast("План принят. Хорошего дня!"); render(); },
   ritset(a) {
     const t = S.tasks[a.dataset.id], v = a.dataset.v; if (!t) return;
