@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 13:37";
+const BUILD = "24.10 13:44";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2327,15 +2327,19 @@ function hkKey(e) {
 }
 function hkHTML() {
   const M = hkMap(), on = !PR.keysOff;
-  const row = a => '<div class="hkrow"><span class="hkl">' + a[1] + (a[3] ? "<small>" + a[3] + "</small>" : "") + '</span><button class="hkb' + (ui.keyRec === a[0] ? " rec" : "") + '" data-a="hkrec" data-k="' + a[0] + '">' + (ui.keyRec === a[0] ? "нажмите клавишу…" : M[a[0]] ? esc(hkName(M[a[0]])) : "—") + '</button><button class="hkr" data-a="hkreset" data-k="' + a[0] + '" title="По умолчанию">↺</button></div>';
-  const fix = (k, t) => '<div class="hkrow"><span class="hkl">' + t + '</span><span class="hkfix">' + k + "</span></div>";
-  return '<label class="swrow" style="margin-top:10px"><input type="checkbox" class="sw" id="s-keyson"' + (on ? " checked" : "") + "> Горячие клавиши включены</label>" +
-    '<div style="margin:6px 0 2px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Работают в браузере на компьютере, пока вы не печатаете в поле. Выберите задачу стрелками — справа откроется карточка. Чтобы сменить клавишу, нажмите на неё и нажмите новую; Backspace — снять, ↺ — вернуть стандартную. Буквы привязаны к физической клавише, поэтому работают и в русской раскладке.</div>' +
-    HK_GROUPS.map(g => '<div class="lbl">' + g[0] + "</div>" + HK.slice(g[1], g[2]).map(row).join("")).join("") +
-    '<div class="lbl">Всегда (не меняются)</div>' + fix("↑ ↓", "Двигаться по задачам") + fix("Пробел", "Очередь: поставить / снять номер у выбранной") + fix("Alt + ↑ ↓", "Очередь: сдвинуть выбранную выше / ниже") + fix("1 – 8", "Срок: сегодня, завтра … 6 — через 5 дней, 7 — через неделю, 8 — понедельник") + fix("0", "Убрать срок") + fix("Esc", "Закрыть окно / снять выделение / выйти из заметки") +
-    fix("Ctrl + A", "Выделить все задачи в списке") + fix("Ctrl + Z", "Отменить последнее действие со сроком, удалением") + fix("Ctrl/Shift + клик", "Выбрать несколько задач") +
-    '<div style="margin-top:10px"><button class="btn ghost" data-a="hkresetall">↺ Сбросить все клавиши</button></div>';
+  const row = a => sR(a[1], a[3] || "", '<button class="hkb' + (ui.keyRec === a[0] ? " rec" : "") + '" data-a="hkrec" data-k="' + a[0] + '">' + (ui.keyRec === a[0] ? "нажмите клавишу…" : M[a[0]] ? esc(hkName(M[a[0]])) : "—") + '</button><button class="hkr" data-a="hkreset" data-k="' + a[0] + '" title="По умолчанию">↺</button>');
+  const fix = (k, t) => sR(t, "", '<span class="hkfix">' + k + "</span>");
+  return sG("Общее", sR("Горячие клавиши", "Работают в браузере на компьютере, пока вы не печатаете в поле. Буквы привязаны к физической клавише, поэтому работают и в русской раскладке.", sTG("s-keyson", on))) +
+    HK_GROUPS.map(g => sG(g[0], HK.slice(g[1], g[2]).map(row).join(""))).join("") +
+    '<div class="sgn">Чтобы сменить клавишу, нажмите на неё и нажмите новую. Backspace снимает назначение, ↺ возвращает стандартное. Выберите задачу стрелками, и справа откроется карточка.</div>' +
+    sG("Всегда (не меняются)", fix("↑ ↓", "Двигаться по задачам") + fix("Пробел", "Очередь: поставить / снять номер у выбранной") + fix("Alt + ↑ ↓", "Очередь: сдвинуть выбранную выше / ниже") + fix("1 – 8", "Срок: сегодня, завтра … 6 — через 5 дней, 7 — через неделю, 8 — понедельник") + fix("0", "Убрать срок") + fix("Esc", "Закрыть окно / снять выделение / выйти из заметки") +
+      fix("Ctrl + A", "Выделить все задачи в списке") + fix("Ctrl + Z", "Отменить последнее действие со сроком, удалением") + fix("Ctrl/Shift + клик", "Выбрать несколько задач")) +
+    sG("Сброс", sR("Все клавиши", "Вернуть стандартные назначения", sBT("hkresetall", "↺ Сбросить")));
 }
+function sR(t, h, c, cls) { return '<div class="srw' + (cls ? " " + cls : "") + '"><div class="srt"><b>' + t + "</b>" + (h ? "<span>" + h + "</span>" : "") + '</div><div class="src">' + c + "</div></div>"; }
+function sG(t, rows) { return '<div class="sgl">' + t + '</div><div class="sgc">' + rows + "</div>"; }
+function sTG(id, on, extra) { return '<input type="checkbox" class="sw" id="' + id + '"' + (on ? " checked" : "") + (extra || "") + ">"; }
+function sBT(a, label, st) { return '<button class="btn ghost" data-a="' + a + '"' + (st ? ' style="' + st + '"' : "") + ">" + label + "</button>"; }
 Object.assign(uxActs, {
   hkrec(a) { ui.keyRec = ui.keyRec === a.dataset.k ? null : a.dataset.k; render(); },
   hkreset(a) { if (PR.keys) delete PR.keys[a.dataset.k]; savePrefs(); ui.keyRec = null; render(); },
@@ -2424,11 +2428,11 @@ function snd(ev, force) {
 }
 function sndHTML() {
   const c = sndCfg(), sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
-  return '<label class="swrow" style="margin-top:10px"><input type="checkbox" class="sw" id="s-sndon"' + (c.on ? " checked" : "") + "> Звуки включены</label>" +
-    '<div class="lbl">Громкость: ' + c.vol + "%</div>" + '<input type="range" id="s-vol" min="0" max="100" step="5" value="' + c.vol + '" style="width:100%">' +
-    '<div class="lbl">Набор звуков</div>' + sel("s-pack", c.pack, [["theme", "🎨 По теме оформления"]].concat(Object.keys(SND_PACKS).map(k => [k, SND_PACKS[k].n]))) +
-    '<div class="lbl">Когда играть</div>' + SND_EV.map(e => '<div class="hkrow"><label class="swrow" style="flex:1;margin:0"><input type="checkbox" class="sw" id="s-snd-' + e[0] + '"' + (c.ev[e[0]] ? " checked" : "") + "> " + e[1] + '</label><button class="hkr" data-a="sndplay" data-k="' + e[0] + '" title="Послушать" style="font-size:calc(14px*var(--z,1))">▶ послушать</button></div>').join("") +
-    '<div style="margin-top:10px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45">Настройка хранится на этом устройстве: на телефоне и на компьютере звуки включаются отдельно. Звук напоминания играет, пока приложение открыто; звук пуш-уведомлений в фоне задаёт сама система (Android / Windows).</div>';
+  return sG("Звуки", sR("Звуки включены", "Хранится на этом устройстве: на телефоне и на компьютере включаются отдельно", sTG("s-sndon", c.on)) +
+      sR("Громкость", c.vol + "%", '<input type="range" id="s-vol" min="0" max="100" step="5" value="' + c.vol + '" style="width:100%">', "col") +
+      sR("Набор звуков", "", sel("s-pack", c.pack, [["theme", "🎨 По теме оформления"]].concat(Object.keys(SND_PACKS).map(k => [k, SND_PACKS[k].n]))))) +
+    sG("Когда играть", SND_EV.map(e => sR(e[1], "", '<button class="hkr" data-a="sndplay" data-k="' + e[0] + '" title="Послушать">▶ послушать</button>' + sTG("s-snd-" + e[0], c.ev[e[0]]))).join("")) +
+    '<div class="sgn">Звук напоминания играет, пока приложение открыто. Звук пуш-уведомлений в фоне задаёт сама система (Android / Windows).</div>';
 }
 Object.assign(uxActs, {
   sndplay(a) { snd(a.dataset.k, true); },
@@ -3004,26 +3008,25 @@ function stHTML() {
   if (ui.st === undefined && sb && S.user) { setTimeout(stLoad, 0); }
   const st = ui.st || { busy: true }, lim = stLimit(), pct = st.total != null ? Math.min(100, st.total / lim * 100) : 0;
   const col = pct > 90 ? "#d13438" : pct > 70 ? "#e8a317" : "var(--acc)";
-  const gbSel = '<select id="s-stlim" class="inp" style="max-width:190px;margin-top:6px">' + [[1, "Лимит 1 ГБ (Free)"], [8, "Лимит 8 ГБ"], [100, "Лимит 100 ГБ (Pro)"]].map(o => '<option value="' + o[0] + '"' + ((+PR.stGB || 1) === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
-  let b = '<div class="lbl" style="margin-top:6px">Хранилище вложений</div>';
-  if (st.busy) b += '<div class="jr-hint">Считаю…</div>';
-  else if (st.err) b += '<div style="color:#f87171;font-size:calc(12px*var(--z,1));margin-top:6px">Не удалось посчитать: ' + esc(st.err) + "</div>";
-  else b += '<div style="margin-top:8px;height:12px;border-radius:7px;background:var(--hov);overflow:hidden"><div style="height:100%;width:' + Math.max(pct, st.total ? 1.5 : 0) + "%;background:" + col + '"></div></div>' +
-    '<div style="margin-top:8px;font-size:calc(14px*var(--z,1))"><b>Занято ' + fmtSize(st.total) + "</b> из " + fmtSize(lim) + " (" + (pct < 0.1 && st.total ? "<0,1" : pct.toFixed(1).replace(".", ",")) + "%) · <b>свободно " + fmtSize(Math.max(0, lim - st.total)) + "</b> · файлов: " + st.n + "</div>" +
-    (st.top.length ? '<div class="lbl" style="margin-top:10px">Самые тяжёлые</div><div style="border:1px solid var(--ln);border-radius:8px">' + st.top.map(f => '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ln);font-size:calc(13px*var(--z,1))"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(f.name) + '">' + esc(f.name) + '<br><span style="color:var(--sub);font-size:calc(11.5px*var(--z,1))">' + esc(f.title || "") + '</span></span><span style="color:var(--sub)">' + fmtSize(f.size) + "</span>" + (S.tasks[f.id] ? '<button class="btn ghost" style="padding:3px 10px" data-a="stopen" data-id="' + f.id + '">Открыть</button>' : "") + "</div>").join("") + "</div>" : "");
-  b += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><button class="btn ghost" data-a="stref">🔄 Пересчитать</button>' + gbSel + "</div>" +
-    '<div style="margin-top:6px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">Считаются файлы и картинки, прикреплённые к задачам (включая завершённые). Лимит — по тарифу Supabase: на бесплатном 1 ГБ. Освободить место — удалить вложение (корзина в карточке задачи).</div>';
-  return b + '<div style="height:14px"></div>';
+  const gbSel = '<select id="s-stlim" class="inp">' + [[1, "1 ГБ (Free)"], [8, "8 ГБ"], [100, "100 ГБ (Pro)"]].map(o => '<option value="' + o[0] + '"' + ((+PR.stGB || 1) === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+  let r = "";
+  if (st.busy) r += sR("Занято", "", '<span class="sv">считаю…</span>');
+  else if (st.err) r += sR("Занято", "", '<span class="sv" style="color:#d13438">не удалось посчитать: ' + esc(st.err) + "</span>");
+  else r += '<div class="srw col"><div class="srt"><b>Занято ' + fmtSize(st.total) + " из " + fmtSize(lim) + "</b><span>" + (pct < 0.1 && st.total ? "<0,1" : pct.toFixed(1).replace(".", ",")) + "% · свободно " + fmtSize(Math.max(0, lim - st.total)) + " · файлов: " + st.n + '</span></div><div style="height:10px;border-radius:6px;background:var(--hov);overflow:hidden"><div style="height:100%;width:' + Math.max(pct, st.total ? 1.5 : 0) + "%;background:" + col + '"></div></div></div>';
+  r += sR("Лимит", "По тарифу Supabase, на бесплатном 1 ГБ", gbSel) + sR("Пересчёт", "Считаются файлы и картинки в задачах, включая завершённые. Освободить место: удалить вложение в карточке задачи", sBT("stref", "🔄 Пересчитать"));
+  let top = "";
+  if (!st.busy && !st.err && st.top && st.top.length) top = sG("Самые тяжёлые вложения", st.top.map(f => sR('<span title="' + esc(f.name) + '">' + esc(f.name) + "</span>", esc(f.title || "") + " · " + fmtSize(f.size), S.tasks[f.id] ? '<button class="btn ghost" data-a="stopen" data-id="' + f.id + '">Открыть</button>' : "")).join(""));
+  return sG("Хранилище вложений", r) + top;
 }
 function bkHTML() {
   if (ui.bkList === undefined && sb && S.user) { ui.bkList = null; bkList(); }
   const c = bkCfg(), sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (String(cur) === String(o[0]) ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
-  const L = ui.bkList || [];
-  return stHTML() + '<div class="lbl">Резервные копии</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + sel("s-bkf", c.freq, BKF) + sel("s-bkfile", c.file ? 1 : 0, [[0, "Файл на устройство: нет"], [1, "Файл на устройство: да (в «Загрузки»)"]]) + "</div>" +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-a="bkx">📊 Скачать Excel</button><button class="btn ghost" data-a="bkj">🧾 Скачать JSON</button><button class="btn ghost" data-a="bkn">📸 Сохранить копию сейчас</button></div>' +
-    '<div style="margin-top:8px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4">«Сохранить копию сейчас» кладёт копию в вашу базу (последние ' + BKKEEP + '; из списка ниже её можно восстановить) и, если выбрано «Файл на устройство: да», скачивает Excel на это устройство. Excel удобно читать, JSON нужен для полного восстановления.</div>' +
-    (ui.bkErr ? '<div style="color:#f87171;font-size:calc(12px*var(--z,1));margin-top:6px">Ошибка копий: ' + esc(ui.bkErr) + "</div>" : "") +
-    (L.length ? '<div style="margin-top:8px;border:1px solid var(--ln);border-radius:8px">' + L.slice(0, ui.bkAll ? BKKEEP : 5).map(b => { const d = new Date(b.created_at); return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ln);font-size:calc(13px*var(--z,1))"><span style="flex:1">' + isoLocal(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ' · ' + b.n_tasks + " задач · " + bkKind(b.kind) + '</span><button class="btn ghost" data-a="bkdl" data-id="' + b.id + '">Excel</button><button class="btn ghost" data-a="bkrs" data-id="' + b.id + '">Восстановить</button></div>'; }).join("") + (L.length > 5 && !ui.bkAll ? '<div class="pi" data-a="bkall" style="justify-content:center;color:var(--acc)">Показать все (' + L.length + ")</div>" : "") + "</div>" : "");
+  const L2 = ui.bkList || [];
+  return stHTML() +
+    sG("Резервные копии", sR("Как часто", "Автокопия в вашу базу, хранятся последние " + BKKEEP, sel("s-bkf", c.freq, BKF)) + sR("Файл на устройство", "Скачивать Excel в «Загрузки» при ручном сохранении", sel("s-bkfile", c.file ? 1 : 0, [[0, "Нет"], [1, "Да"]])) +
+      sR("Сохранить сейчас", "Копия в базу, из списка ниже её можно восстановить", sBT("bkn", "📸 Сохранить")) + sR("Скачать Excel", "Удобно читать", sBT("bkx", "📊 Excel")) + sR("Скачать JSON", "Нужен для полного восстановления", sBT("bkj", "🧾 JSON"))) +
+    (ui.bkErr ? '<div class="sgn" style="color:#d13438">Ошибка копий: ' + esc(ui.bkErr) + "</div>" : "") +
+    (L2.length ? sG("Сохранённые копии", L2.slice(0, ui.bkAll ? BKKEEP : 5).map(b => { const d = new Date(b.created_at); return sR(isoLocal(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()), b.n_tasks + " задач · " + bkKind(b.kind), '<button class="btn ghost" data-a="bkdl" data-id="' + b.id + '">Excel</button><button class="btn ghost" data-a="bkrs" data-id="' + b.id + '">Восстановить</button>'); }).join("") + (L2.length > 5 && !ui.bkAll ? '<div class="srw" data-a="bkall" style="justify-content:center;color:var(--acc);cursor:pointer">Показать все (' + L2.length + ")</div>" : "")) : "");
 }
 const bkActs = {
   stref() { ui.st = undefined; stLoad(); }, stopen(a) { const id = a.dataset.id; if (S.tasks[id]) { ui.settings = false; selId = id; render(); } },
@@ -3624,13 +3627,14 @@ select.inp option{color:#111}
 .estchip{padding:5px 10px;border-radius:8px;font-size:calc(12.5px*var(--z,1));background:var(--card);border:1px solid var(--ln);cursor:pointer}
 .estchip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 .ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:70;display:flex;align-items:center;justify-content:center;padding:14px}
+.sheet.sset{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 @media(min-width:761px){.sheet.sset{height:min(680px,90vh)}}   /* окно настроек не прыгает по высоте при смене вкладок */
 .sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
 .lbl{font-size:calc(12px*var(--z,1));color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
 .sset{margin:0 0 14px;border:1px solid var(--ln);border-radius:14px;overflow:hidden;background:var(--card)}.sset>h3{margin:0;padding:9px 14px;font-size:calc(11.5px*var(--z,1));letter-spacing:.08em;text-transform:uppercase;color:var(--acc);background:rgba(128,128,128,.09);font-weight:700;border-bottom:1px solid var(--ln)}.ssb{padding:12px 14px}.ssb .lbl{font-size:calc(13px*var(--z,1))!important;color:var(--sub);text-transform:none!important;letter-spacing:0!important;margin:12px 0 5px!important}.ssb .lbl:first-child{margin-top:0!important}
 .sgl{margin:20px 4px 7px;font-size:calc(12.5px*var(--z,1));font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--sub)}.sgl:first-child{margin-top:8px}.sgc{border:1px solid var(--ln);border-radius:14px;background:var(--card);overflow:hidden}
 .srw{display:flex;align-items:center;gap:16px;padding:12px 14px;border-top:1px solid var(--ln);min-height:50px}.srw:first-child{border-top:0}.srt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.srt b{font-weight:600;font-size:calc(14.5px*var(--z,1))}.srt span{font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.4}.src{flex:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:62%}.src select{min-width:140px}.src .sv{color:var(--sub);font-size:calc(13px*var(--z,1));word-break:break-all;text-align:right}
-.srw.col{flex-direction:column;align-items:stretch;gap:10px}.srw.col .src{max-width:none;justify-content:flex-start}.srw.col .src.full{display:block}.sgn{margin:14px 6px 4px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45}
+.src input[type=range]{min-width:120px}.srw.col .src input[type=range]{width:100%}.src .hkr{white-space:nowrap}.srw.col{flex-direction:column;align-items:stretch;gap:10px}.srw.col .src{max-width:none;justify-content:flex-start}.srw.col .src.full{display:block}.sgn{margin:14px 6px 4px;font-size:calc(12px*var(--z,1));color:var(--sub);line-height:1.45}
 @media(max-width:760px){.srw{padding:13px 12px;gap:12px}.src{max-width:55%}.src select{min-width:0;max-width:100%}}
 .tmv{border:1px solid var(--ln);border-radius:16px;background:var(--card);padding:16px;margin-bottom:14px}.tmh{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.tma.big{width:52px;height:52px;font-size:17px}.tmhn{flex:1;min-width:180px;display:flex;flex-direction:column;gap:3px}.tmhn b{font-size:calc(20px*var(--z,1))}.tmhn small{color:var(--sub);font-size:calc(12.5px*var(--z,1))}.tmha{display:flex;gap:8px;flex-wrap:wrap}
 .tmk{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0 4px}.tmk>div{min-width:0!important;text-align:left}.tmsec{margin:14px 0 6px;border:1px solid var(--ln);border-radius:12px;overflow:hidden}.tmsh{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:rgba(128,128,128,.07);color:var(--tx);font:inherit;font-weight:600;padding:11px 14px;cursor:pointer}.tmsec .ng-box,.tmsec>div:not(.tmsh){margin:0}
@@ -4579,14 +4583,11 @@ function vcHTML() {
   vcLoad(); const c = vcGet();
   const sel = (k, opts, cur) => '<select class="vc-in" data-k="' + k + '">' + opts.map((o, i) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? " selected" : "") + ">" + esc(o[1]) + "</option>").join("") + "</select>";
   const ls = [["", "📥 Без списка"]].concat(listsArr().filter(l => l.group_name !== ARCH).map(l => [l.id, (l.icon ? l.icon + " " : "") + l.name]));
-  return '<div class="vc-box"><div class="vc-h">🎤 Голосовое добавление (для телефона)</div><div class="vc-s">Эти настройки применяются в приложении на телефоне (двойное касание наушника, боковая кнопка, иконка «Голосом»). Телефон забирает их при синхронизации, примерно в течение 5 минут. Сам голос озвучки выбирается только на телефоне.</div>' +
-    '<label class="vc-r"><span>Куда класть задачи</span>' + sel("list", ls, c.list) + "</label>" +
-    '<label class="vc-r"><span>Срок</span>' + sel("due", [[0, "Без срока"], [1, "Сегодня"], [2, "Завтра"]], c.due) + "</label>" +
-    '<label class="vc-r"><span>Ещё и в «Мой день»</span><input type="checkbox" class="vc-in" data-k="myday"' + (c.myday ? " checked" : "") + '></label>' +
-    '<label class="vc-r"><span>Подтверждение голосом</span>' + sel("say", [[0, "Повторять задачу целиком"], [1, "Только «Записано»"], [2, "Молча (сигнал и вибрация)"]], c.say) + "</label>" +
-    '<label class="vc-r"><span>Скорость речи</span>' + sel("rate", [[0, "Медленно"], [1, "Обычно"], [2, "Быстро"], [3, "Очень быстро"]], c.rate) + "</label>" +
-    '<label class="vc-r"><span>Умные команды (ИИ): дела, время, погода, готово/отложить, отмена</span><input type="checkbox" class="vc-in" data-k="smart"' + (c.smart ? " checked" : "") + '></label>' +
-    '<label class="vc-r"><span>Сигнал перед записью</span><input type="checkbox" class="vc-in" data-k="beep"' + (c.beep ? " checked" : "") + '></label></div>';
+  const tg = (k, on) => '<input type="checkbox" class="sw vc-in" data-k="' + k + '"' + (on ? " checked" : "") + ">";
+  return sG("🎤 Голосовое добавление (телефон)", sR("Куда класть задачи", "", sel("list", ls, c.list)) + sR("Срок", "", sel("due", [[0, "Без срока"], [1, "Сегодня"], [2, "Завтра"]], c.due)) + sR("Ещё и в «Мой день»", "", tg("myday", c.myday)) +
+      sR("Подтверждение голосом", "", sel("say", [[0, "Повторять задачу целиком"], [1, "Только «Записано»"], [2, "Молча (сигнал и вибрация)"]], c.say)) + sR("Скорость речи", "", sel("rate", [[0, "Медленно"], [1, "Обычно"], [2, "Быстро"], [3, "Очень быстро"]], c.rate)) +
+      sR("Умные команды (ИИ)", "Дела, время, погода, готово/отложить, отмена", tg("smart", c.smart)) + sR("Сигнал перед записью", "", tg("beep", c.beep))) +
+    '<div class="sgn">Применяется в приложении на телефоне (двойное касание наушника, боковая кнопка, иконка «Голосом»). Телефон забирает настройки при синхронизации, примерно за 5 минут. Голос озвучки выбирается только на телефоне.</div>';
 }
 function addMaybe() { if (!pendingAdd || !S.user || ui.mfaGate || screen === "setup") return; pendingAdd = false; try { acts.qaopen(); if (voiceAuto && micOK()) setTimeout(() => micToggle("qa-input", true), 500); } catch (e) {} }
 function shareMaybe() {
@@ -4953,16 +4954,15 @@ async function mfaEnrollOk() {
 function mfaSettingsHTML() {
   if (!isOwnerNow()) return "";
   if (ui.mfaF === undefined) { ui.mfaF = null; mfaLoad(); }
-  const h = '<div class="lbl" style="margin-top:18px">Двухфакторная защита</div>';
-  if (ui.mfaEnr) return h + '<div style="line-height:1.5;font-size:calc(13.5px*var(--z,1))">1) В приложении-аутентификаторе (Google Authenticator, Aegis, Яндекс Ключ) добавьте аккаунт по QR-коду.<br>2) Введите 6-значный код.</div>' +
-    '<div style="margin:10px 0"><img src="' + esc(ui.mfaEnr.qr) + '" alt="QR" style="width:180px;height:180px;background:#fff;border-radius:10px;padding:6px"></div>' +
-    '<div style="font-size:calc(12px*var(--z,1));color:var(--sub);word-break:break-all">Или вручную, секрет (сохраните его в надёжном месте — это резервный доступ):<br><b>' + esc(ui.mfaEnr.secret) + '</b></div>' +
-    '<div style="display:flex;gap:8px;margin-top:10px"><input id="mfa-code" class="inp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Код" style="max-width:160px"><button class="btn" data-a="mfaok">Подтвердить</button><button class="btn ghost" data-a="mfacancel">Отмена</button></div>';
-  if (!ui.mfaF) return h + '<div class="sub" style="color:var(--sub)">Проверяю…</div>';
-  if (ui.mfaF.err) return h + '<div class="sub" style="color:var(--sub)">Не удалось проверить (нет связи?)</div>';
-  return h + (ui.mfaF.on
-    ? '<div style="margin-bottom:8px">✅ Включена: при входе, кроме пароля, спрашивается код из приложения.</div><button class="btn ghost" data-a="mfaoff" style="color:#d13438">Отключить</button>'
-    : '<div style="margin-bottom:8px;color:var(--sub);line-height:1.45">Сейчас вход только по паролю. С 2FA украденный пароль сам по себе ничего не откроет.</div><button class="btn" data-a="mfastart">Включить 2FA</button>');
+  const T = "Двухфакторная защита";
+  if (ui.mfaEnr) return sG(T, '<div class="srw col"><div class="srt"><b>Подключение</b><span>1) В приложении-аутентификаторе (Google Authenticator, Aegis, Яндекс Ключ) добавьте аккаунт по QR-коду. 2) Введите 6-значный код.</span></div><div><img src="' + esc(ui.mfaEnr.qr) + '" alt="QR" style="width:180px;height:180px;background:#fff;border-radius:10px;padding:6px"></div>' +
+    '<div class="srt"><span style="word-break:break-all">Или вручную, секрет (сохраните его в надёжном месте, это резервный доступ):<br><b style="color:var(--tx)">' + esc(ui.mfaEnr.secret) + '</b></span></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="mfa-code" class="inp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Код" style="max-width:160px"><button class="btn" data-a="mfaok">Подтвердить</button><button class="btn ghost" data-a="mfacancel">Отмена</button></div></div>');
+  if (!ui.mfaF) return sG(T, sR("Состояние", "", '<span class="sv">проверяю…</span>'));
+  if (ui.mfaF.err) return sG(T, sR("Состояние", "", '<span class="sv">не удалось проверить (нет связи?)</span>'));
+  return sG(T, ui.mfaF.on
+    ? sR("Состояние", "При входе, кроме пароля, спрашивается код из приложения", '<span class="sv">✅ Включена</span>') + sR("Отключить", "", sBT("mfaoff", "Отключить", "color:#d13438"))
+    : sR("Состояние", "Сейчас вход только по паролю. С 2FA украденный пароль сам по себе ничего не откроет.", '<button class="btn" data-a="mfastart">Включить 2FA</button>'));
 }
 function setUser(u) {
   const cur = S.user ? S.user.id : null, nid = u ? u.id : null;
