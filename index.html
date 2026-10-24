@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 02:37";
+const BUILD = "25.10 02:42";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2105,6 +2105,10 @@ const uxCSS0 = `
 .taskrow.fin{opacity:0;transform:translateX(24px)}
 .rad.on{animation:radpop .25s}
 @keyframes radpop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+/* нативное ощущение на сенсорных экранах: без серой подсветки тапа, без выделения «кнопочного» текста, без системного меню на картинках и без нативного pull-to-refresh браузера */
+*{-webkit-tap-highlight-color:transparent}:focus:not(:focus-visible){outline:none}img{-webkit-user-drag:none}
+html,body{overscroll-behavior-y:contain}
+@media (hover:none) and (pointer:coarse){button,.btn,.ibtn,.chip,.mi,.taskrow,#top,.sech,.stab,.fab,.tb,.srw,.sgl,.favb,.frow,.mtop,.drow{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}img{-webkit-touch-callout:none}.ibtn,.fab,.favb,.frow{transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .15s}.ibtn:active,.fab:active{transform:scale(.9)}.favb:active,.frow:active{transform:scale(.97)}.srw:active{background:var(--hov)}.drow:active{background:var(--hov)}}
 html,body{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y}   /* как нативное приложение: страницу не масштабируем щипком и двойным тапом */
 .taskrow{position:relative;touch-action:pan-y}.ordb{flex:none;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:26px;height:26px;border-radius:13px;border:0;background:var(--acc);color:#fff;font:700 calc(13px*var(--z,1))/1 inherit;font-family:inherit;line-height:1;cursor:pointer;margin:0 4px;padding:0 6px;text-align:center}.ordb.ghost{display:inline-flex;visibility:hidden;background:transparent;color:var(--sub);border:1.5px dashed var(--ln)}.taskrow.sel .ordb.ghost{visibility:visible}@media(max-width:760px),(hover:none){.ordb{min-width:36px;height:36px;border-radius:18px;font-size:calc(15px*var(--z,1));margin:0 6px}.ordb.ghost{display:inline-flex;opacity:.75}}.taskrow.dropb{box-shadow:0 -3px 0 var(--acc)}
 @media(max-width:760px){.taskrow{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
