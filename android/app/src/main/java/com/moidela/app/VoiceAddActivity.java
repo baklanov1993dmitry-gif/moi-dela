@@ -37,8 +37,29 @@ public class VoiceAddActivity extends Activity {
     private TextView tv;
     private final Handler h = new Handler(Looper.getMainLooper());
 
+    // музыка (Яндекс Музыка и др.) ставится на паузу на время диалога и сама продолжается после
+    private android.media.AudioFocusRequest focusReq;
+    private void takeFocus() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                focusReq = new android.media.AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ASSISTANT).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                    .setOnAudioFocusChangeListener(new AudioManager.OnAudioFocusChangeListener() { public void onAudioFocusChange(int f) { } }).build();
+                am.requestAudioFocus(focusReq);
+            } else am.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+        } catch (Exception e) { }
+    }
+    private void dropFocus() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (android.os.Build.VERSION.SDK_INT >= 26 && focusReq != null) am.abandonAudioFocusRequest(focusReq); else am.abandonAudioFocus(null);
+        } catch (Exception e) { }
+    }
+
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        takeFocus();
         if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
         tv = new TextView(this); tv.setTextSize(22); tv.setGravity(Gravity.CENTER); tv.setPadding(60, 60, 60, 60); tv.setText("🎤 Говорите…");
         android.widget.LinearLayout box = new android.widget.LinearLayout(this); box.setOrientation(android.widget.LinearLayout.VERTICAL); box.addView(tv);
@@ -115,7 +136,7 @@ public class VoiceAddActivity extends Activity {
             // уверенный сигнал «запись пошла»: громко, двойной, в наушники; вибро на телефоне
             try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(80); } catch (Exception e) {}
             long wait = 0;
-            if (Store.p(VoiceAddActivity.this).getBoolean("v_beep", true)) try { new ToneGenerator(btRoute ? AudioManager.STREAM_VOICE_CALL : AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP2, 350); wait = 600; } catch (Exception e) {}
+            if (Store.p(VoiceAddActivity.this).getBoolean("v_beep", true)) try { int cm = Cues.play(VoiceAddActivity.this, "cue_start", btRoute); if (cm > 0) wait = Math.max(450, cm + 150); } catch (Exception e) {}
             h.postDelayed(new Runnable() { public void run() { if (!done) beginRecognize(); } }, wait);
         } });
     }
@@ -412,7 +433,7 @@ public class VoiceAddActivity extends Activity {
         } }).start();
     }
 
-    private void speakAndEnd(String t) { done = true; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, 700); return; } if (ttsReady || handheld()) say(t); else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
+    private void speakAndEnd(final String t) { done = true; int cd = 0; try { cd = Cues.play(this, "cue_ok", btRoute); } catch (Exception e) {} final int dly = cd; if (tv != null && t.length() > 0) tv.setText(t); if (t.length() == 0) { try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(new long[]{0, 60, 60, 60}, -1); } catch (Exception e) {} h.postDelayed(new Runnable() { public void run() { finish(); } }, Math.max(700, dly + 250)); return; } if (ttsReady || handheld()) { if (dly > 0) h.postDelayed(new Runnable() { public void run() { say(t); } }, dly + 100); else say(t); } else { pendingSpeak = t; h.postDelayed(new Runnable() { public void run() { finish(); } }, 4000); } }
     private void endSpeech() { Runnable r = afterSpeech; afterSpeech = null; if (r != null) r.run(); else finish(); }
     /** запуск ярлыком/иконкой — телефон в руке: ответ только текстом, без озвучки */
     private boolean handheld() { String a = getIntent() == null ? null : getIntent().getAction(); return Intent.ACTION_VIEW.equals(a) || Intent.ACTION_MAIN.equals(a); }
@@ -448,6 +469,7 @@ public class VoiceAddActivity extends Activity {
 
     @Override protected void onDestroy() {
         h.removeCallbacksAndMessages(null);
+        dropFocus();
         releaseBt();
         try { if (sr != null) { sr.cancel(); sr.destroy(); } } catch (Exception e) {}
         try { if (tts != null) { tts.stop(); tts.shutdown(); } } catch (Exception e) {}

@@ -10,7 +10,7 @@ window.HEALTH_INIT = function (X) {
   const save = () => { if (H.uid) { js(KEY, { u: H.uid, items: H.items }); js(KP, H.pend); } };
   const K = {
     sym: { e: "🤒", n: "Симптом", c: "#ff6b6b" }, med: { e: "💊", n: "Лекарство", c: "#14b8a6" }, ill: { e: "🦠", n: "Болезнь", c: "#8b5cf6" },
-    doc: { e: "🩺", n: "Врач", c: "#3b82f6" }, test: { e: "🧪", n: "Анализ", c: "#f59e0b" }, mood: { e: "🙂", n: "Самочувствие", c: "#22c55e" }
+    doc: { e: "🩺", n: "Врач", c: "#3b82f6" }, test: { e: "🧪", n: "Анализ", c: "#f59e0b" }, mood: { e: "🙂", n: "Самочувствие", c: "#22c55e" }, bp: { e: "🫀", n: "Давление и пульс", c: "#ef4444" }, sleep: { e: "😴", n: "Сон", c: "#6366f1" }
   };
   const FACES = ["😖", "😕", "😐", "🙂", "😄"], FCOL = ["#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e"], SEVN = ["слабо", "терпимо", "заметно", "сильно", "очень сильно"];
   const SUG = {
@@ -107,12 +107,14 @@ window.HEALTH_INIT = function (X) {
   function hero() {
     const hr = new Date().getHours(), greet = hr < 5 ? "Доброй ночи" : hr < 12 ? "Доброе утро" : hr < 18 ? "Добрый день" : "Добрый вечер", today = todayISO();
     const mood = all().find(n => n.kind === "mood" && dayKey(n.at) === today), act = active();
-    const faces = FACES.map((f, i) => '<button class="hl-f' + (mood && mood.sev === i + 1 ? " on" : "") + '" data-a="hlmood" data-v="' + (i + 1) + '" style="--fc:' + FCOL[i] + '" title="' + SEVN[i] + '"><span>' + f + "</span></button>").join("");
+    const bp = all().find(n => n.kind === "bp" && dayKey(n.at) === today), sl = all().find(n => n.kind === "sleep" && dayKey(n.at) === today), pm = bp ? /^(\d+)\/(\d+)(?:\D+(\d+))?/.exec(bp.name) : null;
+    const faces = '<div class="hl-vit"><div class="hl-vc"><b>🫀 Давление и пульс</b><div class="hl-vr"><input id="hl-bs" type="number" inputmode="numeric" placeholder="верх" value="' + (pm ? pm[1] : "") + '"><span>/</span><input id="hl-bd" type="number" inputmode="numeric" placeholder="низ" value="' + (pm ? pm[2] : "") + '"><input id="hl-bpl" type="number" inputmode="numeric" placeholder="пульс" value="' + (pm && pm[3] ? pm[3] : "") + '"><button data-a="hlbp">OK</button></div></div>' +
+      '<div class="hl-vc"><b>😴 Сон (часов)</b><div class="hl-vr"><input id="hl-sl" type="number" step="0.5" inputmode="decimal" placeholder="7.5" value="' + (sl ? esc(sl.name) : "") + '"><button data-a="hlsleep">OK</button></div></div></div>';
     const ill = act.map(a => { const d = daysBetween(dayKey(a.at), today) + 1; return '<div class="hl-ill"><span class="hl-pul"></span><div><b>' + esc(a.name) + "</b><small>день " + d + " · с " + shortD(dayKey(a.at)) + '</small></div><button class="hl-sm" data-a="hlcure" data-id="' + a.id + '">Выздоровел 🎉</button></div>'; }).join("");
-    return '<div class="hl-hero"><i class="b1"></i><i class="b2"></i><i class="b3"></i><div class="hl-hi">' + greet + '</div><h2>Как самочувствие сегодня?</h2><div class="hl-faces">' + faces + "</div>" + (mood ? '<div class="hl-ms">отмечено в ' + hhmm(mood.at) + " · " + SEVN[mood.sev - 1] + "</div>" : "") + ill + "</div>";
+    return '<div class="hl-hero"><i class="b1"></i><i class="b2"></i><i class="b3"></i><div class="hl-hi">' + greet + '</div><h2>Замеры сегодня</h2><div class="hl-faces">' + faces + "</div>" + (bp || sl ? '<div class="hl-ms">записано: ' + [bp && ("давление " + esc(bp.name)), sl && ("сон " + esc(sl.name) + " ч")].filter(Boolean).join(" · ") + "</div>" : '<div class="hl-ms">Давление и пульс — утром после пробуждения, раз в 1–3 дня или при самочувствии «не то»; сон — по утрам.</div>') + ill + "</div>";
   }
   function tiles() {
-    const s = stats(30), itm = s.items.filter(n => n.kind !== "mood").length;
+    const s = stats(30), itm = s.items.filter(n => n.kind !== "mood" && n.kind !== "bp" && n.kind !== "sleep").length;
     const t = (n, l, c) => '<div class="hl-t" style="--c:' + c + '"><b>' + n + "</b><span>" + l + "</span></div>";
     return '<div class="hl-tiles">' + t(itm, "записей за 30 дней", "#3b82f6") + t(s.symDays, plural(s.symDays, "день", "дня", "дней") + " с симптомами", "#ff6b6b") + t(s.medDays, plural(s.medDays, "день", "дня", "дней") + " с лекарствами", "#14b8a6") + "</div>";
   }
@@ -120,6 +122,8 @@ window.HEALTH_INIT = function (X) {
   function entry(n) {
     const k = K[n.kind] || K.sym, ep = n.ep && H.items[n.ep], isOpen = H.open === n.id, fresh = H.fresh === n.id;
     let title = esc(n.name || k.n), meta = hhmm(n.at);
+    if (n.kind === "bp") { const m = /^(\d+)\/(\d+)(?:\D+(\d+))?/.exec(n.name || ""); title = "Давление " + (m ? m[1] + "/" + m[2] : esc(n.name)) + (m && m[3] ? " · пульс " + m[3] : ""); }
+    if (n.kind === "sleep") title = "Сон " + esc(n.name) + " ч";
     if (n.kind === "mood") { title = FACES[(n.sev || 3) - 1] + " Самочувствие: " + SEVN[(n.sev || 3) - 1]; }
     if (n.kind === "ill") { const a = dayKey(n.at), b = n.until ? dayKey(n.until) : todayISO(), d = daysBetween(a, b) + 1; meta = n.until ? "прошла за " + d + " " + plural(d, "день", "дня", "дней") + " · до " + shortD(b) : "идёт " + d + "-й день"; }
     if (ep) meta += " · " + esc(ep.name);
@@ -213,6 +217,10 @@ window.HEALTH_INIT = function (X) {
       const old = f.id && H.items[f.id], o = { id: f.id || uid(), kind: f.kind, name: name, note: (f.note || "").trim() || null, sev: f.kind === "sym" ? f.sev || 3 : null, at: at, until: f.kind === "ill" && f.until ? toISO(f.until + "T12:00") : null, ep: f.kind !== "ill" && f.kind !== "doc" && f.ep && act.length ? (old && old.ep ? old.ep : act[0].id) : null };
       put(o, "u"); H.form = null; H.fresh = o.id; H.tab = "feed"; render(); setTimeout(() => { H.fresh = null; }, 1500); toast(K[o.kind].e + " Записано");
     },
+    hlbp() { const g = id => $(id) && $(id).value.trim(), sy = +g("hl-bs"), di = +g("hl-bd"), pl = +g("hl-bpl"); if (!(sy >= 60 && sy <= 260 && di >= 30 && di <= 160)) { toast("Впиши верхнее и нижнее давление"); return; }
+      const today = todayISO(), ex = all().find(n => n.kind === "bp" && dayKey(n.at) === today); put({ id: ex ? ex.id : uid(), kind: "bp", name: sy + "/" + di + (pl ? " · " + pl : ""), note: ex ? ex.note : null, sev: null, at: ex ? ex.at : new Date().toISOString(), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
+    hlsleep() { const v = +(($("hl-sl") || {}).value || "").replace(",", "."); if (!(v > 0 && v <= 20)) { toast("Впиши часы сна, например 7.5"); return; }
+      const today = todayISO(), ex = all().find(n => n.kind === "sleep" && dayKey(n.at) === today); put({ id: ex ? ex.id : uid(), kind: "sleep", name: String(v), note: null, sev: null, at: ex ? ex.at : new Date().toISOString(), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
     hlmood(a) { const v = +a.dataset.v, today = todayISO(), ex = all().find(n => n.kind === "mood" && dayKey(n.at) === today); put({ id: ex ? ex.id : uid(), kind: "mood", name: "", note: null, sev: v, at: ex ? ex.at : new Date().toISOString(), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
     hlcure(a) { const n = H.items[a.dataset.id]; if (!n) return; n.until = new Date().toISOString(); put(n, "u"); render(); toast("Рад, что прошло 🎉"); },
     hlopen(a) { H.open = H.open === a.dataset.id ? null : a.dataset.id; render(); },
@@ -249,7 +257,7 @@ window.HEALTH_INIT = function (X) {
 .hl.an .hl-hero .b1{animation:hlb 9s ease-in-out infinite alternate}.hl.an .hl-hero .b2{animation:hlb 11s ease-in-out infinite alternate-reverse}
 @keyframes hlb{from{transform:translate(0,0)}to{transform:translate(30px,18px)}}
 .hl-hi{font-size:calc(13px*var(--z,1));opacity:.9}.hl-hero h2{margin:2px 0 14px;font-weight:700;font-size:calc(22px*var(--z,1));font-family:inherit;letter-spacing:-.2px}
-.hl-faces{display:flex;gap:8px;flex-wrap:wrap}
+.hl-faces{display:flex;gap:8px;flex-wrap:wrap}.hl-vit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.hl-vc{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:16px;padding:10px 12px;backdrop-filter:blur(8px)}.hl-vc b{font-size:13px;display:block;margin-bottom:6px}.hl-vr{display:flex;gap:6px;align-items:center}.hl-vr input{width:100%;min-width:0;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.85);color:#222;font-size:15px}.hl-vr button{padding:8px 14px;border-radius:10px;border:0;background:#fff;color:#222;font-weight:600;cursor:pointer}
 .hl-f{width:58px;height:58px;border-radius:18px;border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:30px;cursor:pointer;transition:transform .25s cubic-bezier(.3,1.6,.5,1),background .2s,box-shadow .2s;padding:0}
 .hl-f span{display:block;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
 @media(hover:hover){.hl-f:hover{transform:translateY(-3px) scale(1.08)}.hl-f:hover span{transform:scale(1.12) rotate(-4deg)}}

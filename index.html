@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 13:07";
+const BUILD = "24.10 13:19";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3624,6 +3624,8 @@ select.inp option{color:#111}
 @media(min-width:761px){.sheet.sset{height:min(680px,90vh)}}   /* окно настроек не прыгает по высоте при смене вкладок */
 .sheet{background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px}
 .lbl{font-size:calc(12px*var(--z,1));color:var(--sub);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+.sset{margin:0 0 14px;border:1px solid var(--ln);border-radius:14px;overflow:hidden;background:var(--card)}.sset>h3{margin:0;padding:9px 14px;font-size:calc(11.5px*var(--z,1));letter-spacing:.08em;text-transform:uppercase;color:var(--acc);background:rgba(128,128,128,.09);font-weight:700;border-bottom:1px solid var(--ln)}.ssb{padding:12px 14px}.ssb .lbl{font-size:calc(13px*var(--z,1))!important;color:var(--sub);text-transform:none!important;letter-spacing:0!important;margin:12px 0 5px!important}.ssb .lbl:first-child{margin-top:0!important}
+.tmr{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;margin-bottom:8px;background:var(--card);cursor:pointer}.tmr:hover{border-color:var(--acc)}.tmr.hid{opacity:.55}.tma{width:38px;height:38px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:700;font-size:13px;flex:none}.tmn{flex:1;min-width:0}.tmn b{display:block;font-size:calc(15px*var(--z,1))}.tmn small{color:var(--sub);font-size:calc(12px*var(--z,1))}.tmc{display:flex;gap:10px;font-size:calc(12.5px*var(--z,1));color:var(--sub);flex-wrap:wrap;justify-content:flex-end}.tmc .bad{color:#d13438;font-weight:600}.tmx{border:0;background:none;color:var(--sub);cursor:pointer;font-size:15px;padding:6px 8px;border-radius:8px}.tmx:hover{background:rgba(209,52,56,.12);color:#d13438}@media(max-width:760px){.tmc{display:none}}
 @media(max-width:760px){#toasts{bottom:100px!important}}
 .mtools{display:flex;gap:6px;padding:4px 14px 6px;align-items:stretch}
 .mt{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:38px;border-radius:19px;background:var(--card);border:1px solid var(--ln);box-shadow:none;color:var(--tx);font-size:calc(14px*var(--z,1));font-weight:600;white-space:nowrap;min-width:0}
@@ -3851,6 +3853,9 @@ function teamMainHTML(vi) {
     const rk = {}; ord(act.filter(t => t.ord != null)).forEach((t, i) => { rk[t.id] = i + 1; });
     const grp = (k, title, arr, rkOn) => arr.length ? '<div class="gh" style="cursor:default"><span>' + title + '</span><span class="cnt">' + arr.length + '</span></div><div class="cards">' + (rkOn ? ord(arr) : arr).slice(0, 40).map(t => row(t, rkOn ? rk[t.id] : 0)).join("") + (arr.length > 40 ? '<div style="color:var(--sub);padding:4px">…и ещё ' + (arr.length - 40) + "</div>" : "") + "</div>" : "";
     const lchips = one ? '<div class="jr-chips" style="margin-top:10px"><button class="jr-chip' + (!lfv ? " on" : "") + '" data-a="tmlist" data-id="' + u.id + '" data-v="">Все списки</button>' + Object.values(TM.lists).filter(l => l.user_id === u.id).map(l => '<button class="jr-chip' + (lfv === l.id ? " on" : "") + '" data-a="tmlist" data-id="' + u.id + '" data-v="' + l.id + '">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</button>").join("") + "</div>" : "";
+    if (!one) { const ini = nm(u).slice(0, 2).toUpperCase(), hid = TM.hid.indexOf(u.id) >= 0;
+      return '<div class="tmr' + (hid ? " hid" : "") + '" data-a="view" data-v="team:' + u.id + '"><i class="tma">' + esc(ini) + '</i><div class="tmn"><b>' + esc(nm(u)) + "</b>" + ngBadge(u) + "<small>" + (last ? "активность: " + fmtShort(last) : "записей нет") + '</small></div><div class="tmc">' + (over.length ? '<span class="bad">' + over.length + " просроч.</span>" : "") + (td.length ? "<span>" + td.length + " сегодня</span>" : "") + "<span>" + act.length + " активн.</span></div>" +
+        '<button class="tmx" data-a="tmhide" data-id="' + u.id + '" title="' + (hid ? "Вернуть в список" : "Убрать из списка (аккаунт не удаляется)") + '">' + (hid ? "↩" : "✕") + "</button>" + ic("chevr", 16) + "</div>"; }
     return '<div class="jr-sbox" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;' + (one ? "" : "cursor:pointer") + '"' + (one ? "" : ' data-a="view" data-v="team:' + u.id + '"') + '><b style="font-size:calc(17px*' + z + ')">' + esc(nm(u)) + '</b><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + esc(u.email || "") + '</span>' + ngBadge(u) + '<span style="flex:1"></span><span style="color:var(--sub);font-size:calc(12px*' + z + ')">' + (last ? "последняя активность: " + fmtShort(last) : "записей нет") + "</span>" + (one ? "" : ic("chevr", 16)) + '</div><div style="display:flex;gap:8px;margin-top:8px">' + (one ? '<button class="tool" data-a="tmallx" data-id="' + u.id + '">' + (TM.allx[u.id] ? "Свернуть всё" : "Развернуть всё") + "</button>" : '<button class="tool" data-a="view" data-v="team:' + u.id + '">Открыть →</button><button class="tool" data-a="tmhide" data-id="' + u.id + '">' + (TM.hid.indexOf(u.id) >= 0 ? "Вернуть в список" : "Скрыть сотрудника") + "</button>") + '</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' + tile(act.length, "активных") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(td.length, "на сегодня", "var(--acc)") + tile(done7.length, "закрыто за 7 дн.") + "</div>" + lchips +
       (o ? ngBoxHTML(u) : "") + (o ? grp("o", "Просрочено", ord(over), true) + grp("t", "На сегодня (по очереди)", td, true) + grp("l", "Позже / без срока", later, false) + grp("d", "Закрыто за 7 дней", done7.sort((a, b) => String(b.done_at).localeCompare(String(a.done_at))), false) : "") + "</div>";
   };
@@ -4085,7 +4090,7 @@ function popHTML() {
 function settingsHTML() {
   const freshS = !lastSettings; lastSettings = true; const tab = ui.stab || "view";
   const sel = (id, cur, opts) => '<select id="' + id + '" class="inp">' + opts.map(o => '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
-  const sec = (t, inner) => '<div class="lbl">' + t + "</div>" + inner;
+  const sec = (t, inner) => '<section class="sset"><h3>' + t + '</h3><div class="ssb">' + inner + "</div></section>";
   const TABS = [["view", "🎨 Вид"], ["work", "🗓️ Дела"], ["notif", "🔔 Уведомления"], ["snd", "🔊 Звуки"]].concat(isMobile() ? [] : [["keys", "⌨️ Клавиши"]]).concat([["bk", "💾 Данные"], ["acc", "👤 Аккаунт"]]);
   let b = "";
   const smenu = isMobile() && ui.smenu;
@@ -4363,6 +4368,38 @@ function trkOrder(map, r, col) {   // очерёдность: стрелки н�
   const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
   L.marker([+P[0].lat, +P[0].lon], { interactive: false, icon: L.divIcon({ className: "", html: '<div style="display:inline-block;transform:translate(6px,-22px);background:#fff;border:1.5px solid ' + col + ';border-radius:8px;padding:0 5px;font-size:11px;font-weight:700;color:#222;white-space:nowrap">' + hm(P[0].ts) + "</div>", iconSize: [0, 0] }) }).addTo(map);
 }
+/* метро: под землёй GPS молчит и между станциями получалась прямая «по воздуху» — рисуем по настоящей линии метро (OpenStreetMap, кэш на устройстве) */
+let TRK_METRO = null;
+function trkMetro(pts) {
+  if (TRK_METRO) return TRK_METRO;
+  const la = pts.map(p => +p.lat), lo = pts.map(p => +p.lon), pad = 0.05, bb = [Math.min(...la) - pad, Math.min(...lo) - pad, Math.max(...la) + pad, Math.max(...lo) + pad].map(v => v.toFixed(2)).join(",");
+  const ck = "trk_metro_" + bb; let c = null; try { c = JSON.parse(localStorage.getItem(ck) || "null"); } catch (e) {}
+  if (c && Date.now() - c.t < 30 * 864e5) return (TRK_METRO = Promise.resolve(c.lines));
+  return (TRK_METRO = fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: "data=" + encodeURIComponent('[out:json][timeout:25];relation["route"="subway"](' + bb + ");out geom;") }).then(r => r.json()).then(j => {
+    const lines = [];
+    (j.elements || []).forEach(rel => {
+      let ch = [];
+      (rel.members || []).filter(m => m.type === "way" && m.geometry && m.geometry.length > 1).forEach(m => {
+        const g = m.geometry.map(q => [q.lat, q.lon]); if (!ch.length) { ch = g; return; }
+        const E = ch[ch.length - 1], d = (u, v) => Math.abs(u[0] - v[0]) + Math.abs(u[1] - v[1]);
+        if (d(E, g[0]) <= d(E, g[g.length - 1])) ch = ch.concat(g); else ch = ch.concat(g.slice().reverse());
+      });
+      if (ch.length > 3) lines.push(ch);
+    });
+    try { localStorage.setItem(ck, JSON.stringify({ t: Date.now(), lines })); } catch (e) {}
+    return lines;
+  }).catch(() => { TRK_METRO = null; return []; }));
+}
+function trkMetroFix(r, line, pts) {   // участок без GPS: если оба конца у линии метро — рисуем по ней
+  if (!r.pts || r.pts.length < 2) return;
+  const A = r.pts[0], B = r.pts[r.pts.length - 1], dA = (q, p) => trkDist(+p.lat, +p.lon, q[0], q[1]);
+  trkMetro(pts).then(lines => {
+    let best = null;
+    lines.forEach(L0 => { let ia = -1, ib = -1, da = 1e9, db = 1e9; L0.forEach((q, i) => { const x = dA(q, A), y = dA(q, B); if (x < da) { da = x; ia = i; } if (y < db) { db = y; ib = i; } });
+      if (da < 900 && db < 900 && ia !== ib && (!best || da + db < best.s)) best = { s: da + db, seg: ia < ib ? L0.slice(ia, ib + 1) : L0.slice(ib, ia + 1).reverse() }; });
+    if (best) { line.setLatLngs([[+A.lat, +A.lon]].concat(best.seg, [[+B.lat, +B.lon]])); line.setStyle({ color: "#8764b8", dashArray: "8 6" }); }
+  });
+}
 function trkMapDraw() {
   let el = $("trk-map"); if (!el || !ui.trk) return;
   const pts = (TRK.D || { pts: [] }).pts;
@@ -4374,7 +4411,8 @@ function trkMapDraw() {
     MM.n = 0; MM.ok = 0; MM.why = {}; trkRuns(pts).forEach(r => {   // маршрут режем на участки по виду движения; каждый «прилипает» к дорогам
       const line = L.polyline(r.pts.map(b => [+b.lat, +b.lon]), { color: colr(r.v), weight: 5, opacity: .85, dashArray: r.gap ? "2 9" : null, lineCap: "round" }).addTo(map);
       trkOrder(map, r, colr(r.v));
-      if (r.gap || r.pts.length < 3 || r.v < 1) return;
+      if (r.gap) { try { trkMetroFix(r, line, pts); } catch (e) {} return; }
+      if (r.pts.length < 3 || r.v < 1) return;
       MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n + (Object.keys(MM.why).length ? " (" + Object.keys(MM.why).map(k => k + " ×" + MM.why[k]).join(", ") + ")" : ""); if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } });
     });
     const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });

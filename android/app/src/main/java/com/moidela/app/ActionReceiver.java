@@ -10,6 +10,8 @@ public class ActionReceiver extends BroadcastReceiver {
     @Override public void onReceive(final Context c, Intent i) {
         final String id = i.getStringExtra("id"), a = i.getStringExtra("a");
         if (id == null || a == null) return;
+        AlarmSound.stop();
+        if (a.equals("stop")) { ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(id.hashCode()); return; }
         ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(id.hashCode());
         final PendingResult r = goAsync();
         new Thread(new Runnable() { public void run() {

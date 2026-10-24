@@ -155,6 +155,16 @@ public class VoiceSettingsActivity extends Activity {
         wd.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() { public void onCheckedChanged(CompoundButton b2, boolean on) { sp.edit().putBoolean("v_win_wd", on).apply(); VoiceWindow.refresh(getApplicationContext()); } });
         note(c4, "В это время в шторке висит закреплённая кнопка: один тап — и сразу запись голосом. Вне окна уведомления нет, микрофон сам ничего не слушает.");
 
+        LinearLayout c6 = card(root, "Сигналы");
+        final List<String> cueNames = new ArrayList<String>(Arrays.asList(Cues.NAMES));
+        final int[] sCs = {sp.getInt("cue_start", 0)}, sCo = {sp.getInt("cue_ok", 0)};
+        row(c6, "Начало записи", cueNames, sCs, new Pick() { public void on(int i) { sp.edit().putInt("cue_start", i).apply(); Cues.preview(VoiceSettingsActivity.this, false, i); } }); divider(c6);
+        row(c6, "Запись принята", cueNames, sCo, new Pick() { public void on(int i) { sp.edit().putInt("cue_ok", i).apply(); Cues.preview(VoiceSettingsActivity.this, true, i); } });
+        note(c6, "При выборе мелодия сразу проигрывается.");
+        LinearLayout c5 = card(root, "Будильник");
+        TextView ar = new TextView(this); ar.setText("Громкость и мелодия напоминания  ›"); ar.setTextSize(16); ar.setTextColor(TX); ar.setPadding(dp(16), dp(14), dp(16), dp(14));
+        ar.setOnClickListener(new View.OnClickListener() { public void onClick(View x) { startActivity(new android.content.Intent(VoiceSettingsActivity.this, AlarmSettingsActivity.class)); } });
+        c5.addView(ar);
         TextView tip = new TextView(this); tip.setText("Как запускать: двойное касание наушника (если назначено «Мои дела · Голосом» в Huawei AI Life), иконка «Мои дела · Голосом» на экране или ярлык при долгом нажатии на значок приложения.");
         tip.setTextSize(13); tip.setTextColor(DIM); tip.setPadding(dp(8), dp(20), dp(8), 0); root.addView(tip);
         setContentView(sv);
