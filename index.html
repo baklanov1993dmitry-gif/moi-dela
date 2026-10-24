@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 14:03";
+const BUILD = "24.10 14:09";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4404,16 +4404,24 @@ async function trkMatch(r) {
   } catch (e) { return no("ошибка сети"); }
 }
 const MM = { n: 0, ok: 0, why: {} };
-function trkOrder(map, r, col) {   // очерёдность: стрелки направления вдоль участка + время начала
-  const P = r.pts; if (P.length < 2 || r.dist < 60) return; let acc = 0, next = 120;
-  const brg = (a, b) => { const y = Math.sin((b.lon - a.lon) * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180), x = Math.cos(a.lat * Math.PI / 180) * Math.sin(b.lat * Math.PI / 180) - Math.sin(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.cos((b.lon - a.lon) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; };
-  const step = Math.max(150, r.dist / 8);
-  for (let i = 1; i < P.length; i++) {
-    const a = { lat: +P[i - 1].lat, lon: +P[i - 1].lon }, b = { lat: +P[i].lat, lon: +P[i].lon }; acc += trkDist(a.lat, a.lon, b.lat, b.lon);
-    if (acc >= next) { next = acc + step; L.marker([(a.lat + b.lat) / 2, (a.lon + b.lon) / 2], { interactive: false, icon: L.divIcon({ className: "", html: '<div style="transform:rotate(' + Math.round(brg(a, b)) + 'deg);font-size:15px;line-height:15px;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;text-align:center">▲</div>', iconSize: [15, 15], iconAnchor: [7, 7] }) }).addTo(map); }
-  }
-  const hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
-  L.marker([+P[0].lat, +P[0].lon], { interactive: false, icon: L.divIcon({ className: "", html: '<div style="display:inline-block;transform:translate(6px,-22px);background:#fff;border:1.5px solid ' + col + ';border-radius:8px;padding:0 5px;font-size:11px;font-weight:700;color:#222;white-space:nowrap">' + hm(P[0].ts) + "</div>", iconSize: [0, 0] }) }).addTo(map);
+function trkOrder(map, r, col) {   // очерёдность проще: на каждом переезде (от 300 м) одна плашка «время–время» посередине и 2–3 стрелки; перерисовывается, когда линию подправили (метро/дороги)
+  const grp = L.layerGroup().addTo(map), P = r.pts, hm = d => new Date(d).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
+  const brg = (a, b) => { const y = Math.sin((b[1] - a[1]) * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180), x = Math.cos(a[0] * Math.PI / 180) * Math.sin(b[0] * Math.PI / 180) - Math.sin(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.cos((b[1] - a[1]) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; };
+  const PL = map._pl || (map._pl = []), me = {}, free = (c, d, t) => { if (!map._loaded) return true; const p = map.latLngToLayerPoint(c); return !PL.some(o => o.t === t && p.distanceTo(map.latLngToLayerPoint(o.c)) < d); };   // расстояние в пикселях: при приближении метки раскрываются   // не лепим плашки/стрелки друг на друга
+  let last = null; const draw = ll => {
+    last = ll; grp.clearLayers(); for (let i = PL.length - 1; i >= 0; i--) if (PL[i].k === me) PL.splice(i, 1); if (P.length < 2 || r.dist < 300 || !ll || ll.length < 2) return;
+    const pt = ll.map(q => Array.isArray(q) ? q : [q.lat, q.lng]), cum = [0]; for (let i = 1; i < pt.length; i++) cum.push(cum[i - 1] + trkDist(pt[i - 1][0], pt[i - 1][1], pt[i][0], pt[i][1]));
+    const tot = cum[cum.length - 1]; if (tot < 200) return;
+    const at = f => { const want = tot * f; let i = 1; while (i < cum.length - 1 && cum[i] < want) i++; const k = cum[i] - cum[i - 1] || 1, t = (want - cum[i - 1]) / k; return { c: [pt[i - 1][0] + (pt[i][0] - pt[i - 1][0]) * t, pt[i - 1][1] + (pt[i][1] - pt[i - 1][1]) * t], b: brg(pt[i - 1], pt[i]) }; };
+    const n = tot > 4000 ? 4 : tot > 1500 ? 3 : 2, fr = []; for (let k = 1; k <= n; k++) fr.push(k / (n + 1));
+    fr.forEach(f => { const a = at(f); if (!free(a.c, 46, 1)) return; PL.push({ k: me, c: a.c, t: 1 }); L.marker(a.c, { interactive: false, icon: L.divIcon({ className: "", html: '<div style="transform:rotate(' + Math.round(a.b) + 'deg);font-size:16px;line-height:16px;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;text-align:center">▲</div>', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(grp); });
+    const m = at(0.5);   // плашка: когда ехал (посередине, рядом с линией)
+    if (!free(m.c, 96, 2)) return; PL.push({ k: me, c: m.c, t: 2 });
+    L.marker(m.c, { interactive: false, icon: L.divIcon({ className: "", html: '<div style="display:inline-block;transform:translate(10px,-10px);background:#fff;border:2px solid ' + col + ';border-radius:9px;padding:1px 6px;font-size:12px;font-weight:700;color:#222;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35)">' + hm(P[0].ts) + "–" + hm(P[P.length - 1].ts) + "</div>", iconSize: [0, 0] }), zIndexOffset: 500 }).addTo(grp);
+  };
+  (map._ords || (map._ords = [])).push(() => last && draw(last));
+  if (!map._zo) { map._zo = 1; map.on("zoomend", () => { map._pl.length = 0; map._ords.forEach(f => f()); }); }
+  return draw;
 }
 /* метро: под землёй GPS молчит и между станциями получалась прямая «по воздуху» — рисуем по настоящей линии метро (OpenStreetMap, кэш на устройстве) */
 let TRK_METRO = null;
@@ -4450,11 +4458,11 @@ function trkMetroPath(G, A, B, mx) {   // кратчайший путь по п�
 function trkMetroFix(r, line, pts, fb, strict) {   // участок без GPS (метро/тоннель): рисуем по путям метро, а не по прямой
   if (!r.pts || r.pts.length < 2) return;
   const A = r.pts[0], B = r.pts[r.pts.length - 1];
-  const say = t => { const e = $("trk-note"); if (e) { e.style.display = "block"; e.textContent = (e.textContent ? e.textContent + " · " : "") + t; } };
+  const say = t => { const e = $("trk-note"); if (e) { e.style.display = "block"; if (e.textContent.indexOf(t) < 0) e.textContent = (e.textContent ? e.textContent + " · " : "") + t; } };
   trkMetro(pts).then(lines => {
     if (!lines.length) { say("метро: карта путей не загрузилась (Overpass)"); if (fb) fb(); return; }
     const seg = trkMetroPath(trkMetroGraph(lines), A, B, strict ? 350 : 1200);
-    if (seg) { line.setLatLngs([[+A.lat, +A.lon]].concat(seg, [[+B.lat, +B.lon]])); line.setStyle({ color: "#8764b8", dashArray: "8 6", opacity: .95 }); say("метро: по путям"); }
+    if (seg) { line.setLatLngs([[+A.lat, +A.lon]].concat(seg, [[+B.lat, +B.lon]])); line.setStyle({ color: "#8764b8", dashArray: "8 6", opacity: .95 }); if (line._ord) line._ord(line.getLatLngs()); say("метро: по путям"); }
     else { if (!strict) say("метро: концы далеко от путей"); if (fb) fb(); }
   });
 }
@@ -4473,9 +4481,9 @@ function trkMapDraw() {
     const colr = v => v < 4 ? "#8a8a8a" : v < 7 ? "#107c10" : v < 28 ? "#e3680c" : "#2b7de9", ll = pts.map(b => [+b.lat, +b.lon]);
     MM.n = 0; MM.ok = 0; MM.why = {}; trkRuns(pts).forEach(r => {   // маршрут режем на участки по виду движения; каждый «прилипает» к дорогам
       const line = L.polyline(r.pts.map(b => [+b.lat, +b.lon]), { color: colr(r.v), weight: 5, opacity: .85, dashArray: r.gap && !r.jump ? "2 9" : null, lineCap: "round" }).addTo(map);
-      trkOrder(map, r, colr(r.v));
+      const ord = trkOrder(map, r, colr(r.v)); line._ord = ord; ord(line.getLatLngs());
       const matchRun = (min) => { if (r.pts.length < min || r.v < 1) return;
-      MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n + (Object.keys(MM.why).length ? " (" + Object.keys(MM.why).map(k => k + " ×" + MM.why[k]).join(", ") + ")" : ""); if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); } }); };
+      MM.n++; trkMatch(r).then(sh => { MM.ok += sh ? 1 : 0; const t = $("trk-mm"); if (t) t.textContent = "привязано к дорогам: " + MM.ok + " из " + MM.n + (Object.keys(MM.why).length ? " (" + Object.keys(MM.why).map(k => k + " ×" + MM.why[k]).join(", ") + ")" : ""); if (sh && map._container && map._container.isConnected) { line.setLatLngs(sh); line.setStyle({ opacity: .9 }); if (line._ord) line._ord(line.getLatLngs()); } }); };
       if (r.gap) { try { trkMetroFix(r, line, pts, r.jump ? () => matchRun(2) : null); } catch (e) {} return; }
       const A0 = r.pts[0], B0 = r.pts[r.pts.length - 1], chord = trkDist(+A0.lat, +A0.lon, +B0.lat, +B0.lon);
       if (chord > 800 && r.dist < chord * 1.1) { try { trkMetroFix(r, line, pts, () => matchRun(3), true); } catch (e) { matchRun(3); } return; }   // длинный идеально прямой кусок между станциями — это метро (телефон «дорисовал» точки под землёй)
@@ -4496,6 +4504,7 @@ function trkMapDraw() {
     L.circleMarker([+f.lat, +f.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#107c10", fillOpacity: 1 }).addTo(map).bindTooltip("старт " + hm(f.ts));
     L.circleMarker([+e.lat, +e.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#d13438", fillOpacity: 1 }).addTo(map).bindTooltip("сейчас/конец " + hm(e.ts));
     if (TRK.view && TRK.view.off === TRK.off) map.setView(TRK.view.c, TRK.view.z); else map.fitBounds(ll, { padding: [24, 24], maxZoom: 17 });
+    (map._pl || []).length = 0; (map._ords || []).forEach(f => f());   // вид выбран — раскладываем плашки и стрелки без наложений
     PM.forEach(m => m.dragging && m.dragging.disable());
     const declutter = () => {   // подписи мест: показываем по очереди, пересекающиеся прячем; при отдалении — только значки
       const zm = map.getZoom(), boxes = []; const ms = []; map.eachLayer(l => { if (l.getTooltip && l.options && l.options.icon && l.options.icon.options.className === "trk-pin" && l.getTooltip()) ms.push(l); });
