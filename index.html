@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0f172a">
 <link rel="manifest" href="manifest.json" id="mf">
 <script>try{var _a=new URLSearchParams(location.search).get("app");if(/^(tasks|journal|food)$/.test(_a)){document.getElementById("mf").href="manifest-"+_a+".json";var _ti=document.querySelector('link[rel=apple-touch-icon]');if(_ti)_ti.href="icon-"+_a+"-192.png";}}catch(e){}</script>
@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 18:45";
+const BUILD = "25.10 02:37";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2105,6 +2105,7 @@ const uxCSS0 = `
 .taskrow.fin{opacity:0;transform:translateX(24px)}
 .rad.on{animation:radpop .25s}
 @keyframes radpop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+html,body{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y}   /* как нативное приложение: страницу не масштабируем щипком и двойным тапом */
 .taskrow{position:relative;touch-action:pan-y}.ordb{flex:none;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:26px;height:26px;border-radius:13px;border:0;background:var(--acc);color:#fff;font:700 calc(13px*var(--z,1))/1 inherit;font-family:inherit;line-height:1;cursor:pointer;margin:0 4px;padding:0 6px;text-align:center}.ordb.ghost{display:inline-flex;visibility:hidden;background:transparent;color:var(--sub);border:1.5px dashed var(--ln)}.taskrow.sel .ordb.ghost{visibility:visible}@media(max-width:760px),(hover:none){.ordb{min-width:36px;height:36px;border-radius:18px;font-size:calc(15px*var(--z,1));margin:0 6px}.ordb.ghost{display:inline-flex;opacity:.75}}.taskrow.dropb{box-shadow:0 -3px 0 var(--acc)}
 @media(max-width:760px){.taskrow{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .taskrow.swr::before,.taskrow.swl::before{position:absolute;top:50%;transform:translateY(-50%);font-weight:600;font-size:calc(13px*var(--z,1));opacity:var(--so,0);pointer-events:none}
