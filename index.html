@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 16:05";
+const BUILD = "24.10 16:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -934,13 +934,19 @@ async function fileTransfer(files) {   // файлы с компьютера б�
   if (!n) { upd(t.id, {}); }
   toast(n ? "Готово: " + n + " файл(ов) в «Файлах» — на телефоне они тоже будут" : "Ничего не загрузилось");
 }
+async function saveFileAs(f) {   // качаем сами и сохраняем под ИСХОДНЫМ именем (сервер отдавал имя в %D0%98…-виде)
+  const r = await sb.storage.from("attachments").createSignedUrl(f.path, 300);
+  if (r.error || !r.data) throw new Error("нет ссылки");
+  const resp = await fetch(r.data.signedUrl); if (!resp.ok) throw new Error("HTTP " + resp.status);
+  const blob = await resp.blob(), a = document.createElement("a"); let nm = f.name || "file"; if (/%[0-9A-Fa-f]{2}/.test(nm)) { try { nm = decodeURIComponent(nm); } catch (e) {} }   // имя могло сохраниться уже закодированным
+  a.href = URL.createObjectURL(blob); a.download = nm; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
 async function openFile(i) {
   const t = S.tasks[selId], f = t && t.files[i]; if (!f) return;
   if (isImg(f)) return viewImage(i);
   try {
-    const r = await sb.storage.from("attachments").createSignedUrl(f.path, 120, { download: f.name });
-    if (r.error || !r.data) return toast("Не удалось открыть файл");
-    const a = document.createElement("a"); a.href = r.data.signedUrl; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+    await saveFileAs(f);
   } catch (e) { toast("Не удалось открыть: " + errText(e)); }
 }
 async function removeFile(i) {
@@ -970,7 +976,8 @@ async function viewImageF(f) {   // крупный просмотр поверх
   let u = imgUrl(f.path); if (!u) { try { const r = await sb.storage.from("attachments").createSignedUrl(f.path, 3600); u = r.data && r.data.signedUrl; } catch (e) {} }
   if (!u) return toast("Не удалось открыть картинку");
   const o = document.createElement("div"); o.className = "lbox";
-  o.innerHTML = '<img src="' + esc(u) + '" alt=""><a class="lbdl" href="' + esc(u) + '" download="' + esc(f.name) + '" target="_blank" rel="noopener">Скачать</a>';
+  o.innerHTML = '<img src="' + esc(u) + '" alt=""><a class="lbdl" href="#">Скачать</a>';
+  o.querySelector(".lbdl").onclick = e => { e.preventDefault(); e.stopPropagation(); saveFileAs(f).catch(er => toast("Не удалось скачать: " + errText(er))); };
   const close = () => { o.remove(); document.removeEventListener("keydown", kd, true); };
   const kd = e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
   o.addEventListener("click", e => { if (!e.target.closest(".lbdl")) close(); }); document.addEventListener("keydown", kd, true); document.body.appendChild(o);
@@ -1043,9 +1050,7 @@ function filesDetailHTML() {
 }
 async function fileDownload(f) {
   try {
-    const r = await sb.storage.from("attachments").createSignedUrl(f.path, 120, { download: f.name });
-    if (r.error || !r.data) return toast("Не удалось скачать");
-    const a = document.createElement("a"); a.href = r.data.signedUrl; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+    await saveFileAs(f);
   } catch (e) { toast("Не удалось скачать: " + errText(e)); }
 }
 const fmtSize = b => b >= 1073741824 ? (b / 1073741824).toFixed(1).replace(/\.0$/, "").replace(".", ",") + " ГБ" : b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " МБ" : Math.max(1, Math.round(b / 1024)) + " КБ";
