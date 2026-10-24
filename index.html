@@ -64,7 +64,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "23.10 23:25";
+const BUILD = "24.10 13:07";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -773,7 +773,7 @@ function freshTask(items) {
 }
 function submitQA() {
   const inp = $("qa-input"), raw = inp ? inp.value.trim() : ""; if (!raw) return;
-  createFromText(raw, ui.qa); if (voiceAuto || micUsed) sayOk(raw);
+  createFromText(raw, ui.qa); if (voiceAuto || micUsed) sayOk(raw, !voiceAuto);
   ui.qa = { due: null, remind_at: null, repeat_rule: null, my: false, starred: false }; ui.qaText = "";
   ui.qa = null; toast("Добавлено"); render(); try { if (document.activeElement) document.activeElement.blur(); } catch (e) {}   // панель закрываем, клавиатуру убираем
 }
@@ -2370,7 +2370,7 @@ const wind = (t, d, v) => [Nz(600, t, d, v, 1300, { a: d * .5, f: "bp", k: "pink
 const swish = (t, f1, f2, d, v) => Nz(f1, t, d, v, f2, { f: "bp", q: 2.2, a: d * .3 });
 const SL = (...a) => [].concat(...a);   // не называть L — это перекрывает глобальный Leaflet (карта трекера)
 const THEME_SND = {
-  web: { n: "Паутина", done: SL([swish(0, 900, 4500, .09, 1.2)], [[330, .07, .5, "triangle", .3, 300], [660, .07, .3, "sine", .12, 600], [120, .08, .14, "sine", .5, 60]]), add: [swish(0, 700, 3500, .08, .8)], del: SL([swish(0, 4000, 600, .14, 1)], crackle(.1, .12, 5, 4500, .3, 1)), remind: SL([0, .35, .7].map(t => [swish(t, 900, 4500, .09, 1.2), [330, t + .07, .4, "triangle", .35, 300]]).flat()) },
+  web: { n: "Паутина", done: SL([swish(0, 900, 5200, .16, 2.4), swish(.05, 1400, 4000, .12, 1.6)]), add: [swish(0, 700, 4200, .13, 2), swish(.04, 1200, 3500, .1, 1.2)], del: [swish(0, 4500, 600, .2, 2.2)], remind: SL([0, .35, .7].map(t => [swish(t, 900, 5200, .16, 2.4)]).flat()) },
   paper: { n: "Бумага", done: SL(crackle(0, .25, 10, 4500, .8, 1), [[1800, .27, .03, "triangle", .15]]), add: crackle(0, .1, 5, 4500, .7, 1), del: crackle(0, .5, 24, 3000, 1, 1), remind: SL(knock(0, .6), knock(.2, .6), knock(.4, .6)) },
   sky: { n: "Небо", done: SL(bell(1568, 0, .2, 1.4), bell(2093, .15, .2, 1.4), bell(2637, .3, .15, 1.6)), add: bell(1760, 0, .22, .8), del: bell(988, 0, .22, 1), remind: SL(bell(1568, 0, .22, 1.2), bell(2093, .2, .22, 1.2), bell(1319, .4, .22, 1.2), bell(2349, .6, .22, 1.2), bell(1760, .8, .22, 1.6)) },
   mint: { n: "Мята", done: SL(bloop(500, 0, .5), bloop(750, .13, .45)), add: bloop(600, 0, .45), del: bloop(300, 0, .5), remind: SL(bloop(500, 0, .5), bloop(500, .3, .5), bloop(500, .6, .5), bloop(800, .75, .5)) },
@@ -3907,14 +3907,15 @@ function leftHTML(c) {
     return '<div class="sech" data-a="stoggle" data-g="§' + k + '"><span class="tx">' + title + "</span>" + (col ? '<span class="pv">' + items.map(i => '<i style="color:' + i[3] + '">' + ic(i[1], 15) + "</i>").join("") + "</span>" : "") + ic(col ? "chevr" : "chevd", 14) + "</div>" +
       (col ? "" : '<div class="sbody">' + items.map(i => sm(i[0], i[1], i[2], 0, i[3])).join("") + extra + "</div>");
   };
+  if (!ui._am && S.user) { ui._am = 1; const old = listsArr().filter(x => /^\s*(📦\s*)?архив[ыа]?\s*$/i.test(x.name) && x.group_name !== ARCH); if (old.length) setTimeout(() => { old.forEach(x => setListGroup(x.id, ARCH)); toast("📦 Перенёс в архив: " + old.map(x => "«" + x.name + "»").join(", ")); render(); }, 800); }
   const ls = listsArr().filter(x => !/^файлы$/i.test(x.name)).sort((a, b) => (a.group_name === ARCH) - (b.group_name === ARCH)), seen = new Set(); let tree = "";   // архив — в самом низу
   for (const l of ls) {
     const g = l.group_name;
     if (!g) { tree += lc(l); continue; }
     if (seen.has(g)) continue; seen.add(g);
     const mem = ls.filter(x => x.group_name === g), col = g === ARCH ? PR.collapsed[g] !== false : PR.collapsed[g];   // архив свёрнут по умолчанию
-    tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"><span class="tx">' + esc(g) + '</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>";
-    if (!col) tree += '<div class="gbody">' + mem.map(lc).join("") + "</div>";
+    tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"' + (g === ARCH ? ' title="Архив: сюда убираются списки, которыми ты больше не пользуешься. Ничего не удаляется; задачи из архивных списков не попадают в «Мой день» и общие выборки, но находятся поиском. Список можно вернуть через меню списка."' : "") + '><span class="tx">' + esc(g) + '</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>";
+    if (!col) tree += '<div class="gbody">' + (g === ARCH ? '<div class="sub" style="font-size:12px;padding:2px 12px 6px;opacity:.7">Закрытые списки: ничего не удалено, задачи не мешают в «Мой день».</div>' : "") + mem.map(lc).join("") + "</div>";
   }
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
@@ -4444,10 +4445,10 @@ function trkHTML() {
 // ---- голосовой ввод (Web Speech API, Chrome/Edge/Android Chrome) ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let VR = null;
-function sayOk(t) {   // голосовое подтверждение в наушник; если Chrome не даёт звук без касания — хотя бы писк и вибрация
+function sayOk(t, quiet) {   // quiet: нажал кнопку голоса в приложении — без озвучки, только сигнал   // голосовое подтверждение в наушник; если Chrome не даёт звук без касания — хотя бы писк и вибрация
   try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (e) {}
   let spoken = false;
-  try { if (window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance("Записано. " + String(t).slice(0, 90)); u.lang = "ru-RU"; u.rate = 1.05; speechSynthesis.speak(u); spoken = true; } } catch (e) {}
+  try { if (!quiet && window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance("Записано. " + String(t).slice(0, 90)); u.lang = "ru-RU"; u.rate = 1.05; speechSynthesis.speak(u); spoken = true; } } catch (e) {}
   try { const C = window.AudioContext || window.webkitAudioContext; if (C) { const c = new C(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = .15; o.start(); o.stop(c.currentTime + .15); setTimeout(() => c.close(), 400); } } catch (e) {}
   voiceAuto = false; micUsed = false;
 }
@@ -6160,8 +6161,9 @@ function nuFoodRow(x, i) {
 }
 function nuPickRes() {
   const N = NUN(), res = N.res = nuSearch();
-  const web = N.webBusy ? '<div class="jr-hint">Ищу…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">' + (N.web.length && /\(ИИ\)$/.test(N.web[0].n) ? 'Нашёл ИИ по сайтам (на 100 г, проверь):' : 'Open Food Facts (упаковки, значения с этикеток):') + '</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts такого нет. Нажми «Свой продукт» и впиши значения с этикетки — он сохранится в «Мои»") + "</div>") : "";
-  return (N.q.trim() ? '<div class="jr-f nu-act" style="margin:0 0 4px"><button class="tool" data-a="nuweb" title="Open Food Facts — база упаковок">🌐 OFF</button><button class="tool" data-a="nuaifood" title="ИИ найдёт КБЖУ по сайтам">🤖 ИИ</button><button class="tool" data-a="nugoogle" title="Открыть поиск Google">🔎 Google</button></div>' : "") + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Попробуй Open Food Facts, найди КБЖУ в Google и добавь через «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
+  const web = N.webBusy ? '<div class="jr-hint">Ищу…</div>' : N.web ? (N.web.length ? '<div class="nu-wh">' + (N.web.length && /\(ИИ\)$/.test(N.web[0].n) ? 'Нашёл ИИ по сайтам (на 100 г, проверь):' : /\(Google\)$/.test(N.web[0].n) ? 'Из ответа Google (на 100 г, проверь):' : 'Open Food Facts (упаковки, значения с этикеток):') + '</div>' + N.web.map((x, i) => '<div class="nu-res" data-a="nupickw" data-i="' + i + '"><div class="nu-in">' + esc(x.n) + '</div><div class="nu-im"><span class="cp">Б: ' + x.p + '</span><span class="cf">Ж: ' + x.f + '</span><span class="cc">У: ' + x.c + '</span><span class="ck">К: ' + r0(x.k) + "</span></div></div>").join("") : '<div class="jr-hint">' + esc(N.werr || "В Open Food Facts такого нет. Нажми «Свой продукт» и впиши значения с этикетки — он сохранится в «Мои»") + "</div>") : "";
+  const gp = N.gp ? '<div class="jr-box" style="margin:6px 0"><div class="jr-hint">Скопируй ответ «Режима ИИ» Google и вставь сюда — я вытащу КБЖУ на 100 г.</div><textarea id="nu-gp" class="inp" rows="3" style="width:100%" placeholder="Вставь ответ Google…"></textarea><button class="btn" data-a="nugparse" style="margin-top:6px">Разобрать</button></div>' : "";
+  return (N.q.trim() ? '<div class="jr-f nu-act" style="margin:0 0 4px"><button class="tool" data-a="nuweb" title="Open Food Facts — база упаковок">🌐 OFF</button><button class="tool" data-a="nuaifood" title="ИИ найдёт КБЖУ по сайтам">🤖 ИИ</button><button class="tool" data-a="nugoogle" title="Открыть Google (Режим ИИ), потом вставить ответ сюда">🔎 Google</button></div>' : "") + gp + (NF ? "" : '<div class="jr-hint">Загружаю базу продуктов…</div>') + res.map(nuFoodRow).join("") + (res.length ? "" : '<div class="jr-hint">' + (N.q.trim() ? "В базе не нашлось. Попробуй Open Food Facts, найди КБЖУ в Google и добавь через «Свой продукт»." : N.tab === "mine" ? "Своих продуктов пока нет." : "Начни вводить название.") + "</div>") + web;
 }
 function nuSheetHTML() {
   const N = NUN(); if (!N.sheet) return "";
@@ -6440,7 +6442,16 @@ Object.assign(acts, {
     } catch (e) { N.web = []; N.werr = e.message === "setup" ? "ИИ-поиск ещё не подключён (одноразовая настройка, см. AI_SETUP.md)" : "ИИ-поиск не сработал: " + e.message; }
     N.webBusy = false; render();
   },
-  nugoogle() { const q = NUN().q.trim(); if (q) window.open("https://www.google.com/search?q=" + encodeURIComponent(q + " калорийность БЖУ на 100 г"), "_blank"); },
+  nugoogle() { const N = NUN(), q = N.q.trim(); if (!q) return; window.open("https://www.google.com/search?udm=50&q=" + encodeURIComponent(q + " калорийность и БЖУ на 100 г"), "_blank"); N.gp = true; const bx = $("nu-resbox"); if (bx) bx.innerHTML = nuPickRes(); toast("Скопируй ответ Google и вставь в поле ниже"); },
+  nugparse() {
+    const N = NUN(), el = $("nu-gp"), t = el ? el.value.replace(/\u00a0/g, " ") : ""; if (!t.trim()) { toast("Сначала вставь ответ Google"); return; }
+    const g = r => { const m = r.exec(t); return m ? +m[1].replace(",", ".") : null; }, num = "(\\d+(?:[.,]\\d+)?)";
+    let k = g(new RegExp(num + "\\s*ккал", "i")) ?? g(new RegExp("(?:ккал|калори[а-яё]*)[^\\d]{0,25}" + num, "i"));
+    const p = g(new RegExp("(?:белк[а-яё]*|протеин[а-яё]*)[^\\d]{0,20}" + num, "i")), f = g(new RegExp("жир[а-яё]*[^\\d]{0,20}" + num, "i")), c = g(new RegExp("углевод[а-яё]*[^\\d]{0,20}" + num, "i"));
+    if (k == null && p != null && f != null && c != null) k = 4 * p + 9 * f + 4 * c;
+    if (k == null || p == null || f == null || c == null) { toast("Не нашёл все четыре числа (ккал, белки, жиры, углеводы) — проверь вставленный текст"); return; }
+    N.web = [{ n: N.q.trim().slice(0, 80) + " (Google)", k, p, f, c }]; N.gp = false; N.werr = ""; const bx = $("nu-resbox"); if (bx) bx.innerHTML = nuPickRes(); else render();
+  },
   nuscan() { nuScan(); },
   nubc() { nuBarcode(NUN().f.bc); },
   nuedit(a) { const x = S.food_log[a.dataset.id]; if (!x) return; const N = NUN(); N.sheet = "edit"; N.eid = x.id; N.f = { g: x.grams > 0 ? String(x.grams) : "", t: x.t, d: x.day }; render(); },

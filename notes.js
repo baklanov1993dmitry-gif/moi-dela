@@ -73,6 +73,11 @@ window.NOTES_INIT = function (X) {
       const notes = g.map(d => d.n).sort((a, b) => a.created_at.localeCompare(b.created_at));
       return { key: notes[0].id, label: top.join(" · "), notes, first: notes[0].created_at, last: notes[notes.length - 1].created_at, linked: notes.some(n => n.task_id) };
     }).sort((a, b) => b.notes.length - a.notes.length || b.last.localeCompare(a.last));
+    { const byTag = {}; docs.forEach(d => (d.n.tags || []).forEach(t => { (byTag[t] = byTag[t] || []).push(d.n); }));   // темы по тегам: тег с 2+ заметками — это тема
+      Object.keys(byTag).forEach(t => { const notes = byTag[t].slice().sort((x, y) => x.created_at.localeCompare(y.created_at)); if (notes.length < 2) return;
+        const set = notes.map(n => n.id).sort().join(","); if (clusters.some(c => c.notes.map(n => n.id).sort().join(",") === set)) return;
+        clusters.push({ key: "#" + t, label: "#" + t, notes, first: notes[0].created_at, last: notes[notes.length - 1].created_at, linked: notes.some(n => n.task_id) }); });
+      clusters.sort((a, b) => b.notes.length - a.notes.length || b.last.localeCompare(a.last)); }
     return (EN = { sig, nb, edges, clusters });
   }
   const dismissed = () => jg("mytasks_notes_dis", {});

@@ -137,10 +137,10 @@ Deno.serve(async (req) => {
       if (tgItems.length === 1) {
         const t = tgItems[0], inf = info(t);
         text = "🔔 <b>" + e(t.title) + "</b>" + (inf ? "\n<i>" + e(inf) + "</i>" : "");
-        kb = [[{ text: "✅ Готово", callback_data: "d:" + t.id }, { text: "⏰ +1 час", callback_data: "s:" + t.id }, { text: "🌙 Завтра", callback_data: "t:" + t.id }]];
+        kb = [[{ text: "✅ Готово", callback_data: "d:" + t.id }, { text: "⏰ +1 час", callback_data: "s:" + t.id }, { text: "🌙 Завтра", callback_data: "t:" + t.id }, { text: "🔕 Отмена", callback_data: "c:" + t.id }]];
       } else {
         text = "🔔 <b>Напоминания · " + tgItems.length + "</b>\n" + tgItems.slice(0, 10).map((t, i) => { const inf = info(t); return "\n" + (i + 1) + ". <b>" + e(t.title) + "</b>" + (inf ? "\n    <i>" + e(inf) + "</i>" : ""); }).join("");
-        kb = tgItems.slice(0, 10).map((t, i) => [{ text: "✅ " + (i + 1) + ". " + cut(t.title, 28), callback_data: "d:" + t.id }, { text: "⏰ 1ч", callback_data: "s:" + t.id }]);
+        kb = tgItems.slice(0, 10).map((t, i) => [{ text: "✅ " + (i + 1) + ". " + cut(t.title, 28), callback_data: "d:" + t.id }, { text: "⏰ 1ч", callback_data: "s:" + t.id }, { text: "🔕", callback_data: "c:" + t.id }]);
       }
       try {
         const r = await fetch("https://api.telegram.org/bot" + tgT + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: tgC, text, parse_mode: "HTML", disable_web_page_preview: true, reply_markup: { inline_keyboard: kb } }) });
