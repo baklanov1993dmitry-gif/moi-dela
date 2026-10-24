@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "24.10 18:24";
+const BUILD = "24.10 18:26";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -162,6 +162,15 @@ const PLAT_M = !!(window.matchMedia && matchMedia("(pointer:coarse)").matches); 
 const curSize = () => PLAT_M ? TH.size : (TH.sizeW || "l");
 if (PLAT_M && innerWidth <= 760 && !TH.sz2) { TH.size = "n"; TH.sz2 = 1; try { jset(LSK.theme, TH); } catch (e) {} } /* телефон: базовый размер подогнан под To Do */
 const PR = Object.assign({ sort: {}, group: {}, grid: {}, collapsed: {}, showDone: {}, rail: false, dayStart: 8, dayEnd: 17, reserve: 25 }, jget(LSK.prefs, {}));
+/* значок вкладки: несколько вариантов, рисуются SVG на лету (выбор в Настройки → Вид) */
+const FAVS = (() => { const sq = (c1, c2, inner) => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c2 + '"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#g)"/>' + inner + "</svg>", chk = '<path d="M17 33l10 10 21-22" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>';
+  return [["def", "Как сейчас", null], ["chk", "Галочка", sq("#4f8df0", "#2457c5", chk)], ["md", "МД", sq("#8a63f0", "#5b34c9", '<text x="32" y="43" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="30" fill="#fff">МД</text>')],
+    ["sun", "Солнце", sq("#ffb23d", "#f26b1d", '<circle cx="32" cy="32" r="11" fill="#fff"/>' + [0, 45, 90, 135, 180, 225, 270, 315].map(a => '<rect x="30" y="8" width="4" height="9" rx="2" fill="#fff" transform="rotate(' + a + ' 32 32)"/>').join(""))],
+    ["list", "Список", sq("#2fb97a", "#0f8a57", '<g fill="#fff"><circle cx="16" cy="20" r="4"/><circle cx="16" cy="32" r="4"/><circle cx="16" cy="44" r="4"/></g><g stroke="#fff" stroke-width="5" stroke-linecap="round"><path d="M27 20h22M27 32h22M27 44h16"/></g>')],
+    ["dark", "Тёмная", sq("#3b4252", "#1c2029", chk.replace("#fff", "#6fe3a8"))], ["rose", "Роза", sq("#ff7aa8", "#d93a78", '<path d="M32 49C14 36 14 20 24 18c4-1 7 1 8 4 1-3 4-5 8-4 10 2 10 18-8 31z" fill="#fff"/>')]]; })();
+const favHref = v => { const f = FAVS.find(x => x[0] === v); return f && f[2] ? "data:image/svg+xml," + encodeURIComponent(f[2]) : null; };
+function applyFav() { const h = favHref(PR.fav); if (!h) return; document.querySelectorAll('link[rel="icon"]').forEach(l => l.remove()); const l = document.createElement("link"); l.rel = "icon"; l.type = "image/svg+xml"; l.href = h; document.head.appendChild(l); }
+applyFav();
 const savePrefs = () => jset(LSK.prefs, PR);
 let view = jget(LSK.view, "all"), prevView = "all", selId = null;
 if (view === "planned") view = "all";   // вкладку «Запланировано» убрали
@@ -2512,7 +2521,7 @@ function desktopInit(app) {
 const mCSS = `
 .taskrow.sub.msel,.taskrow.msel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--acc)}
 .mtop.msb{animation:msbin .15s ease-out;background:rgba(0,0,0,.55);color:#fff;border-radius:0;gap:10px} @keyframes msbin{from{opacity:0}} .mtop.msb .ibtn{color:#fff} body .pop.mtp{top:56px!important;bottom:auto!important;left:auto!important;right:10px!important;width:264px!important;min-width:0;max-height:76vh;overflow:auto;border-radius:8px;transform:none}
-.flist{padding:0 8px 90px} .frow{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;cursor:pointer;min-width:0} .frow:hover{background:var(--hov,rgba(127,127,127,.1))} .frow.on{background:var(--sel,rgba(127,127,127,.16))} .fthm{width:38px;height:38px;border-radius:8px;object-fit:cover;flex:0 0 auto;background:rgba(127,127,127,.12)} .fthm.fico{display:flex;align-items:center;justify-content:center;font-size:calc(11px*var(--z,1));font-weight:700;color:var(--sub);letter-spacing:.3px} .fmid{flex:1;min-width:0} .fnm{font-size:calc(13px*var(--z,1));font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .fsb{font-size:calc(12.5px*var(--z,1));color:var(--sub)} .fdlb{flex:0 0 auto}.fdelb{color:var(--sub)}.fdelb:hover{color:#d13438} .fpv{padding:8px} .fpv img{width:100%;max-height:240px;object-fit:contain;border-radius:10px;cursor:zoom-in;display:block}
+.flist{padding:0 8px 90px} .frow{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;cursor:pointer;min-width:0} .frow:hover{background:var(--hov,rgba(127,127,127,.1))} .frow.on{background:var(--sel,rgba(127,127,127,.16))} .fthm{width:38px;height:38px;border-radius:8px;object-fit:cover;flex:0 0 auto;background:rgba(127,127,127,.12)} .fthm.fico{display:flex;align-items:center;justify-content:center;font-size:calc(11px*var(--z,1));font-weight:700;color:var(--sub);letter-spacing:.3px} .fmid{flex:1;min-width:0} .fnm{font-size:calc(13px*var(--z,1));font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .fsb{font-size:calc(12.5px*var(--z,1));color:var(--sub)} .favg{display:flex;flex-wrap:wrap;gap:10px}.favb{display:flex;flex-direction:column;align-items:center;gap:5px;width:78px;padding:8px 4px;border:2px solid var(--ln);border-radius:12px;background:transparent;color:var(--tx);cursor:pointer;font-size:calc(12px*var(--z,1))}.favb img{width:36px;height:36px;border-radius:9px}.favb.on{border-color:var(--acc)}.fdlb{flex:0 0 auto}.fdelb{color:var(--sub)}.fdelb:hover{color:#d13438} .fpv{padding:8px} .fpv img{width:100%;max-height:240px;object-fit:contain;border-radius:10px;cursor:zoom-in;display:block}
 .mtop.msb .mcnt{color:#fff} .smode{display:inline-flex;border:1px solid var(--ln);border-radius:16px;overflow:hidden;background:var(--card)} .smode button{padding:5px 12px;font-size:calc(12.5px*var(--z,1));color:var(--sub);cursor:pointer;white-space:nowrap} .smode button.on{background:var(--acc);color:#fff}
 .btn,.jr-chip,.tool,.mt{transition:transform .22s cubic-bezier(.34,1.56,.64,1)} .btn:active,.jr-chip:active,.tool:active,.mt:active{transform:scale(.95)}
 .sbgrip{cursor:grab;touch-action:none;padding:2px 6px;color:var(--sub);font-weight:700;letter-spacing:-2px;user-select:none;align-self:center} .sbgrip:active{cursor:grabbing} .sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
@@ -4141,6 +4150,7 @@ function settingsHTML() {
       R("Размер текста", "", sel("s-size", curSize(), [["xs", "Очень мелкий"], ["s", "Мелкий"], ["s2", "Чуть мельче"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупнее"], ["l2", "Ещё крупнее"], ["xl", "Крупный"]].concat(PLAT_M ? [] : [["xxl", "Очень крупный"], ["x3", "Огромный"], ["x4", "Гигантский"], ["x5", "Максимум"]]))) +
       R("Шрифт", "", sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]])) +
       R("Плотность", "Расстояния между строками", sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]))) +
+    G("Значок вкладки", '<div class="srw col"><div class="srt"><b>Значок в заголовке вкладки браузера</b><span>Виден только на компьютере; иконка приложения на телефоне меняется отдельно</span></div><div class="favg">' + FAVS.map(f => '<button class="favb' + ((PR.fav || "def") === f[0] ? " on" : "") + '" data-a="favset" data-v="' + f[0] + '" title="' + f[1] + '"><img src="' + (favHref(f[0]) || "icon-192.png") + '" alt=""><span>' + f[1] + "</span></button>").join("") + "</div></div>") +
     G("Фон",
       R("Фон-картинка", "", '<label class="btn ghost bgpick">' + ic("img", 18) + " " + (isMobile() ? "Из галереи" : "Выбрать файл") + '<input type="file" id="s-bgfile" accept="image/*" hidden></label>' + (TH.bg ? BT("bgclear", "Убрать") : "")) +
       (TH.bg ? '<div class="srw col"><div class="bgprev" style="background-image:url(\'' + TH.bg.replace(/['"\\\n]/g, "") + '\')"></div></div>' : "") +
@@ -5211,6 +5221,7 @@ const acts = {
   closeSettings() { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; render(); },
   ovl(a, e) { if (e.target === a) { ui.settings = false; render(); } },
   stab(a) { ui.stab = a.dataset.v; ui.smenu = false; render(); },
+  favset(a) { PR.fav = a.dataset.v; savePrefs(); applyFav(); if (PR.fav === "def") document.querySelectorAll('link[rel="icon"]').forEach(l => { if (l.type === "image/svg+xml") l.href = "icon-192.png"; }); render(); },
   theme(a) { const T = THEMES[a.dataset.v]; TH.theme = a.dataset.v; if (T) { TH.accent = T.acc; TH.font = T.font; } PR.tc = {}; TH.nolc = 1; savePrefs(); saveTheme(); render(); try { if (sndCfg().on && sndCfg().pack === "theme") snd("done", true); } catch (e) {} },   // смена темы снимает свои цвета текста — берём цвета темы
   fxtest() {
     let r = document.querySelector('#list .taskrow:not(.sub)'), tmp = null;
