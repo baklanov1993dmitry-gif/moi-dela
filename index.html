@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 02:42";
+const BUILD = "25.10 11:09";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2149,8 +2149,8 @@ function mApply(k, a) {
   const T = ids.map(id => S.tasks[id]), N = ids.length, names = { today: "сегодня", tom: "завтра" };
   const noun = N + " " + (N % 10 === 1 && N % 100 !== 11 ? "задача" : (N % 10 >= 2 && N % 10 <= 4 && (N % 100 < 10 || N % 100 >= 20)) ? "задачи" : "задач");
   mSnap(ids);
-  if (k === "today" || k === "tom" || k === "week") {
-    const nd = k === "today" ? today : k === "tom" ? addDays(today, 1) : nextMonday();
+  if (k === "today" || k === "tom" || k === "week" || k === "d7") {
+    const nd = k === "today" ? today : k === "tom" ? addDays(today, 1) : k === "d7" ? addDays(today, 7) : nextMonday();
     T.forEach(t => setDueKeepRemind(t, nd)); toast("Срок: " + dateLong(parseISO(nd)) + " · " + noun + " (Ctrl+Z — отмена)");
   } else if (k === "shift" || k === "shiftq") {
     let n, u;
@@ -2172,6 +2172,7 @@ function mApply(k, a) {
     if (!confirm("Удалить " + noun + "?")) { ui.undo = null; return; }
     ids.forEach(deleteTask); toast("Удалено: " + noun + " (Ctrl+Z — вернуть)"); mClear();
   }
+  if (isMobile() && (k === "today" || k === "tom" || k === "week" || k === "d7" || k === "clear" || k === "date" || k === "shift" || k === "shiftq")) mClear();   // на телефоне после срока выделение снимается — сразу берёшь следующую
   closePop(); render();
 }
 Object.assign(uxActs, {
@@ -2182,7 +2183,8 @@ Object.assign(uxActs, {
   mpick(a) { ui.pop = { type: "mtolist", id: "", x: ui.pop ? ui.pop.x : 200, y: ui.pop ? ui.pop.y : 200 }; render(); }
 });
 function multiBarHTML() {
-  const n = mIds().length; if (!n || isMobile()) return "";
+  const n = mIds().length; if (!n) return "";
+  if (isMobile()) return '<div class="mbar mob"><span class="mn">' + n + '</span><button data-a="mact" data-k="today">Сегодня</button><button data-a="mact" data-k="tom">Завтра</button><button data-a="mact" data-k="week">Пн</button><button data-a="mact" data-k="d7">Через нед.</button><button data-a="mact" data-k="clear">Без срока</button><button data-a="mpop" data-t="mshift">Дата…</button><button data-a="mact" data-k="done">✓ Готово</button></div>';
   return '<div class="mbar"><b>Выбрано: ' + n + '</b><button data-a="mact" data-k="today">Сегодня</button><button data-a="mact" data-k="tom">Завтра</button>' +
     '<button data-a="mpop" data-t="mshift">Сдвинуть…</button><button data-a="mact" data-k="done">Выполнено</button><button data-a="mpop" data-t="mctx">Ещё…</button><button class="mx" data-a="mclear" title="Снять выделение (Esc)">✕</button></div>';
 }
@@ -2554,7 +2556,7 @@ const mCSS = `
 @media(max-width:1500px){.tg{display:none}}
 .mrow{display:flex;gap:6px;align-items:center;padding:6px 14px}
 .mrow input,.mrow select{height:32px;border:1px solid var(--ln);border-radius:6px;background:var(--card);color:var(--tx);padding:0 8px;font-size:calc(14px*var(--z,1))} .mrow input[type=number]{width:70px}
-@media (max-width:760px){.mbar{display:none}}
+@media (max-width:760px){.mbar:not(.mob){display:none}.mbar.mob{left:0;right:0;bottom:0;transform:none;border-radius:16px 16px 0 0;border-bottom:0;padding:10px 10px calc(10px + env(safe-area-inset-bottom));overflow-x:auto;gap:8px;scrollbar-width:none;box-shadow:0 -4px 16px rgba(0,0,0,.18)}.mbar.mob::-webkit-scrollbar{display:none}.mbar.mob button{flex:none;white-space:nowrap;padding:9px 14px;font-size:calc(14px*var(--z,1));font-weight:600}.mbar.mob .mn{flex:none;min-width:26px;height:26px;border-radius:13px;background:var(--acc);color:#fff;font-weight:700;display:inline-flex;align-items:center;justify-content:center}}
 `;
 
 /* вид строки задачи на компьютере — по меркам Microsoft To Do: кружок 16px, текст начинается на 62px правее края карточки, шрифт ~14px (при масштабе «Крупный»); подзадачи выровнены под текст родителя */
@@ -5074,7 +5076,7 @@ function exportJson() {
 }
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
-let hDepth = 0, hSkip = 0;
+let hDepth = 0, hSkip = 0, fDown = false;   // fDown: палец на экране — историю не трогаем (Chrome считает записи без жеста «пропускаемыми», и «Назад» выкидывало из приложения после долгого тапа)
 const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (mIds().length ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (view === "files" && ui.fsel ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() { return innerLayers0() + (ui.settings && !ui.smenu ? 1 : 0); }   // подраздел настроек — свой слой «Назад»
 function innerLayers0() {
@@ -5092,6 +5094,7 @@ function syncHistory() {
   try {
     if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;   // Chrome пропускает записи истории, созданные без тапа
     const d = layerDepth();
+    if (d > hDepth && fDown) return;
     if (d > hDepth) { for (let i = hDepth; i < d; i++) history.pushState({ l: i + 1 }, ""); hDepth = d; }
     else if (d < hDepth) { const n = hDepth - d; hDepth = d; hSkip++; history.go(-n); }
   } catch (e) {}
@@ -6816,7 +6819,7 @@ function init() {
   setInterval(() => { if (!document.hidden) bkTick(); }, 120000); setTimeout(() => bkTick(), 25000);
   setInterval(() => { checkReminders(); if (S.user && todayISO() !== today) renderSoon(); ritMaybe(); ngLoad(); ngTick(); }, 20000); setTimeout(() => { ngLoad(true); ngTick(); }, 3500); setTimeout(ritMaybe, 4000);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !CFG0.TEST) navigator.serviceWorker.register("sw.js").catch(() => {});
-  window.addEventListener("popstate", onBack); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app); subDragInit(app);
+  window.addEventListener("popstate", onBack); let fT = 0; document.addEventListener("pointerdown", () => { fDown = true; clearTimeout(fT); fT = setTimeout(() => { fDown = false; syncHistory(); }, 6000); }, true); ["pointerup", "pointercancel", "touchend"].forEach(ev => document.addEventListener(ev, () => { if (fDown) { fDown = false; setTimeout(syncHistory, 0); syncHistory(); } }, true)); app.addEventListener("pointerdown", dayPointerDown); swipeInit(app); ptrInit(app); desktopInit(app); listDragInit(app); subDragInit(app);
   { const first = () => { document.removeEventListener("click", first, true); setTimeout(syncHistory, 0); }; document.addEventListener("click", first, true); }
   try { const q = new URLSearchParams(location.search); if (q.get("url") || q.get("text") || q.get("title")) { pendingShare = { title: q.get("title") || "", text: q.get("text") || "", url: q.get("url") || "" }; history.replaceState(null, "", location.pathname); } } catch (e) {}
   try { const q = new URLSearchParams(location.search); if (q.get("add")) { pendingAdd = true; voiceAuto = q.get("add") !== "0" && q.get("voice") !== "0"; q.delete("add"); q.delete("voice"); const r = q.toString(); history.replaceState(null, "", location.pathname + (r ? "?" + r : "")); } else if (jget("mytasks_openadd", false) && !q.get("t") && !q.get("url") && !q.get("text")) { pendingAdd = true; voiceAuto = true; } } catch (e) {}
