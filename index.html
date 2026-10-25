@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 16:00";
+const BUILD = "25.10 16:15";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -7046,7 +7046,7 @@ if (CFG0.TEST) window.__t = { mvOpen, themeFx, TRK, trkMetroPath, trkMetroGraph,
 let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
 function loadHealth() {
   if (hlLoading || HLM) return; hlLoading = true;
-  const ok = () => { try { HLM = window.HEALTH_INIT({ S, ic, esc, $, render, toast, mtopHTML, uid, todayISO, addDays, parseISO, pad2, WDS, acts, mdOk, sb: () => sb, view: () => view }); } catch (e) { console.error(e); toast("Не удалось открыть «Здоровье»"); } hlLoading = false; render(); };
+  const ok = () => { try { HLM = window.HEALTH_INIT({ S, ic, esc, $, render, toast, mtopHTML, uid, todayISO, addDays, parseISO, pad2, WDS, acts, mdOk, ai: aiCall, sb: () => sb, view: () => view }); } catch (e) { console.error(e); toast("Не удалось открыть «Здоровье»"); } hlLoading = false; render(); };
   if (window.HEALTH_INIT) return ok();
   const sc = document.createElement("script"); sc.src = "health.js"; sc.onload = ok; sc.onerror = () => { hlLoading = false; toast("Нет связи: «Здоровье» не загрузилось"); }; document.head.appendChild(sc);
 }

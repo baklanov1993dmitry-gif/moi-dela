@@ -60,13 +60,65 @@ window.HEALTH_INIT = function (X) {
   const dayKey = iso => { const d = new Date(iso); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); };
   const hhmm = iso => { const d = new Date(iso); return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); };
   const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
-  const dayLabel = k => { const t = todayISO(); if (k === t) return "Сегодня"; if (k === addDays(t, -1)) return "Вчера"; const d = parseISO(k); return WDS[d.getDay()] + ", " + d.getDate() + " " + MONTHS[d.getMonth()]; };
-  const shortD = k => { const d = parseISO(k); return d.getDate() + " " + MONTHS[d.getMonth()].slice(0, 3) + (MONTHS[d.getMonth()].length > 3 ? "" : ""); };
+  const dayLabel = k => { const t = todayISO(); if (k === t) return "Сегодня"; if (k === addDays(t, -1)) return "Вчера"; const d = parseISO(k); return WDS[d.getDay()] + ", " + d.getDate() + " " + MONTHS[d.getMonth()] + (d.getFullYear() !== parseISO(t).getFullYear() ? " " + d.getFullYear() : ""); };
+  const shortD = k => { const d = parseISO(k); return d.getDate() + " " + MONTHS[d.getMonth()].slice(0, 3) + (d.getFullYear() !== parseISO(todayISO()).getFullYear() ? " " + d.getFullYear() : ""); };
   const plural = (n, a, b, c) => { const m = n % 100, d = n % 10; return m > 10 && m < 15 ? c : d === 1 ? a : d >= 2 && d <= 4 ? b : c; };
   const daysBetween = (a, b) => Math.round((parseISO(b) - parseISO(a)) / 864e5);
   const norm = s => String(s || "").trim().toLowerCase();
   const tagsOf = n => { const r = []; String((n.note || "") + " " + (n.name || "")).replace(/(^|\s)#([\p{L}\d_-]{2,30})/gu, (m, a, b) => { b = b.toLowerCase(); if (r.indexOf(b) < 0) r.push(b); return m; }); return r; };
   const tagCounts = () => { const c = {}; all().forEach(n => tagsOf(n).forEach(t => { c[t] = (c[t] || 0) + 1; })); return Object.keys(c).map(t => [t, c[t]]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
+  /* темы по времени: сколько дней с записями на каждый тег по месяцам/кварталам */
+  function tagSeries(per, forceQ) {
+    const t = todayISO(), from = addDays(t, -per + 1), items = all().filter(n => ["mood", "sleep", "bp"].indexOf(n.kind) < 0 && dayKey(n.at) >= from);
+    const days = {}, mset = new Set();
+    items.forEach(n => { const d = dayKey(n.at); mset.add(d.slice(0, 7)); tagsOf(n).forEach(tg => { (days[tg] = days[tg] || {})[d] = 1; }); });
+    const ms = Array.from(mset).sort(); if (!ms.length) return { labels: [], rows: [], unit: "месяцам" };
+    const span = (+ms[ms.length - 1].slice(0, 4) - +ms[0].slice(0, 4)) * 12 + (+ms[ms.length - 1].slice(5) - +ms[0].slice(5)) + 1, q = forceQ || span > 24;
+    const key = d => q ? d.slice(0, 4) + " Q" + (Math.floor((+d.slice(5, 7) - 1) / 3) + 1) : d.slice(0, 7);
+    const labels = []; { let y = +ms[0].slice(0, 4), m = +ms[0].slice(5), ey = +ms[ms.length - 1].slice(0, 4), em = +ms[ms.length - 1].slice(5); while (y < ey || (y === ey && m <= em)) { const k = key(y + "-" + pad2(m) + "-01"); if (labels.indexOf(k) < 0) labels.push(k); m++; if (m > 12) { m = 1; y++; } } }
+    const rows = Object.keys(days).map(tg => { const ds = Object.keys(days[tg]), counts = labels.map(() => 0); ds.forEach(d => { counts[labels.indexOf(key(d))]++; }); return { tag: tg, days: ds.length, counts }; }).sort((a, b) => b.days - a.days || a.tag.localeCompare(b.tag));
+    return { labels, rows, unit: q ? "кварталам" : "месяцам" };
+  }
+  function tagTimeline() {
+    const ts = tagSeries(H.per); if (!ts.rows.length) return "";
+    const rows = ts.rows.slice(0, 8), mx = Math.max(1, ...rows.map(r => Math.max(...r.counts)));
+    return '<div class="hl-card"><div class="hl-ct">Темы по времени <small style="font-weight:400;opacity:.65">дней с записями по ' + ts.unit + "</small></div>" +
+      rows.map(r => '<div class="hl-tl" data-a="hltag" data-v="' + esc(r.tag) + '"><span>#' + esc(r.tag) + '</span><div class="sp">' + r.counts.map((c, i) => '<i title="' + esc(ts.labels[i]) + ": " + c + '" style="height:' + (c ? Math.max(8, 100 * c / mx) : 2) + '%"></i>').join("") + "</div><em>" + r.days + "</em></div>").join("") +
+      '<div class="hl-tll"><span>' + esc(ts.labels[0]) + "</span><span>" + esc(ts.labels[ts.labels.length - 1]) + "</span></div></div>";
+  }
+  /* реальные даты из текста записей (у импортированных стоит день импорта) */
+  const MON = { янв: 1, фев: 2, мар: 3, апр: 4, май: 5, мая: 5, июн: 6, июл: 7, авг: 8, сен: 9, окт: 10, ноя: 11, дек: 12 };
+  function textDate(n) {
+    const t = ((n.name || "") + " " + (n.note || "")).toLowerCase(), c = [];
+    let m = /(?<![\d.,])(\d{1,2})\.(\d{2})(?:\.(\d{4}|\d{2}))?(?![\d])/.exec(t); if (m && +m[1] >= 1 && +m[1] <= 31 && +m[2] >= 1 && +m[2] <= 12) c.push({ i: m.index, d: +m[1], m: +m[2], y: m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : null });
+    m = /(?<![\d.])(\d{1,2})\s*(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-я]*\.?(?:\s*(\d{4}))?/.exec(t); if (m && +m[1] >= 1 && +m[1] <= 31) c.push({ i: m.index, d: +m[1], m: MON[m[2]], y: m[3] ? +m[3] : null });
+    c.sort((a, b) => a.i - b.i); return c[0] || null;
+  }
+  const DNUM = (y, m, d) => Math.round(Date.UTC(y, m - 1, d) / 86400000);
+  const DUNDO = "mytasks_health_date_undo";
+  function datefix() {
+    boot(); const its = all().filter(n => ["mood", "sleep", "bp"].indexOf(n.kind) < 0), cnt = {};
+    its.forEach(n => { const k = dayKey(n.at); cnt[k] = (cnt[k] || 0) + 1; });
+    const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]; if (!top || cnt[top] < 20) return { fixed: 0, nodate: 0, total: 0, none: true };
+    const grp = its.filter(n => dayKey(n.at) === top), td = grp.map(n => ({ n, d: textDate(n) }));
+    const anc = td.filter(x => x.d && x.d.y).map(x => DNUM(x.d.y, x.d.m, x.d.d)).filter(v => v < DNUM(+top.slice(0, 4), +top.slice(5, 7), +top.slice(8, 10)) + 1), lo = Math.min.apply(null, anc), hi = Math.max.apply(null, anc);
+    const fallY = +top.slice(0, 4), snap = {}; let fixed = 0, nodate = 0;
+    td.forEach(x => {
+      if (!x.d) { nodate++; return; }
+      let y = x.d.y;
+      if (!y) { if (anc.length) { let best = 1e9; for (let yy = new Date(lo * 86400000).getUTCFullYear() - 1; yy <= new Date(hi * 86400000).getUTCFullYear() + 1; yy++) { const v = DNUM(yy, x.d.m, x.d.d), dist = v < lo ? lo - v : v > hi ? v - hi : 0; if (dist < best) { best = dist; y = yy; } } } else y = fallY; }
+      if (DNUM(y, x.d.m, x.d.d) > DNUM(+top.slice(0, 4), +top.slice(5, 7), +top.slice(8, 10))) return;
+      const at = new Date(y, x.d.m - 1, x.d.d, 12, 0, 0).toISOString(); if (isNaN(new Date(at))) return;
+      snap[x.n.id] = x.n.at; x.n.at = at; H.pend[x.n.id] = "u"; fixed++;
+    });
+    if (fixed) { js(DUNDO, snap); save(); flush(); }
+    return { fixed, nodate, total: grp.length };
+  }
+  function datefixUndo() {
+    boot(); const snap = jg(DUNDO, null); if (!snap) return 0; let n = 0;
+    Object.keys(snap).forEach(id => { const x = H.items[id]; if (!x) return; x.at = snap[id]; H.pend[id] = "u"; n++; });
+    try { localStorage.removeItem(DUNDO); } catch (e) {} save(); flush(); return n;
+  }
   /* разметка тегов и типов по ключевым словам (кнопка «🏷 Разметить» над чипами) */
   const RT_RULES = [["спазмы", /судорог|спазм|подергив|трясут|вибрир|дергал|забит/], ["онемение", /онемен|немени/], ["температура", /(?<![\d.])3[5-9][.,]\d(?!\d)|темп(?![\p{L}])|температур|(?<![\p{L}])жар(?![\p{L}])|жара/u], ["спина", /спин|поясниц|позвон|лопатк/], ["ноги", /(?<![\p{L}])ног|икр|стоп|колен|бедр|лодыж|ягодиц/u], ["шея", /(?<![\p{L}])шее|(?<![\p{L}])шеи|лимфоузл/u], ["глаза", /глаз|зрени|мушк/], ["лекарства", /парацетом|сирдалуд|аэртал|баклосан|келтикан|мовалис|таблет|антибиот|флуконоз|сумамед|тайлол|гексорал|цефазолин|магне/], ["спорт", /бассейн|плава|плавал|(?<![\p{L}])зал(?![\p{L}])|велик|физ|зарядк/u], ["сердце", /сердц|в груди|боли в груд/], ["живот", /(?<![\p{L}])стул|живот|понос|гастро|метеоризм/u]];
   const RT_SYM = ["спазмы", "онемение", "температура", "спина", "ноги", "шея", "глаза", "живот", "сердце"];
@@ -160,7 +212,7 @@ window.HEALTH_INIT = function (X) {
   }
   function tagBar() {
     const tc = tagCounts(), cur = H.flt && H.flt.tag || "", und = !!jg(RT_UNDO, null);
-    const tools = '<button class="hl-rt" data-a="hlretag" title="Расставить теги и типы по ключевым словам">🏷 Разметить</button>' + (und ? '<button class="hl-rt" data-a="hlretagundo">↶ Отменить разметку</button>' : "");
+    const tools = '<button class="hl-rt" data-a="hlretag" title="Расставить теги и типы по ключевым словам">🏷 Разметить</button>' + (und ? '<button class="hl-rt" data-a="hlretagundo">↶ Отменить разметку</button>' : "") + '<button class="hl-rt" data-a="hldatefix" title="Поставить реальные даты из текста записей">📅 Даты по тексту</button>' + (jg(DUNDO, null) ? '<button class="hl-rt" data-a="hldateundo">↶ Вернуть даты</button>' : "");
     if (!tc.length) return '<div class="hl-tgs">' + tools + "</div>";
     return '<div class="hl-tgs">' + tools + tc.slice(0, 30).map(x => '<button class="' + (cur === x[0] ? "on" : "") + '" data-a="hltag" data-v="' + esc(x[0]) + '">#' + esc(x[0]) + "<i>" + x[1] + "</i></button>").join("") + "</div>";
   }
@@ -189,30 +241,35 @@ window.HEALTH_INIT = function (X) {
   function topBars() {
     const s = stats(H.per), arr = Object.values(s.sym).sort((a, b) => b.days.size - a.days.size).slice(0, 6), mx = Math.max(1, ...arr.map(x => x.days.size));
     const med = Object.values(s.med).sort((a, b) => b.days.size - a.days.size).slice(0, 6);
-    const per = '<div class="hl-per">' + [30, 90, 365].map(p => '<button class="' + (H.per === p ? "on" : "") + '" data-a="hlper" data-v="' + p + '">' + (p === 365 ? "год" : p + " дн") + "</button>").join("") + "</div>";
+    const per = '<div class="hl-per">' + [30, 90, 365, 36500].map(p => '<button class="' + (H.per === p ? "on" : "") + '" data-a="hlper" data-v="' + p + '">' + (p === 36500 ? "всё" : p === 365 ? "год" : p + " дн") + "</button>").join("") + "</div>";
     const bar = (o, c, a) => '<div class="hl-b" data-a="hlflt" data-v="' + esc(norm(o.name)) + '"><span>' + esc(o.name) + '</span><div><i style="width:' + Math.max(6, 100 * o.days.size / mx) + "%;background:" + c + '"></i></div><em>' + o.days.size + " " + plural(o.days.size, "день", "дня", "дней") + "</em></div>";
     return '<div class="hl-card"><div class="hl-ct">Частота' + per + "</div>" + (arr.length ? arr.map(o => bar(o, "linear-gradient(90deg,#ff9e9e,#ff6b6b)")).join("") : '<div class="hl-hint">Симптомов за период нет — отлично.</div>') + (med.length ? '<div class="hl-ct" style="margin-top:14px">Лекарства</div>' + med.map(o => bar(o, "linear-gradient(90deg,#99e6d8,#14b8a6)")).join("") : "") + "</div>";
   }
   function overview() {
     const ins = insights();
     const cards = ins.length ? ins.map(i => '<div class="hl-in" style="--c:' + i.c + '" data-a="hlfltx" data-f=\'' + esc(JSON.stringify(i.f)) + '\'><div class="e">' + i.e + "</div><div><b>" + esc(i.t) + "</b><span>" + esc(i.x) + "</span></div></div>").join("") : '<div class="hl-in ok" style="--c:#22c55e"><div class="e">✅</div><div><b>Тревожных закономерностей нет</b><span>Продолжай записывать — по истории они становятся заметны.</span></div></div>';
-    return '<div class="hl-sec">На что обратить внимание</div>' + cards + '<div class="hl-fine">Это подсказки по частоте записей, а не диагноз.</div>' + heat() + topBars();
+    return '<div class="hl-sec">На что обратить внимание</div>' + cards + '<div class="hl-fine">Это подсказки по частоте записей, а не диагноз.</div>' + heat() + tagTimeline() + topBars();
   }
   function summaryData() {
     const t = todayISO(), from = addDays(t, -H.per + 1), items = all().filter(n => dayKey(n.at) >= from || (n.kind === "ill" && (!n.until || dayKey(n.until) >= from)));
     const ill = items.filter(n => n.kind === "ill").sort((a, b) => a.at.localeCompare(b.at)), s = stats(H.per);
-    const L = []; L.push("Сводка о самочувствии за " + H.per + " " + plural(H.per, "день", "дня", "дней") + " (" + shortD(from) + " — " + shortD(t) + ")");
+    const L = []; const ALL = H.per >= 36500, f0 = ALL && items.length ? dayKey(items.reduce((a, n) => n.at < a ? n.at : a, items[0].at)) : from; L.push(ALL ? "Сводка о самочувствии за всё время (" + shortD(f0) + " — " + shortD(t) + ")" : "Сводка о самочувствии за " + H.per + " " + plural(H.per, "день", "дня", "дней") + " (" + shortD(from) + " — " + shortD(t) + ")");
     if (ill.length) { L.push(""); L.push("Болезни:"); ill.forEach(n => { const a = dayKey(n.at), b = n.until ? dayKey(n.until) : t, d = daysBetween(a, b) + 1; L.push("• " + n.name + ": с " + shortD(a) + (n.until ? " по " + shortD(b) : " (продолжается)") + ", " + d + " " + plural(d, "день", "дня", "дней") + (n.note ? ". " + n.note : "")); const inside = items.filter(x => x.ep === n.id && x.kind === "med"); if (inside.length) { const u = {}; inside.forEach(x => { u[x.name] = (u[x.name] || 0) + 1; }); L.push("   лечение: " + Object.keys(u).map(k => k + " ×" + u[k]).join(", ")); } }); }
-    const sy = Object.values(s.sym).sort((a, b) => b.days.size - a.days.size); if (sy.length) { L.push(""); L.push("Симптомы (в скольких днях отмечены, макс. сила):"); sy.forEach(o => L.push("• " + o.name + ": " + o.days.size + " " + plural(o.days.size, "день", "дня", "дней") + ", макс. " + (o.max ? SEVN[o.max - 1] : "—"))); }
+    const sy = Object.values(s.sym).sort((a, b) => b.days.size - a.days.size); if (sy.length) { L.push(""); L.push("Симптомы (в скольких днях отмечены, макс. сила):"); sy.slice(0, 15).forEach(o => L.push("• " + o.name + ": " + o.days.size + " " + plural(o.days.size, "день", "дня", "дней") + ", макс. " + (o.max ? SEVN[o.max - 1] : "—"))); if (sy.length > 15) L.push("• …и ещё " + (sy.length - 15) + " отдельных записей (см. темы ниже)"); }
     const me = Object.values(s.med).sort((a, b) => b.days.size - a.days.size); if (me.length) { L.push(""); L.push("Лекарства (дней приёма / всего раз):"); me.forEach(o => L.push("• " + o.name + ": " + o.days.size + " / " + o.n)); }
+    { const ts = tagSeries(H.per, true); if (ts.rows.length) { L.push(""); L.push("Темы (дней с записями; динамика по " + ts.unit + "):"); ts.rows.slice(0, 8).forEach(r => L.push("• #" + r.tag + ": " + r.days + " дн. — " + r.counts.map((c, i) => c ? ts.labels[i] + ": " + c : "").filter(Boolean).join(", "))); } }
     const dv = items.filter(n => n.kind === "doc" || n.kind === "test").sort((a, b) => a.at.localeCompare(b.at)); if (dv.length) { L.push(""); L.push("Визиты и анализы:"); dv.forEach(n => L.push("• " + shortD(dayKey(n.at)) + " — " + n.name + (n.note ? ": " + n.note : ""))); }
     if (L.length === 1) L.push("", "Записей за период нет.");
     return L;
   }
+  function aiCard() {
+    const a = H.ai; if (!a) return "";
+    return '<div class="hl-card hl-aic"><div class="hl-ct">🤖 Разбор Gemini</div>' + (a.busy ? "<div>Думаю над записями…</div>" : a.err ? "<div>Не вышло: " + esc(a.err) + "</div>" : '<div style="white-space:pre-wrap;line-height:1.5">' + esc(a.text) + "</div>") + "</div>";
+  }
   function doctor() {
     const L = summaryData(), body = L.slice(1).map(l => l === "" ? "<br>" : /^•|^ {3}/.test(l) ? '<div class="li">' + esc(l.replace(/^•\s*/, "")) + "</div>" : '<div class="hh">' + esc(l) + "</div>").join("");
-    const per = '<div class="hl-per">' + [30, 90, 365].map(p => '<button class="' + (H.per === p ? "on" : "") + '" data-a="hlper" data-v="' + p + '">' + (p === 365 ? "год" : p + " дн") + "</button>").join("") + "</div>";
-    return '<div class="hl-sec">Сводка для врача ' + per + '</div><div class="hl-paper"><div class="pt">' + esc(L[0]) + "</div>" + body + '</div><div class="hl-acts"><button class="hl-pri" data-a="hlcopy">📋 Скопировать текст</button><button class="hl-ghost" data-a="hlprint">🖨️ Открыть для печати / PDF</button></div><div class="hl-fine">Для PDF: «Открыть для печати» → печать → «Сохранить как PDF».</div>';
+    const per = '<div class="hl-per">' + [30, 90, 365, 36500].map(p => '<button class="' + (H.per === p ? "on" : "") + '" data-a="hlper" data-v="' + p + '">' + (p === 36500 ? "всё" : p === 365 ? "год" : p + " дн") + "</button>").join("") + "</div>";
+    return '<div class="hl-sec">Сводка для врача ' + per + '</div><div class="hl-paper"><div class="pt">' + esc(L[0]) + "</div>" + body + '</div><div class="hl-acts"><button class="hl-pri" data-a="hlcopy">📋 Скопировать текст</button><button class="hl-ghost" data-a="hlai">🤖 Разбор Gemini</button><button class="hl-ghost" data-a="hlprint">🖨️ Открыть для печати / PDF</button></div><div class="hl-fine">Для PDF: «Открыть для печати» → печать → «Сохранить как PDF».</div>' + aiCard();
   }
   function formHTML() {
     const f = H.form; if (!f) return "";
@@ -264,6 +321,14 @@ window.HEALTH_INIT = function (X) {
     hltab(a) { H.tab = a.dataset.v; H.open = null; render(); },
     hlper(a) { H.per = +a.dataset.v; render(); },
     hlretag() { const r = retag(); toast(r.tg || r.ty ? "Размечено: теги " + r.tg + ", симптомов " + r.ty : "Нечего размечать"); render(); },
+    hldatefix() { const r = datefix(); toast(r.none ? "Нечего исправлять: у записей уже разные даты" : "Даты обновлены: " + r.fixed + " из " + r.total + (r.nodate ? " · без даты в тексте: " + r.nodate : "")); render(); },
+    hldateundo() { const n = datefixUndo(); toast(n ? "Даты возвращены: " + n : "Нечего возвращать"); render(); },
+    hlai() {
+      if (H.ai && H.ai.busy) return; if (!X.ai) { toast("ИИ недоступен"); return; }
+      if (!confirm("Сводка (без имени и почты) уйдёт в Google Gemini для разбора. Продолжить?")) return;
+      const L = summaryData(); H.ai = { busy: true }; render();
+      X.ai("health", { summary: L.join("\n").slice(0, 14000) }).then(t => { H.ai = { text: t }; render(); }).catch(e => { H.ai = { err: String(e && e.message || e) }; render(); });
+    },
     hlretagundo() { const n = retagUndo(); toast(n ? "Разметка отменена: " + n : "Нечего отменять"); render(); },
     hltag(a) { const v = a.dataset.v; H.flt = v && !(H.flt && H.flt.tag === v) ? { tag: v } : null; H.tab = "feed"; render(); },
     hlflt(a) { H.flt = a.dataset.v ? { name: a.dataset.v } : null; H.tab = "feed"; render(); },
@@ -325,6 +390,7 @@ window.HEALTH_INIT = function (X) {
 @keyframes hlin{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
 .hl-fl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:calc(14px*var(--z,1));color:var(--sub)}.hl-fl button{border:0;background:var(--hov);border-radius:999px;padding:5px 12px;color:var(--tx);cursor:pointer;margin-left:auto}
 .hl-empty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:48px 16px;color:var(--sub)}.hl-empty .em{font-size:54px}.hl-empty b{color:var(--tx);font-size:calc(18px*var(--z,1))}
+.hl-tl{display:flex;align-items:flex-end;gap:8px;padding:5px 0;cursor:pointer}.hl-tl>span{flex:0 0 38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hl-tl .sp{flex:1;display:flex;align-items:flex-end;gap:2px;height:26px}.hl-tl .sp i{flex:1;min-width:2px;background:var(--ac,#4a7bd0);border-radius:2px 2px 0 0;opacity:.85}.hl-tl em{flex:0 0 28px;text-align:right;font-style:normal;opacity:.65;font-size:.9em}.hl-tll{display:flex;justify-content:space-between;font-size:.8em;opacity:.55;margin-top:4px}.hl-aic{margin-top:12px}
 .hl-pri{border:0;border-radius:999px;padding:11px 22px;color:#fff;font-weight:600;font-size:calc(15px*var(--z,1));font-family:inherit;background:linear-gradient(135deg,#7c5cff,#e8508a);box-shadow:0 8px 20px -8px rgba(232,80,138,.7);cursor:pointer;transition:transform .2s cubic-bezier(.3,1.6,.5,1)}.hl-pri:active{transform:scale(.95)}
 .hl-ghost{border:0;background:var(--hov);color:var(--tx);border-radius:999px;padding:11px 18px;font-weight:600;font-size:calc(15px*var(--z,1));font-family:inherit;cursor:pointer}
 .hl-sec{font:700 calc(19px*var(--z,1)) Charter,Georgia,serif;margin:16px 0 10px;display:flex;align-items:center;gap:12px}
