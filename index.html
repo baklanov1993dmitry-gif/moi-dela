@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 17:58";
+const BUILD = "25.10 18:03";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3578,7 +3578,7 @@ function fitPop() {
   pop.style.maxHeight = (vh - 2 * m) + "px";
   const r = pop.getBoundingClientRect();
   let top = parseFloat(pop.style.top) || r.top, left = parseFloat(pop.style.left) || r.left;
-  if (top + r.height > vh - m) top = Math.max(m, vh - m - r.height);
+  if (top + r.height > vh - m) top = (ui.pop && ui.pop.p === "ctx" && top - r.height >= m) ? top - r.height : Math.max(m, vh - m - r.height);   // контекстное меню раскрывается вверх от клика, если снизу тесно
   if (left + r.width > vw - m) left = Math.max(m, vw - m - r.width);
   pop.style.top = top + "px"; pop.style.left = left + "px";
 }
@@ -3621,7 +3621,7 @@ const CSS = `
 .ghead .tx{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ghead .ibtn{width:26px;height:26px;opacity:0}.ghead:hover .ibtn{opacity:1}
 .lfoot{display:flex;align-items:center;border-top:1px solid var(--ln);padding-right:6px;flex-shrink:0}
-.lfoot .chip{flex:1;color:var(--acc)}
+.lfoot .chip{flex:1;color:var(--acc)} .lfoot.lft{border-top:0;border-bottom:1px solid var(--ln)}
 .railed .tx,.railed .n,.railed .ghead,.railed .lfoot .ibtn{display:none}
 .railed .chip{justify-content:center;padding:0}
 .mhead{display:flex;align-items:center;gap:6px;padding:14px 28px 4px;flex-wrap:wrap}
@@ -3912,7 +3912,7 @@ function mtopHTML(vi, cnt, extra) {
   return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + (extra || "") + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" || view === "notes" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
 function lheadHTML() {
-  if (!isMobile()) return '<div class="lhead"><button class="ibtn" data-a="rail" title="Свернуть/развернуть">' + ic("menu", 20) + "</button></div>";
+  if (!isMobile()) return "";
   const em = S.user ? S.user.email || "?" : "";
   return '<div class="lacct"><button class="lacc" data-a="pop" data-p="acct"><span class="av">' + esc(em.slice(0, 2).toUpperCase()) + '</span><span class="lt"><b>' + esc(em.split("@")[0]) + "</b></span>" + ic("chevd", 14) + '</button><button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="settings">' + ic("gear", 20) + '</button></div><div id="sync" class="lsync" data-a="sync"></div>';
 }
@@ -3930,7 +3930,7 @@ function qaHTML() {
 function topHTML() {
   if (isMobile()) return "";
   const em = S.user ? (S.user.email || "?").slice(0, 2).toUpperCase() : "";
-  return '<div id="top"><div class="brand">Мои дела</div>' +
+  return '<div id="top"><button class="ibtn" data-a="rail" title="Свернуть/развернуть меню" style="margin-left:6px">' + ic("menu", 20) + '</button><div class="brand" style="padding-left:6px">Мои дела</div>' +
     '<div class="searchbox">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '">' + (ui.q ? '<button class="qx" data-a="qclear">' + ic("x", 14) + "</button>" : "") + "</div>" +
     '<span id="sync" data-a="sync"></span>' +
     '<button class="ibtn" data-a="settings" title="Настройки">' + ic("gear", 19) + "</button>" +
@@ -4042,7 +4042,7 @@ function weekMainHTML(vi) {
     (!over.length && !moved.length && !ahead.length && !closed.length ? '<div style="text-align:center;padding:40px 10px;color:var(--sub)">Пока нечего показывать</div>' : "") + "</div></div>";
 }
 // порядок пунктов левого меню: PR.mord = { top:[...], dia:[...], wrk:[...] } (задаётся в режиме «Порядок меню»)
-const MNU_TOP = [["myday", "Мой день"], ["day", "День по часам"], ["files", "Файлы"], ["dia", "Дневники"], ["wrk", "Работа"], ["lists", "Списки"]];
+const MNU_TOP = [["myday", "Мой день"], ["day", "День по часам"], ["files", "Файлы"], ["dia", "Дневники"], ["wrk", "Работа"], ["lists", "Списки"], ["arch", "Архив"]];
 const MNU_DIA = [["journal", "note", "Журнал", "#8764b8"], ["food", "food", "Питание", "#e3680c"], ["health", "heart", "Здоровье", "#e5484d"], ["notes", "bulb", "Заметки", "#2b88d8"], ["know", "book", "Знания", "#7c5cff"], ["trk", "pin", "Трекер", "#107c10"]];
 const MNU_WRK = [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"]];
 function mnuOrder(k, items) {
@@ -4067,14 +4067,15 @@ function leftHTML(c) {
       (col ? "" : '<div class="sbody">' + items.map(i => sm(i[0], i[1], i[2], 0, i[3])).join("") + extra + "</div>");
   };
   if (!ui._am && S.user && listsArr().length) { ui._am = 1; const old = listsArr().filter(x => (/^\s*(📦\s*)?архив/i.test(x.name) || /^\s*(📦\s*)?архив/i.test(x.group_name || "")) && x.group_name !== ARCH); if (old.length) setTimeout(() => { old.forEach(x => setListGroup(x.id, ARCH)); toast("📦 Перенёс в архив: " + old.map(x => "«" + x.name + "»").join(", ")); render(); }, 800); }
-  const ls = listsArr().filter(x => !/^файлы$/i.test(x.name)).sort((a, b) => (a.group_name === ARCH) - (b.group_name === ARCH)), seen = new Set(); let tree = "";   // архив — в самом низу
+  const ls = listsArr().filter(x => !/^файлы$/i.test(x.name)).sort((a, b) => (a.group_name === ARCH) - (b.group_name === ARCH)), seen = new Set(); let tree = "", atree = "";   // архив — в самом низу
   for (const l of ls) {
     const g = l.group_name;
     if (!g) { tree += lc(l); continue; }
     if (seen.has(g)) continue; seen.add(g);
     const mem = ls.filter(x => x.group_name === g), col = g === ARCH ? PR.collapsed[g] !== false : PR.collapsed[g];   // архив свёрнут по умолчанию
-    tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"' + (g === ARCH ? ' title="Архив: сюда убираются списки, которыми ты больше не пользуешься. Ничего не удаляется; задачи из архивных списков не попадают в «Мой день» и общие выборки, но находятся поиском. Список можно вернуть через меню списка."' : "") + '><span class="tx">' + esc(g) + '</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>";
-    if (!col) tree += '<div class="gbody">' + (g === ARCH ? '<div class="sub" style="font-size:12px;padding:2px 12px 6px;opacity:.7">Закрытые списки: ничего не удалено, задачи не мешают в «Мой день».</div>' : "") + mem.map(lc).join("") + "</div>";
+    let gh = '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"' + (g === ARCH ? ' title="Архив: сюда убираются списки, которыми ты больше не пользуешься. Ничего не удаляется; задачи из архивных списков не попадают в «Мой день» и общие выборки, но находятся поиском. Список можно вернуть через меню списка."' : "") + '><span class="tx">' + esc(g) + '</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>";
+    if (!col) gh += '<div class="gbody">' + (g === ARCH ? '<div class="sub" style="font-size:12px;padding:2px 12px 6px;opacity:.7">Закрытые списки: ничего не удалено, задачи не мешают в «Мой день».</div>' : "") + mem.map(lc).join("") + "</div>";
+      if (g === ARCH) atree += gh; else tree += gh;
   }
   const diaItems = mnuOrder("dia", MNU_DIA.filter(x => x[0] !== "trk" || S.user)), wrkItems = mnuOrder("wrk", MNU_WRK);
   const B = {
@@ -4082,12 +4083,13 @@ function leftHTML(c) {
     files: isLite() ? "" : sm("files", "clip", "Файлы", filesAll().length, "#69797e"),
     dia: isLite() ? "" : sec("dia", "Дневники", diaItems, ""),
     wrk: isLite() ? sm("week", "ccheck", "Итоги недели", 0, "#038387") : sec("wrk", "Работа", wrkItems, ""),
-    lists: '<div class="sech nocl"><span class="tx">Списки</span></div>' + tree
+    lists: (() => { const col = !!PR.collapsed["§lists"], cur = view.indexOf("list:") === 0 ? listsArr().find(x => "list:" + x.id === view && x.group_name !== ARCH) : null; return '<div class="sech" data-a="ltoggle"><span class="tx">Списки</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>" + (col ? (cur ? lc(cur) : "") : tree); })(),
+    arch: atree
   };
-  return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
+  const foot = '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="pop" data-p="ngroup" title="Новая группа списков">' + ic("fplus", 18) + '</button><button class="ibtn" data-a="mord" title="Порядок меню">' + ic("sort", 18) + "</button></div>";
+  return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() + (isMobile() ? "" : foot.replace('class="lfoot"', 'class="lfoot lft"')) +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (ui.mord ? mnuEditHTML() : mnuOrder("top", MNU_TOP).map(t => B[t[0]]).join("")) + "</div>" +
-    '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="pop" data-p="ngroup" title="Новая группа списков">' + ic("fplus", 18) + '</button><button class="ibtn" data-a="mord" title="Порядок меню">' + ic("sort", 18) + "</button></div></div>";
+    (ui.mord ? mnuEditHTML() : mnuOrder("top", MNU_TOP).map(t => B[t[0]]).join("")) + "</div>" + (isMobile() ? foot : "") + "</div>";
 }
 function metaHTML(t, showList, orphan) {
   const m = [], l = t.list_id && S.lists[t.list_id], di = dueInfo(t);
@@ -5308,6 +5310,7 @@ const acts = {
   menu() { if (!ui.left && menuSlideOpen()) return; ui.left = !ui.left; render(); },
   rail() { if (innerWidth <= 760) { ui.left = false; } else PR.rail = !PR.rail; savePrefs(); render(); },
   wkrefresh() { wkLoad(true); render(); },
+  ltoggle() { PR.collapsed["§lists"] = !PR.collapsed["§lists"]; savePrefs(); render(); },
   stoggle(a) { const g = a.dataset.g; PR.collapsed[g] = PR.collapsed[g] === false; savePrefs(); render(); },
   gtoggle(a) { const g = a.dataset.g; PR.collapsed[g] = g === ARCH ? PR.collapsed[g] === false : !PR.collapsed[g]; savePrefs(); render(); },
   ggtoggle(a) { const k = a.dataset.k; ui.gcol[k] = !ui.gcol[k]; render(); },
