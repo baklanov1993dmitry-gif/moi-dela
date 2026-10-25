@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 17:56";
+const BUILD = "25.10 17:58";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3567,7 +3567,13 @@ function fitPop() {
   document.querySelectorAll("#pop .drum").forEach(d => { d.scrollTop = (+d.dataset.sel || 0) * 36; });
   if (isMobile()) return;
   // окно браузера может частично уходить под панель задач Windows — берём реально видимую высоту
-  let vh = window.innerHeight; try { const vis = (screen.availTop || 0) + screen.availHeight - (window.screenY + window.outerHeight - window.innerHeight); if (vis > 260 && vis < vh) vh = vis; } catch (e) {}
+  let vh = window.innerHeight; try {
+    // масштаб страницы (Ctrl +/−) сдвигает соотношение CSS-пикселей и экрана → считаем его по ширине окна
+    const zs = [.25, .33, .5, .67, .75, .8, .9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3], zr = window.outerWidth / window.innerWidth;
+    const z = zs.reduce((b, v) => Math.abs(v - zr) < Math.abs(b - zr) ? v : b, 1);
+    const vis = ((screen.availTop || 0) + screen.availHeight - window.screenY - (window.outerHeight - window.innerHeight * z)) / z;
+    if (vis > 260 && vis < vh - 2) vh = vis;
+  } catch (e) {}
   const m = 12, vw = window.innerWidth;
   pop.style.maxHeight = (vh - 2 * m) + "px";
   const r = pop.getBoundingClientRect();
