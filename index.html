@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 18:03";
+const BUILD = "25.10 18:18";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3289,7 +3289,7 @@ function passFlt(t) {
 const fltCount = () => { const f = PR.flt[view] || {}; return (f.date ? 1 : 0) + (f.star ? 1 : 0) + (f.rem ? 1 : 0) + (f.cat ? 1 : 0); };
 function fltBtns() {
   const n = fltCount();
-  return '<button class="tool ' + (n ? "on" : "") + '" data-a="pop" data-p="filter">▽ Фильтр' + (n ? " · " + n : "") + '</button><button class="tool" data-a="submode" title="Показывать подзадачи внутри списка или только задачи верхнего уровня">' + (PR.subs === "top" ? "☰ Только главные" : "☷ С подзадачами") + "</button>";
+  return '<button class="tool ' + (n ? "on" : "") + '" data-a="pop" data-p="filter" title="Фильтр">▽<span class="tl"> Фильтр</span>' + (n ? " · " + n : "") + '</button><button class="tool" data-a="submode" title="Показывать подзадачи внутри списка или только задачи верхнего уровня">' + (PR.subs === "top" ? "☰" : "☷") + '<span class="tl"> ' + (PR.subs === "top" ? "Только главные" : "С подзадачами") + "</span></button>";
 }
 function mToolsHTML() {
   const sc = PR.sort[view], g = getGroup(view), gr = g !== (view === "planned" ? "due" : "none"), n = fltCount(), any = !!sc || gr || n, f = PR.flt[view] || {};
@@ -3638,6 +3638,11 @@ const CSS = `
 .mrow:has(.mrc:empty):has(.mchips:empty){display:none}}
 .sortbar{padding:6px 28px 0;display:flex;justify-content:flex-end}
 .mrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.mchips{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+@media(min-width:761px){#main{container-type:inline-size}
+.mhead{flex-wrap:nowrap}.mhead h1{min-width:0;flex-shrink:1}.mhead h1 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mhead .tool,.mhead .seg{flex-shrink:0;white-space:nowrap}
+.mrow{flex-wrap:nowrap}.mchips{flex-wrap:nowrap;min-width:0;overflow:hidden;white-space:nowrap;gap:10px}
+@container (max-width:900px){.mhead .tool .tl{display:none}.mchips .dsk{display:none}}}
+
 .sortchip{display:inline-flex;align-items:center;gap:6px;font-size:calc(12px*var(--z,1));font-weight:600;color:var(--tx)}
 .addbar{margin:10px 28px 12px;background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);display:flex;align-items:center;gap:12px;padding:0 14px;height:52px;color:var(--acc);flex-shrink:0}
 .addbar input{flex:1;background:transparent;border:0;color:var(--tx);font-size:calc(14px*var(--z,1));height:100%;min-width:0}
@@ -4124,7 +4129,7 @@ function mainHTML(items, done, vi) {
     (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
     (view !== "search" && !isMobile() ? '<span class="seg"><button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1" title="Сетка">' + ic("grid", 16) + '</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0" title="Список">' + ic("list", 16) + '</button></span>' +
-      '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + ' Сортировка</button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + " Группировать</button>" + fltBtns() + '<button class="tool" data-a="trgo" title="Пройти задачи по одной и расставить сроки">⚡ Разобрать</button>' : "") + "</div>" +
+      '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + '<span class="tl"> Сортировка</span></button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + '<span class="tl"> Группировать</span></button>' + fltBtns() + '<button class="tool" data-a="trgo" title="Пройти задачи по одной и расставить сроки">⚡<span class="tl"> Разобрать</span></button>' : "") + "</div>" +
     '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) : "") + '</span><span class="mchips">' + (view === "search" ? srchModeHTML() : "") + (isMobile() ? "" : sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + (isMobile() ? "" : fltBarHTML()) + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() + (items.length ? '<div class="trgrow"><button class="trgo" data-a="trgo">⚡ Разобрать сроки · ' + items.length + "</button></div>" : "") : "");
   if (view !== "search" && !isMobile()) h += addBarHTML();
   if (view === "myday" && ui.sugg) {
