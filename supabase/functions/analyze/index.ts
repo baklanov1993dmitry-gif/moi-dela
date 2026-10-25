@@ -52,7 +52,7 @@ async function gemini(sys: string, body: string, search = false, label = "Дан
     let r: Response;
     try {
       r = await call(search);
-      if (search && !r.ok && r.status === 400) r = await call(false);   // поиск не принят — отвечаем без него
+      if (search && !r.ok && (r.status === 400 || r.status === 429)) r = await call(false);   // поиск не принят или у него своя квота (429) — отвечаем без него
     } catch (e) { lastErr = "нет ответа за 25 с [" + model + "]"; continue; }   // таймаут/сеть — пробуем следующую модель
     j = await r.json().catch(() => ({}));
     if (r.ok) { lastErr = ""; used = model; break; }
