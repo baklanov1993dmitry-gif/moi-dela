@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 18:18";
+const BUILD = "25.10 18:20";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -711,7 +711,8 @@ function toggleDone(id) {
   if (d && t.repeat_rule) {                                    // повторяющаяся: закрыли — появился следующий экземпляр
     const nd = nextDue(t); let rem = null;
     if (t.remind_at) { const r = new Date(t.remind_at), x = parseISO(nd); x.setHours(r.getHours(), r.getMinutes(), 0, 0); rem = x.toISOString(); }
-    addTask({ list_id: t.list_id, title: t.title, due: nd, category: t.category, starred: t.starred, note: t.note, est_minutes: t.est_minutes, repeat_rule: t.repeat_rule, remind_at: rem, steps: (t.steps || []).map(s => ({ t: s.t, d: false })) });
+    const nt = addTask({ list_id: t.list_id, title: t.title, due: nd, category: t.category, starred: t.starred, note: t.note, est_minutes: t.est_minutes, repeat_rule: t.repeat_rule, remind_at: rem, steps: (t.steps || []).map(s => ({ t: s.t, d: false })) });
+    if (nt && nt.id) kidsOf(id).slice().sort((x, y) => (x.created_at || "").localeCompare(y.created_at || "")).forEach(k => addTask({ parent_id: nt.id, list_id: k.list_id, title: k.title, due: k.due && k.due === t.due ? nd : null, category: k.category, starred: k.starred, note: k.note, est_minutes: k.est_minutes, steps: (k.steps || []).map(z => ({ t: z.t, d: false })) }));   // подзадачи переезжают в следующий экземпляр (невыполненными)
     toast("Следующий раз: " + dateLong(parseISO(nd)));
   }
   upd(id, { done: d, done_at: d ? nowISO() : null });
