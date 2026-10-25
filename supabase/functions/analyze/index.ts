@@ -42,15 +42,18 @@ async function groq(sys: string, user: string): Promise<{ text: string; model: s
 // Бесплатный разбор питания через Gemini API (тот же GEMINI_API_KEY, что у video)
 async function gemini(sys: string, body: string, search = false, label = "Данные (JSON):\n"): Promise<{ text: string; model: string; gerr?: string }> {
   const key = Deno.env.get("GEMINI_API_KEY"); if (!key) throw new Error("GEMINI_API_KEY не задан");
-  const models = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i) as string[];
+  const models = ["gemini-3.5-flash-lite", Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i) as string[];
   let j: any = {}, lastErr = "", used = "";
   for (const model of models) {
     const call = (withSearch: boolean) => fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
-      method: "POST", headers: { "x-goog-api-key": key, "content-type": "application/json" },
+      method: "POST", signal: AbortSignal.timeout(25000), headers: { "x-goog-api-key": key, "content-type": "application/json" },   // 25 с на модель: зависшая не блокирует цепочку
       body: JSON.stringify({ model, input: [{ type: "text", text: sys + "\n\n" + label + body }], ...(withSearch ? { tools: [{ type: "google_search" }] } : {}) }),
     });
-    let r = await call(search);
-    if (search && !r.ok && r.status === 400) r = await call(false);   // поиск не принят — отвечаем без него
+    let r: Response;
+    try {
+      r = await call(search);
+      if (search && !r.ok && r.status === 400) r = await call(false);   // поиск не принят — отвечаем без него
+    } catch (e) { lastErr = "нет ответа за 25 с [" + model + "]"; continue; }   // таймаут/сеть — пробуем следующую модель
     j = await r.json().catch(() => ({}));
     if (r.ok) { lastErr = ""; used = model; break; }
     lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
