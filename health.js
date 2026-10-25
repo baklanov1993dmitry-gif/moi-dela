@@ -67,6 +67,31 @@ window.HEALTH_INIT = function (X) {
   const norm = s => String(s || "").trim().toLowerCase();
   const tagsOf = n => { const r = []; String((n.note || "") + " " + (n.name || "")).replace(/(^|\s)#([\p{L}\d_-]{2,30})/gu, (m, a, b) => { b = b.toLowerCase(); if (r.indexOf(b) < 0) r.push(b); return m; }); return r; };
   const tagCounts = () => { const c = {}; all().forEach(n => tagsOf(n).forEach(t => { c[t] = (c[t] || 0) + 1; })); return Object.keys(c).map(t => [t, c[t]]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
+  /* разметка тегов и типов по ключевым словам (кнопка «🏷 Разметить» над чипами) */
+  const RT_RULES = [["спазмы", /судорог|спазм|подергив|трясут|вибрир|дергал|забит/], ["онемение", /онемен|немени/], ["температура", /(?<![\d.])3[5-9][.,]\d(?!\d)|темп(?![\p{L}])|температур|(?<![\p{L}])жар(?![\p{L}])|жара/u], ["спина", /спин|поясниц|позвон|лопатк/], ["ноги", /(?<![\p{L}])ног|икр|стоп|колен|бедр|лодыж|ягодиц/u], ["шея", /(?<![\p{L}])шее|(?<![\p{L}])шеи|лимфоузл/u], ["глаза", /глаз|зрени|мушк/], ["лекарства", /парацетом|сирдалуд|аэртал|баклосан|келтикан|мовалис|таблет|антибиот|флуконоз|сумамед|тайлол|гексорал|цефазолин|магне/], ["спорт", /бассейн|плава|плавал|(?<![\p{L}])зал(?![\p{L}])|велик|физ|зарядк/u], ["сердце", /сердц|в груди|боли в груд/], ["живот", /(?<![\p{L}])стул|живот|понос|гастро|метеоризм/u]];
+  const RT_SYM = ["спазмы", "онемение", "температура", "спина", "ноги", "шея", "глаза", "живот", "сердце"];
+  const RT_UNDO = "mytasks_health_retag_undo";
+  function retag() {
+    boot(); const snap = {}; let tg = 0, ty = 0;
+    all().forEach(n => {
+      if (!n || ["mood", "sleep", "bp"].indexOf(n.kind) >= 0) return;
+      const note = n.note || "", txt = ((n.name || "") + " " + note).toLowerCase().replace(/#[\p{L}\d_-]+/gu, " "), cur = tagsOf(n), add = [];
+      RT_RULES.forEach(r => { if (r[1].test(txt) && cur.indexOf(r[0]) < 0) add.push(r[0]); });
+      const sym = n.kind === "note" && cur.concat(add).some(t => RT_SYM.indexOf(t) >= 0);
+      if (!add.length && !sym) return;
+      snap[n.id] = { note: n.note || null, kind: n.kind };
+      if (add.length) { n.note = (note.replace(/\s+$/, "") + (/#[\p{L}\d_-]+\s*$/u.test(note) ? " " : "\n\n") + add.map(t => "#" + t).join(" ")).trim(); tg++; }
+      if (sym) { n.kind = "sym"; ty++; }
+      H.pend[n.id] = "u";
+    });
+    if (tg || ty) { js(RT_UNDO, snap); save(); flush(); }
+    return { tg, ty };
+  }
+  function retagUndo() {
+    boot(); const snap = jg(RT_UNDO, null); if (!snap) return 0; let n = 0;
+    Object.keys(snap).forEach(id => { const x = H.items[id]; if (!x) return; x.note = snap[id].note; x.kind = snap[id].kind; H.pend[id] = "u"; n++; });
+    try { localStorage.removeItem(RT_UNDO); } catch (e) {} save(); flush(); return n;
+  }
   const all = () => Object.values(H.items).sort((a, b) => b.at.localeCompare(a.at));
   const active = () => all().filter(n => n.kind === "ill" && !n.until).sort((a, b) => b.at.localeCompare(a.at));
   const localNow = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); };
@@ -134,9 +159,10 @@ window.HEALTH_INIT = function (X) {
       (isOpen ? '<div class="hl-ea">' + (n.kind === "med" || n.kind === "sym" ? '<button data-a="hlagain" data-id="' + n.id + '">' + (n.kind === "med" ? "💊 Принял ещё" : "＋ Снова") + "</button>" : "") + (n.kind === "ill" && !n.until ? '<button data-a="hlcure" data-id="' + n.id + '">Выздоровел</button>' : "") + (n.kind !== "mood" ? '<button data-a="hledit" data-id="' + n.id + '">Изменить</button>' : "") + '<button class="dg" data-a="hldel" data-id="' + n.id + '">Удалить</button></div>' : "") + "</div>";
   }
   function tagBar() {
-    const tc = tagCounts(); if (!tc.length) return "";
-    const cur = H.flt && H.flt.tag || "";
-    return '<div class="hl-tgs">' + tc.slice(0, 30).map(x => '<button class="' + (cur === x[0] ? "on" : "") + '" data-a="hltag" data-v="' + esc(x[0]) + '">#' + esc(x[0]) + "<i>" + x[1] + "</i></button>").join("") + "</div>";
+    const tc = tagCounts(), cur = H.flt && H.flt.tag || "", und = !!jg(RT_UNDO, null);
+    const tools = '<button class="hl-rt" data-a="hlretag" title="Расставить теги и типы по ключевым словам">🏷 Разметить</button>' + (und ? '<button class="hl-rt" data-a="hlretagundo">↶ Отменить разметку</button>' : "");
+    if (!tc.length) return '<div class="hl-tgs">' + tools + "</div>";
+    return '<div class="hl-tgs">' + tools + tc.slice(0, 30).map(x => '<button class="' + (cur === x[0] ? "on" : "") + '" data-a="hltag" data-v="' + esc(x[0]) + '">#' + esc(x[0]) + "<i>" + x[1] + "</i></button>").join("") + "</div>";
   }
   function feed() {
     let items = all();
@@ -237,6 +263,8 @@ window.HEALTH_INIT = function (X) {
     hldel(a) { const id = a.dataset.id; if (!id || !confirm("Удалить запись?")) return; del(id); H.form = null; H.open = null; render(); },
     hltab(a) { H.tab = a.dataset.v; H.open = null; render(); },
     hlper(a) { H.per = +a.dataset.v; render(); },
+    hlretag() { const r = retag(); toast(r.tg || r.ty ? "Размечено: теги " + r.tg + ", симптомов " + r.ty : "Нечего размечать"); render(); },
+    hlretagundo() { const n = retagUndo(); toast(n ? "Разметка отменена: " + n : "Нечего отменять"); render(); },
     hltag(a) { const v = a.dataset.v; H.flt = v && !(H.flt && H.flt.tag === v) ? { tag: v } : null; H.tab = "feed"; render(); },
     hlflt(a) { H.flt = a.dataset.v ? { name: a.dataset.v } : null; H.tab = "feed"; render(); },
     hlfltx(a) { try { H.flt = JSON.parse(a.dataset.f); } catch (e) { H.flt = null; } H.tab = "feed"; render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
@@ -345,7 +373,7 @@ window.HEALTH_INIT = function (X) {
  .hl-grab{display:block;width:44px;height:5px;border-radius:3px;background:var(--ln);margin:2px auto 8px}
  .hl-fab{bottom:max(20px,env(safe-area-inset-bottom))}
 }
-.hl-tgs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}.hl-tgs button{border:1px solid var(--ln);border-radius:999px;background:var(--hov);color:var(--tx);padding:5px 11px;font:inherit;font-size:calc(12.5px*var(--z,1));cursor:pointer}.hl-tgs button i{font-style:normal;opacity:.6;margin-left:5px}.hl-tgs button.on{background:#7c5cff;border-color:#7c5cff;color:#fff}.hl-tgs button.on i{opacity:.85}
+.hl-tgs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}.hl-tgs button{border:1px solid var(--ln);border-radius:999px;background:var(--hov);color:var(--tx);padding:5px 11px;font:inherit;font-size:calc(12.5px*var(--z,1));cursor:pointer}.hl-tgs button i{font-style:normal;opacity:.6;margin-left:5px}.hl-tgs button.hl-rt{border-style:dashed;color:var(--sub)}.hl-tgs button.on{background:#7c5cff;border-color:#7c5cff;color:#fff}.hl-tgs button.on i{opacity:.85}
 @media(prefers-reduced-motion:reduce){.hl *{animation:none!important;transition:none!important}}
 `; document.head.appendChild(css);
   function importItems(rows) {

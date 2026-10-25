@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 12:45";
+const BUILD = "25.10 15:51";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -5072,6 +5072,7 @@ function menuSlideOpen() {
 }
 function render() {
   want = false;
+  if (ui.mv && !ui.mv.busy) { try { mvRead(); } catch (e) {} }   // правки в окне переноса не теряются при фоновых перерисовках
   if (isLite()) { if (view === "journal" || view === "food" || view === "notes" || view === "know" || view === "health" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
   try { updBadge(); } catch (e) {}
   if (view === "health" && !HLM) loadHealth();
