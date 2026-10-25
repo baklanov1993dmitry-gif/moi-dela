@@ -238,10 +238,17 @@ window.NOTES_INIT = function (X) {
       G0 = 150;
     })();
     const sv = jg("nt:gpos", {}); nodes.forEach(nd => { const q = sv[nd.t === "n" ? nd.id : "#" + nd.id]; if (q) { nd.x = q[0]; nd.y = q[1]; nd.pin = true; } });
+    const old = G && G.nodes && G.nodes.length ? G : null; let held = 0;
+    if (old) {   // заморозка: уже стоявшие узлы остаются на местах, двигаются только новые
+      const om = {}; old.nodes.forEach(o => { om[(o.t === "n" ? "" : "#") + o.id] = o; });
+      nodes.forEach(nd => { const o = om[(nd.t === "n" ? "" : "#") + nd.id]; if (o) { nd.x = o.x; nd.y = o.y; nd.hold = true; held++; } });
+      if (held) { G0 = 232; nodes.forEach((nd, i) => { if (nd.hold) return; let x = 0, y = 0, c = 0; nb[i].forEach(j => { if (nodes[j].hold) { x += nodes[j].x; y += nodes[j].y; c++; } }); if (c) { nd.x = x / c + (Math.random() - .5) * 40; nd.y = y / c + (Math.random() - .5) * 40; } }); }
+    }
     const stars = []; let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 280; i++) { const u = rnd(), r = 0.35 + Math.pow(u, 7) * 1.5; stars.push({ x: rnd(), y: rnd(), r, d: 0.1 + Math.min(0.7, r * 0.42), ph: rnd() * 6.28, sp: 500 + rnd() * 1800, k: i % 9 === 0 ? 1 : i % 9 === 1 ? 2 : 0, big: r > 1.15 }); }
     G = { nodes, links, nb, stars, step: 0, sel: -1, hov: -1, drag: null, rip: null, live: false, fixed: false, sc: 1, ox: 0, oy: 0, zm: 1, px: 0, py: 0, ptr: {}, W: 700, H: 440 };
     G.step = G0;
+    if (old && held) { G.fixed = true; G.sc = old.sc; G.ox = old.ox; G.oy = old.oy; G.zm = old.zm; G.px = old.px; G.py = old.py; G.W = old.W; G.H = old.H; }
   }
   function stepGraph(n) {
     const nodes = G.nodes, links = G.links;
@@ -249,7 +256,7 @@ window.NOTES_INIT = function (X) {
       const k = Math.max(0.04, 1 - G.step / 280);
       for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) { const a = nodes[i], b = nodes[j]; let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy + 0.01; if (d2 > 40000) continue; const f = 900 / d2, d = Math.sqrt(d2); dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; }
       links.forEach(l => { const a = nodes[l[0]], b = nodes[l[1]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = (d - 62) * 0.02 * l[2]; dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f; });
-      nodes.forEach((nd, i) => { if (G.drag && G.drag.i === i) return; if (nd.pin) { nd.vx = nd.vy = 0; return; } nd.vx -= nd.x * 0.004; nd.vy -= nd.y * 0.004; nd.x += Math.max(-8, Math.min(8, nd.vx)) * k; nd.y += Math.max(-8, Math.min(8, nd.vy)) * k; nd.vx *= 0.6; nd.vy *= 0.6; });
+      nodes.forEach((nd, i) => { if (G.drag && G.drag.i === i) return; if (nd.pin || nd.hold) { nd.vx = nd.vy = 0; return; } nd.vx -= nd.x * 0.004; nd.vy -= nd.y * 0.004; nd.x += Math.max(-8, Math.min(8, nd.vx)) * k; nd.y += Math.max(-8, Math.min(8, nd.vy)) * k; nd.vx *= 0.6; nd.vy *= 0.6; });
     }
   }
   function fitGraph(snap) {
@@ -330,7 +337,7 @@ window.NOTES_INIT = function (X) {
   function graphHTML() {
     if (Object.keys(NT.items).length < 2) return '<div class="nt-empty"><b>Граф появится позже</b><span>Когда будет хотя бы пара заметок.</span></div>';
     buildGraph();
-    return '<div class="nt-gw"><canvas id="nt-cv"></canvas><div class="nt-zb"><button data-a="ntzoom" data-z="1.5" aria-label="Приблизить">+</button><button data-a="ntzoom" data-z="0.67" aria-label="Отдалить">−</button><button data-a="ntzoom" data-z="0" aria-label="Сбросить">⤢</button><button data-a="ntgreset" aria-label="Пересобрать раскладку" title="Пересобрать раскладку">↺</button></div></div><div class="nt-legend"><i class="h"></i>тег<i class="n"></i>заметка<i class="d"></i>стала задачей<span>колесо/щипок — масштаб, тяни фон — двигай</span></div><div id="nt-gsel"></div>';
+    return '<div class="nt-gw"><canvas id="nt-cv"></canvas><div class="nt-zb"><button data-a="ntzoom" data-z="1.5" aria-label="Приблизить">+</button><button data-a="ntzoom" data-z="0.67" aria-label="Отдалить">−</button><button data-a="ntzoom" data-z="0" aria-label="Сбросить">⤢</button><button data-a="ntgreset" aria-label="Пересобрать раскладку" title="Пересобрать раскладку">↺</button></div></div><div style="margin:6px 0"><button class="nt-a" data-a="ntgadd"><span>＋ Заметка на графе</span></button></div><div id="nt-gadd"></div><div class="nt-legend"><i class="h"></i>тег<i class="n"></i>заметка<i class="d"></i>стала задачей<span>колесо/щипок — масштаб, тяни фон — двигай</span></div><div id="nt-gsel"></div>';
   }
   function gPick(x, y) { let best = -1, bd = 1e9; G.nodes.forEach((n, i) => { if (!n.p) return; const d = (n.p[0] - x) ** 2 + (n.p[1] - y) ** 2, R = (n.r || 8) + (fine() ? 9 : 15); if (d < R * R && d < bd) { bd = d; best = i; } }); return best; }
   function gXY(e) { const r = $("nt-cv").getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
@@ -340,7 +347,7 @@ window.NOTES_INIT = function (X) {
     const xy = gXY(e), best = gPick(xy[0], xy[1]); G.sel = best === G.sel ? -1 : best; if (G.sel >= 0) G.rip = { i: G.sel, t: performance.now() }; pokeGraph();
     const box = $("nt-gsel"); if (!box) return; if (G.sel < 0) { box.innerHTML = ""; return; } const n = G.nodes[G.sel], st = ' style="--gc:' + n.c + '"', rel = G.nb[G.sel].size;
     if (n.t === "g") box.innerHTML = '<div class="nt-gcard"' + st + '><div class="nt-tx">' + hashLink(n.id) + " · " + n.d + " " + plural(n.d, "заметка", "заметки", "заметок") + '</div><div class="nt-acts show"><button class="nt-a" data-a="nttag" data-t="' + esc(n.id) + '"><span>Показать заметки</span></button></div></div>';
-    else { const m = NT.items[n.id]; box.innerHTML = m ? '<div class="nt-gcard"' + st + '><div class="nt-meta">' + dayParts(dayKey(m.created_at))[0] + ", " + hhmm(m.created_at) + (rel ? " · связей: " + rel : "") + '</div><div class="nt-tx">' + fmtBody(m.text) + '</div><div class="nt-acts show"><button class="nt-a" data-a="ntfocus" data-id="' + m.id + '"><span>Открыть в ленте</span></button></div></div>' : ""; }
+    else { const m = NT.items[n.id]; box.innerHTML = m ? '<div class="nt-gcard"' + st + '><div class="nt-meta">' + dayParts(dayKey(m.created_at))[0] + ", " + hhmm(m.created_at) + (rel ? " · связей: " + rel : "") + '</div><div class="nt-tx">' + fmtBody(m.text) + '</div><div class="nt-acts show"><button class="nt-a" data-a="ntfocus" data-id="' + m.id + '"><span>Открыть в ленте</span></button><button class="nt-a" data-a="ntgdel" data-id="' + m.id + '"><span>🗑 Удалить</span></button></div></div>' : ""; }
   }
   function gPtr(e) {
     const cv = e.target && e.target.id === "nt-cv" ? e.target : null; if (!G || (!cv && !G.drag && !G.pan)) return;
@@ -420,7 +427,12 @@ window.NOTES_INIT = function (X) {
     ntclshow(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; NT.cl = c.notes.map(n => n.id); NT.focus = null; NT.tag = ""; NT.q = ""; NT.mode = "feed"; NT.fadeIn = true; render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntcldis(a) { const d = dismissed(); d[a.dataset.k] = 1; js("mytasks_notes_dis", d); rerenderKeep(); },
     ntcltask(a) { const c = engine().clusters.find(x => x.key === a.dataset.k); if (!c) return; const t = addTask({ title: "Заняться: " + c.label, note: c.notes.map(n => "• " + n.text.replace(/\s+/g, " ").slice(0, 160)).join("\n") }); c.notes.forEach(n => { n.task_id = t.id; put(n); }); rerenderKeep(); toast("Задача создана из " + c.notes.length + " заметок", { buttons: [["Открыть", () => { goView("all"); X.sel(t.id); render(); }]] }); },
-    ntgreset() { js("nt:gpos", {}); gSave(); render(); },
+    ntgdel(a) { const id = a.dataset.id, n = NT.items[id]; if (!n) return; delete NT.items[id]; NT.pend[id] = "d"; save(); NT.open = null; render(); toast("Заметка удалена", { buttons: [["Вернуть", () => { NT.items[id] = n; NT.pend[id] = "u"; save(); flush(); render(); }]] }); setTimeout(() => { if (NT.pend[id] === "d") flush(); }, 6500); },
+    ntgadd() { const b = $("nt-gadd"); if (!b) return; if (b.innerHTML) { b.innerHTML = ""; return; } const tc = {}; Object.values(NT.items).forEach(n => (n.tags || []).forEach(t => { tc[t] = (tc[t] || 0) + 1; })); const top = Object.keys(tc).sort((x, y) => tc[y] - tc[x]).slice(0, 14);
+      b.innerHTML = '<div class="nt-gcard"><textarea id="nt-gtx" rows="2" placeholder="Новая заметка…" style="width:100%;box-sizing:border-box;font:inherit;border-radius:10px;padding:8px;border:1px solid var(--line,#8884);background:transparent;color:inherit"></textarea><div class="nt-sug" style="margin:8px 0">' + top.map(t => '<a class="nt-chip s" data-a="ntgchip" data-t="' + esc(t) + '">#' + esc(t) + "</a>").join("") + '</div><input id="nt-gnt" placeholder="или новый тег (без #)" style="width:100%;box-sizing:border-box;font:inherit;border-radius:10px;padding:8px;border:1px solid var(--line,#8884);background:transparent;color:inherit"><div class="nt-acts show"><button class="nt-a" data-a="ntgsave"><span>＋ Добавить на граф</span></button></div></div>'; const x = $("nt-gtx"); if (x) x.focus(); },
+    ntgchip(a) { a.classList.toggle("on"); a.style.outline = a.classList.contains("on") ? "2px solid currentColor" : ""; },
+    ntgsave() { const x = $("nt-gtx"), nt = $("nt-gnt"); let t = (x ? x.value : "").trim(); if (!t) { toast("Пусто — напиши хоть слово"); return; } const have = tagsOf(t), add = []; document.querySelectorAll("#nt-gadd .nt-chip.on").forEach(c => add.push(c.dataset.t)); const nw = ((nt && nt.value) || "").replace(/#/g, "").trim().toLowerCase().replace(/[^\p{L}\d_-]+/gu, "_").replace(/^_+|_+$/g, ""); if (nw) add.push(nw); add.forEach(g => { if (have.indexOf(g) < 0) { t += " #" + g; have.push(g); } }); boot(); const now = nowISO(), own = tagsOf(t), nn = { id: uid(), text: t, tags: own.length ? own : localTags(t), task_id: null, pinned: false, created_at: now, updated_at: now }; put(nn, "u"); if (!own.length && aiOn()) autoTag(nn); toast("Добавлено на граф" + (own.length ? ": " + own.map(g => "#" + g).join(" ") : "")); render(); },
+    ntgreset() { js("nt:gpos", {}); gSave(); G = null; render(); },
     ntzoom(a) { if (!G) return; const z = +a.dataset.z; if (!z) { G.zm = 1; G.px = G.py = 0; pokeGraph(); } else zoomAt(z, G.W / 2, G.H / 2); },
     ntmode(a) { const m = a.dataset.v; if (m === NT.mode) return; NT.mode = m; NT.focus = null; NT.cl = null; NT.open = null; NT.edit = null; NT.fadeIn = true; closeMenu(); render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     ntsearch() { if (NT.sOpen && !NT.q) { NT.sOpen = false; render(); return; } NT.sOpen = true; NT.mode = "feed"; render(); setTimeout(() => { const x = $("nt-q"); if (x) x.focus(); }, 0); },
