@@ -65,13 +65,15 @@ Deno.serve(async (req) => {
     const ur = await fetch(SU + "/auth/v1/user", { headers: { Authorization: au, apikey: Deno.env.get("SUPABASE_ANON_KEY") || sk } });
     const u0 = ur.ok ? await ur.json() : null; if (!u0 || !u0.id) return ok({ error: "auth" }, 401);
     const gk = Deno.env.get("GEMINI_API_KEY"); if (!gk) return ok({ error: "GEMINI_API_KEY не задан" });
-    const out: any[] = [];
+    const G = "https://generativelanguage.googleapis.com/v1beta/", tm = () => AbortSignal.timeout(9000);   // у каждого запроса свой таймаут, все идут параллельно — раньше ~10 запросов подряд зависали
+    const jobs: Promise<any>[] = [];
     for (const model of [Deno.env.get("GEMINI_MODEL") || "", "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"].filter((m) => m)) {
       for (const [ep, body] of [["interactions", { model, input: [{ type: "text", text: "Скажи: ок" }] }], [`models/${model}:generateContent`, { contents: [{ parts: [{ text: "Скажи: ок" }] }] }]] as any[]) {
-        try { const r = await fetch("https://generativelanguage.googleapis.com/v1beta/" + ep, { method: "POST", headers: { "x-goog-api-key": gk, "content-type": "application/json" }, body: JSON.stringify(body) }); const t = await r.text(); out.push({ model, ep: ep.split("/")[0], status: r.status, body: t.slice(0, 350) }); } catch (e) { out.push({ model, ep, err: String(e).slice(0, 200) }); }
+        jobs.push((async () => { try { const r = await fetch(G + ep, { method: "POST", signal: tm(), headers: { "x-goog-api-key": gk, "content-type": "application/json" }, body: JSON.stringify(body) }); const t = await r.text(); return { model, ep: ep.split("/")[0], status: r.status, body: t.slice(0, 350) }; } catch (e) { return { model, ep: ep.split("/")[0], err: String(e).slice(0, 200) }; } })());
       }
     }
-    try { const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100", { headers: { "x-goog-api-key": gk } }); const j = await r.json().catch(() => ({})); out.push({ list: r.status, names: (j.models || []).map((m: any) => String(m.name).replace("models/", "")).filter((n: string) => /flash|pro/.test(n)).slice(0, 40), err: j.error?.message?.slice(0, 200) }); } catch (e) { out.push({ list_err: String(e).slice(0, 200) }); }
+    jobs.push((async () => { try { const r = await fetch(G + "models?pageSize=100", { signal: tm(), headers: { "x-goog-api-key": gk } }); const j = await r.json().catch(() => ({})); return { list: r.status, names: (j.models || []).map((m: any) => String(m.name).replace("models/", "")).filter((n: string) => /flash|pro/.test(n)).slice(0, 40), err: j.error?.message?.slice(0, 200) }; } catch (e) { return { list_err: String(e).slice(0, 200) }; } })());
+    const out: any[] = await Promise.all(jobs);
     return ok({ diag: out });
   }
   const k = url.searchParams.get("k") || "";

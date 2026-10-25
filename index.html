@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 15:51";
+const BUILD = "25.10 15:55";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3633,8 +3633,8 @@ const CSS = `
 .addbar{margin:10px 28px 12px;background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);display:flex;align-items:center;gap:12px;padding:0 14px;height:52px;color:var(--acc);flex-shrink:0}
 .addbar input{flex:1;background:transparent;border:0;color:var(--tx);font-size:calc(14px*var(--z,1));height:100%;min-width:0}
 .addbar input::placeholder{color:var(--acc);font-weight:600}
-.hint{display:none;margin:-6px 28px 10px;color:var(--sub);font-size:calc(12px*var(--z,1))}
-.addbar:focus-within + .hint{display:block}
+.hint{display:block;visibility:hidden;margin:-6px 28px 10px;color:var(--sub);font-size:calc(12px*var(--z,1))}
+.addbar:focus-within + .hint{visibility:visible}   /* место под подсказку занято всегда — иначе при потере фокуса список прыгает и первый клик по строке уходит мимо */
 #list{flex:1;overflow:auto;padding:0 28px 28px}
 .cards.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-bottom:8px}
 .cards.grid .taskrow{margin:0}
@@ -5430,9 +5430,9 @@ const acts = {
   ics() { const u = selId && gcalUrl(S.tasks[selId]); if (u) window.open(u, "_blank", "noopener"); },
   async gdiag() {
     showMsg("Спрашиваю Google…", true);
-    try { const s = (await sb.auth.getSession()).data.session; const r = await fetch(sb.supabaseUrl + "/functions/v1/device?a=gdiag", { method: "POST", headers: { Authorization: "Bearer " + s.access_token, apikey: sb.supabaseKey } }); const j = await r.json();
+    try { const s = (await sb.auth.getSession()).data.session; const r = await fetch(sb.supabaseUrl + "/functions/v1/device?a=gdiag", { method: "POST", signal: AbortSignal.timeout(40000), headers: { Authorization: "Bearer " + s.access_token, apikey: sb.supabaseKey } }); const j = await r.json();
       const t = (j.diag || [j]).map((x) => x.names ? "список " + x.list + ": " + (x.err || x.names.join(", ")) : x.model ? x.model + " [" + x.ep + "] " + x.status + " " + String(x.body || x.err).replace(/\s+/g, " ").slice(0, 160) : JSON.stringify(x)).join("\n");
-      showMsg(t); } catch (e) { showMsg("Не вышло: " + (e.message || e)); }
+      showMsg(t); } catch (e) { showMsg(e && e.name === "TimeoutError" ? "Нет ответа за 40 с: функция или Google не отвечают" : "Не вышло: " + (e.message || e)); }
   },
   async pushdiag() { showMsg("Проверяю…", true); showMsg(await pushDiag(), true); },
   async pushtog() { showMsg("Подождите…", true); const was = pushOn(), r = was ? await disablePush() : await enablePush(); showMsg(r || (was ? "Пуши выключены" : "Пуши включены ✓ напоминания придут, даже когда приложение закрыто"), !r); render(); },
