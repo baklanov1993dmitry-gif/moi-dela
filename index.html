@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 18:20";
+const BUILD = "25.10 18:23";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3118,7 +3118,7 @@ const bkActs = {
 };
 
 // ---- p10: подзадачи, фильтры, комбинированная сортировка, своя оценка времени ----
-PR.flt = PR.flt || {}; PR.subClosed = PR.subClosed || {}; PR.subOpen = PR.subOpen || {}; if (!PR.subs) PR.subs = "top"; if (!PR.subsV2) { PR.subsV2 = 1; PR.subs = "top"; }
+PR.flt = PR.flt || {}; PR.subClosed = PR.subClosed || {}; PR.subOpen = PR.subOpen || {}; PR.subs = "top"; PR.subOpen = {}; if (!PR.subs) PR.subs = "top"; if (!PR.subsV2) { PR.subsV2 = 1; PR.subs = "top"; }
 let subIdx = {};
 function buildSubIdx() {
   subIdx = {};
@@ -3290,7 +3290,7 @@ function passFlt(t) {
 const fltCount = () => { const f = PR.flt[view] || {}; return (f.date ? 1 : 0) + (f.star ? 1 : 0) + (f.rem ? 1 : 0) + (f.cat ? 1 : 0); };
 function fltBtns() {
   const n = fltCount();
-  return '<button class="tool ' + (n ? "on" : "") + '" data-a="pop" data-p="filter" title="Фильтр">▽<span class="tl"> Фильтр</span>' + (n ? " · " + n : "") + '</button><button class="tool" data-a="submode" title="Показывать подзадачи внутри списка или только задачи верхнего уровня">' + (PR.subs === "top" ? "☰" : "☷") + '<span class="tl"> ' + (PR.subs === "top" ? "Только главные" : "С подзадачами") + "</span></button>";
+  return '<button class="tool ' + (n ? "on" : "") + '" data-a="pop" data-p="filter" title="Фильтр">▽<span class="tl"> Фильтр</span>' + (n ? " · " + n : "") + '</button>';
 }
 function mToolsHTML() {
   const sc = PR.sort[view], g = getGroup(view), gr = g !== (view === "planned" ? "due" : "none"), n = fltCount(), any = !!sc || gr || n, f = PR.flt[view] || {};
@@ -4122,14 +4122,14 @@ function rowBase(t, showList, depth) {
 }
 function mainHTML(items, done, vi) {
   ordBuild(items);
-  const fr = freshTask(items), grid = !!PR.grid[view], showList = view.indexOf("list:") !== 0, sorted = sortItems((fr ? items.filter(t => t !== fr) : items).slice());
+  const fr = freshTask(items), grid = false, showList = view.indexOf("list:") !== 0, sorted = sortItems((fr ? items.filter(t => t !== fr) : items).slice());
   const groups = groupItems(sorted.slice(0, ui.limit)), sc = PR.sort[view];
   if (fr) groups.unshift({ key: "~fresh", label: "Только что добавлено", items: [fr] });   // подвисает сверху независимо от фильтра/сортировки, пока не смените раздел
   let h = '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi, items.length) + '<div class="mhead' + (isMobile() && view !== "search" ? " mhide" : "") + '">' +
     '<h1>' + (vi.emoji ? '<span style="font-size:calc(22px*var(--z,1))">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 22)) + "<span>" + esc(vi.name) + "</span></h1>" +
     (vi.list && !isMobile() ? '<button class="ibtn" data-a="pop" data-p="listmenu" data-id="' + vi.list.id + '" title="Меню списка">' + ic("dots", 20) + "</button>" : "") + '<span class="sp"></span>' +
     (view === "myday" && !isMobile() ? '<button class="tool ' + (ui.sugg ? "on" : "") + '" data-a="sugg">' + ic("bulb", 16) + " Предложения</button>" : "") +
-    (view !== "search" && !isMobile() ? '<span class="seg"><button class="tool ' + (grid ? "on" : "") + '" data-a="grid" data-v="1" title="Сетка">' + ic("grid", 16) + '</button><button class="tool ' + (grid ? "" : "on") + '" data-a="grid" data-v="0" title="Список">' + ic("list", 16) + '</button></span>' +
+    (view !== "search" && !isMobile() ? '' +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + '<span class="tl"> Сортировка</span></button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + '<span class="tl"> Группировать</span></button>' + fltBtns() + '<button class="tool" data-a="trgo" title="Пройти задачи по одной и расставить сроки">⚡<span class="tl"> Разобрать</span></button>' : "") + "</div>" +
     '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) : "") + '</span><span class="mchips">' + (view === "search" ? srchModeHTML() : "") + (isMobile() ? "" : sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + (isMobile() ? "" : fltBarHTML()) + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() + (items.length ? '<div class="trgrow"><button class="trgo" data-a="trgo">⚡ Разобрать сроки · ' + items.length + "</button></div>" : "") : "");
   if (view !== "search" && !isMobile()) h += addBarHTML();
