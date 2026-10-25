@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 11:19";
+const BUILD = "25.10 12:14";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -257,7 +257,7 @@ function applyTheme() {
   if (hasBg) { app.style.backgroundImage = 'url("' + TH.bg.replace(/["\\\n]/g, "") + '")'; app.style.backgroundSize = "cover"; app.style.backgroundPosition = "center"; }
   else if (T.img) { const two = !!T.img2; app.style.backgroundImage = T.img + "," + (two ? T.img2 + "," : "") + T.bg; app.style.backgroundSize = "min(360px,80vw)," + (two ? "100% min(150px,22vh)," : "") + "cover"; app.style.backgroundPosition = "right top," + (two ? "left bottom," : "") + "center"; app.style.backgroundRepeat = "no-repeat"; }
   else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; app.style.backgroundRepeat = ""; }
-  app.classList.toggle("glass", !!TH.glass); app.classList.toggle("hasbg", hasBg);
+  app.classList.toggle("dk", !!d); app.classList.toggle("glass", !!TH.glass); app.classList.toggle("hasbg", hasBg);
   document.body.style.background = d ? "#0f172a" : "#faf9f8";
   const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = shade(acc, d ? -0.35 : -0.08);
 }
@@ -3198,11 +3198,12 @@ function rowHTML(t, showList, depth) {
   const h = rowBase(t, showList, 0);
   if (!open) return '<div class="tnode">' + h + "</div>";
   return '<div class="tnode has">' + h + '<div class="kids">' + kids.map(subRow).join("") +
-    '<form class="subadd" data-pid="' + t.id + '">' + ic("plus", 14) + '<input id="sub-' + t.id + '" autocomplete="off" enterkeyhint="send" placeholder="Добавить подзадачу"><button type="submit" hidden></button></form></div></div>';
+    '<form class="subadd" data-pid="' + t.id + '"><button type="submit" class="subplus" title="Добавить подзадачу">' + ic("plus", 16) + '</button><input id="sub-' + t.id + '" autocomplete="off" enterkeyhint="send" placeholder="Добавить подзадачу"></form></div></div>';
 }
 function subSubmit(form) {
   const inp = form.querySelector("input"), v = inp ? inp.value.trim() : "", pid = form.dataset.pid, par = S.tasks[pid];
-  if (!v || !par) return;
+  if (!par) return;
+  if (!v) { if (inp) inp.focus(); return; }                       // плюс без текста — просто ставит курсор
   addTask({ title: v, list_id: par.list_id, parent_id: pid, status: "active" }); inp.value = "";
   ui.subAdd = pid; PR.subClosed[pid] = false; PR.subOpen[pid] = true; savePrefs(); render();
   setTimeout(() => { const i = $("sub-" + pid) || document.querySelector('.subadd[data-pid="' + pid + '"] input'); if (i) i.focus(); }, 30);
@@ -3229,7 +3230,7 @@ function subBlock(t) {
   const k = subIdx[t.id] || [];
   return '<div class="dcard"><div class="drow stp sbh" style="cursor:default;color:var(--sub);font-size:calc(13px*var(--z,1))">Подзадачи' + (k.length ? " · " + k.filter(x => x.done).length + " из " + k.length : "") + "</div>" +
     k.map(x => '<div class="drow stp"><div class="rad ' + (x.done ? "on" : "") + '" style="width:18px;height:18px" data-a="tog" data-id="' + x.id + '">' + (x.done ? ic("check", 11) : "") + '</div><span class="dtx" data-a="sel" data-id="' + x.id + '" style="' + (x.done ? "text-decoration:line-through;color:var(--sub)" : "") + '">' + esc(x.title) + "</span>" + subMvHTML(x.id) + "</div>").join("") +
-    '<form class="drow stp act subadd" data-pid="' + t.id + '" style="padding:0">' + ic("plus", 18) + '<input id="sub-' + t.id + '" enterkeyhint="send" placeholder="Добавить подзадачу" style="color:var(--acc)"><button type="submit" hidden></button></form></div>';
+    '<form class="drow stp act subadd" data-pid="' + t.id + '" style="padding:0"><button type="submit" class="subplus" title="Добавить подзадачу">' + ic("plus", 18) + '</button><input id="sub-' + t.id + '" autocomplete="off" enterkeyhint="send" placeholder="Добавить подзадачу" style="color:var(--acc)"></form></div>';
 }
 // ----- фильтры -----
 const FLT_DATES = [["", "Любой срок"], ["over", "Просрочено"], ["today", "Сегодня"], ["todover", "Сегодня и просроченные"], ["tom", "Завтра"], ["week", "Ближайшие 7 дней"], ["nodue", "Без срока"]];
@@ -3320,6 +3321,18 @@ const subActs = {
   resetall() { delete PR.flt[view]; delete PR.sort[view]; delete PR.group[view]; savePrefs(); closePop(); render(); },
   fltclr(a) { const k = a.dataset.k; if (k === "all") delete PR.flt[view]; else if (PR.flt[view]) { delete PR.flt[view][k]; if (!fltCount()) delete PR.flt[view]; } savePrefs(); closePop(); render(); }
 };
+// ----- тёмные темы: светлые «пастельные» блоки разделов (Питание, Журнал) переводим на токены темы -----
+const dkCSS = `
+#app.dk .bp{--bt:rgba(61,155,196,.18)}#app.dk .bf{--bt:rgba(230,184,0,.16)}#app.dk .bc{--bt:rgba(217,115,106,.18)}#app.dk .bk{--bt:rgba(53,165,143,.18)}#app.dk .bw{--bt:rgba(63,134,204,.18)}
+#app.dk .nu-water{background:rgba(79,179,198,.10);border-color:rgba(79,179,198,.35)}
+#app.dk .nu-wb{background:rgba(79,179,198,.16);color:#8fdcec;border-color:rgba(79,179,198,.6)}#app.dk .nu-wb:hover{background:rgba(79,179,198,.30)}
+#app.dk .jr-tx.vu{background:rgba(58,167,109,.28)}#app.dk .jr-tx.vn{background:rgba(160,166,176,.22)}#app.dk .jr-tx.vx{background:rgba(217,83,79,.30)}
+#app.dk .jr-tx:hover{outline-color:rgba(255,255,255,.3)}
+#app.dk .jr-qi,#app.dk .jr-dd{background:var(--solid,var(--card));color:var(--tx)}
+#app.dk .jr-vb.jr-vu.on,#app.dk .jr-vb.jr-vu:hover{background:rgba(58,167,109,.25)}#app.dk .jr-vb.jr-vn.on,#app.dk .jr-vb.jr-vn:hover{background:rgba(160,166,176,.22)}#app.dk .jr-vb.jr-vx.on,#app.dk .jr-vb.jr-vx:hover{background:rgba(217,83,79,.28)}
+#app.dk .jr-vbar,#app.dk .jr-gb{background:rgba(255,255,255,.14)}
+#app.dk .jr-gn .u{background:rgba(58,167,109,.25);color:#8be0b3}#app.dk .jr-gn .n{background:rgba(160,166,176,.2);color:var(--tx)}#app.dk .jr-gn .x{background:rgba(217,83,79,.28);color:#ffa8a1}
+`;
 const subCSS = `
 .bgprev{margin-top:10px;height:110px;border-radius:8px;background-size:cover;background-position:center;border:1px solid var(--ln)}
 .sacc .av{width:44px;height:44px;border-radius:50%;background:#5b3fc4;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
@@ -3343,6 +3356,7 @@ input[type=checkbox]#s-rit:checked::after,input[type=checkbox]#s-glass:checked::
 .subbtn:hover,.subbtn:active{background:var(--hov)} .subbtn.open{background:var(--acc);color:#fff}
 .mi.par{color:var(--sub);font-style:italic}
 .subadd{display:flex;align-items:center;gap:8px;padding:8px 8px;color:var(--acc)}
+.subplus{display:flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;margin:-6px 0 -6px -8px;padding:0;border:0;background:transparent;color:var(--acc);cursor:pointer;border-radius:50%}
 .subadd input{flex:1;min-width:0;border:0;background:transparent;color:var(--tx);font-size:calc(13.5px*var(--z,1));outline:0;font-family:inherit}
 @media(max-width:760px){
 .kids{padding:2px 8px 4px 40px}
@@ -6700,7 +6714,7 @@ const changes = {
 
 Object.assign(acts, dayActs, dtpActs, uxActs, bkActs, subActs); Object.assign(changes, dayChanges);
 function init() {
-  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS + subCSS; document.head.appendChild(st);
+  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS + subCSS + dkCSS; document.head.appendChild(st);
   const app = $("app");
   app.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"), was = ui.pop;
