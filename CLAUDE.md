@@ -13,6 +13,13 @@ PWA одним файлом `index.html` + `sw.js`; бэкенд Supabase (ref `
 - Тесты UI: Playwright (chromium `/opt/pw-browsers/chromium`), `python3 -m http.server 8773` в репо, `APP_CONFIG.TEST` → `window.__t` (S, ui, PR, render, goView…). Нужно `S.user={..}` и флаги localStorage `mytasks_full`, `mytasks_jx`, `mytasks_jv`.
 - Коммиты на `main`, пуш `git push origin HEAD:main`.
 
+## Порядок работы с запросами (решение 25.10, чтобы не тратить токены на переделки)
+1. Мелочь (цвет, подпись, шрифт, очевидный баг) — делать сразу.
+2. Новая функция или сложная правка — сначала коротко ответить, как это будет работать и выглядеть (текстовый набросок) + 2–3 вопроса по развилкам; править только после «делаю/давай».
+3. Если важен именно вид (новые экраны, раскладка) — сначала макет-картинка (статичный HTML + скриншот): он заметно дешевле правки.
+4. Вопросы («как…», «можно ли…», «реально ли…») — только ответ, код не трогать.
+5. Если пользователь сказал «сразу делай» — без согласования.
+
 ## Функции Supabase (папка supabase/functions)
 `analyze` (ИИ: markup/categorize/nutrition_report → Gemini бесплатно), `device` (API для Android: link/list/add/done/snooze/tom), `send-reminders`, `track`, прочие. Секреты лежат в Supabase (не в репо). Деплой — АВТОМАТИЧЕСКИЙ: пуш изменений в `supabase/functions/**` запускает GitHub Action `functions.yml` (секрет `SUPABASE_ACCESS_TOKEN`; verify_jwt заданы в `supabase/config.toml`; статус смотреть `gh run list`). Запасной ручной путь — через дашборд: `supabase.com/dashboard/project/rjiuialimbrnbriqafjl/functions/<имя>/code` → заменить код в monaco-редакторе (`window.monaco.editor.getModels()[0].setValue`) → «Deploy updates». Новая функция: `/functions/new`, имя вводить в поле с placeholder «Give your function a name...», отключить «Verify JWT». SQL — `/sql/new`. Миграции `migration_vNN.sql` выполняются вручную (последняя v29). Из облачной песочницы supabase.co недоступен — тестировать fetch'ем из браузерной панели.
 
