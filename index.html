@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 12:14";
+const BUILD = "25.10 12:21";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2028,6 +2028,31 @@ function mdDone(row, rad) {
   an.onfinish = an.oncancel = () => render();
 }
 const uxActs = {
+  mvclose() { ui.mv = null; render(); },
+  mvovl(a, e) { if (e.target === a) { ui.mv = null; render(); } },
+  mvtg(a) { mvRead(); ui.mv.target = a.dataset.v; render(); },
+  async mvgo() {
+    mvRead(); const M = ui.mv; if (!M || M.busy) return; const rows = M.rows.filter(r => r.on); if (!rows.length) return; M.busy = true; render();
+    const tg = r => String(r.tags || "").split(/[,\s]+/).map(x => x.replace(/^#/, "").trim().toLowerCase()).filter(x => /^[\p{L}\d_-]{2,30}$/u.test(x));
+    const withTags = r => (r.note ? r.note + "\n" : "") + tg(r).map(x => "#" + x).join(" ");
+    try {
+      let n = 0;
+      if (M.target === "health") { if (!HLM) { loadHealth(); for (let i = 0; i < 60 && !HLM; i++) await new Promise(r => setTimeout(r, 100)); } if (!HLM || !HLM.importItems) throw new Error("«Здоровье» не загрузилось"); n = HLM.importItems(rows.map(r => ({ kind: r.kind, name: r.title, note: withTags(r).trim() || null, at: r.at }))); }
+      else { if (!NTM || !NTM.importItems) throw new Error("«Заметки» недоступны"); n = NTM.importItems(rows.map(r => ({ text: (r.title + (r.note ? "\n" + r.note : "") + "\n" + tg(r).map(x => "#" + x).join(" ")).trim(), at: r.at }))); }
+      PR.mvdone = PR.mvdone || {}; rows.forEach(r => { PR.mvdone[r.id] = 1; }); savePrefs();
+      if (M.arch) archiveList(M.lid, true);
+      toast("Перенесено: " + n + " → " + (M.target === "health" ? "Здоровье" : "Заметки")); ui.mv = null; goView(M.target === "health" ? "health" : "notes");
+    } catch (e) { M.busy = false; toast("Не вышло: " + (e && e.message || e)); }
+    render();
+  },
+  mord() { ui.mord = true; render(); },
+  mdone() { ui.mord = false; render(); },
+  mreset() { delete PR.mord; savePrefs(); render(); toast("Порядок меню сброшен"); },
+  mmv(a) {
+    const k = a.dataset.k, id = a.dataset.id, d = +a.dataset.d, src = k === "top" ? MNU_TOP : k === "dia" ? MNU_DIA.filter(x => x[0] !== "trk" || S.user) : MNU_WRK;
+    const ids = mnuOrder(k, src).map(x => x[0]), i = ids.indexOf(id), j = i + d; if (i < 0 || j < 0 || j >= ids.length) return;
+    ids.splice(j, 0, ids.splice(i, 1)[0]); (PR.mord = PR.mord || {})[k] = ids; savePrefs(); render();
+  },
   tog(a) {
     const id = a.dataset.id, t = S.tasks[id], row = a.closest(".taskrow");
     if (!t) return;
@@ -3323,6 +3348,20 @@ const subActs = {
 };
 // ----- тёмные темы: светлые «пастельные» блоки разделов (Питание, Журнал) переводим на токены темы -----
 const dkCSS = `
+.mvs{width:min(680px,100%);display:flex;flex-direction:column;gap:8px}.mvs .trg-h{padding:4px 0}
+.mv-tg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mv-tg span{color:var(--sub);font-size:calc(13px*var(--z,1))}.mv-tg button{border:1px solid var(--ln);border-radius:999px;background:var(--card);color:var(--tx);padding:7px 14px;font:inherit;cursor:pointer}.mv-tg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.mv-hint{color:var(--sub);font-size:calc(12.5px*var(--z,1))}.mv-list{overflow:auto;flex:1;min-height:120px;max-height:56vh;display:flex;flex-direction:column;gap:6px;padding-right:2px}
+.mv-r{border:1px solid var(--ln);border-radius:10px;padding:8px 10px;background:var(--card)}.mv-r.off{opacity:.45}
+.mv-t1{display:flex;gap:8px;align-items:flex-start;cursor:pointer}.mv-t1 input{margin-top:3px;flex:none}.mv-t1 span{font-size:calc(14px*var(--z,1));min-width:0;overflow-wrap:anywhere}.mv-t1 small{display:block;color:var(--sub);font-size:calc(12px*var(--z,1))}
+.mv-r2{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.mv-r2 select,.mv-r2 input{border:1px solid var(--ln);border-radius:8px;background:var(--inp);color:var(--tx);padding:6px 8px;font:inherit;font-size:calc(13px*var(--z,1));min-width:0}.mv-r2 input{flex:1;min-width:120px}
+.mv-arch{display:flex;gap:8px;align-items:center;font-size:calc(13px*var(--z,1))}.mv-f{display:flex;justify-content:flex-end;gap:8px}
+.mo-h{display:flex;align-items:center;justify-content:space-between;padding:12px 10px 2px;font-weight:700;font-size:calc(15px*var(--z,1))}
+.mo-s{padding:0 10px 8px;color:var(--sub);font-size:calc(12.5px*var(--z,1))}
+.mo-r{display:flex;align-items:center;gap:6px;padding:4px 8px;margin:2px 4px;border-radius:8px;background:var(--hov)}
+.mo-r.in{margin-left:22px;background:transparent;border:1px dashed var(--ln)}
+.mo-n{flex:1;min-width:0;font-size:calc(14px*var(--z,1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mo-b{width:36px;height:34px;border:1px solid var(--ln);border-radius:8px;background:var(--card);color:var(--tx);font-size:17px;cursor:pointer}
+.mo-b:disabled{opacity:.25;cursor:default}
 #app.dk .bp{--bt:rgba(61,155,196,.18)}#app.dk .bf{--bt:rgba(230,184,0,.16)}#app.dk .bc{--bt:rgba(217,115,106,.18)}#app.dk .bk{--bt:rgba(53,165,143,.18)}#app.dk .bw{--bt:rgba(63,134,204,.18)}
 #app.dk .nu-water{background:rgba(79,179,198,.10);border-color:rgba(79,179,198,.35)}
 #app.dk .nu-wb{background:rgba(79,179,198,.16);color:#8fdcec;border-color:rgba(79,179,198,.6)}#app.dk .nu-wb:hover{background:rgba(79,179,198,.30)}
@@ -3992,8 +4031,24 @@ function weekMainHTML(vi) {
     sec("Просрочено", over, "Либо делаем сегодня, либо переносим осознанно.") + sec("Переносились 3+ раза", moved, "Такие задачи обычно слишком большие или не ваши: разбейте на подзадачи или честно скажите «не буду».") + sec("На ближайшие 7 дней", ahead) +
     (!over.length && !moved.length && !ahead.length && !closed.length ? '<div style="text-align:center;padding:40px 10px;color:var(--sub)">Пока нечего показывать</div>' : "") + "</div></div>";
 }
+// порядок пунктов левого меню: PR.mord = { top:[...], dia:[...], wrk:[...] } (задаётся в режиме «Порядок меню»)
+const MNU_TOP = [["myday", "Мой день"], ["day", "День по часам"], ["files", "Файлы"], ["dia", "Дневники"], ["wrk", "Работа"], ["lists", "Списки"]];
+const MNU_DIA = [["journal", "note", "Журнал", "#8764b8"], ["food", "food", "Питание", "#e3680c"], ["health", "heart", "Здоровье", "#e5484d"], ["notes", "bulb", "Заметки", "#2b88d8"], ["know", "book", "Знания", "#7c5cff"], ["trk", "pin", "Трекер", "#107c10"]];
+const MNU_WRK = [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"]];
+function mnuOrder(k, items) {
+  const ids = items.map(x => Array.isArray(x) ? x[0] : x), o = (PR.mord || {})[k] || [];
+  const list = o.filter(x => ids.includes(x)).concat(ids.filter(x => !o.includes(x)));
+  return list.map(id => items.find(x => (Array.isArray(x) ? x[0] : x) === id));
+}
+function mnuEditHTML() {
+  const row = (k, id, name, ind, i, n) => '<div class="mo-r' + (ind ? " in" : "") + '"><span class="mo-n">' + name + '</span><button class="mo-b" data-a="mmv" data-k="' + k + '" data-id="' + id + '" data-d="-1"' + (i === 0 ? " disabled" : "") + ' title="Выше">↑</button><button class="mo-b" data-a="mmv" data-k="' + k + '" data-id="' + id + '" data-d="1"' + (i === n - 1 ? " disabled" : "") + ' title="Ниже">↓</button></div>';
+  const top = mnuOrder("top", MNU_TOP), dia = mnuOrder("dia", MNU_DIA.filter(x => x[0] !== "trk" || S.user)), wrk = mnuOrder("wrk", MNU_WRK);
+  return '<div class="mo-h">Порядок меню<button class="tool" data-a="mdone">Готово</button></div><div class="mo-s">Стрелками ↑ ↓ переставь пункты как удобно.</div>' +
+    top.map((t, i) => row("top", t[0], t[1], 0, i, top.length) + (t[0] === "dia" ? dia.map((x, j) => row("dia", x[0], x[2], 1, j, dia.length)).join("") : t[0] === "wrk" ? wrk.map((x, j) => row("wrk", x[0], x[2], 1, j, wrk.length)).join("") : "")).join("") +
+    '<button class="tool" data-a="mreset" style="margin:12px 8px">Сбросить порядок</button>';
+}
 function leftHTML(c) {
-  const sm = (v, svg, name, n, color) => '<div class="chip ' + (view === v || (v === "team" && view.indexOf("team:") === 0) ? "on" : "") + '" data-a="view" data-v="' + v + '" title="' + name + '"><span class="em" style="color:' + color + '">' + ic(svg, 18) + '</span><span class="tx">' + name + '</span><span class="n">' + (n || "") + "</span></div>";
+  const sm = (v, svg, name, n, color) => v === "trk" ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:' + color + '">' + ic(svg, 18) + '</span><span class="tx">' + name + '</span><span class="n"></span></div>' : '<div class="chip ' + (view === v || (v === "team" && view.indexOf("team:") === 0) ? "on" : "") + '" data-a="view" data-v="' + v + '" title="' + name + '"><span class="em" style="color:' + color + '">' + ic(svg, 18) + '</span><span class="tx">' + name + '</span><span class="n">' + (n || "") + "</span></div>";
   const lc = l => '<div class="chip ' + (view === "list:" + l.id ? "on" : "") + '" data-a="view" data-v="list:' + l.id + '" data-lid="' + l.id + '" title="' + esc(l.name) + '">' + listIcon(l) + '<span class="tx">' + esc(l.name) + '</span><span class="n">' + (c["list:" + l.id] || "") + "</span></div>";
   const inSec = v => view === v || (v === "team" && view.indexOf("team") === 0);
   const sec = (k, title, items, extra) => {   // сворачиваемый раздел меню; свёрнутый показывает значки пунктов; раздел с открытым экраном раскрывается сам
@@ -4011,13 +4066,18 @@ function leftHTML(c) {
     tree += '<div class="ghead" data-a="gtoggle" data-g="' + esc(g) + '"' + (g === ARCH ? ' title="Архив: сюда убираются списки, которыми ты больше не пользуешься. Ничего не удаляется; задачи из архивных списков не попадают в «Мой день» и общие выборки, но находятся поиском. Список можно вернуть через меню списка."' : "") + '><span class="tx">' + esc(g) + '</span>' + ic(col ? "chevr" : "chevd", 14) + "</div>";
     if (!col) tree += '<div class="gbody">' + (g === ARCH ? '<div class="sub" style="font-size:12px;padding:2px 12px 6px;opacity:.7">Закрытые списки: ничего не удалено, задачи не мешают в «Мой день».</div>' : "") + mem.map(lc).join("") + "</div>";
   }
+  const diaItems = mnuOrder("dia", MNU_DIA.filter(x => x[0] !== "trk" || S.user)), wrkItems = mnuOrder("wrk", MNU_WRK);
+  const B = {
+    myday: PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "", day: PR.showDay ? sm("day", "clock", "День по часам", 0, "#0f6cbd") : "",
+    files: isLite() ? "" : sm("files", "clip", "Файлы", filesAll().length, "#69797e"),
+    dia: isLite() ? "" : sec("dia", "Дневники", diaItems, ""),
+    wrk: isLite() ? sm("week", "ccheck", "Итоги недели", 0, "#038387") : sec("wrk", "Работа", wrkItems, ""),
+    lists: '<div class="sech nocl"><span class="tx">Списки</span></div>' + tree
+  };
   return '<div id="left" class="pane ' + (PR.rail && !isMobile() ? "railed" : "") + " " + (ui.left ? "" : "hide") + '">' + lheadHTML() +
     '<div class="scroll" id="lscroll" style="flex:1;overflow:auto">' +
-    (PR.myday ? sm("myday", "sun", "Мой день", c.myday, "var(--acc)") : "") + (PR.showDay ? sm("day", "clock", "День по часам", 0, "#0f6cbd") : "") + (isLite() ? "" : sm("files", "clip", "Файлы", filesAll().length, "#69797e")) +
-    (isLite() ? "" : sec("dia", "Дневники", [["journal", "note", "Журнал", "#8764b8"], ["food", "food", "Питание", "#e3680c"], ["health", "heart", "Здоровье", "#e5484d"], ["notes", "bulb", "Заметки", "#2b88d8"], ["know", "book", "Знания", "#7c5cff"]], S.user ? '<div class="chip" data-a="trk" title="Трекер перемещений"><span class="em" style="color:#107c10">' + ic("pin", 18) + '</span><span class="tx">Трекер</span><span class="n"></span></div>' : "") +
-      sec("wrk", "Работа", [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"]], "")) + (isLite() ? sm("week", "ccheck", "Итоги недели", 0, "#038387") : "") +
-    '<div class="sech nocl"><span class="tx">Списки</span></div>' + tree + "</div>" +
-    '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="pop" data-p="ngroup" title="Новая группа списков">' + ic("fplus", 18) + "</button></div></div>";
+    (ui.mord ? mnuEditHTML() : mnuOrder("top", MNU_TOP).map(t => B[t[0]]).join("")) + "</div>" +
+    '<div class="lfoot"><div class="chip" data-a="newlist" title="Создать список"><span class="em">' + ic("plus", 18) + '</span><span class="tx">Создать список</span></div><button class="ibtn" data-a="pop" data-p="ngroup" title="Новая группа списков">' + ic("fplus", 18) + '</button><button class="ibtn" data-a="mord" title="Порядок меню">' + ic("sort", 18) + "</button></div></div>";
 }
 function metaHTML(t, showList, orphan) {
   const m = [], l = t.list_id && S.lists[t.list_id], di = dueInfo(t);
@@ -4121,7 +4181,7 @@ function popHTML() {
   else switch (p.type) {
     case "mmenu": {
       const L = p.id && S.lists[p.id];
-      h = (L ? im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + im("l_dup", "copy", "Дублировать список") + im("l_arch", "inbox", L.group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_deldone", "ccheck", "Удалить завершённые") + im("l_del", "trash", "Удалить список", "danger") + '<div class="psep"></div>' : "") +
+      h = (L ? im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + im("l_dup", "copy", "Дублировать список") + im("l_mvsec", "fmove", "Перенести в раздел…") + im("l_arch", "inbox", L.group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_deldone", "ccheck", "Удалить завершённые") + im("l_del", "trash", "Удалить список", "danger") + '<div class="psep"></div>' : "") +
         (view !== "search" ? im("subs_mode", "list", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)") + im("gridtog", "grid", PR.grid[view] ? "Показать списком" : "Показать сеткой") : "") +
         (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + im("sync", "repeat", "Синхронизировать") + im("settings", "gear", "Настройки");
       break;
@@ -4135,7 +4195,7 @@ function popHTML() {
     }
     case "sort": { const s = getSort(view); h = '<div class="ptitle">Сортировать по</div>' + Object.keys(SORTS).map(k => it("sort", SORTS[k].n, 'data-v="' + k + '"', s.by === k ? "cur" : "", s.by === k ? (s.dir === 1 ? "↑" : "↓") : "")).join("") + (PR.sort[view] ? '<div class="psep"></div>' + it("sortclr", "Сбросить сортировку") : ""); break; }
     case "group": { const g = getGroup(view); h = '<div class="ptitle">Группировать</div>' + Object.keys(GROUPS).filter(k => k !== "list" || view.indexOf("list:") !== 0).map(k => it("group", GROUPS[k], 'data-v="' + k + '"', g === k ? "cur" : "", g === k ? "✓" : "")).join(""); break; }
-    case "listmenu": h = im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + '<div class="psep"></div>' + im("l_dup", "copy", "Дублировать список") + im("l_arch", "inbox", S.lists[p.id] && S.lists[p.id].group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_print", "print", "Напечатать список") + im("l_deldone", "ccheck", "Удалить завершённые") + '<div class="psep"></div>' + im("l_del", "trash", "Удалить список", "danger"); break;
+    case "listmenu": h = im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + '<div class="psep"></div>' + im("l_dup", "copy", "Дублировать список") + im("l_mvsec", "fmove", "Перенести в раздел…") + im("l_arch", "inbox", S.lists[p.id] && S.lists[p.id].group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_print", "print", "Напечатать список") + im("l_deldone", "ccheck", "Удалить завершённые") + '<div class="psep"></div>' + im("l_del", "trash", "Удалить список", "danger"); break;
     case "icon": h = '<div class="ptitle">Значок списка</div><div class="pform emg">' + ["📋","📝","✅","⭐","🔥","💼","🏠","🛒","💰","📞","📧","📅","⏰","🎯","🚀","💡","📚","🎓","🛠️","⚙️","🔧","⚡","🏗️","📐","📊","📈","🧾","📦","🚚","✈️","🚗","🏋️","🍎","☕","❤️","🎁","🎉","🧠","🔒","🌱","🐾","🎵","🎮","🧹","💊","🩺","👥","🕷️"].map(e => '<button class="eb" data-a="pa" data-k="l_icon" ' + idA + ' data-v="' + e + '">' + e + "</button>").join("") + "</div>" + it("l_iconc", "Свой эмодзи…", idA) + it("l_icon", "Без значка", idA + ' data-v=""'); break;
     case "color": h = '<div class="ptitle">Цвет списка</div><div class="pform">' + ACCENTS.map(c => '<button class="sw" style="background:' + c + '" data-a="pa" data-k="l_color" ' + idA + ' data-v="' + c + '"></button>').join("") + "</div>" + it("l_color", "По умолчанию", idA + ' data-v=""'); break;
     case "move": {
@@ -4716,6 +4776,51 @@ function trgBack() {
   const l = T.log[i]; if (l && l.prev && S.tasks[l.id]) { const t = S.tasks[l.id]; upd(l.id, { due: l.prev.due, remind_at: l.prev.remind_at }); if (!!t.done !== l.prev.done) toggleDone(l.id); T.n = Math.max(0, T.n - 1); }
   delete T.log[i]; render();
 }
+// ----- перенос списка в раздел («Здоровье» / «Заметки») -----
+const MV_KINDS = [["note", "📝 Заметка"], ["sym", "🤒 Симптом"], ["med", "💊 Лекарство"], ["ill", "🦠 Болезнь"], ["doc", "🩺 Врач"], ["test", "🧪 Анализ"]];
+function mvKind(x) {
+  x = x.toLowerCase();
+  if (/анализ|кровь|сдать|биохим|мрт|(?<![\p{L}\d])кт(?![\p{L}\d])|узи|экг|флюорограф|ферритин|холестерин|глюкоз|гормон/u.test(x)) return "test";
+  if (/врач|терапевт|невролог|стоматолог|(?<![\p{L}\d])лор(?![\p{L}\d])|окулист|кардиолог|хирург|ортопед|эндокринолог|гинеколог|уролог|дерматолог|гастроэнтеролог|записаться|приём|консультац/u.test(x)) return "doc";
+  if (/таблетк|принима|лекарств|капли|капсул|\d\s*мг|витамин|добавк|омега|магни|железо|аспирин|ибупрофен|парацетамол|курс(?![\p{L}\d])|укол/u.test(x)) return "med";
+  if (/болел|болезн|простуд|орви|грипп|ангин|аллерги|перелом|травм/u.test(x)) return "ill";
+  if (/болит|боль(?![\p{L}\d])|температур|кашель|насморк|голов|горл|тошнот|слабост|давлен|поясниц/u.test(x)) return "sym";
+  return "note";
+}
+const MV_TAGS = [[/спин|позвоночн|шея(?![\p{L}\d])|шеи(?![\p{L}\d])|поясниц|осанк/u, "спина"], [/голов|мигрен/u, "голова"], [/сердц|давлен|пульс|кардио/u, "сердце"], [/(?<![\p{L}\d])сон(?![\p{L}\d])|сна(?![\p{L}\d])|бессонн|засыпа|спать|высып/u, "сон"], [/зуб|стоматолог/u, "зубы"], [/глаз|зрени|окулист|очки/u, "зрение"],
+  [/желуд|живот|гастр|кишеч|изжог|пищевар/u, "живот"], [/кож|дерматолог|прыщ|акне|волос/u, "кожа"], [/простуд|орви|грипп|кашел|насморк|горл/u, "простуда"], [/витамин|добавк|омега|магни|железо(?![\p{L}\d])|цинк/u, "витамины"],
+  [/анализ|кровь|биохим|ферритин|холестерин/u, "анализы"], [/врач|терапевт|невролог|кардиолог|хирург|ортопед|эндокринолог/u, "врачи"], [/таблетк|лекарств|капсул|(?<![\p{L}\d])мг(?![\p{L}\d])/u, "лекарства"], [/тренир|зал(?![\p{L}\d])|растяж|разминк|упражнен|йога|бег(?![\p{L}\d])/u, "спорт"],
+  [/питани|диет|калори|белок|белки|клетчатк|вода|воду|водой/u, "питание"], [/аллерги/u, "аллергия"], [/колен|сустав|плеч|локт/u, "суставы"], [/вес(?![\p{L}\d])|похуд|набор массы/u, "вес"], [/стресс|тревог|нервн|настроен/u, "стресс"]];
+function mvTagsOf(x) {
+  x = x.toLowerCase(); const r = []; x.replace(/(^|\s)#([\p{L}\d_-]{2,30})/gu, (m, a, b) => { if (r.indexOf(b) < 0) r.push(b); return m; });
+  MV_TAGS.forEach(t => { if (t[0].test(x) && r.indexOf(t[1]) < 0) r.push(t[1]); }); return r.slice(0, 5);
+}
+function mvOpen(lid, target) {
+  const l = S.lists[lid]; if (!l) return; closePop();
+  const done = PR.mvdone || {}, kids = {}; Object.values(S.tasks).forEach(t => { if (t.parent_id) (kids[t.parent_id] = kids[t.parent_id] || []).push(t); });
+  const rows = Object.values(S.tasks).filter(t => t.list_id === lid && !t.parent_id && !t.deleted_at && !done[t.id]).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).map(t => {
+    const note = [t.note || "", ...(kids[t.id] || []).map(k => "– " + k.title)].filter(Boolean).join("\n"), txt = t.title + " " + note;
+    return { id: t.id, title: t.title, note, at: t.created_at || new Date().toISOString(), kind: mvKind(txt), tags: mvTagsOf(txt).join(", "), on: true };
+  });
+  ui.mv = { lid, name: l.name, target: target || (/здоров|health|врач/i.test(l.name) ? "health" : "notes"), rows, arch: true, busy: false };
+  render();
+}
+function mvRead() {
+  const M = ui.mv; if (!M) return;
+  M.rows.forEach((r, i) => { const c = $("mv-c-" + i), k = $("mv-k-" + i), t = $("mv-t-" + i); if (c) r.on = c.checked; if (k) r.kind = k.value; if (t) r.tags = t.value; });
+  const a = $("mv-arch"); if (a) M.arch = a.checked;
+}
+function mvHTML() {
+  const M = ui.mv; if (!M) return "";
+  const hl = M.target === "health", n = M.rows.filter(r => r.on).length;
+  const rows = M.rows.map((r, i) => '<div class="mv-r' + (r.on ? "" : " off") + '"><label class="mv-t1"><input type="checkbox" id="mv-c-' + i + '"' + (r.on ? " checked" : "") + '><span>' + esc(r.title) + (r.note ? '<small>' + esc(r.note.split("\n")[0].slice(0, 90)) + "</small>" : "") + "</span></label>" +
+    '<div class="mv-r2">' + (hl ? '<select id="mv-k-' + i + '">' + MV_KINDS.map(k => '<option value="' + k[0] + '"' + (r.kind === k[0] ? " selected" : "") + ">" + k[1] + "</option>").join("") + "</select>" : "") + '<input id="mv-t-' + i + '" placeholder="теги через запятую" value="' + esc(r.tags) + '"></div></div>').join("");
+  return '<div class="ovl mvo" data-a="mvovl"><div class="sheet mvs"><div class="trg-h"><b>Перенос списка «' + esc(M.name) + '»</b><span style="flex:1"></span><button class="ibtn" data-a="mvclose" title="Закрыть">' + ic("x", 22) + "</button></div>" +
+    '<div class="mv-tg"><span>Куда:</span><button class="' + (hl ? "on" : "") + '" data-a="mvtg" data-v="health">🩺 Здоровье</button><button class="' + (hl ? "" : "on") + '" data-a="mvtg" data-v="notes">💡 Заметки</button></div>' +
+    '<div class="mv-hint">' + (hl ? "Тип записи и теги подобраны по смыслу — поправь, что нужно." : "Каждая задача станет заметкой; теги подобраны по смыслу.") + '</div><div class="mv-list">' + (rows || '<div class="sub" style="padding:20px;text-align:center">В списке нет задач для переноса</div>') + "</div>" +
+    '<label class="mv-arch"><input type="checkbox" id="mv-arch"' + (M.arch ? " checked" : "") + "><span>После переноса убрать список в архив (ничего не удаляется)</span></label>" +
+    '<div class="mv-f"><button class="btn ghost" data-a="mvclose">Отмена</button><button class="btn" data-a="mvgo"' + (n && !M.busy ? "" : " disabled") + ">Перенести (" + n + ")</button></div></div></div>";
+}
 function triageHTML() {
   const T = ui.trg; if (!T) return ""; const t = trgTask(), N = T.ids.length;
   const hdr = (c) => '<div class="trg-h"><b>⚡ Разбор</b><span class="trg-c">' + c + '</span><span style="flex:1"></span><button class="ibtn" data-a="trgclose" title="Закрыть">' + ic("x", 22) + '</button></div>';
@@ -4845,7 +4950,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "know" ? (KNM ? KNM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (view === "files" ? filesDetailHTML() : selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + triageHTML() + trkHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "know" ? (KNM ? KNM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (view === "files" ? filesDetailHTML() : selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + triageHTML() + mvHTML() + trkHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function morphKeep(o, n, keep, nk) {
@@ -5137,7 +5242,7 @@ function exportJson() {
 
 /* ----- кнопка «Назад» на телефоне: закрывает верхний слой (меню, карточку, шторку…), а не приложение ----- */
 let hDepth = 0, hSkip = 0, fDown = false;   // fDown: палец на экране — историю не трогаем (Chrome считает записи без жеста «пропускаемыми», и «Назад» выкидывало из приложения после долгого тапа)
-const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.trg ? 1 : 0) + (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (mIds().length ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (view === "files" && ui.fsel ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
+const layerDepth = () => !isMobile() || !S.user ? 0 : (ui.trg ? 1 : 0) + (ui.mv ? 1 : 0) + (ui.rit ? 1 : 0) + (ui.trk ? 1 : 0) + (ui.noteFull ? 1 : 0) + (ui.dsheet ? 1 : 0) + (ui.pop ? 1 : 0) + (mIds().length ? 1 : 0) + (ui.qa ? 1 : 0) + (ui.settings ? 1 : 0) + (selId ? 1 : 0) + (view === "files" && ui.fsel ? 1 : 0) + (ui.left ? 0 : 1) + (ui.msearch ? 1 : 0) + innerLayers();
 function innerLayers() { return innerLayers0() + (ui.settings && !ui.smenu ? 1 : 0); }   // подраздел настроек — свой слой «Назад»
 function innerLayers0() {
   if (view === "food" && ui.nu && ui.nu.sheet) return ["grams", "custom", "scan", "quick"].indexOf(ui.nu.sheet) >= 0 ? 2 : 1;
@@ -5163,7 +5268,7 @@ function onBack() {
   if (hSkip > 0) { hSkip--; return; }
   if (hDepth > 0) hDepth--;
   if (innerBack()) { render(); return; }
-  if (view === "files" && ui.fsel) ui.fsel = null; else if (ui.trg) ui.trg = null; else if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (mIds().length) mClear(); else if (ui.qa) ui.qa = null; else if (ui.settings) { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; }
+  if (view === "files" && ui.fsel) ui.fsel = null; else if (ui.trg) ui.trg = null; else if (ui.mv) ui.mv = null; else if (ui.rit) ui.rit = false; else if (ui.trk) ui.trk = false; else if (ui.noteFull) ui.noteFull = false; else if (ui.dsheet) ui.dsheet = null; else if (ui.pop) closePop(); else if (mIds().length) mClear(); else if (ui.qa) ui.qa = null; else if (ui.settings) { if (isMobile() && !ui.smenu) { ui.smenu = true; ui.msg = ""; } else ui.settings = false; }
   else if (selId) { if (fastClose()) return; selId = null; } else if (ui.msearch) { acts.msclose(); return; } else if (!ui.left) { if (menuSlideOpen()) return; ui.left = true; }
   render();
 }
@@ -5388,6 +5493,7 @@ const acts = {
       case "l_up": moveList(id, -1); break;
       case "l_down": moveList(id, 1); break;
       case "l_dup": duplicateList(id); break;
+      case "l_mvsec": mvOpen(id); return;
       case "l_arch": archiveList(id, l.group_name !== ARCH); break;
       case "l_print": closePop(); render(); setTimeout(() => window.print(), 150); return;
       case "l_deldone": if (confirm("Удалить все завершённые задачи списка «" + l.name + "»?")) deleteDoneIn(id); break;
@@ -6712,6 +6818,11 @@ const changes = {
   "s-tc"(v) { PR.tc = PR.tc || {}; PR.tc[view] = v; savePrefs(); render(); }
 };
 
+document.addEventListener("change", e => {   // перенос списка: галочки и счётчик без полной перерисовки
+  const id = e.target && e.target.id || ""; if (!ui.mv || !/^mv-(c-|arch)/.test(id)) return; mvRead();
+  const r = e.target.closest && e.target.closest(".mv-r"); if (r) r.classList.toggle("off", !e.target.checked);
+  const b = document.querySelector('[data-a="mvgo"]'), n = ui.mv.rows.filter(x => x.on).length; if (b) { b.textContent = "Перенести (" + n + ")"; b.disabled = !n; }
+});
 Object.assign(acts, dayActs, dtpActs, uxActs, bkActs, subActs); Object.assign(changes, dayChanges);
 function init() {
   const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS + subCSS + dkCSS; document.head.appendChild(st);
@@ -6909,7 +7020,7 @@ async function checkBuild() {
   } catch (e) {}
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
-if (CFG0.TEST) window.__t = { themeFx, TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
+if (CFG0.TEST) window.__t = { mvOpen, themeFx, TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
 let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
 function loadHealth() {
   if (hlLoading || HLM) return; hlLoading = true;

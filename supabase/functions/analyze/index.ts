@@ -40,7 +40,7 @@ async function groq(sys: string, user: string): Promise<{ text: string; model: s
   return null;
 }
 // Бесплатный разбор питания через Gemini API (тот же GEMINI_API_KEY, что у video)
-async function gemini(sys: string, body: string, search = false, label = "Данные (JSON):\n"): Promise<{ text: string; model: string }> {
+async function gemini(sys: string, body: string, search = false, label = "Данные (JSON):\n"): Promise<{ text: string; model: string; gerr?: string }> {
   const key = Deno.env.get("GEMINI_API_KEY"); if (!key) throw new Error("GEMINI_API_KEY не задан");
   const models = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i) as string[];
   let j: any = {}, lastErr = "", used = "";
@@ -56,7 +56,7 @@ async function gemini(sys: string, body: string, search = false, label = "Дан
     lastErr = (j?.error?.message || "api error " + r.status) + " [" + model + "]";
     if (!/demand|overload|unavailable|try again|not found|no longer|quota|rate|permission|403|503|429|404/i.test(lastErr + r.status)) break;
   }
-  if (lastErr) { const g = await groq(sys, label + body); if (g) return g; throw new Error(lastErr + " | запасной ИИ: " + (groqErr || "нет ответа")); }
+  if (lastErr) { const g = await groq(sys, label + body); if (g) return { ...g, gerr: lastErr }; throw new Error(lastErr + " | запасной ИИ: " + (groqErr || "нет ответа")); }
   const grab = (o: any, out: string[]) => {
     if (!o || typeof o !== "object") return;
     if (Array.isArray(o)) { o.forEach((x) => grab(x, out)); return; }
@@ -84,7 +84,8 @@ Deno.serve(async (req) => {
     // всё бесплатно через Gemini (Claude API не используется); подпись — какая нейронка ответила
     const g = kind === "food" ? await gemini(sys, String((data ?? {}).query ?? "").slice(0, 200), true, "Продукт/блюдо: ") : await gemini(sys, body);
     const model = nice(g.model), signed = kind === "nutrition" || kind === "nutrition_report" || kind === "journal";
-    return json({ text: signed ? g.text + "\n\n— 🤖 " + model : g.text, model });
+    const why = g.gerr ? " · Gemini не ответил: " + g.gerr.slice(0, 160) : "";
+    return json({ text: signed ? g.text + "\n\n— 🤖 " + model + why : g.text, model, gemini_error: g.gerr || undefined });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

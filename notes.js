@@ -460,5 +460,10 @@ window.NOTES_INIT = function (X) {
   document.addEventListener("wheel", gWheel, { passive: false });
   window.addEventListener("online", () => { flush(); });
   window.addEventListener("resize", () => { if (G && $("nt-cv")) { sizeGraph(); fitGraph(true); drawGraph(); } });
-  return { html };
+  function importItems(rows) {
+    boot(); let n = 0;
+    rows.forEach(r => { const t = String(r.text || "").trim(); if (!t) return; const at = r.at || nowISO(), nn = { id: uid(), text: t, tags: tagsOf(t), task_id: null, pinned: false, created_at: at, updated_at: nowISO() }; NT.items[nn.id] = nn; NT.pend[nn.id] = "u"; n++; });
+    save(); flush(); if (viewg() === "notes") render(); return n;
+  }
+  return { html, importItems };
 };

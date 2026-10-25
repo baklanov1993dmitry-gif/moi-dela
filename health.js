@@ -10,13 +10,13 @@ window.HEALTH_INIT = function (X) {
   const save = () => { if (H.uid) { js(KEY, { u: H.uid, items: H.items }); js(KP, H.pend); } };
   const K = {
     sym: { e: "🤒", n: "Симптом", c: "#ff6b6b" }, med: { e: "💊", n: "Лекарство", c: "#14b8a6" }, ill: { e: "🦠", n: "Болезнь", c: "#8b5cf6" },
-    doc: { e: "🩺", n: "Врач", c: "#3b82f6" }, test: { e: "🧪", n: "Анализ", c: "#f59e0b" }, mood: { e: "🙂", n: "Самочувствие", c: "#22c55e" }, bp: { e: "🫀", n: "Давление и пульс", c: "#ef4444" }, sleep: { e: "😴", n: "Сон", c: "#6366f1" }
+    doc: { e: "🩺", n: "Врач", c: "#3b82f6" }, test: { e: "🧪", n: "Анализ", c: "#f59e0b" }, mood: { e: "🙂", n: "Самочувствие", c: "#22c55e" }, note: { e: "📝", n: "Заметка", c: "#64748b" }, bp: { e: "🫀", n: "Давление и пульс", c: "#ef4444" }, sleep: { e: "😴", n: "Сон", c: "#6366f1" }
   };
   const FACES = ["😖", "😕", "😐", "🙂", "😄"], FCOL = ["#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e"], SEVN = ["слабо", "терпимо", "заметно", "сильно", "очень сильно"];
   const SUG = {
     sym: ["голова", "горло", "температура", "насморк", "кашель", "живот", "спина", "слабость", "тошнота", "давление"],
     ill: ["Простуда", "ОРВИ", "Грипп", "Аллергия", "Отравление"], doc: ["Терапевт", "Невролог", "Стоматолог", "ЛОР", "Окулист"],
-    test: ["Общий анализ крови", "Биохимия", "Витамин D", "ЭКГ", "Флюорография"], med: []
+    test: ["Общий анализ крови", "Биохимия", "Витамин D", "ЭКГ", "Флюорография"], med: [], note: []
   };
 
   /* ---------- данные ---------- */
@@ -65,6 +65,8 @@ window.HEALTH_INIT = function (X) {
   const plural = (n, a, b, c) => { const m = n % 100, d = n % 10; return m > 10 && m < 15 ? c : d === 1 ? a : d >= 2 && d <= 4 ? b : c; };
   const daysBetween = (a, b) => Math.round((parseISO(b) - parseISO(a)) / 864e5);
   const norm = s => String(s || "").trim().toLowerCase();
+  const tagsOf = n => { const r = []; String((n.note || "") + " " + (n.name || "")).replace(/(^|\s)#([\p{L}\d_-]{2,30})/gu, (m, a, b) => { b = b.toLowerCase(); if (r.indexOf(b) < 0) r.push(b); return m; }); return r; };
+  const tagCounts = () => { const c = {}; all().forEach(n => tagsOf(n).forEach(t => { c[t] = (c[t] || 0) + 1; })); return Object.keys(c).map(t => [t, c[t]]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
   const all = () => Object.values(H.items).sort((a, b) => b.at.localeCompare(a.at));
   const active = () => all().filter(n => n.kind === "ill" && !n.until).sort((a, b) => b.at.localeCompare(a.at));
   const localNow = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); };
@@ -127,17 +129,23 @@ window.HEALTH_INIT = function (X) {
     if (n.kind === "mood") { title = FACES[(n.sev || 3) - 1] + " Самочувствие: " + SEVN[(n.sev || 3) - 1]; }
     if (n.kind === "ill") { const a = dayKey(n.at), b = n.until ? dayKey(n.until) : todayISO(), d = daysBetween(a, b) + 1; meta = n.until ? "прошла за " + d + " " + plural(d, "день", "дня", "дней") + " · до " + shortD(b) : "идёт " + d + "-й день"; }
     if (ep) meta += " · " + esc(ep.name);
+    { const tg = tagsOf(n); if (tg.length) meta += " · " + tg.map(x => "#" + x).join(" "); }
     return '<div class="hl-e' + (isOpen ? " open" : "") + (fresh ? " fresh" : "") + '" style="--c:' + (n.kind === "mood" ? FCOL[(n.sev || 3) - 1] : k.c) + '" data-id="' + n.id + '"><div class="hl-ed" data-a="hlopen" data-id="' + n.id + '"><div class="hl-dot">' + (n.kind === "mood" ? FACES[(n.sev || 3) - 1] : k.e) + '</div><div class="hl-eb"><div class="hl-et"><b>' + title + "</b>" + (n.kind === "sym" && n.sev ? dots(n.sev) : "") + '</div><div class="hl-em">' + meta + "</div>" + (n.note ? '<div class="hl-en">' + esc(n.note).replace(/\n/g, "<br>") + "</div>" : "") + "</div></div>" +
       (isOpen ? '<div class="hl-ea">' + (n.kind === "med" || n.kind === "sym" ? '<button data-a="hlagain" data-id="' + n.id + '">' + (n.kind === "med" ? "💊 Принял ещё" : "＋ Снова") + "</button>" : "") + (n.kind === "ill" && !n.until ? '<button data-a="hlcure" data-id="' + n.id + '">Выздоровел</button>' : "") + (n.kind !== "mood" ? '<button data-a="hledit" data-id="' + n.id + '">Изменить</button>' : "") + '<button class="dg" data-a="hldel" data-id="' + n.id + '">Удалить</button></div>' : "") + "</div>";
+  }
+  function tagBar() {
+    const tc = tagCounts(); if (!tc.length) return "";
+    const cur = H.flt && H.flt.tag || "";
+    return '<div class="hl-tgs">' + tc.slice(0, 30).map(x => '<button class="' + (cur === x[0] ? "on" : "") + '" data-a="hltag" data-v="' + esc(x[0]) + '">#' + esc(x[0]) + "<i>" + x[1] + "</i></button>").join("") + "</div>";
   }
   function feed() {
     let items = all();
     if (H.flt) {
-      const f = H.flt; items = items.filter(n => (f.name ? norm(n.name) === f.name : true) && (f.ep ? (n.id === f.ep || n.ep === f.ep) : true) && (f.day ? dayKey(n.at) === f.day : true));
+      const f = H.flt; items = items.filter(n => (f.name ? norm(n.name) === f.name : true) && (f.ep ? (n.id === f.ep || n.ep === f.ep) : true) && (f.day ? dayKey(n.at) === f.day : true) && (f.tag ? tagsOf(n).indexOf(f.tag) >= 0 : true));
     }
-    const chip = H.flt ? '<div class="hl-fl">Фильтр: <b>' + esc(H.flt.name ? "«" + (items[0] ? items[0].name : H.flt.name) + "»" : H.flt.day ? dayLabel(H.flt.day) : (H.items[H.flt.ep] ? H.items[H.flt.ep].name : "болезнь")) + '</b><button data-a="hlflt" data-v="">Показать всё ✕</button></div>' : "";
-    if (!items.length) return chip + '<div class="hl-empty"><div class="em">🌿</div><b>' + (H.flt ? "Ничего не найдено" : "Пока пусто") + "</b><span>" + (H.flt ? "Сбрось фильтр." : "Запиши симптом, лекарство или как прошёл день — по истории потом видно закономерности.") + "</span>" + (H.flt ? "" : '<button class="hl-pri" data-a="hlnew" data-v="sym">＋ Записать</button>') + "</div>";
-    let h = chip, last = "", i = 0;
+    const chip = H.flt ? '<div class="hl-fl">Фильтр: <b>' + esc(H.flt.name ? "«" + (items[0] ? items[0].name : H.flt.name) + "»" : H.flt.day ? dayLabel(H.flt.day) : H.flt.tag ? "#" + H.flt.tag : (H.items[H.flt.ep] ? H.items[H.flt.ep].name : "болезнь")) + '</b><button data-a="hlflt" data-v="">Показать всё ✕</button></div>' : "";
+    if (!items.length) return tagBar() + chip + '<div class="hl-empty"><div class="em">🌿</div><b>' + (H.flt ? "Ничего не найдено" : "Пока пусто") + "</b><span>" + (H.flt ? "Сбрось фильтр." : "Запиши симптом, лекарство или как прошёл день — по истории потом видно закономерности.") + "</span>" + (H.flt ? "" : '<button class="hl-pri" data-a="hlnew" data-v="sym">＋ Записать</button>') + "</div>";
+    let h = tagBar() + chip, last = "", i = 0;
     items.slice(0, 220).forEach(n => { const d = dayKey(n.at); if (d !== last) { last = d; const cnt = items.filter(x => dayKey(x.at) === d).length; h += '<div class="hl-day"><b>' + dayLabel(d) + "</b><span>" + cnt + "</span></div>"; } h += entry(n); i++; });
     return h;
   }
@@ -183,14 +191,14 @@ window.HEALTH_INIT = function (X) {
   function formHTML() {
     const f = H.form; if (!f) return "";
     const k = K[f.kind], sug = f.kind === "med" ? recent("med", 8) : SUG[f.kind].concat(f.kind === "sym" ? recent("sym", 6).filter(x => SUG.sym.indexOf(x) < 0) : []);
-    const tabs = ["sym", "med", "ill", "doc", "test"].map(x => '<button class="' + (f.kind === x ? "on" : "") + '" style="--c:' + K[x].c + '" data-a="hlkind" data-v="' + x + '"><span>' + K[x].e + "</span>" + K[x].n + "</button>").join("");
+    const tabs = ["sym", "med", "ill", "doc", "test", "note"].map(x => '<button class="' + (f.kind === x ? "on" : "") + '" style="--c:' + K[x].c + '" data-a="hlkind" data-v="' + x + '"><span>' + K[x].e + "</span>" + K[x].n + "</button>").join("");
     const chips = sug.length ? '<div class="hl-chips">' + sug.map(x => '<button class="' + (norm(f.name) === norm(x) ? "on" : "") + '" data-a="hlpick" data-v="' + esc(x) + '">' + esc(x) + "</button>").join("") + "</div>" : "";
     const sev = f.kind === "sym" ? '<div class="hl-lab">Насколько сильно</div><div class="hl-sevp">' + [1, 2, 3, 4, 5].map(i => '<button class="' + (f.sev === i ? "on" : "") + '" data-a="hlsev" data-v="' + i + '" style="--fc:' + FCOL[4 - (i - 1)] + '"><b>' + i + "</b><small>" + SEVN[i - 1] + "</small></button>").join("") + "</div>" : "";
     const act = active(), ep = f.kind !== "ill" && f.kind !== "doc" && act.length ? '<label class="hl-ck"><input type="checkbox" id="hl-ep"' + (f.ep ? " checked" : "") + "><span>в рамках болезни: <b>" + esc(act[0].name) + "</b></span></label>" : "";
     const when = f.kind === "ill" ? '<div class="hl-row2"><div><div class="hl-lab">Началась</div><input type="date" id="hl-dt" value="' + esc((f.when || localNow()).slice(0, 10)) + '"></div><div><div class="hl-lab">Закончилась (если уже)</div><input type="date" id="hl-un" value="' + esc(f.until || "") + '"></div></div>' : '<div class="hl-lab">Когда</div><input type="datetime-local" id="hl-dt" value="' + esc(f.when || localNow()) + '">';
     const ph = { sym: "Что беспокоит? (голова, горло…)", med: "Название лекарства", ill: "Название (простуда, ОРВИ…)", doc: "К какому врачу / зачем", test: "Какой анализ" }[f.kind];
     return '<div class="hl-ov" data-a="hlclose"></div><div class="hl-sheet ' + (anim() ? "an" : "") + '" style="--c:' + k.c + '"><div class="hl-grab"></div><div class="hl-kt">' + tabs + '</div><div class="hl-fb"><input id="hl-nm" class="hl-in1" autocomplete="off" placeholder="' + ph + '" value="' + esc(f.name || "") + '">' + chips + sev +
-      '<textarea id="hl-note" rows="2" placeholder="' + (f.kind === "med" ? "Доза, от чего (необязательно)" : "Подробности (необязательно)") + '">' + esc(f.note || "") + "</textarea>" + when + ep +
+      '<textarea id="hl-note" rows="2" placeholder="' + (f.kind === "med" ? "Доза, от чего (необязательно)" : "Подробности и #теги (необязательно)") + '">' + esc(f.note || "") + "</textarea>" + when + ep +
       '</div><div class="hl-fa">' + (f.id ? '<button class="hl-ghost dg" data-a="hldel" data-id="' + f.id + '">Удалить</button>' : "") + '<span class="sp"></span><button class="hl-ghost" data-a="hlclose">Отмена</button><button class="hl-pri" data-a="hlsave">' + (f.id ? "Сохранить" : "Записать") + "</button></div></div>";
   }
   function html(vi) {
@@ -229,6 +237,7 @@ window.HEALTH_INIT = function (X) {
     hldel(a) { const id = a.dataset.id; if (!id || !confirm("Удалить запись?")) return; del(id); H.form = null; H.open = null; render(); },
     hltab(a) { H.tab = a.dataset.v; H.open = null; render(); },
     hlper(a) { H.per = +a.dataset.v; render(); },
+    hltag(a) { const v = a.dataset.v; H.flt = v && !(H.flt && H.flt.tag === v) ? { tag: v } : null; H.tab = "feed"; render(); },
     hlflt(a) { H.flt = a.dataset.v ? { name: a.dataset.v } : null; H.tab = "feed"; render(); },
     hlfltx(a) { try { H.flt = JSON.parse(a.dataset.f); } catch (e) { H.flt = null; } H.tab = "feed"; render(); const sc = $("list"); if (sc) sc.scrollTop = 0; },
     hlday(a) { H.flt = { day: a.dataset.d }; H.tab = "feed"; render(); },
@@ -336,7 +345,13 @@ window.HEALTH_INIT = function (X) {
  .hl-grab{display:block;width:44px;height:5px;border-radius:3px;background:var(--ln);margin:2px auto 8px}
  .hl-fab{bottom:max(20px,env(safe-area-inset-bottom))}
 }
+.hl-tgs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}.hl-tgs button{border:1px solid var(--ln);border-radius:999px;background:var(--hov);color:var(--tx);padding:5px 11px;font:inherit;font-size:calc(12.5px*var(--z,1));cursor:pointer}.hl-tgs button i{font-style:normal;opacity:.6;margin-left:5px}.hl-tgs button.on{background:#7c5cff;border-color:#7c5cff;color:#fff}.hl-tgs button.on i{opacity:.85}
 @media(prefers-reduced-motion:reduce){.hl *{animation:none!important;transition:none!important}}
 `; document.head.appendChild(css);
-  return { html };
+  function importItems(rows) {
+    boot(); let n = 0;
+    rows.forEach(r => { const o = { id: uid(), kind: K[r.kind] ? r.kind : "note", name: String(r.name || "").slice(0, 160), note: r.note || null, sev: null, at: r.at || new Date().toISOString(), until: null, ep: null }; if (o.kind === "ill") o.until = o.at; if (!o.name) return; H.items[o.id] = o; H.pend[o.id] = "u"; n++; });
+    save(); flush(); if (viewg() === "health") render(); return n;
+  }
+  return { html, importItems };
 };
