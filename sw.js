@@ -1,5 +1,5 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html отдаётся из кэша мгновенно и обновляется в фоне.
-const CACHE = "moidela-shell-v257";
+const CACHE = "moidela-shell-v258";
 const SHELL = ["./", "./index.html", "./webshooter.png", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./manifest-journal.json", "./manifest-food.json", "./manifest-tasks.json", "./notes.js", "./knowledge.js", "./knowledge-data.js", "./health.js", "./icon-journal-192.png", "./icon-food-192.png", "./icon-tasks-192.png", "./foods.json?v=4"];
 
 self.addEventListener("install", e => {
@@ -8,7 +8,7 @@ self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html"]).then(() => Promise.all(SHELL.map(u => c.add(u).catch(() => {}))))));
 });
 self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== "moidela-prefs").map(k => caches.delete(k)))));
   self.clients.claim();
 });
 // Chrome не разрешает отвечать на переход по ссылке ответом, который прошёл через редирект (Cloudflare Pages: /index.html → /): будет ERR_FAILED, то есть «This site can\'t be reached».
@@ -45,11 +45,11 @@ self.addEventListener("fetch", e => {
 self.addEventListener("push", e => {
   let d = {}; try { d = e.data.json(); } catch (_) { d = { title: "Напоминание", body: e.data ? e.data.text() : "" }; }
   // Chrome требует показать уведомление на КАЖДЫЙ пуш; иначе он сам рисует заглушку «tap to copy the url for this app». Поэтому показываем всегда.
-  e.waitUntil(self.registration.showNotification(d.title || "Напоминание", {
-    body: d.body || "", tag: d.tag || d.id || "moidela", renotify: true, requireInteraction: true, silent: false,
+  e.waitUntil(caches.open("moidela-prefs").then(c => c.match("stick")).then(r => r ? r.text() : "1").catch(() => "1").then(st => self.registration.showNotification(d.title || "Напоминание", {
+    body: d.body || "", tag: d.tag || d.id || "moidela", renotify: true, requireInteraction: st !== "0", silent: false,
     icon: "icon-192.png", badge: "icon-192.png", vibrate: [250, 100, 250, 100, 250], data: { ng: d.ng || 0, id: d.id || null, u: d.u || null, sig: d.sig || null, t: d.title || "" },
     actions: d.sig && d.u ? [{ action: "done", title: "✅ Готово" }, { action: "snooze", title: "⏰ +1 час" }, { action: "tom", title: "🌙 Завтра" }] : []   // кнопки прямо в шторке
-  }));
+  })));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();

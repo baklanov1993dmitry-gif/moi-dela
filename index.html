@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "25.10 18:25";
+const BUILD = "28.10 13:46";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1082,11 +1082,14 @@ function toast(text, opt) {
   const x = document.createElement("button"); x.textContent = "✕"; x.className = "x"; x.onclick = () => el.remove(); el.appendChild(x);
   box.appendChild(el); setTimeout(() => el.remove(), opt.ms || 4500);
 }
+const stickOn = () => jget("mytasks_nstick", true);   // уведомления висят, пока не нажмёшь (иначе — исчезают сами)
+function syncStick() { try { if ("caches" in window) caches.open("moidela-prefs").then(c => c.put("stick", new Response(stickOn() ? "1" : "0"))); } catch (e) {} }
+setTimeout(syncStick, 1500);
 function askNotify() { try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); } catch (e) {} }
 function fireReminder(t) {
   ui.alerts.unshift({ id: t.id, title: t.title, at: t.remind_at }); snd("remind");
   toast("🔔 " + t.title, { ms: 20000, buttons: [["Открыть", () => { selId = t.id; render(); }], ["Выполнено", () => { toggleDone(t.id); render(); }]] });
-  try { if (!pushOn() && "Notification" in window && Notification.permission === "granted") new Notification("Напоминание", { body: t.title }); } catch (e) {}
+  try { if (!pushOn() && "Notification" in window && Notification.permission === "granted") { const n = new Notification("Напоминание", { body: t.title, requireInteraction: stickOn() }); n.onclick = () => { window.focus(); n.close(); selId = t.id; render(); }; } } catch (e) {}
   const b = $("bellbadge"); if (b) { b.textContent = ui.alerts.length; b.style.display = "flex"; }
   try { if (document.visibilityState === "visible" && navigator.serviceWorker) navigator.serviceWorker.ready.then(r => r.getNotifications().then(ns => ns.forEach(n => { if (n.data && n.data.id === t.id) n.close(); }))); } catch (e) {}   // в приложении всплывашка своя — дубль из шторки убираем
 }
@@ -4296,6 +4299,7 @@ function settingsHTML() {
   else if (tab === "notif") b =
     G("Уведомления",
       R("В браузере", "Разрешить показывать оповещения", BT("notify", "🔔 Разрешить")) +
+      R("Как показывать", stickOn() ? "Висят на экране, пока не нажмёшь (откроется задача)" : "Тихо, в трее: исчезают сами", BT("nstick", stickOn() ? "📌 Висят" : "🔕 В трее")) +
       R("Пуши в фоне", pushOn() ? "Включены: приходят и при закрытой вкладке" : "Выключены", BT("pushtog", pushOn() ? "Выключить" : "Включить")) +
       R("Проверка пушей", "Диагностика доставки", BT("pushdiag", "🩺 Проверить"))) +
     '<div class="sgn">Звук и вибрация уведомлений настраиваются в Android: долгое нажатие на уведомление, затем «Настройки».</div>' + vcHTML();
@@ -4928,7 +4932,7 @@ function ngShow(slot, prev) {
   try { el.querySelector(".ng-b.ok").focus(); } catch (e) {}
   if (document.hidden && !prev) {   // вкладка в фоне: мигаем заголовком и показываем системное уведомление (если разрешение уже есть)
     NG.t0 = Date.now(); let on = 0; ngStopFlash(); NG.fl = setInterval(() => { document.title = (on = !on) ? "❗ Все ли внесено?" : "Мои дела"; if (!document.hidden) ngStopFlash(); }, 1000);
-    try { if (window.Notification && Notification.permission === "granted") { const n = new Notification("Мои дела", { body: "Все ли внесено в записную книжку?", tag: "ng" }); n.onclick = () => { window.focus(); n.close(); }; } } catch (e) {}
+    try { if (window.Notification && Notification.permission === "granted") { const n = new Notification("Мои дела", { body: "Все ли внесено в записную книжку?", tag: "ng", requireInteraction: stickOn() }); n.onclick = () => { window.focus(); n.close(); }; } } catch (e) {}
   }
 }
 function ngClose() { if (NG.el) { NG.el.remove(); NG.el = null; } document.removeEventListener("keydown", ngKey, true); ngStopFlash(); }
@@ -5323,6 +5327,7 @@ const acts = {
   grid(a) { PR.grid[view] = a.dataset.v === "1"; savePrefs(); render(); },
   sugg() { ui.sugg = !ui.sugg; render(); },
   qaopen() { ui.qaText = ""; ui.qa = { due: null, remind_at: null, repeat_rule: null, my: view === "myday", starred: view === "starred" }; closePop(); render(); const i = $("qa-input"); if (i) i.focus(); },
+  nstick() { jset("mytasks_nstick", !stickOn()); syncStick(); toast(stickOn() ? "Уведомления будут висеть, пока не нажмёшь" : "Уведомления будут исчезать сами"); render(); },
   openadd() { jset("mytasks_openadd", !jget("mytasks_openadd", false)); toast(jget("mytasks_openadd", false) ? "При запуске приложения сразу откроется «Новая задача» (удобно для голосовой команды «Открой Мои дела»)" : "Выключено"); render(); },
   voiceset() { location.href = "moidela://voice"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
   remxpop(a, e) { ui.remXi = +a.dataset.xi; acts.pop(a, e); if (!ui.pop) ui.remXi = null; },
