@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "28.10 13:46";
+const BUILD = "30.10 23:39";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2198,6 +2198,20 @@ function mApply(k, a) {
   } else if (k === "myday") { const all = T.every(t => inMyDay(t)); T.forEach(t => setMyDay(t.id, !all)); toast(all ? "Убрано из «Мой день»" : "Добавлено в «Мой день»");
   } else if (k === "star") { const all = T.every(t => t.starred); T.forEach(t => upd(t.id, { starred: !all })); toast(all ? "Отметка снята" : "Отмечено важным");
   } else if (k === "tolist") { const lid = a.dataset.v; T.forEach(t => upd(t.id, { list_id: lid })); toast("Перенесено в «" + S.lists[lid].name + "» · " + noun); mClear();
+  } else if (k === "subnew" || k === "subpick") {
+    let pid;
+    if (k === "subnew") {
+      const el = $("ms-new"), v = el ? el.value.trim() : ""; if (!v) { toast("Введите название новой задачи"); ui.undo = null; return; }
+      const nt = addTask({ title: v, list_id: T[0] && T[0].list_id || null, status: "active" }); pid = nt.id;
+    } else pid = a.dataset.v;
+    const par = S.tasks[pid];
+    if (!par) { ui.undo = null; return; }
+    const bad = ids.filter(id => kidsOf(id).length || id === pid), ok = ids.filter(id => !kidsOf(id).length && id !== pid);
+    ok.forEach(id => upd(id, { parent_id: pid, list_id: par.list_id }));
+    PR.subOpen[pid] = true;
+    if (ok.length) toast("Подзадач добавлено: " + ok.length + (bad.length ? " · пропущено: " + bad.length : "") + " (Ctrl+Z — отмена)");
+    else toast("Ничего не перенесено" + (bad.length ? ": выбранные уже со своими подзадачами" : ""));
+    mClear(); closePop(); render(); return;
   } else if (k === "del") {
     if (!confirm("Удалить " + noun + "?")) { ui.undo = null; return; }
     ids.forEach(deleteTask); toast("Удалено: " + noun + " (Ctrl+Z — вернуть)"); mClear();
@@ -2216,7 +2230,8 @@ Object.assign(uxActs, {
   trgskip() { if (ui.trg) { ui.trg.i++; render(); } },
   trgback() { trgBack(); },
   mmore(a) { const r = a.getBoundingClientRect(); ui.pop = { type: "mctx", id: "", x: innerWidth - 270, y: r.bottom + 4 }; render(); },
-  mpick(a) { ui.pop = { type: "mtolist", id: "", x: ui.pop ? ui.pop.x : 200, y: ui.pop ? ui.pop.y : 200 }; render(); }
+  mpick(a) { ui.pop = { type: "mtolist", id: "", x: ui.pop ? ui.pop.x : 200, y: ui.pop ? ui.pop.y : 200 }; render(); },
+  mpicksub() { ui.pop = { type: "mtosub", id: "", x: ui.pop ? ui.pop.x : 200, y: ui.pop ? ui.pop.y : 200 }; render(); }
 });
 function multiBarHTML() {
   const n = mIds().length; if (!n) return "";
@@ -2230,7 +2245,7 @@ function multiPopHTML(type, mi) {
   if (type === "mctx") return (isMobile() ? '<div class="pi" data-a="mact" data-k="all">Выбрать все</div>' : "") + '<div class="ptitle">Выбрано задач: ' + n + "</div>" +
     item("today", "Сегодня", "", "", WDS[d1.getDay()]) + item("tom", "Завтра", "", "", WDS[d2.getDay()]) + item("week", "Следующая неделя", "", "", WDS[d3.getDay()] + ", " + d3.getDate() + " " + MONG[d3.getMonth()].slice(0, 3)) +
     '<div class="pi" data-a="mpop" data-t="mshift">Сдвинуть на N дней / выбрать дату…</div>' + item("clear", "Убрать срок") + '<div class="psep"></div>' +
-    (PR.myday ? item("myday", "В «Мой день» / убрать") : "") + item("star", "Важно: поставить / снять") + '<div class="pi" data-a="mpick">Переместить в список…</div>' +
+    (PR.myday ? item("myday", "В «Мой день» / убрать") : "") + item("star", "Важно: поставить / снять") + '<div class="pi" data-a="mpick">Переместить в список…</div>' + '<div class="pi" data-a="mpicksub">↳ Сделать подзадачами…</div>' +
     item("copy", "Копировать") + item("done", "Отметить выполненными") + '<div class="psep"></div>' + item("del", "Удалить", "", "danger");
   if (type === "mtolist") return '<div class="ptitle">Переместить в список (' + n + ")</div>" + listRows(l => item("tolist", (l.icon ? esc(l.icon) + " " : "") + esc(l.name), 'data-v="' + l.id + '"'));
   const q = (n2, u, lab) => '<button type="button" class="dq" data-a="mact" data-k="shiftq" data-n="' + n2 + '" data-u="' + u + '">' + lab + "</button>";
@@ -4205,6 +4220,15 @@ function popHTML() {
       h = (L ? im("l_rename", "pen", "Переименовать список") + im("l_icon", "smile", "Сменить значок") + im("l_colorpop", "palette", "Изменить цвет") + im("l_grouppop", "fmove", "Переместить в группу…") + im("l_dup", "copy", "Дублировать список") + im("l_mvsec", "fmove", "Перенести в раздел…") + im("l_arch", "inbox", L.group_name === ARCH ? "Вернуть из архива" : "В архив") + im("l_deldone", "ccheck", "Удалить завершённые") + im("l_del", "trash", "Удалить список", "danger") + '<div class="psep"></div>' : "") +
         (view !== "search" ? im("subs_mode", "list", PR.subs === "top" ? "Показать подзадачи" : "Скрыть подзадачи (только главные)") + im("gridtog", "grid", PR.grid[view] ? "Показать списком" : "Показать сеткой") : "") +
         (view === "myday" ? it("suggtog", ui.sugg ? "Скрыть предложения" : "Предложения", idA) : "") + '<div class="psep"></div>' + im("sync", "repeat", "Синхронизировать") + im("settings", "gear", "Настройки");
+      break;
+    }
+    case "mtosub": {
+      const ids = mIds(), bad = ids.filter(id => kidsOf(id).length);
+      const cands = Object.values(S.tasks).filter(x => !x.parent_id && !x.done && ids.indexOf(x.id) < 0).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")).slice(0, 300);
+      h = '<div class="ptitle">Сделать подзадачами (' + ids.length + ')' + (bad.length ? ' <small style="font-weight:400;opacity:.65">· пропустим ' + bad.length + ': уже со своими подзадачами</small>' : '') + '</div>' +
+        '<div class="pform" style="padding:4px 12px 6px;gap:6px"><input id="ms-new" placeholder="Новая задача-родитель…" autocomplete="off" style="flex:1"><button type="button" class="dq on" data-a="mact" data-k="subnew">Создать</button></div>' +
+        '<div class="psep"></div><div class="pform lq"><input id="p-lq" placeholder="Или найти существующую задачу…" autocomplete="off" style="flex:1"></div>' +
+        '<div class="lpick">' + (cands.length ? cands.map(x => '<div class="pi" data-a="mact" data-k="subpick" data-v="' + x.id + '">' + esc(x.title) + (x.list_id && S.lists[x.list_id] ? ' <small style="opacity:.6">· ' + esc(S.lists[x.list_id].name) + '</small>' : '') + '</div>').join('') : '<div class="pi" style="opacity:.6">Подходящих задач нет</div>') + '</div>';
       break;
     }
     case "due": case "remind": h = dtpHTML(p, t); break;
