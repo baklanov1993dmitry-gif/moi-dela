@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     const [rem, tasks, lists] = await Promise.all([
       q("remind_at=gt." + since + "&remind_via=in.(alarm,both)&order=remind_at.asc&limit=200"),
       q("order=due.asc.nullslast&limit=400"),
-      fetch(base + "lists?select=id,name,icon&user_id=eq." + uid + "&order=name.asc", { headers: hd }).then((r) => r.ok ? r.json() : []),
+      fetch(base + "lists?select=id,name,icon,group_name&user_id=eq." + uid + "&order=name.asc", { headers: hd }).then((r) => r.ok ? r.json() : []),
     ]);
     let vcfg: unknown = null;   // настройки голосового добавления (общие для сайта и телефона)
     try { const vr = await fetch(base + "user_settings?select=data&user_id=eq." + uid + "&key=eq.voice:cfg", { headers: hd }); if (vr.ok) vcfg = ((await vr.json())[0] || {}).data || null; } catch { /* без настроек */ }

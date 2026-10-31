@@ -39,6 +39,7 @@ public class QuickAddActivity extends Activity {
     Bitmap imgBmp = null;
     String fileErr = null;
     String fileLabel = null;
+    boolean isVideo = false;   // в тексте ссылка на YouTube: спрашиваем «это видео?»
 
     @Override protected void onCreate(Bundle s) {
         super.onCreate(s);
@@ -56,6 +57,7 @@ public class QuickAddActivity extends Activity {
         if (Intent.ACTION_SEND.equals(in.getAction())) {
             String t = in.getStringExtra(Intent.EXTRA_TEXT), sub = in.getStringExtra(Intent.EXTRA_SUBJECT);
             et.setText(sub != null && sub.length() > 0 && (t == null || !t.startsWith(sub)) ? sub + (t == null ? "" : "\n" + t) : (t == null ? "" : t));
+            isVideo = t != null && java.util.regex.Pattern.compile("https?://(?:www\\.|m\\.)?(?:youtube\\.com|youtu\\.be)/\\S+", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(t).find();
         }
         if (Intent.ACTION_SEND.equals(in.getAction()) && in.getParcelableExtra(Intent.EXTRA_STREAM) != null) {
             Uri u = (Uri) in.getParcelableExtra(Intent.EXTRA_STREAM);
@@ -73,6 +75,7 @@ public class QuickAddActivity extends Activity {
             JSONArray a = new JSONObject(Store.p(this).getString("data", "{}")).optJSONArray("lists");
             if (a != null) for (int i = 0; i < a.length(); i++) {
                 JSONObject l = a.optJSONObject(i);
+                if ("📦 Архив".equals(l.optString("group_name"))) continue;   // архивные списки в выборе не нужны
                 listIds.add(l.optString("id")); listNames.add((l.isNull("icon") ? "" : l.optString("icon") + " ") + l.optString("name"));
             }
         } catch (Exception e) { /* только «без списка» */ }
@@ -81,11 +84,17 @@ public class QuickAddActivity extends Activity {
             for (int i = 0; i < listNames.size(); i++) if (listNames.get(i).toLowerCase().endsWith("файлы")) { filesId = listIds.get(i); break; }
             if (filesId == null) { filesId = "__files"; listIds.add(filesId); listNames.add("📎 Файлы (создам)"); }
         }
+        String videoId = null;   // список «Видео»: если ссылка на YouTube и пользователь подтвердит — кладём туда (нет списка — сервер создаст)
+        if (isVideo && imgBytes == null) {
+            for (int i = 0; i < listNames.size(); i++) if (listNames.get(i).toLowerCase().replaceAll("^[^а-яa-z]+", "").equals("видео")) { videoId = listIds.get(i); break; }
+            if (videoId == null) { videoId = "__video"; listIds.add(videoId); listNames.add("📺 Видео (создам)"); }
+        }
+        final String vId = videoId;
         spList = new Spinner(this);
         spList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, listNames));
         String want = filesId != null ? filesId : presetList != null ? presetList : Store.p(this).getString("lastlist", "");
         int pos = listIds.indexOf(want);
-        spList.setSelection(pos < 0 ? 0 : pos);
+        spList.setSelection(vId != null ? listIds.indexOf(vId) : pos < 0 ? 0 : pos);
         dueNames.add("Без срока"); dueNames.add("Сегодня"); dueNames.add("Завтра"); dueNames.add("Через неделю"); dueNames.add("Выбрать дату…");
         spDue = new Spinner(this);
         spDue.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, dueNames));
@@ -134,8 +143,22 @@ public class QuickAddActivity extends Activity {
             et.setHint("Название (пусто — имя файла)");
         }
         l.addView(et);
-        TextView l1 = new TextView(this); l1.setText("Список"); l1.setPadding(0, pd / 2, 0, 0); l.addView(l1);
-        l.addView(spList);
+        final TextView l1 = new TextView(this); l1.setText("Список"); l1.setPadding(0, pd / 2, 0, 0);
+        if (vId != null) {   // «Это видео?» → да: сразу в «Видео», нет: обычный выбор списка
+            final LinearLayout vq = new LinearLayout(this); vq.setOrientation(LinearLayout.VERTICAL);
+            TextView q = new TextView(this); q.setText("📺 Это видео?"); q.setTextSize(16); q.setPadding(0, pd / 2, 0, pd / 4); vq.addView(q);
+            LinearLayout row = new LinearLayout(this);
+            Button yes = new Button(this); yes.setText("Да — в «Видео»");
+            Button no = new Button(this); no.setText("Нет, выбрать список");
+            row.addView(yes, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            row.addView(no, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            vq.addView(row);
+            spList.setSelection(listIds.indexOf(vId));
+            l.addView(vq); l.addView(l1); l.addView(spList);
+            l1.setVisibility(View.GONE); spList.setVisibility(View.GONE);
+            yes.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { spList.setSelection(listIds.indexOf(vId)); vq.setVisibility(View.GONE); } });
+            no.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { spList.setSelection(0); vq.setVisibility(View.GONE); l1.setVisibility(View.VISIBLE); spList.setVisibility(View.VISIBLE); } });
+        } else { l.addView(l1); l.addView(spList); }
         TextView l2 = new TextView(this); l2.setText("Срок"); l2.setPadding(0, pd / 2, 0, 0); l.addView(l2);
         l.addView(spDue);
         l.addView(ok);
@@ -273,7 +296,7 @@ public class QuickAddActivity extends Activity {
         if (text.length() == 0) return;
         final String lid = listIds.get(spList.getSelectedItemPosition());
         final String due = dueFor(spDue.getSelectedItemPosition());
-        if (!"__files".equals(lid)) Store.p(this).edit().putString("lastlist", lid).apply();
+        if (!"__files".equals(lid) && !"__video".equals(lid)) Store.p(this).edit().putString("lastlist", lid).apply();
         final android.content.Context c = getApplicationContext();
         new Thread(new Runnable() { public void run() {
             String res = null;
@@ -283,7 +306,7 @@ public class QuickAddActivity extends Activity {
                 JSONObject j = new JSONObject().put("title", first);
                 if (due != null) j.put("due", due);
                 if (note != null) j.put("note", note);
-                if ("__files".equals(lid)) j.put("list_name", "Файлы"); else if (lid.length() > 0) j.put("list_id", lid);
+                if ("__files".equals(lid)) j.put("list_name", "Файлы"); else if ("__video".equals(lid)) j.put("list_name", "Видео"); else if (lid.length() > 0) j.put("list_id", lid);
                 res = Net.post(Store.api(c, "add", ""), j.toString());
                 if (res != null && imgBytes != null) {   // картинка — вложением к только что созданной задаче
                     String id = new JSONObject(res).optString("id");
