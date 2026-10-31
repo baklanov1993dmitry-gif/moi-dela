@@ -130,6 +130,22 @@
     }
     return items;
   }
+  // Д: заказ маркетплейса/аптеки (Ютека): «N товар(а)» / [ПО РЕЦЕПТУ] / название / производитель / «614 Р» ... «Итого» / «613.7 Р»
+  function stratOrder(L) {
+    const h = L.findIndex(l => /^\d+\s+товар(?:а|ов)?$/i.test(l)); if (h < 0) return [];
+    let e = L.findIndex((l, i) => i > h && /^итого(?![а-яё])/i.test(l)); if (e < 0) e = L.length;
+    const items = [], tag = /^(?:по рецепту|рецепт|акция|хит|скидка|новинка|в наличии)$/i, price = /^(\d[\d ]*(?:[.,]\d+)?)\s*(?:р|руб\.?|₽)$/i;
+    let seg = [];
+    for (let i = h + 1; i < e; i++) {
+      const l = L[i], pm = price.exec(l);
+      if (!pm) { if (!tag.test(l)) seg.push(l); continue; }
+      let q = 1, nm = seg.filter(x => { const m = /^(?:(\d+)\s*(?:шт|уп)\.?|[xх×]\s*(\d+))$/i.exec(x); if (m) { q = +(m[1] || m[2]); return false; } return true; });
+      seg = [];
+      if (!nm.length) continue;
+      const pr = num(pm[1]); items.push({ name: nm[0], amount: R2(pr * q), price: pr, qty: q, ord: true });
+    }
+    return items;
+  }
   function findTotal(L) {
     { const f = L.join(" "), m = /(?:итого|общая сумма(?: покупки| чека)?|сумма чека|к оплате)\s*:?\s*(\d{1,3}(?: \d{3})+[.,]\d{2}|\d+[.,]\d{2})/i.exec(f); if (m && !L.some(l => /^(?:итого|итог|общая сумма|сумма чека|к оплате)/i.test(l))) return R2(num(m[1])); }
     const re = /^(?:итого|итог|общая сумма(?: покупки| чека)?|сумма чека|к оплате|всего(?: к оплате)?)(?![а-яё])\s*[:=]?\s*(.*)$/i;
@@ -155,7 +171,7 @@
 
   function parseLines(L, meta) {
     meta = meta || {};
-    const total = findTotal(L), cands = [stratBlock(L), stratInline(L), stratTriple(L), stratFlat(L), stratFlatTriple(L)];
+    const total = findTotal(L), cands = [stratBlock(L), stratInline(L), stratTriple(L), stratFlat(L), stratFlatTriple(L), stratOrder(L)];
     const sum = a => R2(a.reduce((t, x) => t + x.amount, 0));
     let best = null;
     cands.forEach(a => {
@@ -164,6 +180,8 @@
       if (!best || (ok && !best.ok) || (ok === best.ok && a.length > best.a.length)) best = { a, ok };
     });
     let items = best ? best.a : [];
+    // цены в заказах округлены до рубля, а итог — с копейками: разницу в пределах рубля на позицию относим на самую дорогую
+    if (total && items.length && items.every(x => x.ord)) { const d = R2(total - sum(items)); if (Math.abs(d) > 0.001 && Math.abs(d) <= items.length) { const mx = items.reduce((a, b) => b.amount > a.amount ? b : a); mx.amount = R2(mx.amount + d); mx.price = R2(mx.amount / mx.qty); } }
     // «неоднозначные» строки (Ашан): если сумма цен*кол-во сходится с итогом лучше — берём её
     if (items.some(x => x.amb && x.qty !== 1) && total) {
       const alt = items.map(x => R2(x.price * x.qty));
@@ -173,7 +191,8 @@
     const date = findDate(L) || (meta.date ? (() => { const d = new Date(meta.date); return isNaN(d) ? "" : d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); })() : "");
     const merchant = findMerchant(L, meta.from), got = sum(items);
     const j = L.join("\n");
-    const fd = (/№\s*ФД\s*:?\s*(\d+)/i.exec(j) || /Кассовый чек\s*№\s*(\d+)/i.exec(j) || /Чек\s*№\s*:?\s*(\d+)/i.exec(j) || [])[1] || "";
+    const ordNo = items.length && L.some(l => /^\d+\s+товар/i.test(l)) ? ((/(?:заказ\s*)?№\s*(\d{6,})/i.exec(L.join(" ")) || [])[1] || "") : "";
+    const fd = ordNo || (/№\s*ФД\s*:?\s*(\d+)/i.exec(j) || /Кассовый чек\s*№\s*(\d+)/i.exec(j) || /Чек\s*№\s*:?\s*(\d+)/i.exec(j) || [])[1] || "";
     const refund = /возврат\s+(?:прихода|расхода|покупки)/i.test(j) || /признак расчета\s*:?\s*возврат/i.test(j);
     return { merchant, date, total: total || got, items, ok: !!total && Math.abs(got - total) < 0.011, key: [merchant, date, total || got, fd].join("|"), refund };
   }
