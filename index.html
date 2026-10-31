@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "31.10 12:37";
+const BUILD = "31.10 12:45";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -257,7 +257,7 @@ function applyTheme() {
   if (hasBg) { app.style.backgroundImage = 'url("' + TH.bg.replace(/["\\\n]/g, "") + '")'; app.style.backgroundSize = "cover"; app.style.backgroundPosition = "center"; }
   else if (T.img) { const two = !!T.img2; app.style.backgroundImage = T.img + "," + (two ? T.img2 + "," : "") + T.bg; app.style.backgroundSize = "min(360px,80vw)," + (two ? "100% min(150px,22vh)," : "") + "cover"; app.style.backgroundPosition = "right top," + (two ? "left bottom," : "") + "center"; app.style.backgroundRepeat = "no-repeat"; }
   else { app.style.backgroundImage = ""; app.style.backgroundSize = ""; app.style.backgroundPosition = ""; app.style.backgroundRepeat = ""; }
-  app.classList.toggle("dk", !!d); app.classList.toggle("glass", !!TH.glass); app.classList.toggle("hasbg", hasBg);
+  app.classList.toggle("dk", !!d); app.classList.toggle("glass", !!TH.glass); ["emb", "met", "gld"].forEach(k => app.classList.toggle("lx-" + k, TH.lux === k)); app.classList.toggle("hasbg", hasBg);
   document.body.style.background = d ? "#0f172a" : "#faf9f8";
   const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = shade(acc, d ? -0.35 : -0.08);
 }
@@ -3374,6 +3374,14 @@ const subActs = {
   fltclr(a) { const k = a.dataset.k; if (k === "all") delete PR.flt[view]; else if (PR.flt[view]) { delete PR.flt[view][k]; if (!fltCount()) delete PR.flt[view]; } savePrefs(); closePop(); render(); }
 };
 // ----- тёмные темы: светлые «пастельные» блоки разделов (Питание, Журнал) переводим на токены темы -----
+const luxCSS = `
+.lx-emb .brand,.lx-emb #left .tx,.lx-emb #left .sech,.lx-emb .mhead h1 span{text-shadow:0 1px 0 rgba(255,255,255,.75),0 -1px 0 rgba(0,0,0,.28);letter-spacing:.3px}
+.lx-emb.dk .brand,.lx-emb.dk #left .tx,.lx-emb.dk #left .sech,.lx-emb.dk .mhead h1 span{text-shadow:0 1px 0 rgba(0,0,0,.85),0 -1px 0 rgba(255,255,255,.14)}
+.lx-met .brand,.lx-met #left .tx,.lx-met #left .sech,.lx-met .mhead h1 span{background:linear-gradient(180deg,#fff 0%,#c9d0da 46%,#7d8796 54%,#a9b2bf 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));font-weight:700}
+.lx-met:not(.dk) .brand,.lx-met:not(.dk) #left .tx,.lx-met:not(.dk) #left .sech,.lx-met:not(.dk) .mhead h1 span{background-image:linear-gradient(180deg,#55606f 0%,#2b323d 46%,#1a1f27 54%,#4a5463 100%)}
+.lx-gld .brand,.lx-gld #left .tx,.lx-gld #left .sech,.lx-gld .mhead h1 span{background:linear-gradient(180deg,#f6e3a1 0%,#d2ac55 46%,#8a6a22 54%,#d8b668 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.4));font-weight:700}
+.lx-gld:not(.dk) .brand,.lx-gld:not(.dk) #left .tx,.lx-gld:not(.dk) #left .sech,.lx-gld:not(.dk) .mhead h1 span{background-image:linear-gradient(180deg,#c9a24b 0%,#9a7424 46%,#6b4e12 54%,#b78d36 100%)}
+`;
 const dkCSS = `
 .mvs{width:min(680px,100%);display:flex;flex-direction:column;gap:8px}.mvs .trg-h{padding:4px 0}
 .mv-tg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mv-tg span{color:var(--sub);font-size:calc(13px*var(--z,1))}.mv-tg button{border:1px solid var(--ln);border-radius:999px;background:var(--card);color:var(--tx);padding:7px 14px;font:inherit;cursor:pointer}.mv-tg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -4310,6 +4318,7 @@ function settingsHTML() {
     G("Текст",
       R("Размер текста", "", sel("s-size", curSize(), [["xs", "Очень мелкий"], ["s", "Мелкий"], ["s2", "Чуть мельче"], ["n", "Обычный"], ["n2", "Чуть крупнее"], ["l", "Крупнее"], ["l2", "Ещё крупнее"], ["xl", "Крупный"]].concat(PLAT_M ? [] : [["xxl", "Очень крупный"], ["x3", "Огромный"], ["x4", "Гигантский"], ["x5", "Максимум"]]))) +
       R("Шрифт", "", sel("s-font", TH.font, [["sys", "Системный"], ["serif", "С засечками"], ["mono", "Моно"], ["round", "Округлый"], ["hum", "Гуманистический"], ["narrow", "Узкий"], ["pal", "Книжный"]])) +
+      R("Эффект надписей", "Заголовки и названия в меню: тиснение, глянец или золото", sel("s-lux", TH.lux || "", [["", "Выкл"], ["emb", "Тиснение"], ["met", "Глянцевый металл"], ["gld", "Золото"]])) +
       R("Плотность", "Расстояния между строками", sel("s-dens", TH.dens, [["compact", "Компактно"], ["normal", "Обычно"], ["cozy", "Свободно"]]))) +
     G("Значок вкладки", '<div class="srw col"><div class="srt"><b>Значок в заголовке вкладки браузера</b><span>Виден только на компьютере; иконка приложения на телефоне меняется отдельно</span></div><div class="favg">' + FAVS.map(f => '<button class="favb' + ((PR.fav || "def") === f[0] ? " on" : "") + '" data-a="favset" data-v="' + f[0] + '" title="' + f[1] + '"><img src="' + (favHref(f[0]) || "icon-192.png") + '" alt=""><span>' + f[1] + "</span></button>").join("") + "</div></div>") +
     G("Фон",
@@ -6877,6 +6886,7 @@ const changes = {
   "p-dt"(v, el) { if (!v) return; patchTask(el.dataset.id, { remind_at: new Date(v).toISOString() }); askNotify(); closePop(); render(); if (ui.qa) { const i = $("qa-input"); if (i) i.focus(); } },
   "s-bg"(v) { TH.bg = v.trim(); saveTheme(); render(); },
   "s-font"(v) { TH.font = v; saveTheme(); render(); },
+  "s-lux"(v) { TH.lux = v; saveTheme(); render(); },
   "s-dens"(v) { TH.dens = v; saveTheme(); render(); },
   "s-bkf"(v) { bkSet({ freq: +v }); toast(+v ? "Автокопии: " + (BKF.filter(x => x[0] === +v)[0] || [0, ""])[1].toLowerCase() : "Автокопии выключены"); },
   "s-bkfile"(v) { bkSet({ file: v === "1" }); },
@@ -6895,7 +6905,7 @@ document.addEventListener("change", e => {   // перенос списка: г�
 });
 Object.assign(acts, dayActs, dtpActs, uxActs, bkActs, subActs); Object.assign(changes, dayChanges);
 function init() {
-  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS + subCSS + dkCSS; document.head.appendChild(st);
+  const st = document.createElement("style"); st.textContent = CSS + dayCSS + dtpCSS + uxCSS + subCSS + dkCSS + luxCSS; document.head.appendChild(st);
   const app = $("app");
   app.addEventListener("click", e => {
     const a = e.target.closest("[data-a]"), was = ui.pop;

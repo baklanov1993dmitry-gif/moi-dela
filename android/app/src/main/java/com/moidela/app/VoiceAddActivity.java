@@ -136,7 +136,11 @@ public class VoiceAddActivity extends Activity {
             // уверенный сигнал «запись пошла»: громко, двойной, в наушники; вибро на телефоне
             try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(80); } catch (Exception e) {}
             long wait = 0;
-            if (Store.p(VoiceAddActivity.this).getBoolean("v_beep", true)) try { int cm = Cues.play(VoiceAddActivity.this, "cue_start", btRoute); if (cm > 0) wait = Math.max(450, cm + 150); } catch (Exception e) {}
+            if (Store.p(VoiceAddActivity.this).getBoolean("v_beep", true)) {
+                if (Store.p(VoiceAddActivity.this).getInt("cue_start", 0) == 6) {   // вместо сигнала — короткая фраза (системный синтез, бесплатно и без сети)
+                    try { if (tts != null && ttsReady) { tts.speak("Говорите", TextToSpeech.QUEUE_FLUSH, null, "cue"); wait = 1100; } } catch (Exception e) {}
+                } else try { int cm = Cues.play(VoiceAddActivity.this, "cue_start", btRoute); if (cm > 0) wait = Math.max(450, cm + 150); } catch (Exception e) {}
+            }
             h.postDelayed(new Runnable() { public void run() { if (!done) beginRecognize(); } }, wait);
         } });
     }
