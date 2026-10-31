@@ -249,6 +249,7 @@ public class VoiceAddActivity extends Activity {
                     ed.apply();
                     if ("call".equals(it)) { doCall(o.optString("name")); return; }
                     if ("sms".equals(it)) { doSms(o.optString("name"), o.optString("text")); return; }
+                    if ("alarm".equals(it)) { doAlarm(o.optInt("hour", -1), o.optInt("minute", 0), o.optString("label")); return; }
                     if ("tg".equals(it) && o.optString("pid").length() > 0) { doTg(o.optString("pid"), o.optString("name"), o.optString("text")); return; }
                     if ("add".equals(it)) { int sm = sp.getInt("v_say", 0); sayTxt = sm == 0 ? sayTxt : sm == 1 ? "Записано." : ""; Sync.run(c); }
                     else if ("done".equals(it) || "snooze".equals(it) || "tomorrow".equals(it) || "undo".equals(it)) Sync.run(c);
@@ -383,6 +384,19 @@ public class VoiceAddActivity extends Activity {
             } });
         } };
         speakAndEnd("Сообщение для " + name + " в Телеграм: " + text + ". Отправить?");
+    }
+    private void doAlarm(final int hour, final int minute, final String label) {   // «поставь будильник на 7» — системное приложение «Часы», без доп. разрешений
+        if (hour < 0 || hour > 23) { speakAndEnd("Не понял время."); return; }
+        try {
+            Intent i = new Intent(android.provider.AlarmClock.ACTION_SET_ALARM)
+                .putExtra(android.provider.AlarmClock.EXTRA_HOUR, hour)
+                .putExtra(android.provider.AlarmClock.EXTRA_MINUTES, minute)
+                .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true);
+            if (label != null && label.length() > 0) i.putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+            speakAndEnd("Будильник на " + (hour < 10 ? "0" + hour : "" + hour) + ":" + (minute < 10 ? "0" + minute : "" + minute) + ".");
+        } catch (android.content.ActivityNotFoundException e) { speakAndEnd("На телефоне нет приложения для будильника."); }
     }
     private boolean hasPerm(String p) { return Build.VERSION.SDK_INT < 23 || checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED; }
     private void doSms(final String name, final String text) {

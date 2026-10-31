@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "31.10 12:32";
+const BUILD = "31.10 12:36";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -5280,7 +5280,11 @@ async function boot() {
   if (!cfg.url || !cfg.key) { screen = "setup"; render(); return; }
   if (!window.supabase || !window.supabase.createClient) { $("app").textContent = "Не загрузилась библиотека Supabase. Пересоберите файл."; return; }
   sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { storageKey: "mytasks-auth", persistSession: true, autoRefreshToken: true } });
-  sb.auth.onAuthStateChange((ev, session) => { setTimeout(() => setUser(session && session.user), 0); });
+  sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === "INITIAL_SESSION") return;   // уже обработали явно в boot() — там учтён офлайн-кэш; если это событие тоже сработает, оно может затереть восстановленного из кэша пользователя
+    if (!session && !navigator.onLine) return;   // нет сети — не разлогиниваем, продолжаем работать из кэша
+    setTimeout(() => setUser(session && session.user), 0);
+  });
   let u = null, r = null;
   const cc = jget(LSK.cache, null);
   if (!navigator.onLine && cc && cc.user) { u = cc.user; r = { error: "offline" }; }                  // нет сети: сразу открываем из кэша, не ждём обновления токена

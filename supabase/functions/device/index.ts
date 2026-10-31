@@ -127,6 +127,11 @@ Deno.serve(async (req) => {
       if ((m2 = /^(?:позвони|набери|вызови|звони)\s+(?:пожалуйста\s+)?(.+)$/i.exec(tx.trim()))) return { intent: "call", name: m2[1].replace(/\s+на\s+(мобильный|рабочий|домашний)$/i, "").trim() };
       if ((m2 = /^(?:напиши|отправь|пошли)\s+в\s+(?:телеграм+|телегу|тг)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim())) || (m2 = /^(?:напиши|отправь|пошли)\s+(.+?)\s+в\s+(?:телеграм+|телегу|тг)(?:\s*[:,—]\s*|\s+что\s+|\s+)(.+)$/i.exec(tx.trim())) || (m2 = /^(?:передай|скажи)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim()))) return { intent: "tg", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
       if ((m2 = /^(?:напиши|отправь\s+(?:сообщение|смс)|смс)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim()))) return { intent: "sms", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
+      if ((m2 = /^(?:поставь\s+)?будильник(?:\s+(?:на|в))?\s+(\d{1,2})(?:[:.](\d{2}))?\s*(утра|дня|вечера|ночи)?(?:\s*[,:]\s*(.+))?$/i.exec(tx.trim()))) {
+        let hh = parseInt(m2[1], 10); const mm = m2[2] ? parseInt(m2[2], 10) : 0, ap = (m2[3] || "").toLowerCase();
+        if ((ap === "вечера" || ap === "дня") && hh >= 1 && hh <= 11) hh += 12;
+        if (hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) return { intent: "alarm", hour: hh, minute: mm, label: (m2[4] || "").trim() };
+      }
       if ((m2 = /^(?:поставь\s+)?таймер(?:\s+на)?\s+(.+)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: "Таймер" };
       if ((m2 = /^напомни(?:\s+мне)?\s+через\s+((?:\d+(?:[.,]\d+)?\s*|[а-яё]+\s+)?(?:часа|часов|час|минут[ыу]?|мин)(?![а-яё])|полчаса)\s*[,:]?\s*(.*)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: (m2[2] || "Напоминание").trim().replace(/^./, (c) => c.toUpperCase()) };
       if ((m2 = /^(?:спроси(?:\s+у\s+(?:ии|нейронки))?|вопрос(?:\s+к\s+ии)?|расскажи|объясни|подскажи)[,:]?\s+(.{3,})$/i.exec(tx.trim()))) return { intent: "ask", text: m2[1].trim() };
@@ -284,6 +289,7 @@ Deno.serve(async (req) => {
         return ok({ intent: "tg", pid: hit[0].id, name: hit[0].alias, text: String(I.text || "").slice(0, 1000), speak: "" });
       }
       case "call": case "sms": return ok({ intent: I.intent, name: String(I.name || "").slice(0, 80), text: String(I.text || "").slice(0, 600), speak: "" });
+      case "alarm": return ok({ intent: "alarm", hour: Math.max(0, Math.min(23, Math.round(Number(I.hour) || 0))), minute: Math.max(0, Math.min(59, Math.round(Number(I.minute) || 0))), label: String(I.label || "").slice(0, 60), speak: "" });
       case "timer": {
         const mn = Math.round(Number(I.minutes) || 0); if (mn < 1 || mn > 1440) return done("Не понял, на сколько поставить.");
         const rem = new Date(nowMs + mn * 60e3).toISOString(), title = String(I.title || "Таймер").slice(0, 200);
@@ -313,7 +319,7 @@ Deno.serve(async (req) => {
         const S = (k: string) => Math.round(ta.reduce((a, x) => a + Number(x[k]), 0));
         return done("За сегодня " + S("kcal") + " ккал. Белка " + S("p") + " граммов, жиров " + S("f") + ", углеводов " + S("c") + ".");
       }
-      case "help": return done("Можно сказать: «заметка …» — записать мысль; «напиши в телеграм Мартынову: …»; спроси и вопрос; съел и что съел; таймер на 20 минут; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
+      case "help": return done("Можно сказать: «заметка …» — записать мысль; «напиши в телеграм Мартынову: …»; спроси и вопрос; съел и что съел; таймер на 20 минут; будильник на 7 утра; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
       default: break;
     }
     // add
