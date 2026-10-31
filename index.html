@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "30.10 23:39";
+const BUILD = "31.10 12:32";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1860,10 +1860,12 @@ document.addEventListener("touchend", e => {
   if (!_cs || !ui.dtp) return; const t = e.changedTouches[0], dx = t.clientX - _cs.x, dy = t.clientY - _cs.y; _cs = null;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { dtpActs.calnav({ dataset: { d: dx < 0 ? 1 : -1 } }); }
 }, { passive: true });
-function dtwCol(c) { const D = ui.dtp; if (!D) return; D.wcol = c; ["h", "m"].forEach(k => { const e = $("dtw-" + k); if (e) { e.classList.toggle("act", k === c); const q = e.previousElementSibling; if (q) q.classList.toggle("on", k === c); } }); }
-function dtwStep(col, d) {   // шаг ровно на 1; колесо бесконечное (колонки независимы)
+function dtwCol(c) { const D = ui.dtp; if (!D) return; D.wcol = c; D.wbuf = ""; ["h", "m"].forEach(k => { const e = $("dtw-" + k); if (e) { e.classList.toggle("act", k === c); const q = e.previousElementSibling; if (q) q.classList.toggle("on", k === c); } }); }
+function dtwStep(col, d, abs) {   // шаг ровно на 1 (или сразу на abs); колесо бесконечное (колонки независимы)
   const e = $("dtw-" + col); if (!e) return; const n = WN[col], cur = Math.round(e.scrollTop / WR);
-  e.scrollTo({ top: Math.max(0, Math.min(WC * n - 1, cur + d)) * WR, behavior: "auto" });
+  let delta = d;
+  if (abs != null) { delta = (((abs - cur) % n) + n) % n; if (delta > n / 2) delta -= n; }
+  e.scrollTo({ top: Math.max(0, Math.min(WC * n - 1, cur + delta)) * WR, behavior: "auto" });
 }
 let _dwacc = 0;
 document.addEventListener("wheel", e => {
@@ -1885,6 +1887,11 @@ document.addEventListener("keydown", e => {
   if (k === "ArrowLeft" || k === "ArrowRight") { e.preventDefault(); e.stopPropagation(); dtwCol(k === "ArrowLeft" ? "h" : "m"); }
   else if (k === "ArrowUp" || k === "ArrowDown") { e.preventDefault(); e.stopPropagation(); dtwStep(col, (k === "ArrowDown" ? 1 : -1) * (e.shiftKey ? 5 : 1)); }
   else if (k === "PageUp" || k === "PageDown") { e.preventDefault(); e.stopPropagation(); dtwStep(col, k === "PageDown" ? 10 : -10); }
+  else if (/^\d$/.test(k)) {   // ввод цифрами, как в Журнале: первая цифра заменяет, вторая дополняет; после часов — сразу минуты
+    e.preventDefault(); e.stopPropagation(); const mx = col === "h" ? 23 : 59, b = D.wbuf || "";
+    if (b.length === 1 && +(b + k) <= mx) { dtwStep(col, 0, +(b + k)); const wasH = col === "h"; if (wasH) dtwCol("m"); else D.wbuf = ""; }
+    else { dtwStep(col, 0, +k); D.wbuf = String(k); if (+k * 10 > mx) { if (col === "h") dtwCol("m"); else D.wbuf = ""; } }
+  }
   else if (k === "Enter") { e.preventDefault(); e.stopPropagation(); dtpActs.dok(); }
 }, true);
 let _dtwT = null;

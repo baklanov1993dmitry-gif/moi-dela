@@ -4,7 +4,7 @@ window.HEALTH_INIT = function (X) {
   const { S, ic, esc, $, render, toast, mtopHTML, uid, todayISO, addDays, parseISO, pad2, WDS, acts } = X;
   const sbg = () => X.sb(), viewg = () => X.view(), anim = () => { try { return !!X.mdOk(); } catch (e) { return false; } };
   const KEY = "mytasks_health", KP = "mytasks_health_p";
-  const H = { items: {}, pend: {}, loaded: false, busy: false, missing: false, uid: null, tab: "feed", flt: null, form: null, open: null, per: 90, fresh: null };
+  const H = { items: {}, pend: {}, loaded: false, busy: false, missing: false, uid: null, tab: "feed", flt: null, form: null, open: null, per: 90, fresh: null, day: null };
   const jg = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
   const js = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   const save = () => { if (H.uid) { js(KEY, { u: H.uid, items: H.items }); js(KP, H.pend); } };
@@ -183,14 +183,16 @@ window.HEALTH_INIT = function (X) {
 
   /* ---------- экран ---------- */
   const dots = n => '<span class="hl-sv">' + [1, 2, 3, 4, 5].map(i => '<i class="' + (i <= n ? "on" : "") + '"></i>').join("") + "</span>";
+  const heroDay = () => H.day || todayISO();
   function hero() {
-    const hr = new Date().getHours(), greet = hr < 5 ? "Доброй ночи" : hr < 12 ? "Доброе утро" : hr < 18 ? "Добрый день" : "Добрый вечер", today = todayISO();
-    const mood = all().find(n => n.kind === "mood" && dayKey(n.at) === today), act = active();
-    const bp = all().find(n => n.kind === "bp" && dayKey(n.at) === today), sl = all().find(n => n.kind === "sleep" && dayKey(n.at) === today), pm = bp ? /^(\d+)\/(\d+)(?:\D+(\d+))?/.exec(bp.name) : null;
+    const hr = new Date().getHours(), greet = hr < 5 ? "Доброй ночи" : hr < 12 ? "Доброе утро" : hr < 18 ? "Добрый день" : "Добрый вечер", today = todayISO(), d = heroDay(), isToday = d === today;
+    const mood = all().find(n => n.kind === "mood" && dayKey(n.at) === d), act = active();
+    const bp = all().find(n => n.kind === "bp" && dayKey(n.at) === d), sl = all().find(n => n.kind === "sleep" && dayKey(n.at) === d), pm = bp ? /^(\d+)\/(\d+)(?:\D+(\d+))?/.exec(bp.name) : null;
     const faces = '<div class="hl-vit"><div class="hl-vc"><b>🫀 Давление и пульс</b><div class="hl-vr"><input id="hl-bs" type="number" inputmode="numeric" placeholder="верх" value="' + (pm ? pm[1] : "") + '"><span>/</span><input id="hl-bd" type="number" inputmode="numeric" placeholder="низ" value="' + (pm ? pm[2] : "") + '"><input id="hl-bpl" type="number" inputmode="numeric" placeholder="пульс" value="' + (pm && pm[3] ? pm[3] : "") + '"><button data-a="hlbp">OK</button></div></div>' +
       '<div class="hl-vc"><b>😴 Сон (часов)</b><div class="hl-vr"><input id="hl-sl" type="number" step="0.5" inputmode="decimal" placeholder="7.5" value="' + (sl ? esc(sl.name) : "") + '"><button data-a="hlsleep">OK</button></div></div></div>';
-    const ill = act.map(a => { const d = daysBetween(dayKey(a.at), today) + 1; return '<div class="hl-ill"><span class="hl-pul"></span><div><b>' + esc(a.name) + "</b><small>день " + d + " · с " + shortD(dayKey(a.at)) + '</small></div><button class="hl-sm" data-a="hlcure" data-id="' + a.id + '">Выздоровел 🎉</button></div>'; }).join("");
-    return '<div class="hl-hero"><i class="b1"></i><i class="b2"></i><i class="b3"></i><div class="hl-hi">' + greet + '</div><h2>Замеры сегодня</h2><div class="hl-faces">' + faces + "</div>" + (bp || sl ? '<div class="hl-ms">записано: ' + [bp && ("давление " + esc(bp.name)), sl && ("сон " + esc(sl.name) + " ч")].filter(Boolean).join(" · ") + "</div>" : '<div class="hl-ms">Давление и пульс — утром после пробуждения, раз в 1–3 дня или при самочувствии «не то»; сон — по утрам.</div>') + ill + "</div>";
+    const ill = act.map(a => { const dd = daysBetween(dayKey(a.at), today) + 1; return '<div class="hl-ill"><span class="hl-pul"></span><div><b>' + esc(a.name) + "</b><small>день " + dd + " · с " + shortD(dayKey(a.at)) + '</small></div><button class="hl-sm" data-a="hlcure" data-id="' + a.id + '">Выздоровел 🎉</button></div>'; }).join("");
+    const nav = '<div class="hl-dnav"><button data-a="hlhday" data-d="-1" title="День раньше">←</button><b' + (isToday ? "" : ' data-a="hlhday0" style="cursor:pointer"') + '>' + (isToday ? "Сегодня" : dayLabel(d)) + '</b><button data-a="hlhday" data-d="1"' + (d >= today ? " disabled" : "") + ' title="День позже">→</button></div>';
+    return '<div class="hl-hero"><i class="b1"></i><i class="b2"></i><i class="b3"></i><div class="hl-hi">' + greet + '</div><h2>Замеры' + (isToday ? " сегодня" : "") + "</h2>" + nav + '<div class="hl-faces">' + faces + "</div>" + (bp || sl ? '<div class="hl-ms">записано: ' + [bp && ("давление " + esc(bp.name)), sl && ("сон " + esc(sl.name) + " ч")].filter(Boolean).join(" · ") + "</div>" : '<div class="hl-ms">Давление и пульс — утром после пробуждения, раз в 1–3 дня или при самочувствии «не то»; сон — по утрам.</div>') + (isToday ? ill : "") + "</div>";
   }
   function tiles() {
     const s = stats(30), itm = s.items.filter(n => n.kind !== "mood" && n.kind !== "bp" && n.kind !== "sleep").length;
@@ -309,10 +311,12 @@ window.HEALTH_INIT = function (X) {
       put(o, "u"); H.form = null; H.fresh = o.id; H.tab = "feed"; render(); setTimeout(() => { H.fresh = null; }, 1500); toast(K[o.kind].e + " Записано");
     },
     hlbp() { const g = id => $(id) && $(id).value.trim(), sy = +g("hl-bs"), di = +g("hl-bd"), pl = +g("hl-bpl"); if (!(sy >= 60 && sy <= 260 && di >= 30 && di <= 160)) { toast("Впиши верхнее и нижнее давление"); return; }
-      const today = todayISO(), ex = all().find(n => n.kind === "bp" && dayKey(n.at) === today); put({ id: ex ? ex.id : uid(), kind: "bp", name: sy + "/" + di + (pl ? " · " + pl : ""), note: ex ? ex.note : null, sev: null, at: ex ? ex.at : new Date().toISOString(), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
+      const day = heroDay(), ex = all().find(n => n.kind === "bp" && dayKey(n.at) === day); put({ id: ex ? ex.id : uid(), kind: "bp", name: sy + "/" + di + (pl ? " · " + pl : ""), note: ex ? ex.note : null, sev: null, at: ex ? ex.at : (day === todayISO() ? new Date().toISOString() : toISO(day + "T09:00")), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
     hlsleep() { const v = +(($("hl-sl") || {}).value || "").replace(",", "."); if (!(v > 0 && v <= 20)) { toast("Впиши часы сна, например 7.5"); return; }
-      const today = todayISO(), ex = all().find(n => n.kind === "sleep" && dayKey(n.at) === today); put({ id: ex ? ex.id : uid(), kind: "sleep", name: String(v), note: null, sev: null, at: ex ? ex.at : new Date().toISOString(), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
-    hlmood(a) { const v = +a.dataset.v, today = todayISO(), ex = all().find(n => n.kind === "mood" && dayKey(n.at) === today); put({ id: ex ? ex.id : uid(), kind: "mood", name: "", note: null, sev: v, at: ex ? ex.at : new Date().toISOString(), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
+      const day = heroDay(), ex = all().find(n => n.kind === "sleep" && dayKey(n.at) === day); put({ id: ex ? ex.id : uid(), kind: "sleep", name: String(v), note: null, sev: null, at: ex ? ex.at : (day === todayISO() ? new Date().toISOString() : toISO(day + "T09:00")), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
+    hlmood(a) { const v = +a.dataset.v, day = heroDay(), ex = all().find(n => n.kind === "mood" && dayKey(n.at) === day); put({ id: ex ? ex.id : uid(), kind: "mood", name: "", note: null, sev: v, at: ex ? ex.at : (day === todayISO() ? new Date().toISOString() : toISO(day + "T09:00")), until: null, ep: null }, "u"); H.fresh = ex ? ex.id : null; render(); },
+    hlhday(a) { H.day = addDays(heroDay(), +a.dataset.d); if (H.day >= todayISO()) H.day = null; render(); },
+    hlhday0() { H.day = null; render(); },
     hlcure(a) { const n = H.items[a.dataset.id]; if (!n) return; n.until = new Date().toISOString(); put(n, "u"); render(); toast("Рад, что прошло 🎉"); },
     hlopen(a) { H.open = H.open === a.dataset.id ? null : a.dataset.id; render(); },
     hledit(a) { const n = H.items[a.dataset.id]; if (!n) return; H.form = { id: n.id, kind: n.kind, name: n.name, note: n.note || "", sev: n.sev || 3, when: n.kind === "ill" ? toLocal(n.at) : toLocal(n.at), until: n.until ? dayKey(n.until) : "", ep: !!n.ep }; render(); focusName(); },
@@ -345,6 +349,13 @@ window.HEALTH_INIT = function (X) {
   Object.assign(acts, A);
   document.addEventListener("keydown", e => { if (viewg() !== "health" || !H.form) return; if (e.key === "Escape") { e.preventDefault(); A.hlclose(); } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); A.hlsave(); } else if (e.key === "Enter" && e.target && e.target.id === "hl-nm") { e.preventDefault(); A.hlsave(); } });
   window.addEventListener("online", () => { flush(); });
+  let _hlts = null;   // свайп по карточке дня в «Здоровье» — на день раньше/позже
+  document.addEventListener("touchstart", e => { const c = e.target.closest && e.target.closest(".hl-hero"); if (!c || e.touches.length !== 1) return; _hlts = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (!_hlts) return; const t = e.changedTouches[0], dx = t.clientX - _hlts.x, dy = t.clientY - _hlts.y; _hlts = null;
+    if (Math.abs(dx) < 46 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    H.day = addDays(heroDay(), dx < 0 ? 1 : -1); if (H.day >= todayISO()) H.day = null; render();
+  }, { passive: true });
 
   /* ---------- оформление (свой CSS, подключается один раз) ---------- */
   const css = document.createElement("style"); css.textContent = `
@@ -358,7 +369,8 @@ window.HEALTH_INIT = function (X) {
 .hl-hero .b1{width:170px;height:170px;background:#22d3ee;left:-40px;top:-60px}.hl-hero .b2{width:200px;height:200px;background:#ffd166;right:-60px;bottom:-90px}.hl-hero .b3{width:120px;height:120px;background:#fff;right:30%;top:-50px;opacity:.25}
 .hl.an .hl-hero .b1{animation:hlb 9s ease-in-out infinite alternate}.hl.an .hl-hero .b2{animation:hlb 11s ease-in-out infinite alternate-reverse}
 @keyframes hlb{from{transform:translate(0,0)}to{transform:translate(30px,18px)}}
-.hl-hi{font-size:calc(13px*var(--z,1));opacity:.9}.hl-hero h2{margin:2px 0 14px;font-weight:700;font-size:calc(22px*var(--z,1));font-family:inherit;letter-spacing:-.2px}
+.hl-hi{font-size:calc(13px*var(--z,1));opacity:.9}.hl-hero h2{margin:2px 0 6px;font-weight:700;font-size:calc(22px*var(--z,1));font-family:inherit;letter-spacing:-.2px}
+.hl-dnav{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:14px;opacity:.95}.hl-dnav b{font-weight:600}.hl-dnav button{width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.18);color:inherit;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}.hl-dnav button:disabled{opacity:.3;cursor:default}
 .hl-faces{display:flex;gap:8px;flex-wrap:wrap}.hl-vit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.hl-vc{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:16px;padding:10px 12px;backdrop-filter:blur(8px)}.hl-vc b{font-size:13px;display:block;margin-bottom:6px}.hl-vr{display:flex;gap:6px;align-items:center}.hl-vr input{width:100%;min-width:0;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.85);color:#222;font-size:15px}.hl-vr button{padding:8px 14px;border-radius:10px;border:0;background:#fff;color:#222;font-weight:600;cursor:pointer}
 .hl-f{width:58px;height:58px;border-radius:18px;border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:30px;cursor:pointer;transition:transform .25s cubic-bezier(.3,1.6,.5,1),background .2s,box-shadow .2s;padding:0}
 .hl-f span{display:block;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
