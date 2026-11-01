@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       }
       let m2: RegExpExecArray | null;
       if ((m2 = /^(?:позвони|набери|вызови|звони)\s+(?:пожалуйста\s+)?(.+)$/i.exec(tx.trim()))) return { intent: "call", name: m2[1].replace(/\s+на\s+(мобильный|рабочий|домашний)$/i, "").trim() };
-      if ((m2 = /^(?:напиши|отправь|пошли)\s+в\s+(?:телеграм+|телегу|тг)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim())) || (m2 = /^(?:напиши|отправь|пошли)\s+(.+?)\s+в\s+(?:телеграм+|телегу|тг)(?:\s*[:,—]\s*|\s+что\s+|\s+)(.+)$/i.exec(tx.trim())) || (m2 = /^(?:передай|скажи)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim()))) return { intent: "tg", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
+      if ((m2 = /^(?:напиши|отправь|пошли)\s+в\s+(?:телеграм+|телегу|тг)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim())) || (m2 = /^(?:напиши|отправь|пошли)\s+(.+?)\s+в\s+(?:телеграм+|телегу|тг)(?:\s*[:,—]\s*|\s+что\s+|\s+)(.+)$/i.exec(tx.trim()))) return { intent: "tg", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
       if ((m2 = /^(?:напиши|отправь\s+(?:сообщение|смс)|смс)\s+(.+?)(?:\s*[:,—]\s*|\s+что\s+)(.+)$/i.exec(tx.trim()))) return { intent: "sms", name: m2[1].trim(), text: m2[2].trim().replace(/^./, (c) => c.toUpperCase()) };
       if ((m2 = /^(?:поставь\s+)?будильник(?:\s+(?:на|в))?\s+(\d{1,2})(?:[:.](\d{2}))?\s*(утра|дня|вечера|ночи)?(?:\s*[,:]\s*(.+))?$/i.exec(tx.trim()))) {
         let hh = parseInt(m2[1], 10); const mm = m2[2] ? parseInt(m2[2], 10) : 0, ap = (m2[3] || "").toLowerCase();
@@ -134,7 +134,8 @@ Deno.serve(async (req) => {
       }
       if ((m2 = /^(?:поставь\s+)?таймер(?:\s+на)?\s+(.+)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: "Таймер" };
       if ((m2 = /^напомни(?:\s+мне)?\s+через\s+((?:\d+(?:[.,]\d+)?\s*|[а-яё]+\s+)?(?:часа|часов|час|минут[ыу]?|мин)(?![а-яё])|полчаса)\s*[,:]?\s*(.*)$/i.exec(tx.trim())) && durMin(m2[1])) return { intent: "timer", minutes: durMin(m2[1]), title: (m2[2] || "Напоминание").trim().replace(/^./, (c) => c.toUpperCase()) };
-      if ((m2 = /^(?:спроси(?:\s+у\s+(?:ии|нейронки))?|вопрос(?:\s+к\s+ии)?|расскажи|объясни|подскажи)[,:]?\s+(.{3,})$/i.exec(tx.trim()))) return { intent: "ask", text: m2[1].trim() };
+      if ((m2 = /^(?:(?:добавь|запиши|положи|внеси|занеси)\s+)?(?:в\s+)?(?:список\s+)?(?:покупк(?:и|у|ах|ам)|покупок)\s*[,:—]?\s+(.+)$/i.exec(tx.trim())) || (m2 = /^(?:добавь|запиши|положи|внеси|занеси)\s+(.+?)\s+в\s+(?:список\s+)?(?:покупк(?:и|ах|ам)|покупок)$/i.exec(tx.trim()))) return { intent: "buy", text: m2[1].trim() };
+      if ((m2 = /^(?:спроси(?:\s+у\s+(?:ии|нейронки))?|вопрос(?:\s+к\s+ии)?|расскажи|объясни|подскажи|скажи)[,:]?\s+(.{3,})$/i.exec(tx.trim()))) return { intent: "ask", text: m2[1].trim() };
       if (/^(съел[аи]?|поел[аи]?|выпил[аи]?|перекусил[аи]?|позавтракал[аи]?|пообедал[аи]?|поужинал[аи]?|на (завтрак|обед|ужин|перекус)|в питание|добавь в питание)(?![а-яё])/i.test(tx.trim())) return { intent: "food", text: tx.trim() };
       if (/(сколько|что).*(калори|ккал|белк|съел)|итоги питания|питание за сегодня/i.test(tx)) return { intent: "foodsum" };
       if (/напомин/.test(t) && /(есть|какие|какой|сколько|во сколько|когда|скажи|прочита|что)/.test(t) && !/^(напомни|поставь|добавь)/.test(t.trim())) return { intent: "reminders", day: /завтра/.test(t) ? "tomorrow" : "today" };
@@ -272,6 +273,20 @@ Deno.serve(async (req) => {
         const h = Math.floor(mn / 60), m = mn % 60;
         return done("В журнале: " + ttl + ", " + (h ? h + " " + nm(h, "час", "часа", "часов") + (m ? " " : "") : "") + (m ? m + " " + nm(m, "минута", "минуты", "минут") : "") + ".");
       }
+      case "buy": {   // закреплённый список «Покупки» (создаётся при первом разе): несколько позиций через запятую / «и»
+        const items = String(I.text || "").split(/\s*(?:,|;|\s+и\s+)\s*/i).map((x) => x.trim().replace(/^./, (c) => c.toUpperCase()).slice(0, 200)).filter((x) => x.length > 1).slice(0, 15);
+        if (!items.length) return done("Не расслышал, что купить.");
+        let lid = "";
+        const lr = await fetch(base + "lists?select=id&user_id=eq." + uid + "&name=ilike." + encodeURIComponent("Покупки"), { headers: hd }), lj: any[] = lr.ok ? await lr.json() : [];
+        if (lj[0]) lid = lj[0].id;
+        else { const nid = crypto.randomUUID(), cr = await fetch(base + "lists", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ id: nid, user_id: uid, name: "Покупки", icon: "🛒", position: -1, created_at: new Date().toISOString() }) }); if (cr.ok) lid = nid; }
+        if (!lid) return done("Не получилось открыть список покупок.");
+        const now = new Date().toISOString();
+        const rows = items.map((title) => ({ id: crypto.randomUUID(), user_id: uid, title, list_id: lid, due: null, note: "", done: false, parent_id: null, category: null, starred: false, my_day: false, my_day_date: null, steps: [], est_minutes: null, status: "active", remind_at: null, repeat_rule: null, files: [], plan_start: null, created_at: now }));
+        const tr = await fetch(base + "tasks", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify(rows) });
+        if (!tr.ok) return done("Не получилось добавить в покупки.");
+        return done("Добавил в покупки: " + items.join(", ").toLowerCase() + ".");
+      }
       case "ask": {
         const out = await askAI("Ты голосовой помощник инженера-электрика. Отвечай по-русски очень кратко: одно-два предложения, не длиннее 200 символов, без списков, markdown, скобок и эмодзи. Числа и единицы пиши так, как их произносят вслух (например, «тридцать три ампера», «двадцать два киловатта»). Если для ответа нужен точный расчёт по нормам или ты не уверен, скажи об этом одной фразой. Не давай медицинских, юридических и финансовых рекомендаций.", String(I.text || text));
         if (!out) return done("Сейчас не получилось спросить у ИИ.");
@@ -319,7 +334,7 @@ Deno.serve(async (req) => {
         const S = (k: string) => Math.round(ta.reduce((a, x) => a + Number(x[k]), 0));
         return done("За сегодня " + S("kcal") + " ккал. Белка " + S("p") + " граммов, жиров " + S("f") + ", углеводов " + S("c") + ".");
       }
-      case "help": return done("Можно сказать: «заметка …» — записать мысль; «напиши в телеграм Мартынову: …»; спроси и вопрос; съел и что съел; таймер на 20 минут; будильник на 7 утра; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
+      case "help": return done("Можно сказать: «заметка …» — записать мысль; «напиши в телеграм Мартынову: …»; спроси или скажи и вопрос; в покупки молоко, хлеб; съел и что съел; таймер на 20 минут; будильник на 7 утра; напомни через час; позвони Ивану; напиши Ивану и текст; в журнал и дело с длительностью; запиши и само дело; ближайшие дела; что дальше; сколько дел; готово; отложи на час; перенеси на завтра; отмена; который час; погода.");
       default: break;
     }
     // add

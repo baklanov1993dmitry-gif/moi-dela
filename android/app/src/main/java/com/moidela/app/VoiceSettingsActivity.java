@@ -157,7 +157,7 @@ public class VoiceSettingsActivity extends Activity {
 
         LinearLayout c6 = card(root, "Сигналы");
         final List<String> cueNames = new ArrayList<String>(Arrays.asList(Cues.NAMES));
-        final int[] sCs = {sp.getInt("cue_start", 0)}, sCo = {sp.getInt("cue_ok", 0)};
+        final int[] sCs = {sp.getInt("cue_start", 6)}, sCo = {sp.getInt("cue_ok", 0)};
         row(c6, "Начало записи", cueNames, sCs, new Pick() { public void on(int i) { sp.edit().putInt("cue_start", i).apply(); Cues.preview(VoiceSettingsActivity.this, false, i); } }); divider(c6);
         row(c6, "Запись принята", cueNames, sCo, new Pick() { public void on(int i) { sp.edit().putInt("cue_ok", i).apply(); Cues.preview(VoiceSettingsActivity.this, true, i); } });
         note(c6, "При выборе мелодия сразу проигрывается.");

@@ -137,7 +137,7 @@ public class VoiceAddActivity extends Activity {
             try { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.vibrate(80); } catch (Exception e) {}
             long wait = 0;
             if (Store.p(VoiceAddActivity.this).getBoolean("v_beep", true)) {
-                if (Store.p(VoiceAddActivity.this).getInt("cue_start", 0) == 6) {   // вместо сигнала — короткая фраза (системный синтез, бесплатно и без сети)
+                if (Store.p(VoiceAddActivity.this).getInt("cue_start", 6) == 6) {   // вместо сигнала — короткая фраза (системный синтез, бесплатно и без сети)
                     try { if (tts != null && ttsReady) { tts.speak("Говорите", TextToSpeech.QUEUE_FLUSH, null, "cue"); wait = 1100; } } catch (Exception e) {}
                 } else try { int cm = Cues.play(VoiceAddActivity.this, "cue_start", btRoute); if (cm > 0) wait = Math.max(450, cm + 150); } catch (Exception e) {}
             }
@@ -154,6 +154,15 @@ public class VoiceAddActivity extends Activity {
         } });
     }
 
+    private boolean beepMuted = false;
+    private void muteBeep() {
+        if (beepMuted) return;
+        try { AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE); am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_MUTE, 0); am.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_MUTE, 0); beepMuted = true; } catch (Exception e) {}
+    }
+    private void unmuteBeep() {
+        if (!beepMuted) return; beepMuted = false;
+        try { AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE); am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0); am.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0); } catch (Exception e) {}
+    }
     private void beginRecognize() {
         try { if (sr != null) { sr.cancel(); sr.destroy(); } } catch (Exception e) {}
         sr = SpeechRecognizer.createSpeechRecognizer(this); final SpeechRecognizer me = sr;
@@ -181,6 +190,7 @@ public class VoiceAddActivity extends Activity {
         i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
         i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
         i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
+        muteBeep(); h.postDelayed(new Runnable() { public void run() { unmuteBeep(); } }, 700);   // глушим системный «блип» распознавателя Google: у нас своё «Говорите»
         sr.startListening(i);
         final int seq = ++recSeq; h.postDelayed(new Runnable() { public void run() { if (!done && sr != null && seq == recSeq) sr.stopListening(); } }, 20000);
     }
@@ -486,6 +496,7 @@ public class VoiceAddActivity extends Activity {
     private void finishSoon() { h.postDelayed(new Runnable() { public void run() { finish(); } }, 500); }
 
     @Override protected void onDestroy() {
+        unmuteBeep();
         h.removeCallbacksAndMessages(null);
         dropFocus();
         releaseBt();
