@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "01.11 14:55";
+const BUILD = "01.11 15:07";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2005,7 +2005,7 @@ const dtpCSS = `
 @keyframes popsrc{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.07)}}
 @media(prefers-reduced-motion:reduce){.pop.pin,.popsrc{animation:none}}
 .pop.dtl .pi{height:52px;padding:0 18px;gap:16px;font-size:calc(17px*var(--z,1))} .pop.dtl .ptitle{padding:10px 18px 0} .pop.dtl .pform{padding:6px 18px 10px} .pop.rep{max-height:72vh;overflow:auto}
-body .pop.rmd{padding:10px 14px 12px!important;border-radius:14px!important;box-shadow:0 8px 28px rgba(0,0,0,.28)!important;max-height:80vh!important}
+body .pop.rmd{padding:10px 14px 12px!important;border-radius:14px!important;box-shadow:0 8px 28px rgba(0,0,0,.28)!important;max-height:calc(100dvh - 16px)!important}
 body .pop.rmd .dtp-h{font-size:calc(18px*var(--z,1));margin:0}body .pop.rmd .dtp-s{margin:0 0 8px;font-size:calc(12px*var(--z,1))}
 body .pop.rmd .dtp-tabs{margin:0 0 8px}body .pop.rmd .dtp-tab{padding:7px 6px;font-size:calc(13.5px*var(--z,1))}
 body .pop.rmd .dqrow.big .dq{padding:9px 6px;font-size:calc(14px*var(--z,1));border-radius:10px}
@@ -2054,6 +2054,17 @@ body .pop.rmd .btn{height:40px;font-size:calc(15px*var(--z,1))}
 .tb:active{background:var(--acc);color:#fff}
 .dqrow.big .dq{padding:14px 8px;font-size:calc(16px*var(--z,1));border-radius:12px}.dtp-time .tb{min-width:52px;font-size:calc(16px*var(--z,1))}.dtp-sum{margin:12px 0 8px;font-weight:600;text-align:center;color:var(--acc)}
 .dtp-btns{display:flex;gap:8px}
+/* v267: компактнее — всё окно «Напомнить/Срок» должно помещаться без прокрутки */
+body .pop.dtp{padding:10px 12px 12px;max-height:calc(100dvh - 16px);overflow-y:auto}
+body .pop.dtp .dtp-h{font-size:calc(19px*var(--z,1));margin:0}body .pop.dtp .dtp-s{margin:0 0 6px;font-size:calc(12px*var(--z,1))}
+body .pop.dtp .dtp-tabs{margin:0 0 6px}body .pop.dtp .dtp-tab{padding:6px 6px;font-size:calc(13.5px*var(--z,1))}
+body .pop.dtp .dqrow{gap:5px}body .pop.dtp .dqrow.big .dq{padding:8px 6px;font-size:calc(14px*var(--z,1));border-radius:10px}
+body .pop.dtp .cal-h{margin:6px 0 2px}body .pop.dtp .cal-n{height:28px}body .pop.dtp .cal-w span{padding:2px 0;font-size:calc(11.5px*var(--z,1))}
+body .pop.dtp .cal-d{height:30px;font-size:calc(13.5px*var(--z,1))}body .pop.dtp .cal-g{gap:1px}
+body .pop.dtp .dtp-time{margin-top:6px;padding-top:6px}body .pop.dtp .dtp-sum{margin:6px 0 6px;font-size:calc(13.5px*var(--z,1))}
+body .pop.dtp .dtp-tl{margin:4px 0 3px}body .pop.dtp .btn{height:38px;font-size:calc(14.5px*var(--z,1))}
+body .pop.dtp .dtp-time .tb{min-width:44px;font-size:calc(14px*var(--z,1))}body .pop.dtp .dtw{margin:2px 0}body .pop.dtp .jr-wcw{zoom:.7}body .pop.dtp .dtp-time .jr-wc,body .pop.dtp .jr-wcw{margin:0}
+@media(max-width:760px){body .pop.dtp .cal-d{height:34px;font-size:calc(14.5px*var(--z,1))}body .pop.dtp{max-height:calc(100dvh - 62px)}}
 `;
 
 // ---- p8: удобство и визуал: свайпы, «Завтра» на просроченных, цвета категорий, значок-счётчик, анимация, любимое время ----
