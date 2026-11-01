@@ -397,8 +397,13 @@ window.NOTES_INIT = function (X) {
     NT.thumb = { x, w };
   }
   function autosize(el) { if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight + 2, Math.round(innerHeight * 0.45)) + "px"; }
+  let kp = null;
+  const kpSave = e => { const t = e.target; if (t && (t.id === "nt-tx" || t.id === "nt-ed") && document.activeElement === t) kp = { id: t.id, s: t.selectionStart, e: t.selectionEnd, v: t.value }; };
+  document.addEventListener("input", kpSave); document.addEventListener("selectionchange", () => kpSave({ target: document.activeElement }));
+  document.addEventListener("focusout", e => { const t = e.target; if (!t || (t.id !== "nt-tx" && t.id !== "nt-ed")) return; setTimeout(() => { if (t.isConnected) kp = null; }, 0); });
+  function kpRestore() { if (!kp) return; const el = $(kp.id); if (!el) { kp = null; return; } if (document.activeElement === el) return; if (el.value !== kp.v) el.value = kp.v; if (kp.id === "nt-tx") NT.tx = el.value; try { el.focus({ preventScroll: true }); el.setSelectionRange(kp.s, kp.e); } catch (er) {} }
   function after() {
-    placeThumb(); autosize($("nt-tx")); autosize($("nt-ed"));
+    kpRestore(); placeThumb(); autosize($("nt-tx")); autosize($("nt-ed"));
     if (NT.mode === "graph") runGraph();
     if (NT.fresh) { const el = document.querySelector('.nt-n[data-id="' + NT.fresh + '"]'); NT.fresh = null; growEl(el, 380, true); }
     if (NT.grow) { const el = document.querySelector('.nt-n[data-id="' + NT.grow + '"] .nt-acts'); NT.grow = null; growEl(el, 200); }
