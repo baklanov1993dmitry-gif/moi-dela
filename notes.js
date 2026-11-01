@@ -35,7 +35,7 @@ window.NOTES_INIT = function (X) {
       if (r.error) { if (/relation|does not exist|schema cache/i.test(r.error.message || "")) NT.missing = true; }
       else { NT.missing = false; const m = {}; r.data.forEach(n => { m[n.id] = n; }); Object.keys(NT.pend).forEach(id => { if (NT.pend[id] === "u" && NT.items[id]) m[id] = NT.items[id]; if (NT.pend[id] === "d") delete m[id]; }); NT.items = m; NT.loaded = true; save(); }
     } catch (e) {}
-    NT.busy = false; if (viewg() === "notes") render();
+    NT.busy = false; { const ae = document.activeElement; if (viewg() === "notes" && !(ae && (ae.id === "nt-tx" || ae.id === "nt-ed") && ae.value)) render(); }
   }
   function put(n, op) { NT.items[n.id] = n; NT.pend[n.id] = op || "u"; save(); flush(); }
   const dayKey = iso => { const d = new Date(iso); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); };
@@ -396,12 +396,12 @@ window.NOTES_INIT = function (X) {
     if (NT.thumb && NT.thumb.x !== x && anim()) th.animate([{ transform: "translateX(" + NT.thumb.x + "px)", width: NT.thumb.w + "px" }, { transform: "translateX(" + x + "px)", width: w + "px" }], { duration: 280, easing: EASE });
     NT.thumb = { x, w };
   }
-  function autosize(el) { if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight + 2, Math.round(innerHeight * 0.45)) + "px"; }
+  function autosize(el) { if (!el) return; const st = el.scrollTop, atEnd = el.selectionStart === el.value.length; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight + 2, Math.round(innerHeight * 0.45)) + "px"; el.scrollTop = atEnd ? el.scrollHeight : st; }
   let kp = null;
   const kpSave = e => { const t = e.target; if (t && (t.id === "nt-tx" || t.id === "nt-ed") && document.activeElement === t) kp = { id: t.id, s: t.selectionStart, e: t.selectionEnd, v: t.value }; };
   document.addEventListener("input", kpSave); document.addEventListener("selectionchange", () => kpSave({ target: document.activeElement }));
   document.addEventListener("focusout", e => { const t = e.target; if (!t || (t.id !== "nt-tx" && t.id !== "nt-ed")) return; setTimeout(() => { if (t.isConnected) kp = null; }, 0); });
-  function kpRestore() { if (!kp) return; const el = $(kp.id); if (!el) { kp = null; return; } if (document.activeElement === el) return; if (el.value !== kp.v) el.value = kp.v; if (kp.id === "nt-tx") NT.tx = el.value; try { el.focus({ preventScroll: true }); el.setSelectionRange(kp.s, kp.e); } catch (er) {} }
+  function kpRestore() { if (!kp) return; const el = $(kp.id); if (!el) { kp = null; return; } if (document.activeElement === el) return; if (el.value !== kp.v) el.value = kp.v; if (kp.id === "nt-tx") NT.tx = el.value; try { el.focus({ preventScroll: true }); el.setSelectionRange(kp.s, kp.e); if (kp.s === el.value.length) el.scrollTop = el.scrollHeight; } catch (er) {} }
   function after() {
     kpRestore(); placeThumb(); autosize($("nt-tx")); autosize($("nt-ed"));
     if (NT.mode === "graph") runGraph();
