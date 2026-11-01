@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "01.11 15:23";
+const BUILD = "01.11 15:27";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3699,10 +3699,17 @@ function fitPop() {
   } catch (e) {}
   const m = 12, vw = window.innerWidth;
   pop.style.maxHeight = (vh - 2 * m) + "px";
-  const r = pop.getBoundingClientRect();
-  let top = parseFloat(pop.style.top) || r.top, left = parseFloat(pop.style.left) || r.left;
-  if (top + r.height > vh - m) top = (ui.pop && ui.pop.p === "ctx" && top - r.height >= m) ? top - r.height : Math.max(m, vh - m - r.height);   // контекстное меню раскрывается вверх от клика, если снизу тесно
-  if (left + r.width > vw - m) left = Math.max(m, vw - m - r.width);
+  const H = pop.offsetHeight, W = pop.offsetWidth;   // layout-размеры: getBoundingClientRect во время анимации появления (scale .72) занижает высоту и ломал расчёт
+  let top = parseFloat(pop.style.top), left = parseFloat(pop.style.left);
+  if (isNaN(top)) top = pop.getBoundingClientRect().top; if (isNaN(left)) left = pop.getBoundingClientRect().left;
+  const below = vh - m - top;
+  if (H > below) {
+    const ctx = ui.pop && (ui.pop.type === "ctx" || ui.pop.type === "listmenu"), above = top - m;   // top — точка клика: снизу тесно → раскрываем вверх от неё, если там места больше
+    if (ctx && above >= H) { top = top - H; pop.classList.add("up"); }
+    else if (ctx && above > below) { pop.style.maxHeight = above + "px"; top = m; }
+    else top = Math.max(m, vh - m - H);
+  }
+  if (left + W > vw - m) left = Math.max(m, vw - m - W);
   pop.style.top = top + "px"; pop.style.left = left + "px";
 }
 
@@ -4380,7 +4387,7 @@ function popHTML() {
     case "help": h = '<div class="ptitle">Умный ввод</div><div class="ptext"><b>завтра, послезавтра, сегодня</b><br><b>в пятницу</b>, <b>через 3 дня</b>, <b>25.12</b><br><b>в 18:00</b> — напоминание<br><b>каждый день</b>, <b>по будням</b>, <b>ежемесячно</b><br><b>~30м</b>, <b>1.5ч</b> — сколько займёт<br><b>#зал</b> — в список (или категория)<br><b>!</b> — важное</div><div class="psep"></div><div class="ptitle">Клавиши</div><div class="ptext">Enter — добавить · Esc — закрыть панель<br>ПКМ по задаче — быстрое меню<br>Перетащите задачу на список в левой панели</div>'; break;
   }
   const first = !p.shown; p.shown = true;
-  const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = Math.max(8, Math.min(p.y, innerHeight - 300));
+  const x = Math.max(8, Math.min(p.x, innerWidth - 250)), y = (p.type === "ctx" || p.type === "listmenu") && !isMobile() ? Math.max(8, p.y) : Math.max(8, Math.min(p.y, innerHeight - 300));   // контекстным меню точка клика нужна как есть: fitPop сам решит, раскрывать вниз или вверх
   const mob = isMobile(), dt = p.type === "due" || p.type === "remind" || (p.type === "repeat" && mob);
   const lst = (p.type === "due" && ui.dtp && !ui.dtp.cal) || (p.type === "repeat" && mob), anc = lst || (mob && p.type === "remind");
   return (dt ? '<div class="dtpb"' + (p.mid ? ' style="background:rgba(0,0,0,.22)"' : lst ? ' style="background:transparent"' : anc && !ui.qa ? ' style="background:rgba(0,0,0,.12)"' : anc ? ' style="background:transparent"' : "") + "></div>" : "") + '<div class="pop' + (dt ? (lst ? " dtl" : " dtp") : "") + (p.type === "mmenu" && mob ? " mm" : "") + (p.type === "mctx" && mob ? " mtp" : "") + (p.type === "repeat" && mob ? " rep" : "") + (p.type === "remind" && mob ? " rmd" : "") + (first ? (p.mid ? " pin mid" : p.bot ? " pin up" : " pin") : "") + '" id="pop" style="left:' + x + "px;" + (anc && p.mid ? "top:" + Math.max(8, Math.round((Math.max(window.__fullH || 0, innerHeight) - p.mid) / 2 - 20)) + "px!important;bottom:auto!important" : anc && p.bot ? "top:auto!important;bottom:" + p.bot + "px!important" : "top:" + y + "px" + (anc ? "!important" : "")) + '">' + h + "</div>";
