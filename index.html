@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "01.11 14:23";
+const BUILD = "01.11 14:38";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -364,7 +364,84 @@ function fxEmo(row, em, mode, n) {
 const FXF = { web: fxWeb, flash: fxFlash, bubbles: fxBubbles, neon: fxNeon,
   comet: r => fxEmo(r, ["☄️", "🌠", "✨"], "right", 14), embers: r => fxEmo(r, ["🔥", "🧡", "✨"], "up", 16), fireflies: r => fxEmo(r, ["✨", "💛", "🌿"], "stay", 18), auroraf: r => fxEmo(r, ["🌌", "💫", "✨"], "up", 14),
   plane: r => fxEmo(r, ["✉️", "📄"], "plane", 8), clouds: r => fxEmo(r, ["☁️", "🕊️"], "stay", 10), leaves: r => fxEmo(r, ["🍃", "🌿"], "stay", 14), stars: r => fxEmo(r, ["✨", "⭐", "🌟"], "stay", 16), sun: r => fxEmo(r, ["☀️", "🌅", "✨"], "up", 10), moon: r => fxEmo(r, ["🌙", "⭐", "✨"], "shrink", 14), citrus: r => fxEmo(r, ["🍋", "🍏", "💦"], "shrink", 12), waves: r => fxEmo(r, ["🌊", "🐚", "🫧"], "right", 14), hearts: r => fxEmo(r, ["💖", "🍬", "🎀"], "stay", 14), petals: r => fxEmo(r, ["🌸", "🌺"], "fall", 16), snow: r => fxEmo(r, ["❄️", "✨"], "freeze", 14), sand: r => fxEmo(r, ["🌵", "🏜️", "·"], "right", 16) };
+// «Взрослые» эффекты закрытия (v265): выбор в Настройки→Оформление (TH.dfx), не зависят от темы
+const FX2N = [["dust", "Пыль"], ["pen", "Перо"], ["crt", "Экран ЭЛТ"], ["slice", "Срез"], ["flip", "Лист календаря"], ["glass", "Стекло"], ["stamp", "Печать «Готово»"], ["wave", "Опадание букв"]];
+window.FX2T = () => FX2;
+function fx2Layer(r) { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:" + r.left + "px;top:" + r.top + "px;pointer-events:none;z-index:9001"; document.body.appendChild(d); return d; }
+function fx2End(els, ms) { setTimeout(() => els.forEach(e => e && e.remove()), ms); }
+const FX2 = {
+  dust(row) {   // одна копия тает маской слева направо + частицы на одном canvas (без сотни клонов)
+    const { c, r } = fxClone(row), cs = getComputedStyle(row), dpr = Math.min(2, devicePixelRatio || 1), PAD = 220;
+    const cv = document.createElement("canvas"), W = r.width + PAD, H = r.height + PAD; cv.width = W * dpr; cv.height = H * dpr;
+    cv.style.cssText = "position:fixed;left:" + r.left + "px;top:" + (r.top - PAD / 2) + "px;width:" + W + "px;height:" + H + "px;pointer-events:none;z-index:9001";
+    document.body.appendChild(cv); const g = cv.getContext("2d"); g.scale(dpr, dpr);
+    const tl = row.querySelector(".ttl"), tr = tl ? tl.getBoundingClientRect() : r, txc = cs.color, bgc = cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? cs.backgroundColor : "rgba(140,140,150,.6)";
+    const N = Math.min(520, Math.round(r.width * r.height / 70)), P = [];
+    for (let i = 0; i < N; i++) { const inT = Math.random() < .55, x = inT ? tr.left - r.left + Math.random() * tr.width : Math.random() * r.width, y = inT ? tr.top - r.top + Math.random() * tr.height : Math.random() * r.height;
+      P.push({ x, y: y + PAD / 2, t0: x / r.width * 850 + Math.random() * 90, vx: .06 + Math.random() * .16, vy: -.02 - Math.random() * .06, ay: (Math.random() - .5) * .00012, s: 1 + Math.random() * 2.2, life: 650 + Math.random() * 500, col: inT && Math.random() < .7 ? txc : bgc }); }
+    const T0 = performance.now(), SW = 950, END = SW + 1300;
+    const tick = now => {
+      const t = now - T0, p = Math.min(1, t / SW) * 112 - 6, m = "linear-gradient(90deg,transparent " + p + "%,#000 " + (p + 8) + "%)";
+      c.style.webkitMaskImage = m; c.style.maskImage = m;
+      g.clearRect(0, 0, W, H);
+      for (const q of P) { const a = t - q.t0; if (a < 0 || a > q.life) continue; const k = a / q.life; g.globalAlpha = (1 - k) * (1 - k); g.fillStyle = q.col; g.fillRect(q.x + q.vx * a + 18 * Math.sin(a / 160 + q.x), q.y + q.vy * a + q.ay * a * a, q.s, q.s); }
+      if (t < END) requestAnimationFrame(tick); else { c.remove(); cv.remove(); }
+    };
+    requestAnimationFrame(tick); fx2End([c, cv], END + 800);
+  },
+  pen(row) {
+    const { c, r } = fxClone(row), tl = row.querySelector(".ttl"); if (!tl) return FX2.glass(row);
+    const tb = tl.getBoundingClientRect(), L = tb.left - r.left - 4, W = Math.min(tb.width, tl.scrollWidth) + 8, Y = tb.top - r.top + Math.min(tb.height, 24) / 2 + 1, n = 7;
+    let d = "M" + L + " " + (Y + 2); for (let i = 1; i <= n; i++) { const x = L + W * i / n, y = Y + (i % 2 ? -2.5 : 2) + Math.random() * 1.5; d += " Q" + (x - W / n / 2) + " " + (y + (i % 2 ? -2 : 2)) + " " + x + " " + y; }
+    const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("width", r.width); s.setAttribute("height", r.height); s.style.cssText = "position:absolute;left:0;top:0;overflow:visible";
+    s.innerHTML = '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>'; c.appendChild(s);
+    s.firstChild.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 520, easing: "cubic-bezier(.6,.05,.3,1)", fill: "forwards" });
+    const ct = c.querySelector(".ttl"); if (ct) ct.animate([{ opacity: 1 }, { opacity: .5 }], { duration: 520, delay: 200, fill: "forwards" });
+    c.animate([{ opacity: 1, transform: "none" }, { opacity: 1, transform: "none", offset: .6 }, { opacity: 0, transform: "translateX(18px)" }], { duration: 1050, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); fx2End([c], 1100);
+  },
+  crt(row) {
+    const { c } = fxClone(row); c.style.transformOrigin = "50% 50%"; c.style.boxShadow = "0 0 18px var(--acc)";
+    c.animate([{ transform: "scale(1,1)", filter: "brightness(1)", opacity: 1 }, { transform: "scale(1.02,.04)", filter: "brightness(3)", opacity: 1, offset: .45 }, { transform: "scale(.02,.04)", filter: "brightness(4)", opacity: 1, offset: .8 }, { transform: "scale(0,0)", filter: "brightness(5)", opacity: 0 }], { duration: 900, easing: "cubic-bezier(.7,0,.3,1)", fill: "forwards" }); fx2End([c], 950);
+  },
+  slice(row) {
+    const { c, r } = fxClone(row), c2 = c.cloneNode(true); document.body.appendChild(c2);
+    c.style.clipPath = "polygon(0 0,100% 0,100% 20%,0 85%)"; c2.style.clipPath = "polygon(0 85%,100% 20%,100% 100%,0 100%)";
+    const ang = Math.atan2(r.height * .65, r.width) * 180 / Math.PI, len = Math.hypot(r.width, r.height * .65), ln = fx2Layer({ left: r.left, top: r.top + r.height * .85 }), rt = "rotate(" + (-ang) + "deg) ";
+    ln.style.cssText += ";width:" + len + "px;height:2px;background:linear-gradient(90deg,transparent,#fff,var(--acc),transparent);transform-origin:0 50%;box-shadow:0 0 10px var(--acc)";
+    ln.animate([{ transform: rt + "scaleX(0)", opacity: 1 }, { transform: rt + "scaleX(1)", opacity: 1, offset: .5 }, { transform: rt + "scaleX(1)", opacity: 0 }], { duration: 420, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+    const o = { duration: 800, delay: 260, easing: "cubic-bezier(.5,0,.75,0)", fill: "forwards" };
+    c.animate([{ transform: "none", opacity: 1 }, { transform: "translate(-40px,-46px) rotate(-7deg)", opacity: 0 }], o); c2.animate([{ transform: "none", opacity: 1 }, { transform: "translate(46px,52px) rotate(6deg)", opacity: 0 }], o); fx2End([c, c2, ln], 1100);
+  },
+  flip(row) {
+    const { c } = fxClone(row); c.style.transformOrigin = "50% 0"; c.style.backfaceVisibility = "hidden";
+    c.animate([{ transform: "perspective(600px) rotateX(0)", filter: "brightness(1)", opacity: 1 }, { transform: "perspective(600px) rotateX(18deg) translateY(-2px)", filter: "brightness(1)", opacity: 1, boxShadow: "0 10px 18px rgba(0,0,0,.18)", offset: .25 }, { transform: "perspective(600px) rotateX(-110deg) translateY(-30px)", filter: "brightness(.55)", opacity: 0, boxShadow: "0 20px 30px rgba(0,0,0,0)" }], { duration: 1000, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" }); fx2End([c], 1050);
+  },
+  glass(row) {
+    const { c } = fxClone(row);
+    c.animate([{ filter: "blur(0) saturate(1)", opacity: 1, transform: "none" }, { filter: "blur(3px) saturate(.6)", opacity: .75, transform: "translateY(-6px) scale(1.01)", offset: .35 }, { filter: "blur(16px) saturate(0)", opacity: 0, transform: "translateY(-44px) scale(1.06)" }], { duration: 1100, easing: "cubic-bezier(.3,0,.2,1)", fill: "forwards" }); fx2End([c], 1150);
+  },
+  stamp(row) {
+    const { c, r } = fxClone(row), st = fx2Layer({ left: r.right - 130, top: r.top + r.height / 2 - 22 });
+    st.style.cssText += ";width:112px;height:44px;border:3px solid #1f9d55;color:#1f9d55;border-radius:8px;font:800 16px/38px system-ui,sans-serif;letter-spacing:2px;text-align:center;background:rgba(255,255,255,.55)"; st.textContent = "✓ ГОТОВО";
+    st.animate([{ transform: "scale(3) rotate(-24deg)", opacity: 0 }, { transform: "scale(.92) rotate(-11deg)", opacity: 1, offset: .7 }, { transform: "scale(1) rotate(-12deg)", opacity: 1 }], { duration: 320, easing: "cubic-bezier(.5,0,.8,.4)", fill: "forwards" });
+    c.animate([{ transform: "none" }, { transform: "translateY(2px) scale(.995)", offset: .5 }, { transform: "none" }], { duration: 160, delay: 230 });
+    setTimeout(() => { const o = { duration: 600, easing: "cubic-bezier(.5,0,.75,0)", fill: "forwards" }; c.animate([{ transform: "none", opacity: 1 }, { transform: "translateY(26px)", opacity: 0 }], o); st.animate([{ transform: "rotate(-12deg)", opacity: 1 }, { transform: "translateY(26px) rotate(-12deg)", opacity: 0 }], o); }, 650); fx2End([c, st], 1350);
+  },
+  wave(row) {
+    const { c } = fxClone(row), el = c.querySelector(".ttl"); if (!el) return FX2.glass(row);
+    c.style.overflow = "visible"; el.style.overflow = "visible"; const txt = el.textContent; el.innerHTML = [...txt].map(ch => '<span style="display:inline-block;white-space:pre">' + esc(ch) + "</span>").join("");
+    const sp = [...el.children], st = Math.min(22, 700 / Math.max(1, sp.length)), T = sp.length * st + 650;
+    sp.forEach((s, i) => s.animate([{ transform: "none", opacity: 1 }, { transform: "translateY(" + (40 + Math.random() * 30) + "px) rotate(" + ((Math.random() - .3) * 80) + "deg)", opacity: 0 }], { duration: 650, delay: i * st, easing: "cubic-bezier(.55,0,.9,.4)", fill: "forwards" }));
+    [...c.children].forEach(x => { if (!x.contains(el)) x.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, delay: 200, fill: "forwards" }); });
+    [...el.parentNode.children].forEach(x => { if (x !== el) x.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, delay: 200, fill: "forwards" }); });
+    c.animate([{ background: c.style.background, boxShadow: c.style.boxShadow || "none" }, { background: "transparent", boxShadow: "none" }], { duration: 500, delay: T * .4, fill: "forwards" }); fx2End([c], T + 80);
+  }
+};
 function themeFx(kind, row, force) {
+  if (!row || !row.getBoundingClientRect) return;
+  const d2 = TH.dfx || "";
+  if (d2 === "off" && !force) return;
+  if (FX2[d2]) { if (!force && window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return; try { FX2[d2](row); return true; } catch (e) { return; } }
   const T = THEMES[TH.theme]; if (!T || !T.fx || !row || !row.getBoundingClientRect) return;
   if (!force && (TH.fx === false || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches))) return;
   const f = FXF[T.fx]; if (f) { try { f(row); return true; } catch (e) {} }
@@ -4312,7 +4389,7 @@ function settingsHTML() {
   else if (tab === "view") b =
     G("Оформление",
       '<div class="srw col"><div class="srt"><b>Тема</b><span>Внешний вид всего приложения</span></div><div class="src full"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + Object.keys(THEMES).map(k => { const T = THEMES[k], on = TH.theme === k; return '<button data-a="theme" data-v="' + k + '" style="background:' + T.bg + ";border:" + (on ? "3px solid " + T.acc : (T.bd && T.bd[0] !== "0" ? T.bd : "1px solid rgba(0,0,0,.15)")) + ";color:" + (T.tx || "#222") + ";border-radius:" + T.rad + ";font-family:" + FONTS[T.font] + ";box-shadow:" + (T.sh || "none") + ';padding:10px 6px 9px;font-size:calc(13px*var(--z,1));font-weight:' + (T.tw || 500) + ';text-align:center"><div style="height:8px;border-radius:' + T.rad + ";background:" + T.acc + ';margin:0 8px 7px"></div>' + T.n + "</button>"; }).join("") + "</div></div></div>" +
-      ((THEMES[TH.theme] || {}).fx ? R("Анимации темы", "Сейчас — при закрытии задачи. У каждой темы своя: Паутина — нить-выстрел, Лёд — заморозка, Роза — лепестки.", sel("s-fx", TH.fx === false ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]]) + BT("fxtest", "▶ Показать")) : "") +
+      R("Анимация закрытия", "Что происходит со строкой, когда задача выполнена", sel("s-dfx", TH.dfx || ((THEMES[TH.theme] || {}).fx ? (TH.fx === false ? "off" : "") : "off"), [["off", "Без анимации"]].concat((THEMES[TH.theme] || {}).fx ? [["", "По теме (эмодзи и т.п.)"]] : []).concat(FX2N)) + BT("fxtest", "▶ Показать")) +
       R("Акцентный цвет", (view.indexOf("list:") === 0 && S.lists[view.slice(5)] && S.lists[view.slice(5)].color ? "У списка «" + esc(S.lists[view.slice(5)].name) + "» свой цвет, выбор здесь поменяет и его." : "У списков может быть свой цвет"), '<div style="display:flex;gap:8px;flex-wrap:wrap">' + ACCENTS.map(c => '<button data-a="accent" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + (curAccent() === c ? "var(--tx)" : "transparent") + '"></button>').join("") + "</div>", "col") +
       R("Цвет текста", "Только для «" + esc(viewInfo().name) + "». У каждого списка и раздела свой, остальные не меняются.", '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button data-a="tcolor" data-v="" style="height:30px;padding:0 10px;border-radius:15px;border:3px solid ' + (!(PR.tc || {})[view] ? "var(--tx)" : "var(--ln)") + ';background:transparent;color:var(--tx);font-size:12px">авто</button>' + TCOLORS.map(c => '<button data-a="tcolor" data-v="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ";border:3px solid " + ((PR.tc || {})[view] === c ? "var(--acc)" : "rgba(128,128,128,.45)") + '"></button>').join("") + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sub)">свой <input type="color" id="s-tc" value="' + ((PR.tc || {})[view] || "#323130") + '" style="width:34px;height:30px;padding:0;border:0;background:none"></label></div>', "col")) +
     G("Текст",
@@ -6895,6 +6972,7 @@ const changes = {
   "s-stlim"(v) { PR.stGB = +v; savePrefs(); render(); },
   "s-size"(v) { if (PLAT_M) TH.size = v; else TH.sizeW = v; saveTheme(); render(); },
   "s-fx"(v) { TH.fx = v !== "off"; saveTheme(); render(); },
+  "s-dfx"(v) { TH.dfx = v; if (v === "") TH.fx = true; saveTheme(); render(); },
   "s-tc"(v) { PR.tc = PR.tc || {}; PR.tc[view] = v; savePrefs(); render(); }
 };
 
