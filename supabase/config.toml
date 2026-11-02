@@ -10,3 +10,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.track]
 verify_jwt = false
+[functions.team-notify]
+verify_jwt = false

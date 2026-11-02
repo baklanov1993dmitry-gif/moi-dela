@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "01.11 15:27";
+const BUILD = "02.11 10:36";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4024,8 +4024,8 @@ const listIcon = l => l && l.icon && l.icon !== "🗂️" && l.icon !== "🗂" ?
 function viewInfo() {
   if (view === "myday") { const d = new Date(); return { svg: "sun", name: "Мой день", sub: dateLong(d).replace(/^./, c => c.toUpperCase()) }; }
   if (view === "day") return { svg: "clock", name: "День", sub: "План и факт по часам" };
-  if (view.indexOf("team:") === 0) { const u = TM.users.find(x => x.id === view.slice(5)); return { svg: "users", name: u ? (u.email || "?").split("@")[0] : "Сотрудник", sub: "Задачи сотрудника (только чтение)" }; }
-  if (view === "team") return { svg: "users", name: "Команда", sub: "Сотрудники: выбери человека — увидишь его дела (только чтение)" };
+  if (view.indexOf("team:") === 0) { const u = TM.users.find(x => x.id === view.slice(5)); return { svg: "users", name: u ? (u.email || "?").split("@")[0] : "Сотрудник", sub: "Задачи сотрудника · ✎ править, ＋ поставить задачу" }; }
+  if (view === "team") return { svg: "users", name: "Команда", sub: "Сотрудники: выбери человека — увидишь его дела, можно править и ставить задачи" };
   if (view === "week") return { svg: "ccheck", name: "Итоги недели", sub: "Последние 7 дней" };
   if (view === "food") return { svg: "food", name: "Питание", sub: "КБЖУ, вода и вес" };
   if (view === "files") return { svg: "clip", name: "Файлы", sub: "Хранилище: с компьютера на телефон и обратно" };
@@ -4114,7 +4114,7 @@ function teamMainHTML(vi) {
     const nh = note && ex ? '<div style="font-size:calc(13px*var(--z,1));color:var(--sub);white-space:pre-wrap;margin-top:4px;line-height:1.4;' + (ex ? "" : "display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;") + '">' + esc(note) + "</div>" : "";
     const sh = ex && st.length ? '<div style="margin-top:4px;font-size:calc(13px*var(--z,1))">' + st.map(x => '<div style="' + (x.d ? "color:var(--sub);text-decoration:line-through" : "") + '">' + (x.d ? "✓ " : "○ ") + esc(x.t) + "</div>").join("") + "</div>" : "";
     const bh = ex && subs.length ? '<div style="margin-top:4px;font-size:calc(13px*var(--z,1))">' + subs.map(x => '<div style="' + (x.done ? "color:var(--sub);text-decoration:line-through" : "") + '">' + (x.done ? "✓ " : "↳ ") + esc(x.title) + (x.due ? ' <span style="color:var(--sub)">' + esc(x.due) + "</span>" : "") + "</div>").join("") + "</div>" : "";
-    return '<div class="taskrow" style="cursor:' + (has ? "pointer" : "default") + '"' + (has ? ' data-a="tmex" data-id="' + t.id + '"' : "") + '><div class="rad ' + (t.done ? "on" : "") + '" style="pointer-events:none">' + (t.done ? ic("check", 13) : "") + '</div><div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + nh + sh + bh + '<div class="meta">' + (l ? '<span class="mi">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</span>" : "") + (di ? '<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>" : "") + (t.repeat_rule ? '<span class="mi">' + ic("repeat", 13) + "</span>" : "") + (t.est_minutes ? '<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>" : "") + (st.length ? '<span class="mi">☑ ' + sd + "/" + st.length + "</span>" : "") + (subs.length ? '<span class="mi">↳ ' + subs.filter(x => x.done).length + "/" + subs.length + "</span>" : "") + (note && !ex ? '<span class="mi">📝</span>' : "") + (t.category ? catPill(t.category) : "") + (t.status === "someday" ? '<span class="mi">Когда-нибудь</span>' : "") + (t.remind_at ? '<span class="mi">' + ic("bell", 13) + " " + esc(fmtRemind(t.remind_at)) + "</span>" : "") + (t.files && t.files.length ? '<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>" : "") + (t.plan_start ? '<span class="mi">▶ ' + esc(String(t.plan_start).slice(0, 16).replace("T", " ")) + "</span>" : "") + (t.my_day_date === tod ? '<span class="mi">' + ic("sun", 13) + " Мой день</span>" : "") + (t.done && t.done_at ? '<span class="mi">✓ ' + fmtShort(t.done_at) + "</span>" : "") + '<span class="mi" title="создана">+ ' + fmtShort(t.created_at) + "</span>" + (long && !ex ? '<span class="mi" style="color:var(--acc)">ещё…</span>' : "") + "</div></div>" + (rank ? '<span class="ordb" style="pointer-events:none">' + rank + "</span>" : "") + (t.starred ? '<span style="color:var(--acc);padding:0 8px">' + icf("star", 18) + "</span>" : "") + "</div>";
+    return '<div class="taskrow" style="cursor:' + (has ? "pointer" : "default") + '"' + (has ? ' data-a="tmex" data-id="' + t.id + '"' : "") + '><div class="rad ' + (t.done ? "on" : "") + '" style="pointer-events:none">' + (t.done ? ic("check", 13) : "") + '</div><div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + nh + sh + bh + '<div class="meta">' + (l ? '<span class="mi">' + (l.icon ? esc(l.icon) + " " : "") + esc(l.name) + "</span>" : "") + (di ? '<span class="mi ' + di.cls + '">' + ic("cal", 13) + " " + di.txt + "</span>" : "") + (t.repeat_rule ? '<span class="mi">' + ic("repeat", 13) + "</span>" : "") + (t.est_minutes ? '<span class="mi">⏱ ' + fmtEst(t.est_minutes) + "</span>" : "") + (st.length ? '<span class="mi">☑ ' + sd + "/" + st.length + "</span>" : "") + (subs.length ? '<span class="mi">↳ ' + subs.filter(x => x.done).length + "/" + subs.length + "</span>" : "") + (note && !ex ? '<span class="mi">📝</span>' : "") + (t.category ? catPill(t.category) : "") + (t.status === "someday" ? '<span class="mi">Когда-нибудь</span>' : "") + (t.remind_at ? '<span class="mi">' + ic("bell", 13) + " " + esc(fmtRemind(t.remind_at)) + "</span>" : "") + (t.files && t.files.length ? '<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>" : "") + (t.plan_start ? '<span class="mi">▶ ' + esc(String(t.plan_start).slice(0, 16).replace("T", " ")) + "</span>" : "") + (t.my_day_date === tod ? '<span class="mi">' + ic("sun", 13) + " Мой день</span>" : "") + (t.done && t.done_at ? '<span class="mi">✓ ' + fmtShort(t.done_at) + "</span>" : "") + '<span class="mi" title="создана">+ ' + fmtShort(t.created_at) + "</span>" + (long && !ex ? '<span class="mi" style="color:var(--acc)">ещё…</span>' : "") + "</div></div>" + (rank ? '<span class="ordb" style="pointer-events:none">' + rank + "</span>" : "") + (t.starred ? '<span style="color:var(--acc);padding:0 8px">' + icf("star", 18) + "</span>" : "") + '<button class="ibtn tmed" data-a="tmed" data-id="' + t.id + '" title="Править задачу сотрудника" style="margin-left:auto;flex:none">✎</button></div>';
   };
   const card = u => {
     const lfv = one && TM.lf && TM.lf[u.id], mine = TM.tasks.filter(t => t.user_id === u.id && !t.parent_id && (!lfv || t.list_id === lfv)), act = mine.filter(t => !t.done && t.status !== "someday"), over = act.filter(t => t.due && t.due < tod), td = act.filter(t => t.due === tod), later = act.filter(t => !t.due || t.due > tod), done7 = mine.filter(t => t.done && t.done_at && t.done_at >= since7);
@@ -4128,7 +4128,7 @@ function teamMainHTML(vi) {
         '<button class="tmx" data-a="tmhide" data-id="' + u.id + '" title="' + (hid ? "Вернуть в список" : "Убрать из списка (аккаунт не удаляется)") + '">' + (hid ? "↩" : "✕") + "</button>" + ic("chevr", 16) + "</div>"; }
     const ini = nm(u).slice(0, 2).toUpperCase(), ngo = !!(TM.ngOpen && TM.ngOpen[u.id]);
     return '<div class="tmv"><div class="tmh"><i class="tma big">' + esc(ini) + '</i><div class="tmhn"><b>' + esc(nm(u)) + "</b>" + ngBadge(u) + "<small>" + esc(u.email || "") + " · " + (last ? "активность: " + fmtShort(last) : "записей нет") + '</small></div><div class="tmha"><button class="tool" data-a="tmallx" data-id="' + u.id + '">' + (TM.allx[u.id] ? "Свернуть всё" : "Развернуть всё") + '</button><button class="tool" data-a="tmhide" data-id="' + u.id + '" title="Аккаунт не удаляется">Убрать из списка</button></div></div>' +
-      '<div class="tmk">' + tile(act.length, "активных") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(td.length, "на сегодня", "var(--acc)") + tile(done7.length, "закрыто за 7 дн.") + "</div>" + lchips +
+      '<div class="tmk">' + tile(act.length, "активных") + tile(over.length, "просрочено", over.length ? "#d13438" : "") + tile(td.length, "на сегодня", "var(--acc)") + tile(done7.length, "закрыто за 7 дн.") + '</div><div style="margin:10px 0 2px"><button class="tool" data-a="tmnew" data-id="' + u.id + '">＋ Поставить задачу ' + esc(nm(u)) + "</button></div>" + lchips +
       '<div class="tmsec"><button class="tmsh" data-a="tmng" data-id="' + u.id + '"><span>🔔 Контроль «Все ли внесено?»</span>' + ic("chevd", 16) + "</button>" + (ngo ? ngBoxHTML(u) : "") + "</div>" +
       grp("o", "Просрочено", ord(over), true) + grp("t", "На сегодня (по очереди)", td, true) + grp("l", "Позже / без срока", later, false) + grp("d", "Закрыто за 7 дней", done7.sort((a, b) => String(b.done_at).localeCompare(String(a.done_at))), false) + "</div>";
   };
@@ -4139,6 +4139,58 @@ function teamMainHTML(vi) {
   else body = tmVis().filter(u => !one || u.id === one).slice().sort((a, b) => nm(a).localeCompare(nm(b))).map(card).join("") + (!one && TM.hid.length ? '<div style="text-align:center;margin:10px"><button class="tool" data-a="tmshowhid">' + (TM.showHid ? "Спрятать скрытых" : "Показать скрытых (" + TM.hid.length + ")") + "</button></div>" : "");
   return '<div id="main" class="pane" style="flex:1">' + mtopHTML(vi) + '<div class="mhead"><h1>' + ic(vi.svg, 22) + "<span>" + esc(vi.name) + '</span></h1><span class="sp"></span>' + (one ? '<button class="tool" data-a="view" data-v="team">← Команда</button>' : "") + '<button class="tool" data-a="tmrefresh">' + ic("repeat", 16) + " Обновить</button></div>" +
     '<div class="msub">' + esc(vi.sub) + (TM.busy ? " · обновляю…" : TM.at ? " · обновлено " + hm(minOf(new Date(TM.at).toISOString())) : "") + '</div><div class="scroll" id="list">' + body + "</div></div>";
+}
+
+/* ===== руководитель правит задачи сотрудников (v271) ===== */
+async function tmNotify(userId, title, body, id) {
+  try { const s = (await sb.auth.getSession()).data.session; if (!s) return; const r = await fetch(sb.supabaseUrl + "/functions/v1/team-notify", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.access_token, apikey: sb.supabaseKey }, body: JSON.stringify({ user_id: userId, title, body, id }) }); const j = await r.json().catch(() => ({})); return j; } catch (e) { return null; }
+}
+function tmeHTML() {
+  const e = TM.ed; if (!e) return "";
+  const u = TM.users.find(x => x.id === e.uid), un = u ? (u.email || "?").split("@")[0] : "?", lists = Object.values(TM.lists).filter(l => l.user_id === e.uid), rab = lists.find(l => (l.name || "").trim().toLowerCase() === "работа");
+  const cur = e.id ? e.list_id || "" : (rab ? rab.id : "__rab");
+  const opts = '<option value="">— без списка —</option>' + (!rab && !e.id ? '<option value="__rab" selected>Работа (создам)</option>' : "") + lists.map(l => '<option value="' + l.id + '"' + (cur === l.id ? " selected" : "") + ">" + esc((l.icon ? l.icon + " " : "") + l.name) + "</option>").join("");
+  return '<div class="ovl" data-a="tmeovl"><div class="sheet" style="width:min(520px,100%)"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;font-size:1.2em">' + (e.id ? "✎ Задача сотрудника " : "＋ Новая задача для ") + esc(un) + '</div><button class="ibtn" data-a="tmeclose" title="Закрыть">✕</button></div>' +
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px"><input id="tme-t" class="inp" placeholder="Название" value="' + esc(e.title || "") + '" autocomplete="off">' +
+    '<div style="display:flex;gap:8px;align-items:center"><label style="color:var(--sub);font-size:13px">Срок</label><input id="tme-d" type="date" class="inp" value="' + esc(e.due || "") + '" style="flex:1"><button class="tool" data-a="tmedd" data-v="0">Сегодня</button><button class="tool" data-a="tmedd" data-v="1">Завтра</button></div>' +
+    '<div style="display:flex;gap:8px;align-items:center"><label style="color:var(--sub);font-size:13px">Список</label><select id="tme-l" class="inp" style="flex:1">' + opts + "</select></div>" +
+    '<textarea id="tme-n" class="inp" rows="4" placeholder="Заметка / описание" style="resize:vertical">' + esc(e.note || "") + "</textarea>" +
+    (e.id ? '<label style="display:flex;gap:8px;align-items:center"><input id="tme-x" type="checkbox"' + (e.done ? " checked" : "") + "> Выполнена</label>" : "") +
+    '<div style="color:var(--sub);font-size:12px">Сотруднику уйдёт уведомление в браузер (если он их разрешил). У задачи будет значок «👤 от руководителя».</div>' +
+    '<div style="display:flex;gap:8px;margin-top:4px"><button class="btn" data-a="tmesave" style="flex:1">' + (e.id ? "Сохранить" : "Поставить") + "</button>" + (e.id ? '<button class="tool" data-a="tmedel" style="color:#d13438">🗑 Удалить</button>' : "") + "</div></div></div></div>";
+}
+async function tmeSave() {
+  const e = TM.ed; if (!e) return; const v = id => { const x = $(id); return x ? x.value : ""; };
+  const title = v("tme-t").trim(); if (!title) { toast("Введите название"); return; }
+  const due = v("tme-d") || null, note = v("tme-n").trim(); let lid = v("tme-l") || null; const done = $("tme-x") ? $("tme-x").checked : false;
+  const btn = document.querySelector('[data-a="tmesave"]'); if (btn) btn.disabled = true;
+  try {
+    if (lid === "__rab") {   // у сотрудника ещё нет списка «Работа» — создаём
+      const nid = uid(), lr = await sb.from("lists").insert({ id: nid, user_id: e.uid, name: "Работа", icon: "💼", position: 0, created_at: nowISO() }); if (lr.error) throw lr.error;
+      TM.lists[nid] = { id: nid, name: "Работа", icon: "💼", user_id: e.uid }; lid = nid;
+    }
+    if (!e.id) {
+      const t = { id: uid(), user_id: e.uid, title, list_id: lid, due, note, done: false, parent_id: null, category: null, starred: false, my_day: false, my_day_date: null, steps: [], est_minutes: null, status: "active", remind_at: null, repeat_rule: null, files: [], plan_start: null, created_at: nowISO(), from_mgr: true };
+      const r = await sb.from("tasks").insert(t); if (r.error) throw r.error;
+      TM.tasks.push(t); TM.ed = null; render(); toast("Задача поставлена");
+      const n = await tmNotify(e.uid, "📌 Новая задача от руководителя", title + (due ? "\nСрок: " + due.slice(8) + "." + due.slice(5, 7) : ""), t.id); if (n && n.sent === 0) toast("Уведомление не ушло: у сотрудника не включены уведомления в браузере");
+    } else {
+      const t0 = TM.tasks.find(x => x.id === e.id); if (!t0) throw new Error("задача не найдена");
+      const patch = { title, due, note, list_id: lid, from_mgr: true }, ch = [];
+      if (title !== t0.title) ch.push("название: «" + title + "»"); if ((due || null) !== (t0.due || null)) ch.push(due ? "срок: " + due.slice(8) + "." + due.slice(5, 7) : "срок убран"); if (note !== (t0.note || "")) ch.push("заметка изменена"); if ((lid || null) !== (t0.list_id || null)) ch.push("другой список");
+      if (done !== !!t0.done) { patch.done = done; patch.done_at = done ? nowISO() : null; ch.push(done ? "отмечена выполненной" : "возвращена в работу"); }
+      const r = await sb.from("tasks").update(patch).eq("id", e.id); if (r.error) throw r.error;
+      Object.assign(t0, patch); TM.ed = null; render(); toast("Сохранено");
+      if (ch.length) { const n = await tmNotify(e.uid, "✏️ Руководитель изменил задачу", (t0.title || title) + "\n" + ch.join("; "), e.id); if (n && n.sent === 0) toast("Уведомление не ушло: у сотрудника не включены уведомления в браузере"); }
+    }
+  } catch (er) { toast("Не получилось: " + errText(er) + (/policy|permission|42501|row-level/i.test(String((er && (er.message || er.code)) || "")) ? " — выполни migration_v30.sql в Supabase" : "")); if (btn) btn.disabled = false; }
+}
+async function tmeDel() {
+  const e = TM.ed; if (!e || !e.id) return; const t0 = TM.tasks.find(x => x.id === e.id); if (!t0) return;
+  if (!confirm("Удалить задачу сотрудника «" + t0.title + "»? Это необратимо.")) return;
+  const r = await sb.from("tasks").delete().eq("id", e.id); if (r.error) { toast("Не получилось: " + errText(r.error)); return; }
+  TM.tasks = TM.tasks.filter(x => x.id !== e.id && x.parent_id !== e.id); TM.ed = null; render(); toast("Удалено");
+  tmNotify(e.uid, "🗑 Руководитель удалил задачу", t0.title, e.id);
 }
 function ngBadge(u) { const r = TM.ng && TM.ng.rules[u.id]; if (!(r && r.enabled)) return ""; const pu = TM.pushU, pv = pu ? (pu.indexOf(u.id) >= 0 ? " · пуш ✓" : " · пуш ✗ (ещё не разрешил уведомления)") : ""; return '<span class="ng-badge" title="Принудительный вопрос «Все ли внесено?»">🔔 ' + esc((r.times || []).join(", ")) + pv + "</span>"; }
 function ngBoxHTML(u) {
@@ -4229,6 +4281,7 @@ function leftHTML(c) {
 function metaHTML(t, showList, orphan) {
   const m = [], l = t.list_id && S.lists[t.list_id], di = dueInfo(t);
   { const sm0 = subMeta(t, orphan); if (sm0) m.push(sm0); }
+  if (t.from_mgr) m.push('<span class="mi" title="Поставил или изменил руководитель">👤 от руководителя</span>');
   if (t.parent_id) { if (t.files && t.files.length) m.push('<span class="mi">' + ic("clip", 13) + " " + t.files.length + "</span>"); if (t.note) m.push('<span class="mi">' + ic("note", 13) + "</span>"); return m.length ? '<div class="meta">' + m.join("") + "</div>" : ""; }
   if (typeof UP !== "undefined" && Object.keys(UP.act).some(k => UP.act[k].tid === t.id)) m.unshift('<span class="mi" data-upl="' + t.id + '" style="color:var(--acc);font-weight:600">⬆ ' + upPct(t.id) + "%</span>");
   if (showList && l) m.push('<span class="mi">' + (l.icon ? esc(l.icon) : ic("list", 12)) + " " + esc(l.name) + "</span>");
@@ -5112,7 +5165,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "know" ? (KNM ? KNM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (view === "files" ? filesDetailHTML() : selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + triageHTML() + mvHTML() + trkHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "know" ? (KNM ? KNM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (view === "files" ? filesDetailHTML() : selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + triageHTML() + mvHTML() + trkHTML() + tmeHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function morphKeep(o, n, keep, nk) {
@@ -5543,6 +5596,13 @@ const acts = {
   tmallx(a) { TM.allx[a.dataset.id] = !TM.allx[a.dataset.id]; render(); },
   tmshowhid() { TM.showHid = !TM.showHid; render(); },
   tmhide(a) { const id = a.dataset.id, i = TM.hid.indexOf(id); if (i < 0) { const uu = (TM.users || []).find(x => x.id === id); if (!confirm("Убрать «" + (uu ? (uu.email || "").split("@")[0] : "сотрудника") + "» из списка команды?\nАккаунт не удаляется, вернуть можно кнопкой «Показать скрытых».")) return; } if (i >= 0) TM.hid.splice(i, 1); else TM.hid.push(id); try { localStorage.setItem("mytasks_tmhide", JSON.stringify(TM.hid)); } catch (e) {} if (i < 0 && view === "team:" + id) view = "team"; render(); },
+  tmed(a) { const t = TM.tasks.find(x => x.id === a.dataset.id); if (!t) return; TM.ed = { id: t.id, uid: t.user_id, title: t.title, due: t.due || "", note: t.note || "", list_id: t.list_id || "", done: !!t.done }; render(); setTimeout(() => { const x = $("tme-t"); if (x) x.focus(); }, 30); },
+  tmnew(a) { TM.ed = { id: null, uid: a.dataset.id, title: "", due: "", note: "" }; render(); setTimeout(() => { const x = $("tme-t"); if (x) x.focus(); }, 30); },
+  tmeclose() { TM.ed = null; render(); },
+  tmeovl(a, e) { if (e.target === a) { TM.ed = null; render(); } },
+  tmedd(a) { const d = $("tme-d"); if (d) d.value = addDays(todayISO(), +a.dataset.v); },
+  tmesave() { tmeSave(); },
+  tmedel() { tmeDel(); },
   tmex(a) { TM.ex[a.dataset.id] = !TM.ex[a.dataset.id]; render(); },
   tmng(a) { TM.ngOpen = TM.ngOpen || {}; TM.ngOpen[a.dataset.id] = !TM.ngOpen[a.dataset.id]; render(); },
   tmdone() { TM.dOpen = !TM.dOpen; render(); },
@@ -7206,7 +7266,7 @@ async function checkBuild() {
   } catch (e) {}
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
-if (CFG0.TEST) window.__t = { mvOpen, themeFx, TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
+if (CFG0.TEST) window.__t = { TM, mvOpen, themeFx, TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
 let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
 function loadHealth() {
   if (hlLoading || HLM) return; hlLoading = true;
