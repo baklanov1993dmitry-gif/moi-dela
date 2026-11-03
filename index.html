@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "02.11 10:36";
+const BUILD = "03.11 09:06";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -5302,7 +5302,8 @@ function render() {
   const gh = ghostGrab();   // «призраки» уходящих элементов — чтобы закрытие было плавным, а не мгновенным
   const html = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : ui.mfaGate ? mfaGateHTML() : appHTML());
   let kept = false;   // поиск: поле ввода остаётся живым (не теряем клавиатуру/композицию), перерисовывается всё вокруг
-  if ((fid === "q" || (fid === "qa-input" && ui.qa)) && S.user && screen !== "setup") { try { const tmp = document.createElement(app.tagName); tmp.innerHTML = html; const nk = tmp.querySelector("#" + fid); if (nk) kept = morphKeep(app, tmp, ae, nk); } catch (e) { kept = false; } }
+  if ((fid === "q" || (fid === "qa-input" && ui.qa) || (rs && fid)) && S.user && screen !== "setup") { try { const tmp = document.createElement(app.tagName); tmp.innerHTML = html; const nk = tmp.querySelector("#" + fid); if (nk) kept = morphKeep(app, tmp, ae, nk); } catch (e) { kept = false; } }   // поле ввода (в т.ч. редактор заметки задачи) остаётся живым: курсор не пересоздаётся
+  if (kept) rs = null;
   if (!kept) app.innerHTML = html;
   applyTheme();
   try { ghostPlay(gh); } catch (e) {}
