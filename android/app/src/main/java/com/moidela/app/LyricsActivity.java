@@ -53,6 +53,10 @@ public class LyricsActivity extends Activity {
         }
         if (t == null || t.length() == 0) { head.setText("Тексты песен"); if (accessOn()) st.setText("Включите песню в Яндекс Музыке — текст появится в шторке под плеером."); return; }
         head.setText(a + (a.length() > 0 ? " — " : "") + t);
+        final String ra = a, rt = t;
+        Button rb = new Button(this); rb.setText("🔔 На звонок (в список)");
+        rb.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { new Thread(new Runnable() { public void run() { RingMark.mark(getApplicationContext(), ra, rt); } }).start(); } });
+        box.addView(rb);
         if (accessOn()) st.setText("Ищу текст…");
         final String fa = a, ft = t;
         new Thread(new Runnable() { public void run() {

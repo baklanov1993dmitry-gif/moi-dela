@@ -103,6 +103,7 @@ public class LyricsListener extends NotificationListenerService {
             Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CH) : new Notification.Builder(c);
             b.setSmallIcon(R.drawable.ic_tile).setContentTitle("♪ " + (artist.length() > 0 ? artist + " — " : "") + title)
                 .setContentText(r.o.length > 0 ? r.o[0] : "").setStyle(new Notification.BigTextStyle().bigText(sb.toString()).setSummaryText(r.src + " · нажмите, чтобы открыть полностью"))
+                .addAction(0, "🔔 На звонок", PendingIntent.getBroadcast(c, 7791, new Intent(c, RingMark.class).putExtra("artist", artist).putExtra("title", title), PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0)))
                 .setContentIntent(pi).setOngoing(false).setOnlyAlertOnce(true).setShowWhen(false);
             nm.notify(NID, b.build());
         } catch (Throwable e) { }

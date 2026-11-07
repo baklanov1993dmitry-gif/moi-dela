@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
       const f1 = lr.ok ? (await lr.json())[0] : null;
       if (f1) list_id = f1.id;
       else {
-        const nid = crypto.randomUUID(), cr = await fetch(base + "lists", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ id: nid, user_id: uid, name: nm, icon: "📎", position: 999, created_at: new Date().toISOString() }) });
+        const nid = crypto.randomUUID(), cr = await fetch(base + "lists", { method: "POST", headers: { ...hd, Prefer: "return=minimal" }, body: JSON.stringify({ id: nid, user_id: uid, name: nm, icon: String(b.list_icon || "📎").slice(0, 8), position: 999, created_at: new Date().toISOString() }) });
         if (cr.ok) list_id = nid;
       }
     }
