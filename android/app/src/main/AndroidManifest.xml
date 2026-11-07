@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <queries><intent><action android:name="android.speech.RecognitionService" /></intent><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
@@ -129,6 +132,15 @@
         <activity android:name=".WidgetActivity" android:exported="false" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" android:noHistory="true" />
         <service android:name=".SyncJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false" />
         <receiver android:name=".RingMark" android:exported="false" />
+        <service android:name=".MeetService" android:exported="false" android:foregroundServiceType="microphone|dataSync" />
+        <activity android:name=".MeetActivity" android:exported="true" android:label="Совещания" android:launchMode="singleTop" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="moidela" android:host="meet" />
+            </intent-filter>
+        </activity>
         <service android:name=".LyricsListener" android:exported="true" android:label="Мои дела · Тексты песен" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
         </service>
