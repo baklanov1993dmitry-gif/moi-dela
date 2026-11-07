@@ -3,6 +3,17 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
+// следующее срабатывание цикличного напоминания строго позже minMs; время суток и день считаем по Новосибирску (UTC+7)
+function nextRep(iso: string, rule: string, minMs: number): string | null {
+  const OFF = 7 * 3600e3, base = new Date(Date.parse(iso) + OFF); if (isNaN(base.getTime())) return null;
+  const dom = base.getUTCDate(); let d = new Date(base.getTime());
+  if (!["d", "wd", "w", "m"].includes(rule)) return null;
+  for (let i = 0; i < 800 && d.getTime() - OFF <= minMs; i++) {
+    if (rule === "m") { const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1, last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); d = new Date(Date.UTC(y, m, Math.min(dom, last), d.getUTCHours(), d.getUTCMinutes())); }
+    else { d = new Date(d.getTime() + (rule === "w" ? 7 : 1) * 864e5); if (rule === "wd") while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d = new Date(d.getTime() + 864e5); }
+  }
+  return new Date(d.getTime() - OFF).toISOString();
+}
 Deno.serve(async (req) => {
   try {
     if (req.headers.get("x-cron-secret") !== Deno.env.get("CRON_SECRET")) {
@@ -76,6 +87,17 @@ Deno.serve(async (req) => {
         await sb.from("tasks").update(next ? { remind_at: next, remind_queue: fresh, remind_sent_for: null } : { remind_queue: [] }).eq("id", t.id);
       }
     } catch (err) { console.error("queue " + (err as Error).message); }
+    // Циклические напоминания (remind_rep: d | wd | w | m): через 3+ минуты после срабатывания переносим remind_at на следующее время по правилу
+    try {
+      const nowR = Date.now();
+      const { data: rs } = await sb.from("tasks").select("id,remind_at,remind_rep,remind_queue").eq("done", false).not("remind_rep", "is", null)
+        .lte("remind_at", new Date(nowR - 3 * 60e3).toISOString()).gt("remind_at", new Date(nowR - 400 * 864e5).toISOString());
+      for (const t of rs ?? []) {
+        if (Array.isArray(t.remind_queue) && t.remind_queue.length) continue;
+        const nx = nextRep(t.remind_at, t.remind_rep, nowR); if (!nx) continue;
+        await sb.from("tasks").update({ remind_at: nx, remind_sent_for: null }).eq("id", t.id);
+      }
+    } catch (err) { console.error("rep " + (err as Error).message); }
     const now = new Date(), since = new Date(now.getTime() - 24 * 3600e3);
     const { data: tasks, error } = await sb.from("tasks")
       .select("id,user_id,title,remind_at,remind_sent_for,due,list_id,remind_via")

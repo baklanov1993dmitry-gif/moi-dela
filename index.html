@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "07.11 13:05";
+const BUILD = "07.11 13:13";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -131,6 +131,15 @@ function dueInfo(t) {
 function fmtRemind(iso) {
   const d = new Date(iso), ds = isoLocal(d);
   return "Напомнить в " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ", " + (ds === today ? "сегодня" : ds === addDays(today, 1) ? "завтра" : dateLong(d));
+}
+const RREP = { d: "каждый день", wd: "по будням", w: "каждую неделю", m: "каждый месяц" };
+function remNext(iso, rule, minMs) {   // следующее срабатывание повторяющегося напоминания строго позже minMs (время суток сохраняется)
+  let d = new Date(iso); if (isNaN(d) || !RREP[rule]) return null;
+  for (let i = 0; i < 800 && d.getTime() <= minMs; i++) {
+    if (rule === "m") { const day = new Date(iso).getDate(); d = new Date(d.getFullYear(), d.getMonth() + 1, 1, d.getHours(), d.getMinutes()); d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); }
+    else { d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (rule === "w" ? 7 : 1), d.getHours(), d.getMinutes()); if (rule === "wd") while (d.getDay() === 0 || d.getDay() === 6) d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, d.getHours(), d.getMinutes()); }
+  }
+  return d.toISOString();
 }
 function repeatText(r) {
   if (!r) return "";
@@ -584,7 +593,7 @@ function nextDue(t) {
 const OWNER_EMAILS = ["baklanov-dmitry@mail.ru"];   // полный функционал только у этих аккаунтов
 try { const _fu = new URLSearchParams(location.search).get("full"); if (_fu === "1") localStorage.setItem("mytasks_full", "1"); else if (_fu === "0") localStorage.removeItem("mytasks_full"); } catch (e) {}   // запасной ключ владельца: ?full=1
 const isLite = () => { try { if (localStorage.getItem("mytasks_full") === "1") return false; } catch (e) {} return !!(S.user && S.user.email && OWNER_EMAILS.indexOf(String(S.user.email).toLowerCase()) < 0); };
-const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "remind_queue", "repeat_rule", "files", "plan_start", "parent_id"];
+const TC = ["id", "list_id", "title", "done", "done_at", "due", "category", "starred", "my_day", "my_day_date", "note", "steps", "est_minutes", "status", "created_at", "remind_at", "remind_queue", "repeat_rule", "files", "plan_start", "parent_id", "remind_rep"];
 const LC = ["id", "name", "icon", "position", "created_at", "group_name", "color"];
 const GC = ["id", "task_id", "title", "note", "start_at", "end_at", "created_at"];
 let OR = (() => { try { return localStorage.getItem("mytasks_or") === "1"; } catch (e) { return false; } })();
@@ -787,8 +796,9 @@ function toggleDone(id) {
   const d = !t.done;
   if (d && t.repeat_rule) {                                    // повторяющаяся: закрыли — появился следующий экземпляр
     const nd = nextDue(t); let rem = null;
-    if (t.remind_at) { const r = new Date(t.remind_at), x = parseISO(nd); x.setHours(r.getHours(), r.getMinutes(), 0, 0); rem = x.toISOString(); }
-    const nt = addTask({ list_id: t.list_id, title: t.title, due: nd, category: t.category, starred: t.starred, note: t.note, est_minutes: t.est_minutes, repeat_rule: t.repeat_rule, remind_at: rem, steps: (t.steps || []).map(s => ({ t: s.t, d: false })) });
+    if (t.remind_at && t.remind_rep) { const end = t.due ? parseISO(t.due).setHours(23, 59, 59, 0) : Date.now(); rem = remNext(t.remind_at, t.remind_rep, Math.max(end, Date.now())); }   // циклическое напоминание: следующее по правилу, в этом цикле больше ничего
+    else if (t.remind_at) { const r = new Date(t.remind_at), x = parseISO(nd); if (t.due) { const off = Math.round((new Date(isoLocal(r) + "T00:00") - parseISO(t.due)) / 864e5); x.setDate(x.getDate() + off); } x.setHours(r.getHours(), r.getMinutes(), 0, 0); rem = x.toISOString(); }
+    const nt = addTask({ list_id: t.list_id, title: t.title, due: nd, category: t.category, starred: t.starred, note: t.note, est_minutes: t.est_minutes, repeat_rule: t.repeat_rule, remind_at: rem, remind_rep: rem ? t.remind_rep || null : null, steps: (t.steps || []).map(s => ({ t: s.t, d: false })) });
     if (nt && nt.id) kidsOf(id).slice().sort((x, y) => (x.created_at || "").localeCompare(y.created_at || "")).forEach(k => addTask({ parent_id: nt.id, list_id: k.list_id, title: k.title, due: k.due && k.due === t.due ? nd : null, category: k.category, starred: k.starred, note: k.note, est_minutes: k.est_minutes, steps: (k.steps || []).map(z => ({ t: z.t, d: false })) }));   // подзадачи переезжают в следующий экземпляр (невыполненными)
     toast("Следующий раз: " + dateLong(parseISO(nd)));
   }
@@ -818,7 +828,7 @@ function createFromText(raw, draft) {
   const ls = listsArr(); let vurl = "";   // ссылка на YouTube в тексте: уходит в заметку, дальше — авто-пересказ (если задача в списке «Видео»)
   if (!isLite()) { const ym = String(raw).match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i); if (ym) { vurl = ym[0]; raw = String(raw).replace(vurl, " ").replace(/\s+/g, " ").trim(); } }
   const p = localParse(raw, ls), d = draft || {};
-  const f = { title: p.title, due: d.due || p.due, category: p.category, starred: !!(d.starred || p.starred), est_minutes: p.est, list_id: p.list_id, repeat_rule: d.repeat_rule || p.repeat, remind_at: d.remind_at || p.remind };
+  const f = { title: p.title, due: d.due || p.due, category: p.category, starred: !!(d.starred || p.starred), est_minutes: p.est, list_id: p.list_id, repeat_rule: d.repeat_rule || p.repeat, remind_at: d.remind_at || p.remind, remind_rep: d.remind_rep || null };
   if (view === "myday" || d.my) { f.my_day = true; f.my_day_date = today; }
   if (view === "starred") f.starred = true;
   if (view === "someday") f.status = "someday";
@@ -1755,7 +1765,7 @@ function dtpInit(p, t) {
   else if (t && (ui.remXi != null ? (ui.remXi >= 0 ? (t.remind_queue || [])[ui.remXi] : null) : t.remind_at)) { const d = new Date(ui.remXi != null ? t.remind_queue[ui.remXi] : t.remind_at); date = isoLocal(d); time = hm(d.getHours() * 60 + d.getMinutes()); }
   else { let m = roundUp(nowMin + 60, 30); date = today; if (m >= 1440 - 30) { date = addDays(today, 1); m = 9 * 60; } time = hm(m); }
   const base = parseISO(date || today);
-  ref.date = date; ref.time = time; ref.y = base.getFullYear(); ref.m = base.getMonth();
+  ref.rrep = p.type !== "due" && ui.remXi == null && t && t.remind_rep || (p.type !== "due" && ui.remXi == null && ui.dtpRep) || ""; ref.date = date; ref.time = time; ref.y = base.getFullYear(); ref.m = base.getMonth();
   return ref;
 }
 function calHTML(sel, y, m) {
@@ -1797,6 +1807,8 @@ function dtpHTML(p, t) {
     setTimeout(() => { const e1 = $("dtw-h"), e2 = $("dtw-m"); const mid = Math.floor(WC / 2); if (e1) { e1.scrollTop = (mid * 24 + hh) * WR; jrWFx(e1); } if (e2) { e2.scrollTop = (mid * 60 + mi) * WR; jrWFx(e2); } dtwCol(D.wcol || "h"); }, 0);
     if (D.via === undefined) D.via = (t && t.remind_via) || "tg";
     const via = (v, label) => '<button type="button" class="dq' + (D.via === v ? " on" : "") + '" data-a="dvia" data-v="' + v + '">' + label + "</button>";
+    const rp = (v, label) => '<button type="button" class="dq' + ((D.rrep || "") === v ? " on" : "") + '" data-a="drep" data-v="' + v + '">' + label + "</button>";
+    h += (ui.remXi == null ? '<div class="dqrow" style="margin-top:8px;flex-wrap:wrap">' + rp("", "Один раз") + rp("d", "Каждый день") + rp("wd", "Будни") + rp("w", "Неделя") + rp("m", "Месяц") + "</div>" : "");
     h += (RV ? '<div class="dqrow big" style="margin-top:8px">' + via("tg", "💬 Telegram") + via("alarm", "⏰ Будильник") + via("both", "Оба") + "</div>" : "") + '<form id="dtpform" class="dtp-time"><input id="dtp-t" type="hidden" value="' + hm(hh * 60 + mi) + '"><div class="dtw">' + col("dtw-h", 24) + "<b>:</b>" + col("dtw-m", 60) + "</div>" +
       '<div class="dtp-sum">' + (D.date ? esc(dtpSum()) : "Выберите день") + '</div><div class="dtp-btns"><button type="submit" class="btn" style="flex:1">Готово</button>' + (t && t.remind_at ? '<button type="button" class="btn ghost" data-a="dclear" style="color:#d13438">Убрать</button>' : "") + "</div></form>";
   } else {
@@ -1899,6 +1911,7 @@ const dtpActs = {
     render();
   },
   drtab(a) { const D = ui.dtp; if (!D) return; keepTime(); D.rtab = a.dataset.v; render(); },
+  drep(a) { const D = ui.dtp; if (!D) return; keepTime(); D.rrep = a.dataset.v; a.parentNode.querySelectorAll(".dq").forEach(x => x.classList.toggle("on", x === a)); },
   dvia(a) { const D = ui.dtp; if (!D) return; keepTime(); D.via = a.dataset.v; a.parentNode.querySelectorAll(".dq").forEach(x => x.classList.toggle("on", x === a)); },
   drcal() { if (ui.dtp) { ui.dtp.rcal = !ui.dtp.rcal; render(); } },
   dloud() { const D = ui.dtp; if (!D) return; const t = S.tasks[dtpId()]; D.loud = !(D.loud != null ? D.loud : (t && /^⏰/.test(t.title))); render(); },
@@ -1919,11 +1932,11 @@ const dtpActs = {
     const iso = dtpIso();
     if (Date.parse(iso) < Date.now() - 60000) return toast("Это время уже прошло — выберите позже");
     if (ui.remXi != null) { remPut(dtpId(), iso); dtpDone(); return; }
-    patchTask(dtpId(), RV ? { remind_at: iso, remind_via: D.via && D.via !== "tg" ? D.via : null } : { remind_at: iso }); applyLoud(dtpId()); askNotify(); dtpDone();
+    patchTask(dtpId(), RV ? { remind_at: iso, remind_rep: D.rrep || null, remind_via: D.via && D.via !== "tg" ? D.via : null } : { remind_at: iso, remind_rep: D.rrep || null }); applyLoud(dtpId()); askNotify(); dtpDone();
   },
   dplace(a) { const id = a.dataset.v || null; patchTask(dtpId(), { remind_place: id }); if (id) { try { if (typeof Notification !== "undefined") askNotify(); } catch (e) {} toast("📍 Напомню в Telegram, когда окажешься рядом: " + placeName(id)); } dtpDone(); },
   dmap() { const id = dtpId(); dtpDone(); mapPick(id); },
-  dclear() { const D = ui.dtp; if (!D) return; if (ui.remXi != null && ui.remXi >= 0) { const t = S.tasks[dtpId()]; if (t) { const q = (t.remind_queue || []).slice(); q.splice(ui.remXi, 1); patchTask(t.id, { remind_queue: q }); } ui.remXi = null; dtpDone(); return; } if (D.mode === "due") setDue(dtpId(), null); else patchTask(dtpId(), { remind_at: null }); dtpDone(); },
+  dclear() { const D = ui.dtp; if (!D) return; if (ui.remXi != null && ui.remXi >= 0) { const t = S.tasks[dtpId()]; if (t) { const q = (t.remind_queue || []).slice(); q.splice(ui.remXi, 1); patchTask(t.id, { remind_queue: q }); } ui.remXi = null; dtpDone(); return; } if (D.mode === "due") setDue(dtpId(), null); else patchTask(dtpId(), { remind_at: null, remind_rep: null }); dtpDone(); },
   dtpclose() { ui.dtp = null; closePop(); render(); },
   // шаги ±15 минут у полей времени в «Дне»
   tstep(a) {
@@ -2704,6 +2717,7 @@ const mCSS = `
 .taskrow.sub,.drow.stp{position:relative}
 .taskrow.sub .sbmv,.drow.stp .sbmv{position:absolute;right:6px;top:50%;transform:translateY(-50%);margin:0;background:var(--hov);border-radius:14px;padding:0 3px;box-shadow:0 0 0 1px var(--ln)}
 .sbdel:hover{color:#e5484d!important}
+@media(hover:hover){.taskrow.sub{padding-right:112px}.drow.stp{padding-right:112px}}
 .taskrow.sub,.taskrow.sub:hover{transition:none;transform:none}
 .mcnt{font-size:calc(19px*var(--z,1));font-weight:600;margin-left:6px}
 .mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
@@ -4353,7 +4367,7 @@ function detailHTML(t) {
   return '<div id="right" class="pane' + (fresh ? " fade" : "") + '">' + (isMobile() ? '<div class="mdtop"><button class="ibtn" data-a="close">' + ic("arrowl", 22) + '</button><span class="mdl">' + (S.lists[t.list_id] ? esc((S.lists[t.list_id].icon && S.lists[t.list_id].icon !== "🗂️" ? S.lists[t.list_id].icon : "") + S.lists[t.list_id].name) : "") + "</span></div>" : "") + '<div class="dscroll" id="dscroll">' + subCrumb(t) +
     '<div class="dcard dtc"><div class="dtitle"><div class="rad ' + (t.done ? "on" : "") + '" data-a="tog" data-id="' + id + '">' + (t.done ? ic("check", 13) : "") + '</div><textarea id="d-title" class="ttlinp" rows="1">' + esc(t.title) + '</textarea><button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + id + '">' + (t.starred ? icf("star", 20) : ic("star", 20)) + "</button></div></div>" + subBlock(t) +
     '<div class="dcard">' +
-    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) : t.remind_place ? "📍 Рядом с: " + esc(placeName(t.remind_place) || "местом") : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at || t.remind_place ? "act" : "", t.remind_at ? "clrremind" : "") + remExtraHTML(t, id) +
+    row("bell", t.remind_at ? esc(fmtRemind(t.remind_at)) + (t.remind_rep ? " 🔁 " + RREP[t.remind_rep] : "") : t.remind_place ? "📍 Рядом с: " + esc(placeName(t.remind_place) || "местом") : "Напомнить", 'data-a="pop" data-p="remind" data-id="' + id + '"', t.remind_at || t.remind_place ? "act" : "", t.remind_at ? "clrremind" : "") + remExtraHTML(t, id) +
     row("cal", di ? esc(di.txt) : "Срок выполнения", 'data-a="pop" data-p="due" data-id="' + id + '"', di ? (di.cls === "od" ? "od" : "act") : "", di ? "clrdue" : "") +
     row("repeat", t.repeat_rule ? esc(repeatText(t.repeat_rule)) : "Повтор", 'data-a="pop" data-p="repeat" data-id="' + id + '"', t.repeat_rule ? "act" : "", t.repeat_rule ? "clrrepeat" : "") +
     row("clock", t.plan_start ? "В плане дня: " + esc(fmtPlan(t.plan_start)) : "Запланировать по времени", 'data-a="tplan"', t.plan_start ? "act" : "", t.plan_start ? "clrplan" : "") +
@@ -5693,7 +5707,7 @@ const acts = {
   tmyday() { const t = S.tasks[selId]; if (t) { setMyDay(t.id, !inMyDay(t)); render(); } },
   tsomeday() { const t = S.tasks[selId]; if (t) { const s = t.status === "someday"; upd(t.id, { status: s ? "active" : "someday", my_day: false, my_day_date: s ? t.my_day_date : null }); render(); } },
   clrdue() { upd(selId, { due: null }); render(); },
-  clrremind() { upd(selId, { remind_at: null }); render(); },
+  clrremind() { upd(selId, { remind_at: null, remind_rep: null }); render(); },
   clrrepeat() { upd(selId, { repeat_rule: null }); render(); },
   est(a) { const t = S.tasks[selId], v = +a.dataset.v; if (t) { upd(t.id, { est_minutes: t.est_minutes === v ? null : v }); render(); } },
   pickfile() { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.onchange = () => { uploadAll(i.files, selId); }; i.click(); },
