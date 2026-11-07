@@ -79,6 +79,7 @@ public class MeetActivity extends Activity {
             box.addView(tv("● Идёт запись: " + String.format("%d:%02d:%02d", sec / 3600, (sec / 60) % 60, sec % 60), 18, "#ff6b6b", true));
             box.addView(bt("■ Остановить запись", new View.OnClickListener() { public void onClick(View v) { startService(new Intent(MeetActivity.this, MeetService.class).setAction("stop")); } }));
         } else if (!MeetService.tr) {
+            box.addView(bt("＋ Импорт из файла (диктофон, галерея)", new View.OnClickListener() { public void onClick(View v) { pick(); } }));
             box.addView(bt("● Начать запись совещания", new View.OnClickListener() { public void onClick(View v) { startRec(); } }));
         }
         if (MeetService.tr) {
@@ -100,11 +101,49 @@ public class MeetActivity extends Activity {
             if (txt.exists()) {
                 row.addView(bt("Текст", new View.OnClickListener() { public void onClick(View v) { showText(txt); } }));
                 row.addView(bt("Поделиться", new View.OnClickListener() { public void onClick(View v) { share(txt); } }));
-                row.addView(bt("В «Загрузки»", new View.OnClickListener() { public void onClick(View v) { toDownloads(txt); } }));
+                row.addView(bt(new File(f.getPath().replace(".wav", ".exp")).exists() ? "PDF" : "В «Документы»", new View.OnClickListener() { public void onClick(View v) { saveDocs(f, txt); } }));
             }
+            row.addView(bt(playing != null && playing.equals(f.getName()) ? "■ Стоп" : "▶ Слушать", new View.OnClickListener() { public void onClick(View v) { play(f); } }));
             if (!MeetService.tr && !MeetService.rec) row.addView(bt("Удалить", new View.OnClickListener() { public void onClick(View v) { confirmDel(f, txt); } }));
             box.addView(row);
         }
+    }
+
+
+    // ---- импорт / воспроизведение / документы ----
+    private String playing = null; private android.media.MediaPlayer mp = null;
+    private void pick() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*").putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "video/mp4", "application/ogg"});
+        try { startActivityForResult(i, 77); } catch (Throwable e) { Toast.makeText(this, "Нет программы выбора файлов", Toast.LENGTH_LONG).show(); }
+    }
+    @Override protected void onActivityResult(int rq, int rs, Intent d) {
+        super.onActivityResult(rq, rs, d);
+        if (rq != 77 || rs != RESULT_OK || d == null || d.getData() == null) return;
+        Uri u = d.getData(); String nm = "файл";
+        try { android.database.Cursor c = getContentResolver().query(u, null, null, null, null); if (c != null) { if (c.moveToFirst()) { int ix = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME); if (ix >= 0) nm = c.getString(ix); } c.close(); } } catch (Throwable e) { }
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 2);
+        startForegroundSvc(new Intent(this, MeetService.class).setAction("imp").putExtra("uri", u.toString()).putExtra("name", nm));
+        sig = "";
+    }
+    private void play(File f) {
+        try {
+            boolean same = playing != null && playing.equals(f.getName());
+            if (mp != null) { try { mp.stop(); } catch (Throwable e) { } mp.release(); mp = null; playing = null; }
+            if (!same) { mp = new android.media.MediaPlayer(); mp.setDataSource(f.getPath()); mp.prepare(); mp.start(); playing = f.getName();
+                mp.setOnCompletionListener(new android.media.MediaPlayer.OnCompletionListener() { public void onCompletion(android.media.MediaPlayer m) { playing = null; sig = ""; } }); }
+            sig = "";
+        } catch (Throwable e) { Toast.makeText(this, "Не воспроизводится: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
+    }
+    @Override protected void onDestroy() { super.onDestroy(); if (mp != null) { try { mp.release(); } catch (Throwable e) { } } }
+    private void saveDocs(final File wav, final File txt) {
+        final File pu = new File(wav.getPath().replace(".wav", ".pdfuri"));
+        try {
+            if (new File(wav.getPath().replace(".wav", ".exp")).exists() && pu.exists()) {   // уже сохранено → поделиться PDF
+                Intent i = new Intent(Intent.ACTION_SEND).setType("application/pdf").putExtra(Intent.EXTRA_STREAM, Uri.parse(read(pu).trim())).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(Intent.createChooser(i, "PDF совещания")); return;
+            }
+            MeetStore.export(this, wav, txt); Toast.makeText(this, "Сохранено в Документы/Совещания: аудио, текст, PDF", Toast.LENGTH_LONG).show(); sig = "";
+        } catch (Throwable e) { Toast.makeText(this, "Не получилось: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
     }
 
     private void startForegroundSvc(Intent i) { if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i); }
@@ -134,7 +173,7 @@ public class MeetActivity extends Activity {
     }
     private void confirmDel(final File wav, final File txt) {
         new AlertDialog.Builder(this).setTitle("Удалить запись?").setMessage(txt.exists() ? "Будет удалено аудио и расшифровка. Если текст нужен, сначала сохраните его в «Загрузки» или поделитесь." : "Будет удалено аудио. Расшифровки нет.")
-            .setPositiveButton("Удалить", new DialogInterface.OnClickListener() { public void onClick(DialogInterface d, int w) { wav.delete(); txt.delete(); sig = ""; build(); } }).setNegativeButton("Отмена", null).show();
+            .setPositiveButton("Удалить", new DialogInterface.OnClickListener() { public void onClick(DialogInterface d, int w) { wav.delete(); txt.delete(); new File(wav.getPath().replace(".wav", ".exp")).delete(); new File(wav.getPath().replace(".wav", ".pdfuri")).delete(); sig = ""; build(); } }).setNegativeButton("Отмена", null).show();
     }
 
     private void download() {

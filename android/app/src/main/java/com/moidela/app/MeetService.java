@@ -58,6 +58,7 @@ public class MeetService extends Service {
         log(this, "команда: " + a + " rec=" + rec + " tr=" + tr);
         if ("rec".equals(a) && !rec && !tr) { go("Идёт запись совещания", "Нажмите, чтобы открыть", true); startRec(); }
         else if ("tr".equals(a) && !rec && !tr) { final String p = in.getStringExtra("wav"); go("Расшифровка…", "0%", false); startTr(p); }
+        else if ("imp".equals(a) && !rec && !tr) { go("Импорт записи…", "Подготовка звука", false); startImp(android.net.Uri.parse(in.getStringExtra("uri")), in.getStringExtra("name")); }
         else if ("stop".equals(a)) { stop = true; }
         else if (!rec && !tr) stopSelf();
         return START_NOT_STICKY;
@@ -107,12 +108,26 @@ public class MeetService extends Service {
             rec = false; stop = false; if (total > 0) status = "Запись сохранена"; stopForeground(true); stopSelf();
         } }).start();
     }
-    private static void header(RandomAccessFile r, long data) throws Exception {
+    static void header(RandomAccessFile r, long data) throws Exception {
         long rate = 16000, byteRate = rate * 2; r.seek(0);
         r.writeBytes("RIFF"); w32(r, 36 + data); r.writeBytes("WAVEfmt "); w32(r, 16); w16(r, 1); w16(r, 1); w32(r, rate); w32(r, byteRate); w16(r, 2); w16(r, 16); r.writeBytes("data"); w32(r, data);
     }
     private static void w32(RandomAccessFile r, long v) throws Exception { r.write((int) (v & 0xff)); r.write((int) ((v >> 8) & 0xff)); r.write((int) ((v >> 16) & 0xff)); r.write((int) ((v >> 24) & 0xff)); }
     private static void w16(RandomAccessFile r, int v) throws Exception { r.write(v & 0xff); r.write((v >> 8) & 0xff); }
+
+    // ---------------- импорт из файла ----------------
+    private void startImp(final android.net.Uri u, final String nm) {
+        tr = true; stop = false; prog = 0; trName = nm; status = "Импорт: перекодирую звук…"; log(this, "импорт: " + nm);
+        final File wf = new File(dir(this), "meet-imp-" + new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(new Date()) + ".wav");
+        new Thread(new Runnable() { public void run() {
+            boolean ok = false;
+            try { long sec = MeetStore.decodeToWav(MeetService.this, u, wf); log(MeetService.this, "импорт готов: " + sec + " с"); status = "Импорт готов: " + (sec / 60) + " мин " + (sec % 60) + " с"; ok = sec > 0; }
+            catch (Throwable e) { status = "Не удалось прочитать файл: " + e.getMessage(); log(MeetService.this, "импорт ОШИБКА: " + e); wf.delete(); }
+            tr = false; stop = false;
+            if (ok && modelReady(MeetService.this)) { go("Расшифровка…", "0%", false); startTr(wf.getAbsolutePath()); }
+            else { if (ok) status += ". Скачайте модель, чтобы расшифровать"; stopForeground(true); stopSelf(); }
+        } }).start();
+    }
 
     // ---------------- расшифровка ----------------
     private void startTr(final String wav) {
@@ -149,7 +164,8 @@ public class MeetService extends Service {
                 int pk = Math.round(peakAll * 100);
                 if (stop) { status = "Расшифровка прервана" + (lines > 0 ? " (частичный текст сохранён)" : ""); if (lines > 0) part.renameTo(txt); else part.delete(); }
                 else if (lines == 0) { part.delete(); status = "Речь не распознана. Пик сигнала записи: " + pk + "% (меньше 2% — микрофон почти не писал; тогда проверьте разрешение и поднесите телефон ближе)."; prog = 100; }
-                else { part.renameTo(txt); status = "Готово: " + lines + " фраз, пик сигнала " + pk + "%"; prog = 100; }
+                else { part.renameTo(txt); status = "Готово: " + lines + " фраз, пик сигнала " + pk + "%"; prog = 100;
+                    try { MeetStore.export(MeetService.this, new File(wav), txt); status += ". Сохранено в Документы/Совещания (аудио, текст, PDF)"; } catch (Throwable ee) { log(MeetService.this, "экспорт: " + ee); status += ". В Документы не сохранилось: " + ee.getMessage(); } }
             } catch (Throwable e) { status = "Ошибка расшифровки: " + e; log(MeetService.this, "ОШИБКА: " + e); }
             finally {
                 try { if (w != null) w.close(); } catch (Throwable e) { } try { if (in != null) in.close(); } catch (Throwable e) { }
