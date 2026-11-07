@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "03.11 09:06";
+const BUILD = "07.11 13:05";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2701,7 +2701,10 @@ const mCSS = `
 .btn,.jr-chip,.tool,.mt{transition:transform .22s cubic-bezier(.34,1.56,.64,1)} .btn:active,.jr-chip:active,.tool:active,.mt:active{transform:scale(.95)}
 .sbgrip{cursor:grab;touch-action:none;padding:2px 6px;color:var(--sub);font-weight:700;letter-spacing:-2px;user-select:none;align-self:center} .sbgrip:active{cursor:grabbing} .sbmv{display:none;margin-left:auto;align-self:center;gap:2px;flex:none} .taskrow.sub.sel .sbmv{display:inline-flex} .sbmv button{width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;color:var(--sub);cursor:pointer} .sbmv button:hover{background:var(--hov);color:var(--acc)}
 @media(hover:hover){.taskrow.sub:hover .sbmv,.drow.stp:hover .sbmv{display:inline-flex}}
-.drow.stp .sbmv{margin-left:6px}
+.taskrow.sub,.drow.stp{position:relative}
+.taskrow.sub .sbmv,.drow.stp .sbmv{position:absolute;right:6px;top:50%;transform:translateY(-50%);margin:0;background:var(--hov);border-radius:14px;padding:0 3px;box-shadow:0 0 0 1px var(--ln)}
+.sbdel:hover{color:#e5484d!important}
+.taskrow.sub,.taskrow.sub:hover{transition:none;transform:none}
 .mcnt{font-size:calc(19px*var(--z,1));font-weight:600;margin-left:6px}
 .mbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:55;display:flex;gap:6px;align-items:center;background:var(--solid);color:var(--tx);border:1px solid var(--ln);border-radius:26px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px 10px 6px 16px;font-size:calc(13px*var(--z,1))}
 .mbar button{border:1px solid var(--ln);background:transparent;color:var(--acc);border-radius:16px;padding:6px 12px;cursor:pointer;font-size:inherit}
@@ -3258,7 +3261,7 @@ function subRow(k) {
     '<div class="tbody"><div class="ttl">' + esc(k.title) + "</div>" + metaHTML(k, false, false) + "</div>" + subMvHTML(k.id) + "</div>";
 }
 // порядок подзадач: стрелки ▲▼ (по наведению / у выбранной) и Alt+↑/↓; номер порядка хранится в колонке ord (как очередь, но только внутри родителя)
-const subMvHTML = id => '<span class="sbmv"><span class="sbgrip" title="Потяните, чтобы переставить">⋮⋮</span><button type="button" data-a="submv" data-id="' + id + '" data-d="-1" title="Выше">' + ic("up", 13) + '</button><button type="button" data-a="submv" data-id="' + id + '" data-d="1" title="Ниже">' + ic("down", 13) + "</button></span>";
+const subMvHTML = id => '<span class="sbmv"><span class="sbgrip" title="Потяните, чтобы переставить">⋮⋮</span><button type="button" data-a="submv" data-id="' + id + '" data-d="-1" title="Выше">' + ic("up", 13) + '</button><button type="button" data-a="submv" data-id="' + id + '" data-d="1" title="Ниже">' + ic("down", 13) + '</button><button type="button" class="sbdel" data-a="subdel" data-id="' + id + '" title="Удалить подзадачу">' + ic("trash", 13) + "</button></span>";
 function subReorder(id, to) {   // поставить подзадачу на позицию to среди таких же (по готовности) — для перетаскивания
   const t = S.tasks[id]; if (!t || !t.parent_id || !OR) return false;
   const a = (subIdx[t.parent_id] || []).filter(x => !!x.done === !!t.done), o = a.map(x => x.id), i = o.indexOf(id); if (i < 0) return false;
@@ -5504,6 +5507,7 @@ const setDue = (id, v) => {
 };
 const acts = {
   view(a) { goView(a.dataset.v); render(); },
+  subdel(a, e) { if (e && e.stopPropagation) e.stopPropagation(); const id = a.dataset.id, t = S.tasks[id]; if (!t) return; deleteTask(id); toast("Подзадача удалена: " + (t.title || "").slice(0, 40)); render(); },
   submv(a, e) { if (e && e.stopPropagation) e.stopPropagation(); subMove(a.dataset.id, +a.dataset.d); },
   sel(a) { if (fastOpen(a.closest ? a.closest(".taskrow") : null, a.dataset.id)) return; selId = a.dataset.id; ui.left = false; render(); hkEnsure(selId); },
   close() { if (fastClose()) return; selId = null; render(); },
@@ -7220,8 +7224,16 @@ function init() {
   document.addEventListener("pointerdown", () => { down = true; }, true);
   document.addEventListener("pointerup", () => { down = false; if (want) setTimeout(() => { if (want && !down) render(); }, 40); }, true);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && S.user && Date.now() - lastLoad > 30000) loadAll(); });
-  window.addEventListener("online", () => { if (S.user) flush().then(loadAll); });
-  window.addEventListener("offline", () => { if (S.user) setSync("err", "нет сети"); });
+  const offBar = () => {
+    let b = document.getElementById("offbar");
+    if (navigator.onLine !== false) { if (b) b.remove(); return; }
+    if (b) return;
+    if (!document.getElementById("offbar-css")) { const st = document.createElement("style"); st.id = "offbar-css"; st.textContent = "#offbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));z-index:99999;background:#b45309;color:#fff;font:600 13px/1.3 system-ui,sans-serif;padding:8px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,.35);max-width:92vw;text-align:center;pointer-events:none}"; document.head.appendChild(st); }
+    b = document.createElement("div"); b.id = "offbar"; b.textContent = "📴 Нет сети — работаешь офлайн. Правки сохраняются на устройстве и уйдут, когда появится связь."; document.body.appendChild(b);
+  };
+  offBar();
+  window.addEventListener("online", () => { offBar(); if (S.user) flush().then(loadAll); });
+  window.addEventListener("offline", () => { offBar(); if (S.user) setSync("err", "офлайн"); });
   window.addEventListener("pagehide", () => { writeCache(); });
   let rz, lastW = innerWidth;   // перерисовка только при смене ШИРИНЫ: высота меняется от клавиатуры и вызывала «тряску» на экране входа
   window.addEventListener("resize", () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(renderSoon, 200); });
