@@ -176,8 +176,12 @@ public class MeetService extends Service {
         {
             float pk = 0; for (float v : x) { float a = Math.abs(v); if (a > pk) pk = a; }
             if (pk > 0.002f && pk < 0.5f) { float g = Math.min(20f, 0.7f / pk); for (int i = 0; i < x.length; i++) x[i] *= g; }   // тихая запись с телефона на столе: подтягиваем громкость
-            log(this, "декодирую кусок " + x.length / 16000 + " с"); OfflineStream st = rc.createStream(); st.acceptWaveform(x, 16000); rc.decode(st);
-            String txt = rc.getResult(st).getText().trim(); st.release();
+            log(this, "декодирую кусок " + x.length / 16000 + " с, пик " + Math.round(pk * 100) + "%");
+            OfflineStream st = rc.createStream(); log(this, "  поток создан");
+            st.acceptWaveform(x, 16000); log(this, "  звук передан");
+            rc.decode(st); log(this, "  декодирование выполнено");
+            com.k2fsa.sherpa.onnx.OfflineRecognizerResult rr = rc.getResult(st); log(this, "  результат получен");
+            String txt = rr.getText().trim(); log(this, "  текст: «" + txt + "»"); st.release();
             if (txt.length() == 0) return;
             txt = Character.toUpperCase(txt.charAt(0)) + txt.substring(1) + ".";
             w.write(String.format(Locale.US, "[%02d:%02d:%02d] %s\n", t / 3600, (t / 60) % 60, t % 60, txt)); w.flush(); lines++;
