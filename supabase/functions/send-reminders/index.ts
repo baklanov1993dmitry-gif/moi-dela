@@ -98,6 +98,54 @@ Deno.serve(async (req) => {
         await sb.from("tasks").update({ remind_at: nx, remind_sent_for: null }).eq("id", t.id);
       }
     } catch (err) { console.error("rep " + (err as Error).message); }
+    // Календарь Битрикс24 (входящий вебхук B24_WEBHOOK): в будни в 08:00 сводка «сегодня N встреч» и каждые 10 минут проверка новых/перенесённых встреч на 14 дней
+    try {
+      const hook = Deno.env.get("B24_WEBHOOK"), owner = Deno.env.get("TG_USER") ?? Deno.env.get("TRACK_USER");
+      const nl = new Date(Date.now() + 7 * 3600e3), hm = nl.toISOString().slice(11, 16), day = nl.toISOString().slice(0, 10), wdn = nl.getUTCDay();
+      const morning = hm >= "08:00" && hm < "08:10" && wdn >= 1 && wdn <= 5;
+      if (hook && owner && (morning || nl.getUTCMinutes() % 10 === 5)) {
+        const hk = hook.endsWith("/") ? hook : hook + "/";
+        const { data: row } = await sb.from("user_settings").select("data").eq("user_id", owner).eq("key", "b24:cal").maybeSingle();
+        const st: { uid?: string; morning?: string; seen?: Record<string, string> } = (row?.data as any) || {};
+        if (!st.uid) { const ur = await (await fetch(hk + "user.current.json")).json().catch(() => ({})); st.uid = String(ur?.result?.ID || ""); }
+        if (st.uid) {
+          const to = new Date(nl.getTime() + 14 * 864e5).toISOString().slice(0, 10);
+          const er = await (await fetch(hk + "calendar.event.get.json?type=user&ownerId=" + st.uid + "&from=" + day + "&to=" + to)).json().catch(() => ({}));
+          const raw: any[] = Array.isArray(er?.result) ? er.result : [];
+          const pd = (x: string): string | null => {   // «08.11.2026 09:00:00» или «2026-11-08 09:00:00» -> «2026-11-08 09:00»
+            const m1 = /^(\d{2})\.(\d{2})\.(\d{4})[ T](\d{2}:\d{2})/.exec(x || ""), m2 = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2})/.exec(x || "");
+            return m1 ? m1[3] + "-" + m1[2] + "-" + m1[1] + " " + m1[4] : m2 ? m2[1] + "-" + m2[2] + "-" + m2[3] + " " + m2[4] : null;
+          };
+          const evs = raw.filter((e) => e && e.MEETING_STATUS !== "N" && e.DELETED !== "Y").map((e) => ({ id: String(e.ID) + "@" + (pd(e.DATE_FROM) || "").slice(0, 10), name: String(e.NAME || "Событие"), at: pd(e.DATE_FROM) || "", allDay: e.SKIP_TIME === "Y" || e.DT_SKIP_TIME === "Y" })).filter((e) => e.at && e.at.slice(0, 10) >= day).sort((x, y) => x.at.localeCompare(y.at));
+          const send = async (title: string, body: string, tag: string) => {
+            const { data: ss } = await sb.from("push_subs").select("endpoint,p256dh,auth").eq("user_id", owner);
+            const pl = JSON.stringify({ title, body, tag });
+            await Promise.all((ss ?? []).map(async (x: { endpoint: string; p256dh: string; auth: string }) => {
+              try { await webpush.sendNotification({ endpoint: x.endpoint, keys: { p256dh: x.p256dh, auth: x.auth } }, pl, { TTL: 3600, urgency: "normal", timeout: 10000 }); }
+              catch (e) { const sc = (e as { statusCode?: number }).statusCode; if (sc === 404 || sc === 410) await sb.from("push_subs").delete().eq("endpoint", x.endpoint); }
+            }));
+            const tt = Deno.env.get("TG_TOKEN"), tc = Deno.env.get("TG_CHAT");
+            if (tt && tc) await fetch("https://api.telegram.org/bot" + tt + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: tc, text: title + "\n" + body }) }).catch(() => {});
+          };
+          const hhmm = (e: { at: string; allDay: boolean }) => (e.allDay ? "весь день" : e.at.slice(11));
+          const dm = (d: string) => d.slice(8, 10) + "." + d.slice(5, 7);
+          if (morning && st.morning !== day) {
+            const td = evs.filter((e) => e.at.slice(0, 10) === day), n = td.length;
+            const word = n % 10 === 1 && n % 100 !== 11 ? "встреча" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "встречи" : "встреч";
+            await send(n ? "🗓 Сегодня " + n + " " + word : "🗓 Сегодня встреч нет", n ? td.slice(0, 8).map((e) => hhmm(e) + " " + e.name).join("\n") : "Календарь Битрикс24 свободен", "cal-morning");
+            st.morning = day;
+          }
+          const seen = st.seen || null, ns: Record<string, string> = {};
+          for (const e of evs) ns[e.id] = e.at;
+          if (seen) for (const e of evs) {
+            if (!(e.id in seen)) await send("🗓 Новая встреча", (e.at.slice(0, 10) === day ? "сегодня" : dm(e.at.slice(0, 10))) + " " + hhmm(e) + " · " + e.name, "cal-new-" + e.id.slice(0, 30));
+            else if (seen[e.id] !== e.at) await send("🗓 Встреча перенесена", dm(e.at.slice(0, 10)) + " " + hhmm(e) + " · " + e.name, "cal-mv-" + e.id.slice(0, 30));
+          }
+          st.seen = ns;
+          await sb.from("user_settings").upsert({ user_id: owner, key: "b24:cal", data: st, updated_at: new Date().toISOString() }, { onConflict: "user_id,key" });
+        }
+      }
+    } catch (err) { console.error("b24cal " + (err as Error).message); }
     const now = new Date(), since = new Date(now.getTime() - 24 * 3600e3);
     const { data: tasks, error } = await sb.from("tasks")
       .select("id,user_id,title,remind_at,remind_sent_for,due,list_id,remind_via")
