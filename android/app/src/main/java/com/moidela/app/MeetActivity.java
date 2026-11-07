@@ -93,7 +93,7 @@ public class MeetActivity extends Activity {
         for (final File f : ws) {
             final File txt = new File(f.getPath().replace(".wav", ".txt"));
             long sec = Math.max(0, (f.length() - 44) / 32000);
-            box.addView(tv(f.getName().replace("meet-", "").replace(".wav", "") + " · " + sec / 60 + " мин · " + (f.length() >> 20) + " МБ" + (txt.exists() ? " · ✓ текст готов" : ""), 14, "#e6e1ff", false));
+            box.addView(tv(f.getName().replace("meet-", "").replace(".wav", "") + " · " + (sec < 60 ? sec + " с" : sec / 60 + " мин " + sec % 60 + " с") + " · " + (f.length() < (1 << 20) ? (f.length() >> 10) + " КБ" : (f.length() >> 20) + " МБ") + (txt.exists() ? " · ✓ текст готов" : ""), 14, "#e6e1ff", false));
             LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL);
             if (!txt.exists() && !MeetService.tr && !MeetService.rec && MeetService.modelReady(this)) row.addView(bt("Расшифровать", new View.OnClickListener() { public void onClick(View v) { startForegroundSvc(new Intent(MeetActivity.this, MeetService.class).setAction("tr").putExtra("wav", f.getAbsolutePath())); } }));
             if (txt.exists()) {
