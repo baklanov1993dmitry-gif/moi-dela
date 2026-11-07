@@ -972,7 +972,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 56 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 57 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1144,9 +1144,9 @@ function rcpPick() {
   i.click();
 }
 /* ---- фото бумажного чека: сжимаем, отправляем в функцию receipt (Gemini), сверяем арифметикой ---- */
-function rcpPhoto() {
+function rcpPhoto(cam) {
   if (!navigator.onLine) { toast("Нужен интернет для распознавания"); return; }
-  const i = document.createElement("input"); i.type = "file"; i.accept = "image/*"; i.setAttribute("capture", "environment");
+  const i = document.createElement("input"); i.type = "file"; i.accept = "image/*"; if (cam) i.setAttribute("capture", "environment");
   i.onchange = () => { const f = i.files && i.files[0]; if (f) rcpPhotoGo(f); };
   i.click();
 }
@@ -1268,6 +1268,9 @@ function sheetHTML() {
   if (s.type === "due") {
     const l = dueList(); if (!l.length) return ""; const x = l[0], c = catOf(x.r.cat), dd = new Date(x.d.ds + "T12:00");
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2>🔁 ' + esc(x.r.note || c.name) + '</h2><div class="sub" style="margin-bottom:8px">' + c.name + " · " + dd.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) + (l.length > 1 ? " · ещё " + (l.length - 1) : "") + '</div><input class="in" id="d-amt" inputmode="decimal" placeholder="Сумма, ₽" value="' + esc(x.r.amt) + '"><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" data-a="duego">Записать</button><button class="btn g" data-a="dueskip">Пропустить</button></div></div></div>';
+  }
+  if (s.type === "rcph") {
+    return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 10px">🧾 Чек</h2><div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rcpcam">📷 Снять</button><button class="btn" style="flex:1" data-a="rcpgal">🖼 Из галереи</button></div><button class="btn g" style="width:100%;margin-top:8px" data-a="shclose">Отмена</button></div></div>';
   }
   if (s.type === "rcpt") {
     return '<div class="ov" data-a="shclose"><div class="sheet" data-a="nop"><h2 style="margin:0 0 4px">✉️ Чек из письма</h2><div class="sub" style="font-size:.85em">Открой письмо с чеком, выдели текст и скопируй. Потом нажми «Из буфера» или вставь сюда. Можно и сразу «Поделиться» письмом в «Траты».</div>' + (s.err ? '<div class="sub exp" style="margin:6px 0">' + esc(s.err) + "</div>" : "") + '<textarea class="in" id="rt-t" rows="6" placeholder="Текст письма с чеком" style="width:100%;margin:8px 0;resize:vertical">' + esc(s.text || "") + '</textarea><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="rcpclip">📋 Из буфера</button><button class="btn" data-a="rcpgo" style="flex:1">Разобрать</button></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn g" data-a="rcpfile" style="flex:1">📎 Файл письма (.eml)</button>' + (s.inbox ? '<button class="btn g" data-a="inbskip">Не чек</button>' : "") + '<button class="btn g" data-a="shclose">Отмена</button></div></div></div>';
@@ -1569,7 +1572,9 @@ const A = {
   async rcpclip() { try { const t = await navigator.clipboard.readText(); if (t && t.trim()) { rcpText(t, {}); return; } toast("В буфере пусто"); } catch (e) { toast("Нет доступа к буферу: вставь текст вручную в поле"); } },
   rcpgo() { const el = $("rt-t"), t = el ? el.value : ""; if (!t.trim()) { toast("Сначала вставь текст письма"); return; } rcpText(t, {}); },
   rcpfile() { ui.sheet = null; rcpPick(); },
-  rcpphoto() { ui.sheet = null; render(); rcpPhoto(); },
+  rcpphoto() { ui.sheet = { type: "rcph" }; render(); },
+  rcpcam() { ui.sheet = null; render(); rcpPhoto(true); },
+  rcpgal() { ui.sheet = null; render(); rcpPhoto(false); },
   rcat(a) { const b = ui.sheet; rread(); const l = document.querySelector(".rcp .rl"); b.sy = l ? l.scrollTop : 0; ui.sheet = { type: "rcpc", all: a.dataset.i === "all", i: +a.dataset.i, q: "", back: b }; render(); setTimeout(() => { const e = $("rc-q"); if (e) e.focus(); }, 60); },
   rcpick(a) { const s = ui.sheet, b = s.back, id = a.dataset.id || ""; if (s.all) b.items.forEach(x => { if (!x.cat) x.cat = id; }); else if (b.items[s.i]) b.items[s.i].cat = id; ui.sheet = b; render(); const l = document.querySelector(".rcp .rl"); if (l) l.scrollTop = b.sy || 0; },
   rcpcback() { const b = ui.sheet.back; ui.sheet = b; render(); const l = document.querySelector(".rcp .rl"); if (l) l.scrollTop = b.sy || 0; },
