@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "08.11 01:22";
+const BUILD = "08.11 01:55";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4545,7 +4545,7 @@ function settingsHTML() {
     G("Приложение для Android",
       R("Подключение", "Связать приложение с этим аккаунтом", BT("devlink", "🤖 Подключить")) +
       R("Запуск с «Новая задача»", "Окно добавления открывается сразу", BT("openadd", jget("mytasks_openadd", false) ? "✅ Включено" : "⬜ Выключено")) +
-      (/Android/i.test(navigator.userAgent) ? R("Голосовое добавление", "Микрофон и ответы голосом", BT("voiceset", "🎤 Настроить")) : ""));
+      (/Android/i.test(navigator.userAgent) ? R("Голосовое добавление", "Микрофон и ответы голосом", BT("voiceset", "🎤 Настроить")) + R("Тексты песен", "Яндекс Музыка: текст и перевод в шторке под плеером", BT("lyrset", "🎵 Включить")) : ""));
   else if (tab === "ai") b =
     G("Искусственный интеллект", R("Проверка Gemini", "Работает ли умная разметка журнала и питание. Занимает до 10 секунд.", BT("gdiag", "🧠 Проверить")) + '<div class="srw col"><div id="gres" class="gres">' + (ui.gres || '<span style="color:var(--sub)">Нажми «Проверить» — здесь появится результат по моделям.</span>') + "</div></div>") +
     '<div class="sgn">Весь ИИ в приложении (разметка журнала, питание, итоги, поиск продукта) работает через Gemini бесплатно. Если Gemini не ответит, подключается запасная нейросеть, а в подписи будет причина.</div>';
@@ -5572,6 +5572,7 @@ const acts = {
   qaopen() { ui.qaText = ""; ui.qa = { due: null, remind_at: null, repeat_rule: null, my: view === "myday", starred: view === "starred" }; closePop(); render(); const i = $("qa-input"); if (i) i.focus(); },
   nstick() { jset("mytasks_nstick", !stickOn()); syncStick(); toast(stickOn() ? "Уведомления будут висеть, пока не нажмёшь" : "Уведомления будут исчезать сами"); render(); },
   openadd() { jset("mytasks_openadd", !jget("mytasks_openadd", false)); toast(jget("mytasks_openadd", false) ? "При запуске приложения сразу откроется «Новая задача» (удобно для голосовой команды «Открой Мои дела»)" : "Выключено"); render(); },
+  lyrset() { location.href = "moidela://lyrics"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
   voiceset() { location.href = "moidela://voice"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
   remxpop(a, e) { ui.remXi = +a.dataset.xi; acts.pop(a, e); if (!ui.pop) ui.remXi = null; },
   remxdel(a) { const t = S.tasks[a.dataset.id]; if (!t) return; const q = (t.remind_queue || []).slice(); q.splice(+a.dataset.i, 1); patchTask(t.id, { remind_queue: q }); render(); },

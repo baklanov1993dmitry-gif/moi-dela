@@ -94,6 +94,15 @@ Deno.serve(async (req) => {
     try { const vr = await fetch(base + "user_settings?select=data&user_id=eq." + uid + "&key=eq.voice:cfg", { headers: hd }); if (vr.ok) vcfg = ((await vr.json())[0] || {}).data || null; } catch { /* без настроек */ }
     return ok({ rem: (rem || []).map((x: any) => ({ ...x, at: Date.parse(x.remind_at) })), tasks, lists, vcfg, today: ymdz(Date.now()), now: Date.now() });
   }
+  if (a === "lyrtr") {   // перевод текста песни на русский (запасной вариант, если нет перевода на сайте): тело {lines:[…]} -> {t:[…]} той же длины
+    let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
+    const lines: string[] = Array.isArray(b.lines) ? b.lines.slice(0, 160).map((x: unknown) => String(x).slice(0, 300)) : [];
+    if (!lines.length) return ok({ t: [] });
+    const r = await askAI("Переведи строки песни на русский язык, сохраняя смысл и поэтичность. Верни ровно столько строк, сколько получил, по одной переводной строке на каждую входную, в том же порядке. Пустые строки оставь пустыми. Без нумерации, пояснений и кавычек.", lines.join("\n"));
+    if (!r) return ok({ error: "ai" });
+    const out = r.replace(/\r/g, "").split("\n"); while (out.length > lines.length && out[out.length - 1].trim() === "") out.pop();
+    return ok({ t: out.length === lines.length ? out : lines.map((_, i) => out[i] || "") });
+  }
   if (a === "cmd") {   // голосовые команды «бортовой компьютер»: текст фразы → намерение (Gemini) → действие → фраза для озвучки
     let b: any = {}; try { b = await req.json(); } catch { /* пусто */ }
     const text = String(b.text || "").trim().slice(0, 400); if (!text) return ok({ speak: "Не расслышал.", intent: "none" });
