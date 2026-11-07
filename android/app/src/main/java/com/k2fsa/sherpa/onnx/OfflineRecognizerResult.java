@@ -14,7 +14,7 @@ public class OfflineRecognizerResult {
     // an HLG graph is used, i.e. when ctcFstDecoderConfig.graph is set.
     private final int[] words;
 
-    public OfflineRecognizerResult(String text, String[] tokens, float[] timestamps, String lang, String emotion, String event, float[] durations, int[] words) {
+    public OfflineRecognizerResult(String text, String[] tokens, float[] timestamps, String lang, String emotion, String event, float[] durations) {
         this.text = text;
         this.tokens = tokens;
         this.timestamps = timestamps;
@@ -22,7 +22,7 @@ public class OfflineRecognizerResult {
         this.emotion = emotion;
         this.event = event;
         this.durations = durations;
-        this.words = words;
+        this.words = new int[0];
     }
 
     public String getText() {
