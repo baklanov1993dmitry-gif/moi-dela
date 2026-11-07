@@ -64,7 +64,7 @@ public class MeetActivity extends Activity {
     }
 
     private void build() {
-        String s = MeetService.rec + "|" + MeetService.tr + "|" + (MeetService.rec ? (System.currentTimeMillis() - MeetService.recStart) / 1000 : 0) + "|" + MeetService.prog + "|" + MeetService.status + "|" + dlStatus + "|" + dlBusy + "|" + wavs().length + "|" + MeetService.modelReady(this);
+        String s = new File(MeetService.dir(this), "log.txt").length() + "|" + MeetService.rec + "|" + MeetService.tr + "|" + (MeetService.rec ? (System.currentTimeMillis() - MeetService.recStart) / 1000 : 0) + "|" + MeetService.prog + "|" + MeetService.status + "|" + dlStatus + "|" + dlBusy + "|" + wavs().length + "|" + MeetService.modelReady(this);
         for (File f : wavs()) s += f.getName() + f.lastModified() + new File(f.getPath().replace(".wav", ".txt")).exists();
         if (s.equals(sig)) return; sig = s;
         box.removeAllViews();
@@ -86,6 +86,7 @@ public class MeetActivity extends Activity {
             box.addView(tv("Можно закрыть экран и убрать телефон: идёт в фоне, в шторке видно прогресс.", 12, "#9a93b8", false));
             box.addView(bt("■ Прервать", new View.OnClickListener() { public void onClick(View v) { startService(new Intent(MeetActivity.this, MeetService.class).setAction("stop")); } }));
         }
+        String lg = read(new File(MeetService.dir(this), "log.txt")); if (lg.length() > 0) { String[] ls = lg.trim().split("\n"); StringBuilder sb2 = new StringBuilder(); for (int i = Math.max(0, ls.length - 12); i < ls.length; i++) sb2.append(ls[i]).append('\n'); box.addView(tv("Журнал:\n" + sb2, 11, "#7d76a0", false)); }
         if (MeetService.status.length() > 0) box.addView(tv(MeetService.status, 13, "#9a93b8", false));
         box.addView(tv("Записи", 17, "#ffffff", true));
         File[] ws = wavs();

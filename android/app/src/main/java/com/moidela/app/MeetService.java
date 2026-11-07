@@ -42,6 +42,12 @@ public class MeetService extends Service {
     static volatile int segs = 0, lines = 0; static volatile float peakAll = 0;
 
     static File dir(Context c) { File d = new File(c.getApplicationContext().getFilesDir(), "meet"); d.mkdirs(); return d; }
+    static synchronized void log(Context c, String m) {   // журнал шагов в файл: переживает падение процесса
+        try {
+            File f = new File(dir(c), "log.txt"); if (f.length() > 40000) f.delete();
+            FileOutputStream o = new FileOutputStream(f, true); o.write((new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date()) + " " + m + "\n").getBytes("UTF-8")); o.close();
+        } catch (Throwable e) { }
+    }
     static File modelDir(Context c) { return new File(c.getApplicationContext().getFilesDir(), "asr"); }
     static boolean modelReady(Context c) { File d = modelDir(c); return new File(d, "model.int8.onnx").exists() && new File(d, "tokens.txt").exists() && new File(d, "silero_vad.onnx").exists() && new File(d, ".ok").exists(); }
 
@@ -49,6 +55,7 @@ public class MeetService extends Service {
 
     @Override public int onStartCommand(Intent in, int flags, int id) {
         String a = in == null ? "" : in.getAction();
+        log(this, "команда: " + a + " rec=" + rec + " tr=" + tr);
         if ("rec".equals(a) && !rec && !tr) { go("Идёт запись совещания", "Нажмите, чтобы открыть", true); startRec(); }
         else if ("tr".equals(a) && !rec && !tr) { final String p = in.getStringExtra("wav"); go("Расшифровка…", "0%", false); startTr(p); }
         else if ("stop".equals(a)) { stop = true; }
@@ -109,17 +116,19 @@ public class MeetService extends Service {
 
     // ---------------- расшифровка ----------------
     private void startTr(final String wav) {
-        tr = true; stop = false; prog = 0; segs = 0; lines = 0; peakAll = 0; trName = new File(wav).getName(); status = "Расшифровка…";
+        log(this, "расшифровка: старт " + wav); tr = true; stop = false; prog = 0; segs = 0; lines = 0; peakAll = 0; trName = new File(wav).getName(); status = "Расшифровка…";
         new Thread(new Runnable() { public void run() {
             File txt = new File(wav.replace(".wav", ".txt")), part = new File(wav.replace(".wav", ".part"));
             OfflineRecognizer rc = null; Vad vad = null; java.io.Writer w = null; FileInputStream in = null;
             try {
-                File md = modelDir(MeetService.this);
+                File md = modelDir(MeetService.this); log(MeetService.this, "модель: " + new File(md, "model.int8.onnx").length() + " байт; создаю распознаватель");
                 rc = new OfflineRecognizer(OfflineRecognizerConfig.builder().setOfflineModelConfig(OfflineModelConfig.builder()
                     .setNemo(OfflineNemoEncDecCtcModelConfig.builder().setModel(new File(md, "model.int8.onnx").getAbsolutePath()).build())
                     .setTokens(new File(md, "tokens.txt").getAbsolutePath()).setNumThreads(4).setDebug(false).build()).build());
+                log(MeetService.this, "распознаватель создан; создаю детектор речи");
                 SileroVadModelConfig sv = SileroVadModelConfig.builder().setModel(new File(md, "silero_vad.onnx").getAbsolutePath()).setThreshold(0.45f).setMinSilenceDuration(0.6f).setMinSpeechDuration(0.3f).setMaxSpeechDuration(20f).build();
                 vad = new Vad(VadModelConfig.builder().setSileroVadModelConfig(sv).setSampleRate(16000).setNumThreads(1).setDebug(false).build());
+                log(MeetService.this, "детектор создан; читаю запись");
                 File wf = new File(wav); long len = wf.length(), done = 44;
                 in = new FileInputStream(wf); in.skip(44);
                 w = new OutputStreamWriter(new FileOutputStream(part), "UTF-8");
@@ -132,14 +141,16 @@ public class MeetService extends Service {
                     prog = (int) (done * 100 / Math.max(1, len));
                     if (System.currentTimeMillis() - lastU > 3000) { lastU = System.currentTimeMillis(); upd("Расшифровка " + prog + "%", trName, prog); }
                 }
+                log(MeetService.this, "чтение закончено: сегментов " + segs + ", фраз " + lines + ", пик " + Math.round(peakAll * 100) + "%");
                 if (!stop) { vad.flush(); drain(rc, vad, w); }
+                log(MeetService.this, "после flush: сегментов " + segs + ", фраз " + lines);
                 if (!stop && lines == 0) { status = "Детектор речи ничего не нашёл, пробую без него…"; fallback(rc, wav, w); }   // короткие/тихие записи: режем на куски по 15 с
                 w.close(); w = null;
                 int pk = Math.round(peakAll * 100);
                 if (stop) { status = "Расшифровка прервана" + (lines > 0 ? " (частичный текст сохранён)" : ""); if (lines > 0) part.renameTo(txt); else part.delete(); }
                 else if (lines == 0) { part.delete(); status = "Речь не распознана. Пик сигнала записи: " + pk + "% (меньше 2% — микрофон почти не писал; тогда проверьте разрешение и поднесите телефон ближе)."; prog = 100; }
                 else { part.renameTo(txt); status = "Готово: " + lines + " фраз, пик сигнала " + pk + "%"; prog = 100; }
-            } catch (Throwable e) { status = "Ошибка расшифровки: " + e.getMessage(); }
+            } catch (Throwable e) { status = "Ошибка расшифровки: " + e; log(MeetService.this, "ОШИБКА: " + e); }
             finally {
                 try { if (w != null) w.close(); } catch (Throwable e) { } try { if (in != null) in.close(); } catch (Throwable e) { }
                 try { if (vad != null) vad.release(); } catch (Throwable e) { } try { if (rc != null) rc.release(); } catch (Throwable e) { }
@@ -165,7 +176,7 @@ public class MeetService extends Service {
         {
             float pk = 0; for (float v : x) { float a = Math.abs(v); if (a > pk) pk = a; }
             if (pk > 0.002f && pk < 0.5f) { float g = Math.min(20f, 0.7f / pk); for (int i = 0; i < x.length; i++) x[i] *= g; }   // тихая запись с телефона на столе: подтягиваем громкость
-            OfflineStream st = rc.createStream(); st.acceptWaveform(x, 16000); rc.decode(st);
+            log(this, "декодирую кусок " + x.length / 16000 + " с"); OfflineStream st = rc.createStream(); st.acceptWaveform(x, 16000); rc.decode(st);
             String txt = rc.getResult(st).getText().trim(); st.release();
             if (txt.length() == 0) return;
             txt = Character.toUpperCase(txt.charAt(0)) + txt.substring(1) + ".";
