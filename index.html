@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "07.11 13:13";
+const BUILD = "08.11 01:22";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -625,7 +625,19 @@ function errText(e) {
   return String(m).slice(0, 90);
 }
 function setSync(state, msg) { sync = { state, msg: msg || "" }; updateSyncUI(); }
+function netPill() {
+  let b = document.getElementById("netpill");
+  if (!b) {
+    if (!document.getElementById("netpill-css")) { const st = document.createElement("style"); st.id = "netpill-css"; st.textContent = "#netpill{position:fixed;left:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:99998;font:600 11px/1 system-ui,sans-serif;padding:5px 9px;border-radius:12px;background:rgba(255,255,255,.92);color:#166534;border:1px solid rgba(22,101,52,.25);box-shadow:0 1px 6px rgba(0,0,0,.15);pointer-events:none;white-space:nowrap}#netpill.off{background:#b45309;color:#fff;border-color:#b45309}"; document.head.appendChild(st); }
+    b = document.createElement("div"); b.id = "netpill"; document.body.appendChild(b);
+  }
+  const off = navigator.onLine === false || (sync.state === "err" && /нет связи|офлайн/i.test(sync.msg || ""));
+  const n = typeof pendCount === "function" && S.user ? pendCount() : 0;
+  b.className = off ? "off" : "";
+  b.textContent = (off ? "📴 офлайн" : "🟢 онлайн") + (n ? " · не отправлено " + n : "");
+}
 function updateSyncUI() {
+  netPill();
   const el = $("sync"); if (!el) return;
   const n = pendCount();
   if (sync.state === "sync") el.textContent = "⟳ синхронизация…";
@@ -659,6 +671,24 @@ function purgeBadIds() {   // хвосты от старого бага huid: з
   let n = 0; ["foods", "food_log", "weight_log", "user_settings"].forEach(t => { if (!P[t]) return; Object.keys(P[t]).forEach(id => { if (!UUID_RE.test(id)) { delete P[t][id]; if (S[t]) delete S[t][id]; n++; } }); });
   if (n) savePending();
 }
+const isListFk = e => !!e && (e.code === "23503" || /tasks_list_id_fkey|foreign key/i.test(String(e.message || e.details || "")));
+// Список удалили на другом устройстве, а тут остались задачи в нём: сверяем списки с сервером и переносим «осиротевшие» задачи в живой список
+async function healOrphanTasks() {
+  if (!sb || !S.user) return false;
+  try {
+    const ls = await fetchAll("lists"); applyServer("lists", ls);
+    const alive = listsArr().filter(l => !l.archived);
+    let fb = alive.find(l => /свои дела|работа/i.test(l.name)) || alive[0];
+    if (!fb) { seedLists(); fb = listsArr()[0]; }
+    if (!fb) return false;
+    let n = 0;
+    Object.keys(P.tasks).forEach(id => { const t = S.tasks[id]; if (!t || P.tasks[id] !== "u") return; if (t.list_id && !S.lists[t.list_id]) { t.list_id = fb.id; P.tasks[id] = "u"; n++; } });
+    if (!n) return false;
+    savePending(); persistSoon(); renderSoon();
+    toast("Список удалён на другом устройстве — " + n + " задач(и) перенесено в «" + fb.name + "»");
+    return true;
+  } catch (e) { return false; }
+}
 async function flush() {
   purgeBadIds();
   if (!sb || !S.user || flushing || !pendCount()) return;
@@ -667,6 +697,7 @@ async function flush() {
     await pushGroup("lists", "u"); await pushGroup("tasks", "u"); await pushGroup("time_log", "u"); await pushGroup("time_log", "d"); if (NX) { for (const t of ["foods", "food_log", "weight_log", "user_settings"]) { await pushGroup(t, "u"); await pushGroup(t, "d"); } } await pushGroup("tasks", "d"); await pushGroup("lists", "d");
     setSync("ok");
   } catch (e) {
+    if (isListFk(e)) { healOrphanTasks().then(ok => { if (ok) scheduleFlush(); }); }
     setSync("err", errText(e)); clearTimeout(retryTimer); retryTimer = setTimeout(flush, 15000);
   } finally { flushing = false; flushSeq++; }
   if (pendCount() && sync.state === "ok") scheduleFlush();
@@ -7245,9 +7276,9 @@ function init() {
     if (!document.getElementById("offbar-css")) { const st = document.createElement("style"); st.id = "offbar-css"; st.textContent = "#offbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));z-index:99999;background:#b45309;color:#fff;font:600 13px/1.3 system-ui,sans-serif;padding:8px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,.35);max-width:92vw;text-align:center;pointer-events:none}"; document.head.appendChild(st); }
     b = document.createElement("div"); b.id = "offbar"; b.textContent = "📴 Нет сети — работаешь офлайн. Правки сохраняются на устройстве и уйдут, когда появится связь."; document.body.appendChild(b);
   };
-  offBar();
-  window.addEventListener("online", () => { offBar(); if (S.user) flush().then(loadAll); });
-  window.addEventListener("offline", () => { offBar(); if (S.user) setSync("err", "офлайн"); });
+  offBar(); netPill();
+  window.addEventListener("online", () => { offBar(); netPill(); if (S.user) flush().then(loadAll); });
+  window.addEventListener("offline", () => { offBar(); netPill(); if (S.user) setSync("err", "офлайн"); });
   window.addEventListener("pagehide", () => { writeCache(); });
   let rz, lastW = innerWidth;   // перерисовка только при смене ШИРИНЫ: высота меняется от клавиатуры и вызывала «тряску» на экране входа
   window.addEventListener("resize", () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(renderSoon, 200); });
