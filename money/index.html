@@ -264,10 +264,11 @@ table.hm td{background-color:transparent}
 .qnote{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--card2);line-height:1.4}
 .pgw{will-change:transform;backface-visibility:hidden}.nb svg g{filter:none!important}
 #main{touch-action:pan-y}.pgw{position:relative}.pgw>div{overflow:visible}.pgw>.nb{position:absolute;top:0;width:100%;pointer-events:none}.pgw>.nb.l{left:calc(-100% - 28px)}.pgw>.nb.r{left:calc(100% + 28px)}
-.rs .rn{font-size:11.5px;line-height:1.15;max-width:92px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx);opacity:.92;font-weight:500}.rs .rn.s{font-size:10.5px}.rs .rn.xs{font-size:9.5px}.rs.nm span.pc{font-size:13px;opacity:.85}
+.rs .rn{font-size:11.5px;line-height:1.15;max-width:84px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx);opacity:.92;font-weight:500}.rs .rn.s{font-size:10.5px}.rs .rn.xs{font-size:9.5px}.rs.nm span.pc{font-size:13px;opacity:.85}
 .tg{margin-left:auto;padding:2px 10px;border-radius:12px;background:var(--card2);color:var(--sub);font-size:.85em;font-weight:600}.tg.on{background:var(--acc);color:#08130e}
 .qrow{display:flex;gap:10px;align-items:center;width:100%;padding:10px 0;border-top:1px solid var(--ln);text-align:left}.qrow:first-of-type{border-top:0}
-.row .t b.sn{font-size:1.18em;font-weight:700;white-space:normal;line-height:1.2}.row .t b.sn+small{font-size:.8em}mark{background:color-mix(in srgb,var(--acc) 38%,transparent);color:inherit;border-radius:3px;padding:0 1px}
+.row .t b.sn{font-size:1em;font-weight:600;white-space:normal;line-height:1.2}.row .t b.sn+small{font-size:.8em}
+.row.rq{padding:6px 10px;gap:10px;margin-bottom:4px;content-visibility:auto;contain-intrinsic-size:auto 52px}.row.rq .ci{width:32px;height:32px;font-size:16px}.row.rq .t b{font-size:.95em;font-weight:600}.row.rq .t small{font-size:.78em}.row.rq .a{font-size:.92em}mark{background:color-mix(in srgb,var(--acc) 38%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .capin{display:flex;gap:8px;margin:0 0 8px}.capin .in{flex:1;margin:0}.capin .btn{width:auto;padding:0 16px}
 .tpls{display:flex;gap:8px;overflow-x:auto;padding:2px 12px 8px;margin:0 -0px;scrollbar-width:none}.tpls::-webkit-scrollbar{display:none}
 .tpls button{flex:none;display:flex;align-items:center;gap:6px;padding:5px 11px 5px 6px;border-radius:20px;background:var(--card);color:var(--tx);font-size:13px;border:1px solid var(--ln)}
@@ -846,7 +847,7 @@ function sect(cx, cy, r0, r1, a0, a1, col) {   // кольцевой секто�
 }
 function ringHTML(items, tot, exp, inc, K) {
   const W = 360, H = 440, CX = 180, CY = 204, R = 82, SW = 40, C = 2 * Math.PI * R;
-  const cx = [32, 131, 229, 328], ry = [42, 130, 218, 306, 394], slots = [];
+  const cx = [46, 138, 222, 314], ry = [42, 130, 218, 306, 394], slots = [];
   for (let c = 0; c < 4; c++) slots.push([cx[c], ry[0]]);
   for (let r = 1; r <= 3; r++) slots.push([cx[3], ry[r]]);
   for (let c = 3; c >= 0; c--) slots.push([cx[c], ry[4]]);
@@ -889,7 +890,7 @@ const hl = (txt, q) => { txt = String(txt || ""); if (!q) return esc(txt); const
 function txRowQ(t, q) {
   const c = catOf(t.category_id), nm = (t.note || ""), inNote = nm.toLowerCase().includes(q);
   const main = inNote ? '<b class="sn">' + hl(nm, q) + "</b><small>" + esc(c.name) + "</small>" : "<b>" + hl(c.name, q) + "</b>" + (nm ? "<small>" + esc(nm) + "</small>" : "");
-  return '<button class="row" data-a="edit" data-id="' + t.id + '"><div class="ci">' + ic(c.icon, c.color) + '</div><div class="t">' + main + '</div><div class="a ' + t.kind + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amount) + "</div></button>";
+  return '<button class="row rq" data-a="edit" data-id="' + t.id + '"><div class="ci">' + ic(c.icon, c.color, 32) + '</div><div class="t">' + main + '</div><div class="a ' + t.kind + '">' + (t.kind === "exp" ? "−" : "+") + fm(t.amount) + "</div></button>";
 }
 function txRow(t) {
   const c = catOf(t.category_id), d = new Date(t.ts);
@@ -901,7 +902,7 @@ function listHTML() {
 function listBody() {
   let arr = ui.q ? (ui.qd > 0 ? txs.filter(t => +new Date(t.ts) >= Date.now() - ui.qd * 864e5) : txs.slice()) : rgTx();
   let qst = null; if (ui.q) { const f = searchFn(ui.q); arr = arr.filter(f); qst = { n: arr.length, e: sumBy(arr, t => t.kind === "exp" ? t.amount : 0), i: sumBy(arr, t => t.kind === "exp" ? 0 : t.amount) }; }
-  arr.sort((a, b) => b.ts.localeCompare(a.ts)); const lim = ui.q ? 200 : 600, more = arr.length - lim; arr = arr.slice(0, lim);
+  arr.sort((a, b) => b.ts.localeCompare(a.ts)); const lim = ui.q ? 60 : 600, more = arr.length - lim; arr = arr.slice(0, lim);
   let h = "" + (qst ? '<div class="sub" style="padding:2px 4px 6px;font-size:.85em">' + (ui.qd > 0 ? '<button class="chip on" data-a="qdclr" style="padding:2px 8px;font-size:.9em">за ' + winLbl(ui.qd) + " ✕</button> " : "") + "Найдено: " + qst.n + (qst.e ? " · расходы " + fmN(qst.e) : "") + (qst.i ? " · доходы " + fmN(qst.i) : "") + "</div>" : "") + (!ui.q ? '<div class="sub" style="padding:0 4px 6px;font-size:.78em">Можно искать несколько слов сразу, а ещё: &gt;1000, &lt;500, 100-500</div>' : ""), cur = "", buf = [];
   const groups = []; arr.forEach(t => { const dk = dayKey(new Date(t.ts)); if (dk !== cur) { cur = dk; groups.push({ dk, items: [] }); } groups[groups.length - 1].items.push(t); });
   groups.forEach(g => { const d = new Date(g.dk + "T12:00"), s = sumBy(g.items, t => t.kind === "exp" ? -t.amount : t.amount); h += '<div class="day"><span>' + WD[d.getDay()] + ", " + d.getDate() + " " + MONS_S[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "") + "</span>" + (ui.q ? "" : "<span>" + fm(s) + "</span>") + "</div>" + g.items.map(t => ui.q ? txRowQ(t, ui.q.toLowerCase()) : txRow(t)).join(""); });
@@ -972,7 +973,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 57 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 58 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1699,7 +1700,7 @@ document.addEventListener("selectstart", e => { const n = e.target && (e.target.
 document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest("[data-a=edit]")) e.preventDefault(); });
 document.addEventListener("click", e => { if (Date.now() - _lpAt < 700) { e.preventDefault(); return; } const a = e.target.closest("[data-a]"); if (!a) return; const f = A[a.dataset.a]; if (f) f(a, e); });
 document.addEventListener("change", e => { const sel = e.target.dataset && e.target.dataset.sel; if (!sel) return; const v = e.target.value; if (sel === "itmset") PR.itmN = +v; else if (sel === "itmmode") PR.itmM = v; else if (sel === "itmsrt") PR.itmS = v; else return; savePR(); render(); });
-document.addEventListener("input", e => { if (e.target.id === "s-q" || e.target.id === "s-p") { unitUpd(); return; } if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[naq]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); ui.sheet.items.forEach((x, i) => { const u = $("r-u-" + i); if (u) u.innerHTML = rUnit(x); }); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { cancelAnimationFrame(window._qf); window._qf = requestAnimationFrame(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
+document.addEventListener("input", e => { if (e.target.id === "s-q" || e.target.id === "s-p") { unitUpd(); return; } if (e.target.id === "im-q") { ui.itmQ = e.target.value; const l = $("im-l"); if (l) l.innerHTML = itmList(itmN(), PR.itmM || "w", PR.itmS || "s", nzI(ui.itmQ)); return; } if (e.target.id === "s-note" && ui.sheet && ui.sheet.type === "tx") { const b = $("s-sug"); if (b) b.innerHTML = sugHTML(e.target.value); } if (e.target.id === "rc-q" && ui.sheet && ui.sheet.type === "rcpc") { ui.sheet.q = e.target.value; const l = $("rc-l"); if (l) l.innerHTML = rcpcList(e.target.value); return; } if (/^r-[naq]-\d+$/.test(e.target.id || "") && ui.sheet && ui.sheet.type === "rcp") { rread(); const el = $("rsum"); if (el) el.innerHTML = rsumText(ui.sheet); ui.sheet.items.forEach((x, i) => { const u = $("r-u-" + i); if (u) u.innerHTML = rUnit(x); }); return; } if (e.target.id === "pq") { ui.pq = e.target.value; const l = $("pl"); if (l) l.innerHTML = priceListInner(PRC.groups(PRICES), ui.pq.toLowerCase().trim()); return; } if (e.target.id === "cs" && ui.sheet) { ui.sheet.cq = e.target.value; const g = $("cg"); if (g) g.innerHTML = cgridInner(ui.sheet); return; } if (e.target.id === "q") { const was = !!ui.q; ui.q = e.target.value; const r = $("qres"); if (r && was === !!ui.q) { clearTimeout(window._qf); window._qf = setTimeout(() => { const r2 = $("qres"); if (r2) r2.innerHTML = listBody(); }, 140); return; } const pos = e.target.selectionStart; render(); const q = $("q"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "rn-q" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.q = e.target.value; renRefresh(); return; } if (e.target.id === "rn-n" && ui.sheet && ui.sheet.type === "ren") { ui.sheet.name = e.target.value; return; } });
 document.addEventListener("change", async e => {
   if ((e.target.id === "r-merge" || e.target.id === "r-date" || e.target.id === "r-all" || /^r-c-\d+$/.test(e.target.id || "")) && ui.sheet && ui.sheet.type === "rcp") {
