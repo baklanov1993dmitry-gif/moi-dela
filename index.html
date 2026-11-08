@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "08.11 02:30";
+const BUILD = "08.11 15:18";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -5914,7 +5914,7 @@ function jrLastEnd(day) {
 }
 function jrPlan() {
   const J = jrState(), p = jrParse(J.tx), day = J.date || J.vd || todayISO();   // день записи = тот, что открыт на экране (раньше всегда «сегодня»)
-  return { day, st: p.st || (J.st ? J.st : jrLastEnd(day)), en: p.en || J.en || "", tx: p.tx };
+  return { day, st: p.st || (J.st && J.stm ? J.st : jrLastEnd(day)), en: p.en || J.en || "", tx: p.tx };
 }
 function jrPrevText() {
   const J = jrState(); if (J.mode === "p") return "";
@@ -6073,7 +6073,7 @@ function jrInput(el) {
   const ct = /^jr-(e-)?ct([012])$/.exec(el.id); if (ct) { const v = [0, 1, 2].map(i => ($("jr-" + (ct[1] || "") + "ct" + i) || {}).value || "").filter(x => x.trim()).join(", "); if (ct[1]) J.e.cat = v; else J.cat = v; return; }
   const m = /^jr-(e-)?(\w+)$/.exec(el.id); if (!m) return;
   if (m[1]) { J.e[m[2]] = el.value; if (/^(date|d1|d2)$/.test(m[2])) render(); return; }
-  J[m[2]] = el.value; if (m[2] === "date") J.st = null; if (m[2] === "vd") { if (!el.value) return; render(); return; }
+  J[m[2]] = el.value; if (m[2] === "st") J.stm = true; if (m[2] === "date") J.st = null; if (m[2] === "vd") { if (!el.value) return; render(); return; }
   const pv = $("jr-prev"); if (pv) pv.textContent = jrPrevText();
   if (m[2] === "tx") { const sg = $("jr-sug"); if (sg) sg.innerHTML = jrSugHTML(); }
 }
@@ -6509,7 +6509,7 @@ Object.assign(acts, {
     if (q.en < q.st && dm > 720) { toast("Конец раньше начала — проверь время (иначе выйдет " + fmtDurM(dm) + ")"); return; }   // переход через полночь допускаем только до 12 ч
     const s = jrDate(q.day, q.st), e = new Date(s.getTime() + dm * 60000);
     const gc = jrGuessCat(q.tx); const ct = jrCleanTag(J.cat) || gc; addLog(Object.assign({ title: q.tx, kind: "t", start_at: s.toISOString(), end_at: e.toISOString() }, ct ? { cat: ct } : {}, JV && J.val ? { val: J.val } : {}));
-    J.cat = ""; J.val = ""; J.tx = ""; { const x0 = $("jr-tx"); if (x0) x0.value = ""; } J.en = ""; J.vd = q.day; J.date = q.day; J.st = isoLocal(e) === q.day ? hm(e.getHours() * 60 + e.getMinutes()) : null;
+    J.cat = ""; J.val = ""; J.tx = ""; { const x0 = $("jr-tx"); if (x0) x0.value = ""; } J.en = ""; J.vd = q.day; J.date = q.day; J.st = null; J.stm = false;
     toast(q.st + "–" + q.en + " · " + fmtDurM(dm)); render(); setTimeout(() => { const x = $("jr-tx"); if (x) x.focus(); }, 0);
   },
   jredit(a) {
@@ -6587,7 +6587,7 @@ Object.assign(acts, {
   jrczx() { jrState().cz = null; render(); },
   jrwcancel() { jrState().wh = null; render(); },
   jrwnow() { const J = jrState(), n = new Date(); jrWStep("h", 0, n.getHours()); jrWStep("m", 0, n.getMinutes()); },
-  jrwok() { const J = jrState(), w = J.wh; if (!w) return; const v = pad2(w.h) + ":" + pad2(w.m); if (w.k === "est") J.e.st = v; else if (w.k === "een") J.e.en = v; else if (w.k === "st") J.st = v; else J.en = v; J.wh = null; render(); setTimeout(() => { const x = $("jr-tx"); if (x && !isMobile() && !J.edit) x.focus(); }, 0); },
+  jrwok() { const J = jrState(), w = J.wh; if (!w) return; const v = pad2(w.h) + ":" + pad2(w.m); if (w.k === "est") J.e.st = v; else if (w.k === "een") J.e.en = v; else if (w.k === "st") { J.st = v; J.stm = true; } else J.en = v; J.wh = null; render(); setTimeout(() => { const x = $("jr-tx"); if (x && !isMobile() && !J.edit) x.focus(); }, 0); },
   jrtoday() { const J = jrState(); J.date = todayISO(); J.st = null; render(); },
   jreday(a) { const J = jrState(); if (J.e && J.e.date) { J.e.date = addDays(J.e.date, +a.dataset.d); render(); } },
   jrdprev() { const J = jrState(); J.vd = addDays(J.vd || todayISO(), -1); J.date = null; J.st = null; render(); },
