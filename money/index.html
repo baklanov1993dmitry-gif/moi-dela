@@ -989,7 +989,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 60 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 61 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1399,13 +1399,19 @@ function carOpen() {
   const m = $("main"); if (!m) return null; const cur = [...m.children].filter(e => !e.matches(".hdr,.fab")); if (!cur.length) return null;
   const wrap = document.createElement("div"); wrap.className = "pgw"; m.insertBefore(wrap, cur[0]);
   const mid = document.createElement("div"); cur.forEach(e => mid.appendChild(e)); wrap.appendChild(mid);
-  m.style.overflowX = "hidden"; return { wrap, W: (wrap.offsetWidth || m.clientWidth || 360) + 28, fwdOk: rgBounds(ui.rg, 1)[0] <= Date.now(), m, nb: {} };
+  m.style.overflowX = "hidden";
+  const ctr = e => { if (!e) return null; const r = e.getBoundingClientRect(); return r.left + r.width / 2; }, mc = ctr(m.querySelector(".mrow .mc")), cr = ctr(m.querySelector(".mrow .mn.r")), cl = ctr(m.querySelector(".mrow .mn.l"));
+  return { wrap, W: (wrap.offsetWidth || m.clientWidth || 360) + 28, fwdOk: rgBounds(ui.rg, 1)[0] <= Date.now(), m, nb: {}, hb: [...m.querySelectorAll(".mrow button")], hs: { 1: mc != null && cr != null ? mc - cr : 0, "-1": mc != null && cl != null ? mc - cl : 0 } };
 }
+function carHdr(c, dir, p) { if (!c.hb || !c.hs[dir]) return; const v = (c.hs[dir] * Math.max(0, Math.min(1, p))).toFixed(1) + "px 0"; c.hb.forEach(b => { b.style.translate = v; }); }
 function carNb(c, d) { if (c.nb[d] || (d > 0 && !c.fwdOk)) return; const g = document.createElement("div"); g.className = "nb " + (d < 0 ? "l" : "r"); pageEls(d).forEach(e => g.appendChild(e)); c.wrap.appendChild(g); c.nb[d] = 1; }
-function carEnd(go, dir, from) {
-  const c = car; if (!c) return; const to = go ? -dir * c.W : 0, dur = go ? 135 : 130;
+function carEnd(go, dir, from, vel) {
+  const c = car; if (!c) return; const to = go ? -dir * c.W : 0, rem = Math.abs(to - from), v = vel > 0.4 ? vel : 0;   // v — скорость пальца, px/мс
+  let dur = go ? 400 * Math.max(.5, rem / c.W) : 240 * Math.max(.5, rem / c.W); if (go && v) dur = Math.max(210, Math.min(dur, rem / v * 1.2));
+  const ease = go ? "cubic-bezier(.22,.78,.2,1)" : "cubic-bezier(.25,.9,.3,1)";
   c.wrap.style.transform = "translate3d(" + from + "px,0,0)";
-  const a = c.wrap.animate([{ transform: "translate3d(" + from + "px,0,0)" }, { transform: "translate3d(" + to + "px,0,0)" }], { duration: Math.max(70, dur * Math.abs(to - from) / c.W + 35), easing: "cubic-bezier(.22,.7,.3,1)", fill: "forwards" });
+  const a = c.wrap.animate([{ transform: "translate3d(" + from + "px,0,0)" }, { transform: "translate3d(" + to + "px,0,0)" }], { duration: dur, easing: ease, fill: "forwards" });
+  if (c.hb && c.hs[dir]) { const p0 = Math.min(1, Math.abs(from) / c.W), f = x => (c.hs[dir] * x).toFixed(1) + "px 0"; c.hb.forEach(b => b.animate([{ translate: f(p0) }, { translate: f(go ? 1 : 0) }], { duration: dur, easing: ease, fill: "forwards" })); }
   a.onfinish = () => { car = null; c.m.style.overflowX = ""; if (go) rgShift(dir); render(); sliding = false; };
 }
 function slide(dir) { if (sliding) return; if (dir > 0 && rgBounds(ui.rg, 1)[0] > Date.now()) return; sliding = true; car = carOpen(); if (!car) { rgShift(dir); render(); sliding = false; return; } carNb(car, dir); requestAnimationFrame(() => carEnd(true, dir, 0)); }
@@ -1687,11 +1693,11 @@ const A = {
   document.addEventListener("touchmove", e => {
     if (!ok || !can() && !drag) return; const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (!drag) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.4) { car = carOpen(); if (!car) { ok = false; return; } drag = true; sliding = true; } else return; }
-    dxl = dx; carNb(car, dx < 0 ? 1 : -1); if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!car || !drag) return; const d = dxl < 0 && !car.fwdOk ? dxl * .22 : dxl; car.wrap.style.transform = "translate3d(" + d + "px,0,0)"; });
+    dxl = dx; carNb(car, dx < 0 ? 1 : -1); if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!car || !drag) return; const d = dxl < 0 && !car.fwdOk ? dxl * .22 : dxl; car.wrap.style.transform = "translate3d(" + d + "px,0,0)"; carHdr(car, dxl < 0 ? 1 : -1, Math.abs(d) / car.W); });
   }, { passive: true });
   const fin = e => {
     if (!ok || !drag) return; drag = false; const c = car, dx = dxl, fast = Date.now() - st < 300 && Math.abs(dx) > 24, go = (Math.abs(dx) > c.W * .2 || fast) && !(dx < 0 && !c.fwdOk);
-    carEnd(go, dx < 0 ? 1 : -1, dx < 0 && !c.fwdOk ? dx * .22 : dx);
+    carEnd(go, dx < 0 ? 1 : -1, dx < 0 && !c.fwdOk ? dx * .22 : dx, Math.abs(dx) / Math.max(1, Date.now() - st));
   };
   document.addEventListener("touchend", e => { fin(e); setTimeout(() => { touching = 0; }, 60); }, { passive: true }); document.addEventListener("touchcancel", e => { fin(e); touching = 0; }, { passive: true });
 })();
