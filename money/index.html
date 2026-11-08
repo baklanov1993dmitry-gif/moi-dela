@@ -102,6 +102,19 @@ table.hm th{color:var(--sub);font-weight:600;font-size:.9em}
 .fb{pointer-events:auto;width:78px;height:78px;border-radius:50%;font-size:2.4em;font-weight:300;border:4px solid;background:var(--card);box-shadow:0 4px 16px rgba(0,0,0,.35)}.fb.m{border-color:var(--exp);color:var(--exp)}.fb.p{border-color:var(--inc);color:var(--inc)}
 .fb.cam{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:50px;height:50px;font-size:1.35em;font-weight:400;border-width:2px;border-color:var(--sub);color:var(--tx);padding:0}
 .st{position:fixed;top:calc(4px + env(safe-area-inset-top));right:10px;font-size:.7em;color:var(--sub);z-index:3}
+/* ===== тема «Щитовая НКУ»: графитовый металл, жёлто-чёрная предупредительная кромка, цифры как на приборе ===== */
+:root[data-t=nku]{--bg:#1c2023;--bar:#2b3135;--card:#272d31;--card2:#343b41;--ln:#434c54;--sub:#9ea8b0;--key:#232a2e;--keyln:#434c54;--keytx:#c8d0d6;--fabbg:#272d31;--drbg:#21262a;--menubg:#2b3135}
+:root[data-t=nku] .hdr{border-bottom:4px solid transparent;border-image:repeating-linear-gradient(135deg,#f2c200 0 9px,#15181a 9px 18px) 1;box-shadow:none;padding-bottom:5px}
+:root[data-t=nku] .row,:root[data-t=nku] .card,:root[data-t=nku] .crow,:root[data-t=nku] .sheet,:root[data-t=nku] .set{border-radius:4px}
+:root[data-t=nku] .row,:root[data-t=nku] .card{box-shadow:inset 3px 0 0 #f2c200}
+:root[data-t=nku] .row .a,:root[data-t=nku] .rc,:root[data-t=nku] .pc,:root[data-t=nku] .day span+span{font-family:"Roboto Mono","Consolas","Courier New",monospace;letter-spacing:-.2px}
+:root[data-t=nku] .logo{font:700 1.3em/1.1 "Roboto Mono","Consolas",monospace;font-style:normal;letter-spacing:1px;text-transform:uppercase}
+:root[data-t=nku] .mc{font-family:"Roboto Mono","Consolas",monospace;text-transform:uppercase;letter-spacing:1px}
+:root[data-t=nku] .fb{border-radius:8px}
+/* набор значков «Шильдик»: пластина с винтами по углам, как маркировка на шкафу */
+.pl{display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative;border:2px solid;border-radius:3px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(0,0,0,.30));box-shadow:inset 0 0 0 1px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.35)}
+.pl::before,.pl::after{content:"";position:absolute;top:2px;width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.6}.pl::before{left:2px}.pl::after{right:2px}
+.ci:has(>.pl){border:0!important;border-radius:0!important;background:none!important}
 /* ===== вид Monefy ===== */
 #main{padding:0 14px 30px}
 .hdr{position:sticky;top:0;z-index:6;margin:0 -14px;background:var(--bar);display:flex;align-items:center;gap:2px;padding:calc(6px + env(safe-area-inset-top)) 6px 8px;box-shadow:0 2px 4px rgba(0,0,0,.25)}
@@ -160,7 +173,7 @@ small,.crow small,.pill small{font-size:.72em;font-weight:400;opacity:1;display:
 .fb{width:102px;height:102px;border-width:5px;background:var(--fabbg)}
 .fb::before,.fb::after{width:22px;height:5px}.fb.p::after{width:5px;height:22px}
 .bg{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex:none}.bg i{font-style:normal;line-height:1}.bg svg{display:block}.bg.soft{border-radius:30%}
-.iset{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.iset button{background:var(--card);border-radius:10px;padding:8px 4px;border:2px solid transparent}.iset button.on{border-color:var(--acc)}.iset div{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin-bottom:6px}.iset span{font-size:.85em}
+.iset{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.iset button{background:var(--card);border-radius:10px;padding:8px 4px;border:2px solid transparent}.iset button.on{border-color:var(--acc)}.iset div{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin-bottom:6px}.iset span{font-size:.85em}
 .full{position:fixed;inset:0;z-index:25;background:var(--bg);display:flex;flex-direction:column;max-width:720px;margin:0 auto;overflow-y:auto}
 .full .hdr{margin:0;flex:none}
 .dt{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;padding:22px 0 20px;font-size:19px;flex:none}.dt input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
@@ -348,6 +361,7 @@ function ic(icon, color, px, mode) {   // три набора: line — тонк
   const raw = String(icon || ""), k = EMO2ICO[raw.replace(/\uFE0F/g, "")];
   const svg = (col, w) => '<svg class="li" viewBox="1.5 1.5 21 21" width="' + px + '" height="' + px + '" fill="none" stroke="' + col + '" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + "</svg>";
   if (mode === "badge") return '<span class="bg" style="width:' + px + "px;height:" + px + "px;background:linear-gradient(155deg,rgba(255,255,255,.34),rgba(0,0,0,.16))," + color + '">' + (k ? '<svg viewBox="0 0 24 24" width="' + Math.round(px * .8) + '" height="' + Math.round(px * .8) + '" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + "</svg>" : '<i style="font-size:' + Math.round(px * .55) + 'px">' + esc(raw) + "</i>") + "</span>";
+  if (mode === "plate") return '<span class="pl" style="width:' + px + "px;height:" + px + "px;color:" + color + '">' + (k ? '<svg viewBox="1.5 1.5 21 21" width="' + Math.round(px * .66) + '" height="' + Math.round(px * .66) + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + "</svg>" : '<i style="font-style:normal;font-size:' + Math.round(px * .5) + 'px">' + esc(raw) + "</i>") + "</span>";
   if (mode === "emoji") return '<span class="bg soft" style="width:' + px + "px;height:" + px + "px;background:color-mix(in srgb," + color + ' 24%,transparent)"><i style="font-size:' + Math.round(px * .7) + 'px">' + esc(raw) + "</i></span>";
   if (!k) return '<span class="em" style="font-size:' + (px - 4) + 'px">' + esc(raw) + "</span>";
   return svg(color, 1.3);
@@ -379,7 +393,7 @@ let sb = null, user = null, cats = jget(LS.cats, []), txs = jget(LS.tx, []).map(
 let ui = { tab: "home", kind: "exp", rg: { t: "m", a: Date.now() }, view: "ring", open: {}, sheet: null, status: "", q: "", set: "main" };
 let flushing = false;
 const savePR = () => jset(LS.pref, PR);
-const THEMES = [["gray", "Серая", "#424242", "#616161"], ["black", "Чёрная", "#000000", "#171717"], ["light", "Светлая", "#f2f3f5", "#e3e6ec"], ["navy", "Синяя", "#141a2c", "#1f2742"], ["forest", "Лесная", "#14201a", "#1d3328"], ["plum", "Сливовая", "#1d1626", "#2e2140"], ["sand", "Песок", "#f4efe6", "#e6dccb"], ["cream", "Кремовая", "#fbf6e6", "#f1e9d0"], ["beige", "Бежевая", "#e8dcc8", "#d9c9ae"], ["mint", "Мятная", "#eaf3ee", "#d6e7dd"], ["sky", "Небесная", "#eaf1f8", "#d5e2f0"], ["rose", "Розовая", "#f8ecee", "#efd7db"], ["lav", "Лавандовая", "#efeaf6", "#e0d7ee"]], ACCS = ["#81c995", "#6fd1c4", "#6aa8ff", "#a78bfa", "#f2b36d", "#e88fc4", "#b6d96a", "#ff8f6b", "#ffd54f", "#4dd0e1", "#9fa8ff", "#ff7a90", "#c5e1a5", "#ffab40", "#2e9e5b", "#1f7ae0", "#7c4dff", "#d6336c", "#c2410c", "#0f766e", "#8d6e63", "#90a4ae"];
+const THEMES = [["gray", "Серая", "#424242", "#616161"], ["black", "Чёрная", "#000000", "#171717"], ["light", "Светлая", "#f2f3f5", "#e3e6ec"], ["navy", "Синяя", "#141a2c", "#1f2742"], ["forest", "Лесная", "#14201a", "#1d3328"], ["plum", "Сливовая", "#1d1626", "#2e2140"], ["sand", "Песок", "#f4efe6", "#e6dccb"], ["cream", "Кремовая", "#fbf6e6", "#f1e9d0"], ["beige", "Бежевая", "#e8dcc8", "#d9c9ae"], ["mint", "Мятная", "#eaf3ee", "#d6e7dd"], ["sky", "Небесная", "#eaf1f8", "#d5e2f0"], ["rose", "Розовая", "#f8ecee", "#efd7db"], ["lav", "Лавандовая", "#efeaf6", "#e0d7ee"], ["nku", "Щитовая НКУ", "#1f2326", "#2e3439"]], ACCS = ["#81c995", "#6fd1c4", "#6aa8ff", "#a78bfa", "#f2b36d", "#e88fc4", "#b6d96a", "#ff8f6b", "#ffd54f", "#4dd0e1", "#9fa8ff", "#ff7a90", "#c5e1a5", "#ffab40", "#2e9e5b", "#1f7ae0", "#7c4dff", "#d6336c", "#c2410c", "#0f766e", "#8d6e63", "#90a4ae"];
 function applyTheme() { if (PR.theme === "dark") PR.theme = "gray"; const th = THEMES.find(t => t[0] === PR.theme) || THEMES[0]; document.documentElement.dataset.t = th[0]; document.documentElement.style.setProperty("--acc", PR.acc); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = th[3]; }
 function toast(t, cls, ms) { document.querySelectorAll(".toast").forEach(x => x.remove()); const e = document.createElement("div"); e.className = "toast " + (cls || ""); e.textContent = String(t).replace(/\n+/g, " · "); e.style.pointerEvents = "auto"; e.dataset.t = Date.now(); e.onclick = () => e.remove(); document.body.appendChild(e); setTimeout(() => e.remove(), ms || 1400); }
 document.addEventListener("pointerdown", ev => { if (ev.target.closest && ev.target.closest(".toast")) return; document.querySelectorAll(".toast").forEach(x => { if (Date.now() - x.dataset.t > 350) x.remove(); }); }, true);
@@ -958,7 +972,7 @@ function moreHTML() {
   if (ui.set === "cats") return catsMgrHTML();
   if (ui.set === "ext") return extHTML();
   if (ui.set === "prices") return pricesHTML();
-  const sets = [["line", "Линии"], ["badge", "Значки"], ["emoji", "Эмодзи"]], demo = ["🛒", "🍽️", "💊", "🚌"], dc = ["#ff7a7a", "#ffb04d", "#5fd0a5", "#6aa8ff"];
+  const sets = [["line", "Линии"], ["badge", "Значки"], ["emoji", "Эмодзи"], ["plate", "Шильдик"]], demo = ["🛒", "🍽️", "💊", "🚌"], dc = ["#ff7a7a", "#ffb04d", "#5fd0a5", "#6aa8ff"];
   return topBar(false) +
     '<div class="set" style="display:block"><div style="margin-bottom:8px">Набор иконок</div><div class="iset">' + sets.map(t => '<button class="' + ((PR.iset || "line") === t[0] ? "on" : "") + '" data-a="iset" data-v="' + t[0] + '"><div>' + demo.map((e, i) => ic(e, dc[i], 30, t[0])).join("") + "</div><span>" + t[1] + "</span></button>").join("") + "</div></div>" +
     '<button class="set" data-a="rnames"><span>🏷️</span><span style="flex:1">Названия категорий в колесе</span><b class="tg' + (PR.rn !== false ? " on" : "") + '">' + (PR.rn !== false ? "вкл" : "выкл") + '</b></button>' +
@@ -973,7 +987,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 58 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 59 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
