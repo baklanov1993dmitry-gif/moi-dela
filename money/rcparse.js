@@ -82,7 +82,7 @@
   // Е: Билайн ОФД / ОФД-Я и подобные: «N. Название» / «Цена * Кол p * q шт. = s» (или «Цена*Кол p q шт.» + «Сумма s»)
   function stratPrice(L0) {
     const items = [], L = [];
-    for (let k = 0; k < L0.length; k++) { if ((/^\d{1,3}[.)]$/.test(L0[k]) || /^цена\s*\*?\s*кол\.?$/i.test(L0[k]) || /^сумма$/i.test(L0[k])) && k + 1 < L0.length) { let t = L0[k] + " " + L0[k + 1]; k++; if (/^цена/i.test(t)) while (k + 1 < L0.length && k < L0.length && /^[\d.,]+(?:\s*(?:шт|кг|г|л|уп)\.?)?$/i.test(L0[k + 1])) { t += " " + L0[k + 1]; k++; } L.push(t); } else L.push(L0[k]); }
+    for (let k = 0; k < L0.length; k++) { if ((/^\d{1,3}[.)]$/.test(L0[k]) || /^цена\s*\*?\s*кол\.?$/i.test(L0[k]) || /^сумма$/i.test(L0[k])) && k + 1 < L0.length) { let t = L0[k] + " " + L0[k + 1]; k++; if (/^цена/i.test(t)) while (k + 1 < L0.length && k < L0.length && /^\d+(?:[.,]\d+)?(?:\s*(?:шт|кг|г|л|уп)\.?)?$/i.test(L0[k + 1])) { t += " " + L0[k + 1]; k++; } L.push(t); } else L.push(L0[k]); }
     for (let i = 0; i + 1 < L.length; i++) {
       const m = /^(\d{1,3})[.)]?\s+(\D.*)$/.exec(L[i]); if (!m || /^цена/i.test(m[2])) continue;
       let j = i + 1, name = m[2], g = 0;
