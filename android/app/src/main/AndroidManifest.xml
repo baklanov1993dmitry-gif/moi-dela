@@ -152,6 +152,14 @@
                 <data android:scheme="moidela" android:host="lyrics" />
             </intent-filter>
         </activity>
+        <activity android:name=".DoorActivity" android:exported="true" android:label="Домофон" android:launchMode="singleTop" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="moidela" android:host="door" />
+            </intent-filter>
+        </activity>
         <service android:name=".QsTile" android:exported="true" android:label="@string/tile_label"
             android:icon="@drawable/ic_tile" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
