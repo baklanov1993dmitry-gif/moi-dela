@@ -989,7 +989,7 @@ function moreHTML() {
     '<button class="set" data-a="fullsync"><span>🔄</span><span style="flex:1">Полная синхронизация</span></button>' +
     '<a class="set" href="https://moi-dela.pages.dev/" style="color:inherit;text-decoration:none"><span>✅</span><span style="flex:1">Мои дела</span></a>' +
     '<button class="set" data-a="logout"><span>🚪</span><span style="flex:1">Выйти</span></button>' +
-    '<div class="empty" style="font-size:.8em">Версия 62 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
+    '<div class="empty" style="font-size:.8em">Версия 63 · операций: ' + txs.length + " · категорий: " + cats.length + (pend.length ? " · не отправлено: " + pend.length : "") + "</div>";
 }
 /* ---- справочник цен ---- */
 const rub = n => { n = +n || 0; return (n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
@@ -1233,7 +1233,10 @@ async function inboxPull() {
     if (INB.length !== was && !ui.sheet) render();
   } catch (e) {}
 }
-async function inboxMark(id, st) { INB = INB.filter(x => x.id !== id); try { await sb.from("fin_inbox").update({ status: st }).eq("id", id); } catch (e) {} }
+async function inboxMark(id, st) {
+  INB = INB.filter(x => x.id !== id);
+  try { const r = await sb.from("fin_inbox").update({ status: st }).eq("id", id); if (r.error) { toast("Не удалось пропустить письмо: " + (r.error.message || "ошибка"), "bad", 4000); setTimeout(inboxPull, 4000); } } catch (e) { toast("Нет связи: письмо пропущу позже", "bad", 3000); }
+}
 function inboxOpen(r) {
   if (!window.RCP) { toast("Парсер не загрузился, обнови приложение"); return; }
   const m = { from: r.sender, subject: r.subject, date: r.received }, a = RCP.parse(r.html || "", m), b = RCP.parse(r.plain || "", m);
@@ -1306,7 +1309,7 @@ function sheetHTML() {
     return '<div class="ov" data-a="shclose"><div class="sheet rcp' + (an ? ' prt' : '') + '" data-a="nop"><div class="rhd"><div class="rm">🧾 ' + esc(s.merchant || "Чек") + '</div><label class="rdt">📅 <span>' + esc(dl) + '</span><input type="date" id="r-date" value="' + esc(s.date) + '"></label></div>' +
       '<div class="rtot" id="rsum">' + rsumText(s) + "</div>" + (s.note ? '<div class="rnote">' + esc(s.note) + "</div>" : "") +
       '<div class="rl">' + (keys.length ? keys.map(k => gh(k) + g[k].map(row).join("")).join("") : '<div class="empty">Позиций не осталось</div>') + "</div>" +
-      '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">Отмена</button></div><button class="btn g" style="width:100%;margin-top:8px;padding:6px" data-a="rraw">' + (s.showRaw ? "Скрыть" : "📄 Показать") + ' текст чека</button>' + (s.showRaw ? '<pre class="rraw">' + esc(String(s.text || "").split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 150).map(l => l.slice(0, 160)).join("\n")) + "</pre>" : "") + (s.inbox ? '<button class="btn g" style="width:100%;margin-top:8px" data-a="inbskip">Не чек — пропустить</button>' : "") + "</div></div>";
+      '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-a="rsave">Записать</button><button class="btn g" data-a="shclose">' + (s.inbox ? "Позже" : "Отмена") + '</button></div><button class="btn g" style="width:100%;margin-top:8px;padding:6px" data-a="rraw">' + (s.showRaw ? "Скрыть" : "📄 Показать") + ' текст чека</button>' + (s.showRaw ? '<pre class="rraw">' + esc(String(s.text || "").split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 150).map(l => l.slice(0, 160)).join("\n")) + "</pre>" : "") + (s.inbox ? '<button class="btn" style="width:100%;margin-top:8px;background:var(--card2);color:var(--exp,#e5484d)" data-a="inbskip">🚫 Не нужно — удалить из очереди</button>' : "") + "</div></div>";
   }
   if (s.type === "tplq") {
     const l = EXT.tpl.filter(t => cats.some(c => c.id === t.cat));
