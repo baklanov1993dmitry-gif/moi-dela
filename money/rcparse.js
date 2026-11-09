@@ -79,6 +79,27 @@
     }
     return items;
   }
+  // Е: Билайн ОФД / ОФД-Я и подобные: «N. Название» / «Цена * Кол p * q шт. = s» (или «Цена*Кол p q шт.» + «Сумма s»)
+  function stratPrice(L0) {
+    const items = [], L = [];
+    for (let k = 0; k < L0.length; k++) { if ((/^\d{1,3}[.)]$/.test(L0[k]) || /^цена\s*\*?\s*кол\.?$/i.test(L0[k]) || /^сумма$/i.test(L0[k])) && k + 1 < L0.length) { let t = L0[k] + " " + L0[k + 1]; k++; if (/^цена/i.test(t)) while (k + 1 < L0.length && k < L0.length && /^[\d.,]+(?:\s*(?:шт|кг|г|л|уп)\.?)?$/i.test(L0[k + 1])) { t += " " + L0[k + 1]; k++; } L.push(t); } else L.push(L0[k]); }
+    for (let i = 0; i + 1 < L.length; i++) {
+      const m = /^(\d{1,3})[.)]?\s+(\D.*)$/.exec(L[i]); if (!m || /^цена/i.test(m[2])) continue;
+      let j = i + 1, name = m[2], g = 0;
+      while (j < L.length && !/^цена\s*\*?\s*кол/i.test(L[j]) && g < 2) { name += " " + L[j]; j++; g++; }
+      const c = j < L.length && /^цена\s*\*?\s*кол\.?\s*(.*)$/i.exec(L[j]); if (!c) continue;
+      const N = "(\\d+(?:[.,]\\d+)?)";
+      let r = new RegExp("^" + N + "\\s*[*xх×]\\s*" + N + "\\s*[^\\d=]*=\\s*" + N).exec(c[1]), p, q, a;
+      if (r) { p = num(r[1]); q = num(r[2]); a = num(r[3]); }
+      else {
+        r = new RegExp("^" + N + "\\s+" + N).exec(c[1]); if (!r) continue;
+        p = num(r[1]); q = num(r[2]); const sm = /^сумма\s+(\d+(?:[.,]\d+)?)/i.exec(L[j + 1] || ""); a = sm ? num(sm[1]) : R2(p * q);
+      }
+      if (!(q > 0) || !(a >= 0)) continue;
+      items.push({ name: name.trim(), amount: R2(a), price: p, qty: q }); i = j;
+    }
+    return items;
+  }
   // Б: всё в одной строке: «Имя 175.49 x 2 = 350.98» / «Имя 2 x 175.49 350.98»
   function stratInline(L) {
     const items = [], X = "[xх×*]";
@@ -171,7 +192,7 @@
 
   function parseLines(L, meta) {
     meta = meta || {};
-    const total = findTotal(L), cands = [stratBlock(L), stratInline(L), stratTriple(L), stratFlat(L), stratFlatTriple(L), stratOrder(L)];
+    const total = findTotal(L), cands = [stratPrice(L), stratBlock(L), stratInline(L), stratTriple(L), stratFlat(L), stratFlatTriple(L), stratOrder(L)];
     const sum = a => R2(a.reduce((t, x) => t + x.amount, 0));
     let best = null;
     cands.forEach(a => {
