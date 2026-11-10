@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "10.11 09:53";
+const BUILD = "10.11 09:56";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -2809,7 +2809,7 @@ const addCSS = `
 .addbar.v2 .arow{display:flex;align-items:center;gap:12px;height:48px;padding:0 14px}
 .addbar.v2 .arow input{height:100%}
 .achips{display:flex;align-items:center;gap:6px;padding:4px 10px 8px 14px;border-top:1px solid var(--ln)}
-.wkbar{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;padding:8px 14px 2px}.wkc{flex:1 1 150px;min-width:140px;max-width:260px;background:var(--card,rgba(127,127,127,.12));border-radius:10px;padding:7px 10px;font-size:calc(12px*var(--z,1))}.wkt{display:flex;justify-content:space-between;gap:6px}.wkt span{opacity:.6}.wkp{height:6px;border-radius:4px;background:rgba(127,127,127,.25);margin:5px 0 3px;overflow:hidden}.wkp i{display:block;height:100%;background:#3fb950;border-radius:4px}.wkc.wa .wkp i{background:#e3b341}.wkc.ov .wkp i{background:#f85149}.wkc.ov .wkn{color:#f85149;font-weight:600}.wkn{opacity:.85}.wkbar .tool{align-self:center}
+.wkbar{display:flex;gap:8px;align-items:center;padding:6px 14px 0;overflow-x:auto;scrollbar-width:none}.wkc{flex:1 1 0;min-width:128px;background:var(--card,rgba(127,127,127,.12));border-radius:9px;padding:5px 9px 6px;font-size:calc(12px*var(--z,1))}.wkt{display:flex;justify-content:space-between;gap:8px;white-space:nowrap;overflow:hidden}.wkt span{opacity:.8;overflow:hidden;text-overflow:ellipsis}.wkt em{font-style:normal;opacity:.65;font-size:.92em}.wkp{height:4px;border-radius:3px;background:rgba(127,127,127,.25);margin-top:4px;overflow:hidden}.wkp i{display:block;height:100%;background:#3fb950;border-radius:3px}.wkc.wa .wkp i{background:#e3b341}.wkc.ov .wkp i{background:#f85149}.wkc.ov .wkt span{color:#f85149;font-weight:600;opacity:1}.wkbar .ibtn{flex:0 0 auto}
 .achip{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--sub);border-radius:6px;padding:5px 9px;font-size:calc(12px*var(--z,1));cursor:pointer}
 .achip:hover{background:var(--hov)} .achip.on{background:var(--sel);color:var(--acc)}
 .abtn{border:1px solid var(--ln);background:transparent;color:var(--sub);border-radius:6px;padding:5px 14px;font-size:calc(12.5px*var(--z,1));cursor:pointer}
@@ -4383,13 +4383,13 @@ function wkRows() {
     t.est_minutes ? Math.round(t.est_minutes / 6) / 10 : "", t.est_minutes || "", L[t.list_id] || "", t.category || "", t.starred ? "да" : "", kidsOf(t.id).map(k => k.title).join("; "), (t.note || "").replace(/\s+/g, " ").trim(), dt(t.remind_at), t.repeat_rule ? repeatText(t.repeat_rule) : ""]);
 }
 function wkBarHTML() {
-  const lim = PR.wlim * 60, m0 = wkMon(todayISO()), nm = ["Эта неделя", "Следующая", "Через неделю", "Через 2 недели"];
+  const lim = PR.wlim * 60, m0 = wkMon(todayISO()), nm = ["Эта", "След.", "+2 нед.", "+3 нед."];
   let h = '<div class="wkbar">';
   for (let k = 0; k < 4; k++) {
     const mon = addDays(m0, 7 * k), ld = wkLd(mon), pc = Math.min(100, Math.round(ld.m * 100 / lim)), cls = ld.m > lim ? "ov" : ld.m > lim * .8 ? "wa" : "ok";
-    h += '<div class="wkc ' + cls + '" title="' + wkRange(mon) + (ld.un ? " · без оценки времени: " + ld.un : "") + '"><div class="wkt"><b>' + nm[k] + "</b><span>" + wkRange(mon) + '</span></div><div class="wkp"><i style="width:' + pc + '%"></i></div><div class="wkn">' + wkHrs(ld.m) + " из " + wkHrs(lim) + (ld.m > lim ? " · перебор" : "") + (ld.un ? " · +" + ld.un + " без оценки" : "") + "</div></div>";
+    h += '<div class="wkc ' + cls + '" title="' + wkRange(mon) + ": " + wkHrs(ld.m) + " из " + wkHrs(lim) + (ld.un ? ". Задач без оценки времени: " + ld.un + " (в сумму не входят)" : "") + '"><div class="wkt"><b>' + nm[k] + '</b><span>' + wkHrs(ld.m).replace(" ч", "") + " / " + wkHrs(lim) + (ld.un ? ' <em>+' + ld.un + ' без оценки</em>' : "") + '</span></div><div class="wkp"><i style="width:' + pc + '%"></i></div></div>';
   }
-  return h + '<button class="tool" data-a="wkexp" title="Скопировать задачи списка «Работа» для вставки в Excel">' + ic("copy", 16) + '<span class="tl"> Для Excel</span></button><button class="tool" data-a="wkxlsx" title="Скачать .xlsx">' + ic("down", 16) + '<span class="tl"> .xlsx</span></button></div>';
+  return h + '<button class="ibtn" data-a="wkexp" title="Скопировать задачи «Работы» для вставки в Excel (Ctrl+V)">' + ic("copy", 18) + '</button><button class="ibtn" data-a="wkxlsx" title="Скачать задачи «Работы» файлом .xlsx">' + ic("down", 18) + '</button></div>';
 }
 function mainHTML(items, done, vi) {
   ordBuild(items);
@@ -4403,8 +4403,8 @@ function mainHTML(items, done, vi) {
     (view !== "search" && !isMobile() ? '' +
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + '<span class="tl"> Сортировка</span></button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + '<span class="tl"> Группировать</span></button>' + fltBtns() + '<button class="tool" data-a="trgo" title="Пройти задачи по одной и расставить сроки">⚡<span class="tl"> Разобрать</span></button>' : "") + "</div>" +
     '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) : "") + '</span><span class="mchips">' + (view === "search" ? srchModeHTML() : "") + (isMobile() ? "" : sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + (isMobile() ? "" : fltBarHTML()) + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() + (items.length ? '<div class="trgrow"><button class="trgo" data-a="trgo">⚡ Разобрать сроки · ' + items.length + "</button></div>" : "") : "");
-  if (view !== "search" && !isMobile()) h += addBarHTML();
   if (PR.wlim && vi.list && wkLists().has(vi.list.id)) h += wkBarHTML();
+  if (view !== "search" && !isMobile()) h += addBarHTML();
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
     h += '<div class="sugg"><div class="st">Предложения<span style="flex:1"></span><button data-a="sugg" class="ibtn" style="width:26px;height:26px">' + ic("x", 14) + "</button></div>" +
