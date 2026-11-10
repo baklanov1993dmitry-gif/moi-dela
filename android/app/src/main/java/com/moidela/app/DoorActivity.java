@@ -109,17 +109,26 @@ public class DoorActivity extends Activity {
 
     // ---------- добавление ----------
     private void fill() {
-        list.removeAllViews(); String q = flt.getText().toString().trim().toLowerCase(); int n = 0;
-        for (final AppWidgetProviderInfo pi : mgr.getInstalledProviders()) {
+        list.removeAllViews(); String q = flt.getText().toString().trim().toLowerCase();
+        List<AppWidgetProviderInfo> all = new ArrayList<AppWidgetProviderInfo>(); final java.util.Map<AppWidgetProviderInfo, String> lab = new java.util.HashMap<AppWidgetProviderInfo, String>();
+        for (AppWidgetProviderInfo pi : mgr.getInstalledProviders()) {
             if (pi.provider.getPackageName().equals(getPackageName())) continue;
-            String lab; try { lab = pi.loadLabel(getPackageManager()); } catch (Throwable e) { lab = pi.provider.getClassName(); }
-            String ln = lab + " · " + pi.provider.getPackageName();
-            if (q.length() > 0 && !ln.toLowerCase().contains(q)) continue;
-            if (++n > 40) { list.addView(tv("… уточните фильтр", 12, "#9a93b8", false)); break; }
-            list.addView(bt(ln, new View.OnClickListener() { public void onClick(View v) { choose(pi); } }));
+            String l; try { l = pi.loadLabel(getPackageManager()); } catch (Throwable e) { l = pi.provider.getClassName(); }
+            lab.put(pi, l + " · " + pi.provider.getPackageName());
+            all.add(pi);
         }
-        if (n == 0) list.addView(tv("Виджетов не найдено", 13, "#9a93b8", false));
+        final String[] hot = {"дом", "dom", "home", "door", "intercom", "домофон", "ситилинк", "ufanet", "ростелеком", "дом.ру", "мой"};
+        java.util.Collections.sort(all, new java.util.Comparator<AppWidgetProviderInfo>() { public int compare(AppWidgetProviderInfo a, AppWidgetProviderInfo b) {
+            int x = score(lab.get(a), hot), y = score(lab.get(b), hot); if (x != y) return y - x; return lab.get(a).compareToIgnoreCase(lab.get(b)); } });
+        int n = 0;
+        for (final AppWidgetProviderInfo pi : all) {
+            String ln = lab.get(pi);
+            if (q.length() > 0 && !ln.toLowerCase().contains(q)) continue;
+            n++; list.addView(bt(ln, new View.OnClickListener() { public void onClick(View v) { choose(pi); } }));
+        }
+        list.addView(tv("Показано " + n + " из " + all.size() + " виджетов в системе" + (n == 0 ? ". Если нужного нет — Android его не отдаёт: проверьте, что виджет есть в выборе виджетов на рабочем столе." : "."), 12, "#9a93b8", false), 0);
     }
+    private int score(String s, String[] hot) { s = s.toLowerCase(); int k = 0; for (String h : hot) if (s.contains(h)) k++; return k; }
 
     private void choose(AppWidgetProviderInfo pi) {
         String nm = nameIn.getText().toString().trim();
