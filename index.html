@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "10.11 10:01";
+const BUILD = "10.11 10:08";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -3508,6 +3508,12 @@ function parseEst(s) {
   if (/^(ч|h)/.test(u)) return Math.round(n * 60);
   return Math.round(n);
 }
+function parseEstH(s) {   // для окна «Сколько займёт»: число без единицы = ЧАСЫ (0,5 = 30 мин), 1:30 = 1 ч 30 м
+  s = String(s == null ? "" : s).trim().toLowerCase().replace(",", "."); if (!s) return null;
+  let m = s.match(/^(\d+):(\d{1,2})$/); if (m) return +m[1] * 60 + Math.min(59, +m[2]);
+  m = s.match(/^~?(\d+(?:\.\d+)?)$/); if (m) return Math.round(parseFloat(m[1]) * 60);
+  return parseEst(s);
+}
 const estFull = m => !m ? "" : (m % 480 === 0 ? m / 480 + "д" : m % 60 === 0 ? m / 60 + "ч" : m + "м");
 const subActs = {
   copypath(el) { const p = el.dataset.p || ""; const ok = () => toast("Путь скопирован — вставь в «Проводник» (Win+R или адресная строка)"); try { navigator.clipboard.writeText(p).then(ok, () => toast("Не удалось скопировать")); } catch (e) { toast("Не удалось скопировать"); } },
@@ -4505,8 +4511,11 @@ function popHTML() {
     case "estpick": {
       const m = t && t.est_minutes || 0, hh = Math.min(48, Math.floor(m / 60)), mi = Math.round((m % 60) / 5) % 12;
       const col = (cls, n, step, sel, lb) => '<div class="drumc"><div class="drum" data-sel="' + sel + '" data-step="' + step + '">' + Array.from({ length: n }, (_, i) => "<div>" + i * step + "</div>").join("") + '</div><div class="lb">' + lb + "</div></div>";
-      h = '<div class="ptitle">Сколько займёт</div><div class="drumw" id="drums">' + col("h", 49, 1, hh, "часов") + col("m", 12, 5, mi, "минут") + "</div>" +
-        '<div class="pform" style="padding:6px 12px"><input id="p-est" placeholder="или впишите: 3ч · 90м · 1.5ч" style="flex:1"></div>' +
+      const chips = [[15, "15м"], [30, "30м"], [60, "1ч"], [120, "2ч"], [240, "4ч"], [480, "8ч"]].map(c => '<button class="btn ghost" style="flex:1;padding:6px 2px;min-width:0;white-space:nowrap" data-a="pa" data-k="estset" data-v="' + c[0] + '" ' + idA + ">" + c[1] + "</button>").join("");
+      h = '<div class="ptitle">Сколько займёт</div>' +
+        '<div class="pform" style="padding:6px 12px 2px"><input id="p-est" inputmode="decimal" autocomplete="off" placeholder="часы: 2 · 0,5 · 1:30 · 90м" value="' + (t && t.est_minutes ? Math.round(t.est_minutes / 6) / 10 : "") + '" style="flex:1"></div>' +
+        '<div class="pform" style="padding:4px 12px;gap:4px">' + chips + "</div>" +
+        '<div class="drumw" id="drums">' + col("h", 49, 1, hh, "часов") + col("m", 12, 5, mi, "минут") + "</div>" +
         '<div class="pform" style="padding:4px 12px 8px;gap:8px"><button class="btn" style="flex:1" data-a="pa" data-k="estok" ' + idA + ">Готово</button><button class=\"btn ghost\" data-a=\"pa\" data-k=\"estclr\" " + idA + ">Сбросить</button></div>";
       break;
     }
@@ -5403,6 +5412,7 @@ function render() {
   Object.keys(sc).forEach(id => { const e = $(id); if (e) e.scrollTop = sc[id]; });
   if (fid) { const n = $(fid); if (n) { n.focus(); if (fv !== undefined && n.value !== fv) n.value = fv; try { n.setSelectionRange(fs, fe); } catch (e) {} } }
   if (rs) { try { const n = $(rs[0]); if (n) { n.focus({ preventScroll: true }); const a = rtePlace(n, rs[1]), b = rtePlace(n, rs[2]), r = document.createRange(); r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); n.scrollTop = rs[3]; } } catch (e) {} }
+  { const pe = $("p-est"); if (pe && document.activeElement !== pe) { pe.focus({ preventScroll: true }); try { pe.select(); } catch (x) {} } }
   { const lq = $("p-lq") || $("p-gname"); if (lq && !fid && !isMobile()) lq.focus({ preventScroll: true }); }
   const tt = $("d-title"); if (tt) { tt.style.height = "auto"; tt.style.height = tt.scrollHeight + "px"; }
   updateSyncUI(); dayAfterRender(); syncHistory(); fitPop(); nuAfter();
@@ -5861,9 +5871,10 @@ const acts = {
       case "ctx_del": deleteTask(id); break;
       case "ctx_someday": if (t) { const sd = t.status === "someday"; upd(id, { status: sd ? "active" : "someday", my_day: false, my_day_date: sd ? t.my_day_date : null }); toast(sd ? "Вернул из «Когда-нибудь»" : "Отложено в «Когда-нибудь»"); } break;
       case "estclr": upd(id, { est_minutes: null }); break;
+      case "estset": upd(id, { est_minutes: +v || null }); break;
       case "estok": {
         const man = $("p-est") && $("p-est").value.trim();
-        if (man) { const x = parseEst(man); if (isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч"); return; } upd(id, { est_minutes: x || null }); break; }
+        if (man) { const x = parseEstH(man); if (isNaN(x)) { toast("Не понял. Примеры: 2, 0,5, 1:30, 90м"); return; } upd(id, { est_minutes: x || null }); break; }
         const ds = [...document.querySelectorAll("#drums .drum")].map(e => Math.round(e.scrollTop / 36) * (+e.dataset.step));
         upd(id, { est_minutes: ds[0] * 60 + ds[1] || null }); break;
       }
@@ -7264,6 +7275,7 @@ function init() {
     const id = e.target.id;
     if (e.key === "Enter" && !e.isComposing) {
       if (id === "d-title") { e.preventDefault(); e.target.blur(); }
+      if (id === "p-est") { e.preventDefault(); const ok = document.querySelector('[data-k="estok"]'); if (ok) ok.click(); return; }
       if (id && /^jr-(tx|st|en|date|d1|d2|cat)$/.test(id)) { e.preventDefault(); acts.jradd(); return; }
       if (id === "jr-qi") { e.preventDefault(); if (ui.jr && ui.jr.qt) { if (!(ui.jr.qi || "").trim()) { ui.jr.qt = null; render(); } else acts.jrqok({ dataset: { id: ui.jr.qt } }); } return; }
       if (id && id.indexOf("jr-e-") === 0) { e.preventDefault(); acts.jrsave(); return; }
