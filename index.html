@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "10.11 09:39";
+const BUILD = "10.11 09:53";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -1569,7 +1569,8 @@ const dayChanges = {
   "s-ds"(v) { PR.dayStart = +v; if (PR.dayEnd <= PR.dayStart) PR.dayEnd = PR.dayStart + 1; savePrefs(); render(); },
   "s-de"(v) { PR.dayEnd = Math.max(+v, PR.dayStart + 1); savePrefs(); render(); },
   "s-rs"(v) { PR.reserve = +v; savePrefs(); render(); },
-  "s-wl"(v) { PR.wlim = +v; savePrefs(); render(); }
+  "s-wd"(v) { PR.wdays = Math.max(1, Math.min(7, +v || 5)); if (PR.wlim > 8 * PR.wdays) PR.wlim = 8 * PR.wdays; savePrefs(); render(); },
+  "s-wl"(v) { const n = parseFloat(String(v).replace(",", ".")); PR.wlim = isFinite(n) && n > 0 ? Math.min(8 * (PR.wdays || 5), Math.round(n * 2) / 2) : 0; savePrefs(); render(); }
 };
 function dayInput(id, v) { if (id === "ds-q" && ui.dsheet && ui.dsheet.t === "pick") { ui.dsheet.q = v; render(); } }
 
@@ -4567,7 +4568,8 @@ function settingsHTML() {
     G("Рабочий день",
       R("Начало дня", "Для плана и сетки «День»", sel("s-ds", PR.dayStart, [6, 7, 8, 9, 10].map(h => [h, "с " + h + ":00"]))) +
       R("Конец дня", "", sel("s-de", PR.dayEnd, [14, 15, 16, 17, 18, 19, 20, 21, 22].map(h => [h, "до " + h + ":00"]))) +
-      R("Лимит недели (список «Работа»)", "Сколько часов задач помещается в неделю; при переполнении предупрежу и предложу следующую", sel("s-wl", PR.wlim || 0, [0, 20, 25, 30, 32, 35, 40, 45, 50].map(h => [h, h ? h + " ч" : "без лимита"]))) +
+      R("Рабочих дней в неделе", "Определяет потолок лимита: 8 ч × число дней", sel("s-wd", PR.wdays || 5, [1, 2, 3, 4, 5, 6, 7].map(d => [d, d]))) +
+      R("Лимит недели, часов (список «Работа»)", "Любое значение от 0 до " + 8 * (PR.wdays || 5) + " (0 = без лимита). При переполнении предупрежу и предложу ближайшую свободную неделю", '<input id="s-wl" class="inp" type="number" min="0" max="' + 8 * (PR.wdays || 5) + '" step="0.5" inputmode="decimal" value="' + (PR.wlim || 0) + '" style="width:90px">') +
       R("Резерв времени", "Запас на непредвиденное в плане дня", sel("s-rs", PR.reserve, [0, 10, 20, 25, 30, 40].map(p => [p, p + "%"])))) +
     G("План и напоминания",
       (isLite() ? "" : R("Утренний план", "Сам открывается при первом входе за день", TG("s-rit", !PR.ritOff && !PR.ritHide))) +
