@@ -92,7 +92,10 @@ public class DoorActivity extends Activity {
 
     private void showBtns(final DoorStore.E e, final List<View> found, final LinearLayout btns) {
         btns.removeAllViews();
-        if (found.size() == 1 && e.key.length() == 0 && e.idx < 0) { e.key = DoorStore.keyOf(found.get(0)); e.idx = 0; DoorStore.save(this, doors); }
+        if (e.key.length() == 0 && e.idx < 0 && !found.isEmpty()) {   // кнопка ещё не выбрана: одна — берём её, несколько — ищем «open…»
+            View g = found.size() == 1 ? found.get(0) : DoorStore.guess(found);
+            if (g != null) { e.key = DoorStore.keyOf(g); e.idx = found.indexOf(g); DoorStore.save(this, doors); }
+        }
         btns.addView(tv(found.isEmpty() ? "Кнопок не найдено: виджет не прислал содержимое. Нажмите «Обновить»." : "Кликабельных элементов: " + found.size() + ". Отметьте кнопку открытия (✔) — голос будет жать её.", 12, "#ffffff", false));
         for (int i = 0; i < found.size(); i++) {
             final View v = found.get(i); final int ix = i; final String key = DoorStore.keyOf(v);

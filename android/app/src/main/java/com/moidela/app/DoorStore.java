@@ -78,12 +78,19 @@ public class DoorStore {
         if (v instanceof ViewGroup) { ViewGroup g = (ViewGroup) v; for (int i = 0; i < g.getChildCount(); i++) walk(g.getChildAt(i), out); }
     }
 
+    /** кнопка не выбрана вручную: ищем по имени (open/unlock/door/открыть) */
+    static View guess(List<View> l) {
+        String[] w = {"open", "unlock", "door", "gate", "lock", "откр"};
+        for (String k : w) for (View v : l) if (keyOf(v).toLowerCase().contains(k)) return v;
+        return null;
+    }
+
     static View pick(List<View> l, E e) {
         if (l.isEmpty()) return null;
         if (e.key.length() > 0) for (View v : l) if (e.key.equals(keyOf(v))) return v;
         if (e.idx >= 0 && e.idx < l.size()) return l.get(e.idx);
         if (l.size() == 1) return l.get(0);
-        return null;
+        return guess(l);
     }
 
     /** попросить провайдера прислать свежий вид (после перезапуска кэш виджета у нас может быть пуст) */
@@ -106,7 +113,8 @@ public class DoorStore {
         h.post(new Runnable() { int tries = 0; public void run() {
             List<View> l = new ArrayList<View>(); walk(hv, l); View t = pick(l, e);
             if (t != null) { boolean ok = t.performClick(); h.postDelayed(stop, 1200); cb.end(ok, ok ? "Открываю " + e.name : "Кнопка «" + e.name + "» не нажалась"); return; }
-            if (SystemClock.uptimeMillis() - t0 > 8000) { h.post(stop); cb.end(false, "Не удалось нажать «" + e.name + "»: виджет не отвечает"); return; }
+            if (!l.isEmpty() && SystemClock.uptimeMillis() - t0 > 2500) { h.post(stop); cb.end(false, "Не выбрана кнопка открытия для «" + e.name + "». Отметьте её в настройках домофона."); return; }
+            if (SystemClock.uptimeMillis() - t0 > 8000) { h.post(stop); cb.end(false, "Не удалось нажать «" + e.name + "»: виджет не прислал кнопок"); return; }
             if (++tries == 10) refresh(a, pi, e.wid);
             h.postDelayed(this, 250);
         } });
