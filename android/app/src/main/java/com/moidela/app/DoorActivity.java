@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -25,44 +24,96 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Тест «Домофон»: привязываем виджет стороннего приложения («Мой дом») к нашему хосту и пробуем «нажать» его кнопку программно. */
+/** «Домофон»: несколько виджетов с именами для голоса («калитка 1», «подъезд»). Каждый привязывается к нашему хосту, выбирается кнопка открытия. */
 public class DoorActivity extends Activity {
-    static final int HOST_ID = 7797, REQ_BIND = 71, REQ_CFG = 72;
+    static final int REQ_BIND = 71, REQ_CFG = 72;
     private AppWidgetHost host; private AppWidgetManager mgr;
-    private LinearLayout list, view; private TextView info; private EditText flt;
+    private LinearLayout cards, list, addBox; private EditText flt, nameIn;
     private final Handler h = new Handler(Looper.getMainLooper());
-    private int wid = -1; private AppWidgetProviderInfo pend;
+    private List<DoorStore.E> doors; private int pendWid = -1; private String pendName = "", pendProv = "";
+    private boolean listening = false; private int gen = 0;
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + .5f); }
     private TextView tv(String s, int sp, String col, boolean bold) { TextView t = new TextView(this); t.setText(s); t.setTextSize(sp); t.setTextColor(Color.parseColor(col)); t.setTypeface(null, bold ? Typeface.BOLD : Typeface.NORMAL); t.setPadding(0, dp(4), 0, dp(4)); return t; }
-    private Button bt(String s, View.OnClickListener l) { Button b = new Button(this); b.setText(s); b.setOnClickListener(l); return b; }
+    private Button bt(String s, View.OnClickListener l) { Button b = new Button(this); b.setText(s); b.setAllCaps(false); b.setOnClickListener(l); return b; }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        mgr = AppWidgetManager.getInstance(this); host = new AppWidgetHost(this, HOST_ID);
+        mgr = AppWidgetManager.getInstance(this); host = new AppWidgetHost(this, DoorStore.HOST_ID);
         ScrollView sv = new ScrollView(this); sv.setBackgroundColor(Color.parseColor("#14121f"));
         LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(18), dp(22), dp(18), dp(40)); sv.addView(box); setContentView(sv);
-        box.addView(tv("Домофон: тест виджета", 22, "#ffffff", true));
-        box.addView(tv("1) выберите виджет домофона из «Мой дом» ниже; 2) разрешите привязку; 3) ниже появятся его кнопки — нажмите «▶ нажать» у нужной. Если дверь открылась — голосовая команда будет работать без экрана.", 13, "#9a93b8", false));
-        info = tv("", 13, "#a99bff", false); box.addView(info);
-        view = new LinearLayout(this); view.setOrientation(LinearLayout.VERTICAL); box.addView(view);
-        flt = new EditText(this); flt.setHint("фильтр по названию (например: дом)"); flt.setTextColor(Color.WHITE); flt.setHintTextColor(Color.GRAY); box.addView(flt);
+        box.addView(tv("Домофон: виджеты для голоса", 22, "#ffffff", true));
+        box.addView(tv("Привяжите виджеты домофона (каждый на свою калитку/подъезд), дайте имена и отметьте кнопку открытия. Потом голосом: «открой калитку 1».", 13, "#9a93b8", false));
+        cards = new LinearLayout(this); cards.setOrientation(LinearLayout.VERTICAL); box.addView(cards);
+        box.addView(bt("＋ Добавить виджет", new View.OnClickListener() { public void onClick(View v) { addBox.setVisibility(addBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE); if (addBox.getVisibility() == View.VISIBLE) fill(); } }));
+        addBox = new LinearLayout(this); addBox.setOrientation(LinearLayout.VERTICAL); addBox.setVisibility(View.GONE); box.addView(addBox);
+        addBox.addView(tv("1) введите имя, как будете говорить; 2) выберите виджет ниже", 13, "#a99bff", false));
+        nameIn = new EditText(this); nameIn.setHint("Имя: калитка 1"); nameIn.setTextColor(Color.WHITE); nameIn.setHintTextColor(Color.GRAY); addBox.addView(nameIn);
+        flt = new EditText(this); flt.setHint("фильтр по названию (например: дом)"); flt.setTextColor(Color.WHITE); flt.setHintTextColor(Color.GRAY); addBox.addView(flt);
         flt.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s, int a, int c, int d) { } public void onTextChanged(CharSequence s, int a, int c, int d) { } public void afterTextChanged(Editable e) { fill(); } });
-        list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); box.addView(list);
-        fill();
-        SharedPreferences p = getSharedPreferences("door", MODE_PRIVATE); int w = p.getInt("wid", -1);
-        if (w >= 0) { AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(w); if (pi != null) { wid = w; show(); } }
+        list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); addBox.addView(list);
+        doors = DoorStore.load(this);
+        build();
     }
-    @Override protected void onStart() { super.onStart(); try { host.startListening(); } catch (Throwable e) { } }
-    @Override protected void onStop() { super.onStop(); try { host.stopListening(); } catch (Throwable e) { } }
+    @Override protected void onStart() { super.onStart(); try { host.startListening(); listening = true; } catch (Throwable e) { } for (DoorStore.E e : doors) { AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(e.wid); if (pi != null) DoorStore.refresh(this, pi, e.wid); } }
+    @Override protected void onStop() { super.onStop(); gen++; try { host.stopListening(); } catch (Throwable e) { } listening = false; }
 
+    // ---------- сохранённые виджеты ----------
+    private void build() {
+        gen++; cards.removeAllViews();
+        if (doors.isEmpty()) cards.addView(tv("Пока нет виджетов. Нажмите «＋ Добавить виджет».", 14, "#9a93b8", false));
+        for (final DoorStore.E e : doors) {
+            final AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(e.wid);
+            LinearLayout c = new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL); c.setPadding(dp(12), dp(10), dp(12), dp(10)); c.setBackgroundColor(Color.parseColor("#201c33"));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins(0, dp(10), 0, 0); c.setLayoutParams(lp);
+            EditText nm = new EditText(this); nm.setText(e.name); nm.setTextColor(Color.WHITE); nm.setTextSize(18); nm.setHint("имя для голоса");
+            nm.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s, int a, int b, int d) { } public void onTextChanged(CharSequence s, int a, int b, int d) { } public void afterTextChanged(Editable x) { e.name = x.toString().trim(); DoorStore.save(DoorActivity.this, doors); } });
+            c.addView(nm);
+            if (pi == null) { c.addView(tv("Виджет не привязан (удалён системой). Забудьте и добавьте заново.", 12, "#ff8a80", false)); }
+            else {
+                c.addView(tv(pi.provider.flattenToShortString(), 11, "#7d7699", false));
+                final AppWidgetHostView hv = host.createView(getApplicationContext(), e.wid, pi);
+                c.addView(hv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(Math.max(90, pi.minHeight > 0 ? (int) (pi.minHeight / getResources().getDisplayMetrics().density) : 100))));
+                final LinearLayout btns = new LinearLayout(this); btns.setOrientation(LinearLayout.VERTICAL); c.addView(btns);
+                poll(e, hv, btns, gen, 0);
+            }
+            c.addView(bt("Забыть этот виджет", new View.OnClickListener() { public void onClick(View v) { try { host.deleteAppWidgetId(e.wid); } catch (Throwable x) { } doors.remove(e); DoorStore.save(DoorActivity.this, doors); build(); } }));
+            cards.addView(c);
+        }
+    }
+
+    /** вид приходит от провайдера не сразу (и после перезапуска тоже) — опрашиваем, пока не появятся кнопки */
+    private void poll(final DoorStore.E e, final AppWidgetHostView hv, final LinearLayout btns, final int g, final int n) {
+        if (g != gen) return;
+        final List<View> found = new ArrayList<View>(); DoorStore.walk(hv, found);
+        if (found.size() > 0 || n >= 20) { showBtns(e, found, btns); if (found.size() > 0 || n >= 20) return; }
+        h.postDelayed(new Runnable() { public void run() { poll(e, hv, btns, g, n + 1); } }, 500);
+    }
+
+    private void showBtns(final DoorStore.E e, final List<View> found, final LinearLayout btns) {
+        btns.removeAllViews();
+        if (found.size() == 1 && e.key.length() == 0 && e.idx < 0) { e.key = DoorStore.keyOf(found.get(0)); e.idx = 0; DoorStore.save(this, doors); }
+        btns.addView(tv(found.isEmpty() ? "Кнопок не найдено: виджет не прислал содержимое. Нажмите «Обновить»." : "Кликабельных элементов: " + found.size() + ". Отметьте кнопку открытия (✔) — голос будет жать её.", 12, "#ffffff", false));
+        for (int i = 0; i < found.size(); i++) {
+            final View v = found.get(i); final int ix = i; final String key = DoorStore.keyOf(v);
+            String tx = v instanceof TextView ? " «" + ((TextView) v).getText() + "»" : (v.getContentDescription() != null ? " [" + v.getContentDescription() + "]" : "");
+            boolean sel = key.length() > 0 ? key.equals(e.key) : ix == e.idx;
+            LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL);
+            Button t = bt("▶ " + (key.length() > 0 ? key : "#" + ix) + tx, new View.OnClickListener() { public void onClick(View x) { boolean r = v.performClick(); Toast.makeText(DoorActivity.this, r ? "Нажато" : "Нет обработчика", Toast.LENGTH_SHORT).show(); } });
+            row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            Button s = bt(sel ? "✔" : "выбрать", new View.OnClickListener() { public void onClick(View x) { e.key = key; e.idx = ix; DoorStore.save(DoorActivity.this, doors); showBtns(e, found, btns); } });
+            row.addView(s);
+            btns.addView(row);
+        }
+    }
+
+    // ---------- добавление ----------
     private void fill() {
         list.removeAllViews(); String q = flt.getText().toString().trim().toLowerCase(); int n = 0;
-        List<AppWidgetProviderInfo> all = mgr.getInstalledProviders();
-        for (final AppWidgetProviderInfo pi : all) {
+        for (final AppWidgetProviderInfo pi : mgr.getInstalledProviders()) {
             if (pi.provider.getPackageName().equals(getPackageName())) continue;
             String lab; try { lab = pi.loadLabel(getPackageManager()); } catch (Throwable e) { lab = pi.provider.getClassName(); }
-            String pk = pi.provider.getPackageName(); String ln = lab + " · " + pk;
+            String ln = lab + " · " + pi.provider.getPackageName();
             if (q.length() > 0 && !ln.toLowerCase().contains(q)) continue;
             if (++n > 40) { list.addView(tv("… уточните фильтр", 12, "#9a93b8", false)); break; }
             list.addView(bt(ln, new View.OnClickListener() { public void onClick(View v) { choose(pi); } }));
@@ -71,50 +122,26 @@ public class DoorActivity extends Activity {
     }
 
     private void choose(AppWidgetProviderInfo pi) {
-        try { if (wid >= 0) host.deleteAppWidgetId(wid); } catch (Throwable e) { }
-        wid = host.allocateAppWidgetId(); pend = pi;
-        boolean ok = false; try { ok = mgr.bindAppWidgetIdIfAllowed(wid, pi.provider); } catch (Throwable e) { }
+        String nm = nameIn.getText().toString().trim();
+        if (nm.length() == 0) { Toast.makeText(this, "Сначала введите имя (например: калитка 1)", Toast.LENGTH_LONG).show(); return; }
+        pendName = nm; pendProv = pi.provider.flattenToShortString(); pendWid = host.allocateAppWidgetId();
+        boolean ok = false; try { ok = mgr.bindAppWidgetIdIfAllowed(pendWid, pi.provider); } catch (Throwable e) { }
         if (ok) afterBind();
-        else { Intent i = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, wid).putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, pi.provider); try { startActivityForResult(i, REQ_BIND); } catch (Throwable e) { info.setText("Не удалось запросить привязку: " + e); } }
+        else { Intent i = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pendWid).putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, pi.provider); try { startActivityForResult(i, REQ_BIND); } catch (Throwable e) { Toast.makeText(this, "Не удалось запросить привязку: " + e, Toast.LENGTH_LONG).show(); } }
     }
     private void afterBind() {
-        AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(wid);
-        if (pi != null && pi.configure != null) { try { host.startAppWidgetConfigureActivityForResult(this, wid, 0, REQ_CFG, null); return; } catch (Throwable e) { info.setText("Настройка виджета не открылась: " + e); } }
-        saveShow();
+        AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(pendWid);
+        if (pi != null && pi.configure != null) { try { host.startAppWidgetConfigureActivityForResult(this, pendWid, 0, REQ_CFG, null); return; } catch (Throwable e) { Toast.makeText(this, "Настройка виджета не открылась: " + e, Toast.LENGTH_LONG).show(); } }
+        finishAdd();
     }
     @Override protected void onActivityResult(int rq, int rs, Intent d) {
         super.onActivityResult(rq, rs, d);
-        if (rq == REQ_BIND) { if (rs == RESULT_OK) afterBind(); else info.setText("Привязка отклонена"); }
-        else if (rq == REQ_CFG) { if (rs == RESULT_OK) saveShow(); else info.setText("Настройка виджета отменена"); }
+        if (rq == REQ_BIND) { if (rs == RESULT_OK) afterBind(); else cancelAdd("Привязка отклонена"); }
+        else if (rq == REQ_CFG) { if (rs == RESULT_OK) finishAdd(); else cancelAdd("Настройка виджета отменена"); }
     }
-    private void saveShow() { getSharedPreferences("door", MODE_PRIVATE).edit().putInt("wid", wid).apply(); show(); }
-
-    private void show() {
-        view.removeAllViews();
-        final AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(wid);
-        if (pi == null) { info.setText("Виджет не привязан"); return; }
-        info.setText("Привязан: " + pi.provider.flattenToShortString() + " (id " + wid + ")");
-        final AppWidgetHostView hv = host.createView(getApplicationContext(), wid, pi);
-        hv.setAppWidget(wid, pi);
-        view.addView(hv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(Math.max(100, pi.minHeight > 0 ? (int) (pi.minHeight / getResources().getDisplayMetrics().density) : 110))));
-        final LinearLayout btns = new LinearLayout(this); btns.setOrientation(LinearLayout.VERTICAL); view.addView(btns);
-        view.addView(bt("Обновить список кнопок", new View.OnClickListener() { public void onClick(View v) { scan(hv, btns); } }));
-        view.addView(bt("Забыть этот виджет", new View.OnClickListener() { public void onClick(View v) { try { host.deleteAppWidgetId(wid); } catch (Throwable e) { } wid = -1; getSharedPreferences("door", MODE_PRIVATE).edit().remove("wid").apply(); show(); info.setText("Привязка удалена"); } }));
-        h.postDelayed(new Runnable() { public void run() { scan(hv, btns); } }, 1500);
-    }
-
-    private void scan(AppWidgetHostView hv, LinearLayout btns) {
-        btns.removeAllViews(); final ArrayList<View> found = new ArrayList<>(); walk(hv, found);
-        btns.addView(tv("Кликабельных элементов: " + found.size(), 14, "#ffffff", true));
-        for (final View v : found) {
-            String nm = "?"; try { if (v.getId() != View.NO_ID) nm = v.getContext().getResources().getResourceEntryName(v.getId()); } catch (Throwable e) { nm = "#" + v.getId(); }
-            String tx = v instanceof TextView ? " «" + ((TextView) v).getText() + "»" : (v.getContentDescription() != null ? " [" + v.getContentDescription() + "]" : "");
-            btns.addView(bt("▶ нажать: " + nm + " (" + v.getClass().getSimpleName() + ")" + tx, new View.OnClickListener() { public void onClick(View x) { boolean r = v.performClick(); Toast.makeText(DoorActivity.this, r ? "Нажато" : "Не нажалось (нет обработчика)", Toast.LENGTH_SHORT).show(); } }));
-        }
-        if (found.size() == 0) btns.addView(tv("Пока пусто: виджет ещё не прислал содержимое. Подождите пару секунд и нажмите «Обновить».", 12, "#9a93b8", false));
-    }
-    private void walk(View v, List<View> out) {
-        if (v.hasOnClickListeners() && v.isEnabled()) out.add(v);
-        if (v instanceof ViewGroup) { ViewGroup g = (ViewGroup) v; for (int i = 0; i < g.getChildCount(); i++) walk(g.getChildAt(i), out); }
+    private void cancelAdd(String m) { try { if (pendWid >= 0) host.deleteAppWidgetId(pendWid); } catch (Throwable e) { } pendWid = -1; Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); }
+    private void finishAdd() {
+        DoorStore.E e = new DoorStore.E(); e.wid = pendWid; e.name = pendName; e.provider = pendProv; doors.add(e); DoorStore.save(this, doors); pendWid = -1;
+        nameIn.setText(""); addBox.setVisibility(View.GONE); build();
     }
 }

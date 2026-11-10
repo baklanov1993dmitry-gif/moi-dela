@@ -232,6 +232,8 @@ public class VoiceAddActivity extends Activity {
     /** «бортовой компьютер»: фразу разбирает ИИ на сервере (device?a=cmd) — запись, вопросы о делах, время, погода, готово/отложить/отмена */
     private void save(final String raw) {
         final Context c = getApplicationContext();
+        final DoorStore.E door = DoorStore.match(c, raw);   // «открой калитку 1» — локально, без сервера и подтверждения
+        if (door != null) { done = true; if (tv != null) tv.setText(raw); DoorStore.press(c, door, new DoorStore.Cb() { public void end(boolean ok, String msg) { speakAndEnd(msg); } }); return; }
         final android.content.SharedPreferences sp = Store.p(c);
         if (!sp.getBoolean("v_smart", true)) { saveSimple(raw); return; }
         done = true; tv.setText(raw);
