@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "10.11 09:56";
+const BUILD = "10.11 10:01";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4503,10 +4503,10 @@ function popHTML() {
       break;
     }
     case "estpick": {
-      const m = t && t.est_minutes || 0, dd = Math.floor(m / 480), hh = Math.floor((m % 480) / 60), mi = Math.round((m % 60) / 5) % 12;
+      const m = t && t.est_minutes || 0, hh = Math.min(48, Math.floor(m / 60)), mi = Math.round((m % 60) / 5) % 12;
       const col = (cls, n, step, sel, lb) => '<div class="drumc"><div class="drum" data-sel="' + sel + '" data-step="' + step + '">' + Array.from({ length: n }, (_, i) => "<div>" + i * step + "</div>").join("") + '</div><div class="lb">' + lb + "</div></div>";
-      h = '<div class="ptitle">Сколько займёт</div><div class="drumw" id="drums">' + col("d", 31, 1, dd, "дней (по 8 ч)") + col("h", 24, 1, hh, "часов") + col("m", 12, 5, mi, "минут") + "</div>" +
-        '<div class="pform" style="padding:6px 12px"><input id="p-est" placeholder="или впишите: 3ч · 90м · 2д" style="flex:1"></div>' +
+      h = '<div class="ptitle">Сколько займёт</div><div class="drumw" id="drums">' + col("h", 49, 1, hh, "часов") + col("m", 12, 5, mi, "минут") + "</div>" +
+        '<div class="pform" style="padding:6px 12px"><input id="p-est" placeholder="или впишите: 3ч · 90м · 1.5ч" style="flex:1"></div>' +
         '<div class="pform" style="padding:4px 12px 8px;gap:8px"><button class="btn" style="flex:1" data-a="pa" data-k="estok" ' + idA + ">Готово</button><button class=\"btn ghost\" data-a=\"pa\" data-k=\"estclr\" " + idA + ">Сбросить</button></div>";
       break;
     }
@@ -5863,9 +5863,9 @@ const acts = {
       case "estclr": upd(id, { est_minutes: null }); break;
       case "estok": {
         const man = $("p-est") && $("p-est").value.trim();
-        if (man) { const x = parseEst(man); if (isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч, 2д"); return; } upd(id, { est_minutes: x || null }); break; }
+        if (man) { const x = parseEst(man); if (isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч"); return; } upd(id, { est_minutes: x || null }); break; }
         const ds = [...document.querySelectorAll("#drums .drum")].map(e => Math.round(e.scrollTop / 36) * (+e.dataset.step));
-        upd(id, { est_minutes: ds[0] * 480 + ds[1] * 60 + ds[2] || null }); break;
+        upd(id, { est_minutes: ds[0] * 60 + ds[1] || null }); break;
       }
       case "alert": if (S.tasks[id]) selId = id; break;
       case "alertsclr": ui.alerts = []; break;
@@ -7153,7 +7153,7 @@ const changes = {
   "s-dens"(v) { TH.dens = v; saveTheme(); render(); },
   "s-bkf"(v) { bkSet({ freq: +v }); toast(+v ? "Автокопии: " + (BKF.filter(x => x[0] === +v)[0] || [0, ""])[1].toLowerCase() : "Автокопии выключены"); },
   "s-bkfile"(v) { bkSet({ file: v === "1" }); },
-  "d-est"(v) { const x = parseEst(v); if (x !== null && isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч, 2д"); return; } if (selId) { upd(selId, { est_minutes: x || null }); renderSoon(); } },
+  "d-est"(v) { const x = parseEst(v); if (x !== null && isNaN(x)) { toast("Не понял. Примеры: 3ч, 90м, 1.5ч"); return; } if (selId) { upd(selId, { est_minutes: x || null }); renderSoon(); } },
   "s-stall"(v) { PR.stall = +v; savePrefs(); render(); },
   "s-stlim"(v) { PR.stGB = +v; savePrefs(); render(); },
   "s-size"(v) { if (PLAT_M) TH.size = v; else TH.sizeW = v; saveTheme(); render(); },
