@@ -12,6 +12,9 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RemoteViews;
+import java.util.HashMap;
+import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayList;
@@ -22,6 +25,38 @@ import java.util.List;
 /** Виджеты домофона («Мой дом» и др.): несколько штук с именами для голоса; «нажатие» кнопки виджета без экрана. */
 public class DoorStore {
     static final int HOST_ID = 7797;
+
+    // ---- общий хост: живёт, пока жив процесс (вид виджета хранится у нас, а не запрашивается заново) ----
+    static AppWidgetHost sHost; static boolean sListening; static final Map<Integer, AppWidgetHostView> sViews = new HashMap<Integer, AppWidgetHostView>();
+    static final ArrayList<String> sLog = new ArrayList<String>(); static int sFlip = 0;
+    static synchronized void log(String m) { sLog.add(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + " " + m); while (sLog.size() > 40) sLog.remove(0); }
+    static String logText() { StringBuilder b = new StringBuilder(); synchronized (DoorStore.class) { for (String x : sLog) b.append(x).append('\n'); } return b.toString(); }
+    static class DoorView extends AppWidgetHostView {
+        int wid = -1;
+        DoorView(Context c) { super(c); }
+        @Override public void updateAppWidget(RemoteViews rv) { log("виджет " + wid + ": " + (rv == null ? "заготовка (null)" : "пришёл вид, layout " + rv.getLayoutId())); super.updateAppWidget(rv); }
+    }
+    static class DoorHost extends AppWidgetHost {
+        DoorHost(Context c) { super(c, HOST_ID); }
+        @Override protected AppWidgetHostView onCreateView(Context c, int id, AppWidgetProviderInfo info) { DoorView v = new DoorView(c); v.wid = id; return v; }
+    }
+    static synchronized AppWidgetHost host(Context c) {
+        if (sHost == null) sHost = new DoorHost(c.getApplicationContext());
+        if (!sListening) { try { sHost.startListening(); sListening = true; log("слушатель включён"); } catch (Throwable t) { log("startListening: " + t); } }
+        return sHost;
+    }
+    static synchronized AppWidgetHostView view(Context c, int wid, AppWidgetProviderInfo pi) {
+        AppWidgetHostView v = sViews.get(wid);
+        if (v == null) { v = host(c).createView(c.getApplicationContext(), wid, pi); sViews.put(wid, v); log("создан вид виджета " + wid); }
+        return v;
+    }
+    static void forget(int wid) { sViews.remove(wid); }
+    /** разные способы заставить провайдера прислать свежий вид */
+    static void nudge(Context c, AppWidgetProviderInfo pi, int wid, AppWidgetHostView hv, int kind) {
+        if (kind == 0) {
+            try { float d = c.getResources().getDisplayMetrics().density; int w = (int) (pi.minWidth / d) + 40 + (sFlip++ % 2), hh = (int) (pi.minHeight / d) + 40; hv.updateAppWidgetSize(null, w, hh, w, hh); log("толчок: смена размера " + w + "x" + hh); } catch (Throwable t) { log("толчок размера: " + t); }
+        } else { refresh(c, pi, wid); log("толчок: широковещательный UPDATE"); }
+    }
 
     static class E { int wid; String name = "", provider = "", key = ""; int idx = -1; }
     interface Cb { void end(boolean ok, String msg); }
@@ -104,18 +139,17 @@ public class DoorStore {
         final AppWidgetManager m = AppWidgetManager.getInstance(a);
         final AppWidgetProviderInfo pi = m.getAppWidgetInfo(e.wid);
         if (pi == null) { cb.end(false, "Виджет «" + e.name + "» не привязан. Откройте тест домофона в настройках."); return; }
-        final AppWidgetHost host = new AppWidgetHost(a, HOST_ID);
-        try { host.startListening(); } catch (Throwable t) { }
-        final AppWidgetHostView hv = host.createView(a, e.wid, pi);
+        final AppWidgetHostView hv = view(a, e.wid, pi);
         refresh(a, pi, e.wid);
         final Handler h = new Handler(Looper.getMainLooper()); final long t0 = SystemClock.uptimeMillis();
-        final Runnable stop = new Runnable() { public void run() { try { host.stopListening(); } catch (Throwable t) { } } };
+        final Runnable stop = new Runnable() { public void run() { } };
         h.post(new Runnable() { int tries = 0; public void run() {
             List<View> l = new ArrayList<View>(); walk(hv, l); View t = pick(l, e);
             if (t != null) { boolean ok = t.performClick(); h.postDelayed(stop, 1200); cb.end(ok, ok ? "Открываю " + e.name : "Кнопка «" + e.name + "» не нажалась"); return; }
             if (!l.isEmpty() && SystemClock.uptimeMillis() - t0 > 2500) { h.post(stop); cb.end(false, "Не выбрана кнопка открытия для «" + e.name + "». Отметьте её в настройках домофона."); return; }
             if (SystemClock.uptimeMillis() - t0 > 8000) { h.post(stop); cb.end(false, "Не удалось нажать «" + e.name + "»: виджет не прислал кнопок"); return; }
-            if (++tries == 10) refresh(a, pi, e.wid);
+            if (tries == 4) nudge(a, pi, e.wid, hv, 0); if (tries == 12) nudge(a, pi, e.wid, hv, 1); if (tries == 22) nudge(a, pi, e.wid, hv, 0);
+            tries++;
             h.postDelayed(this, 250);
         } });
     }

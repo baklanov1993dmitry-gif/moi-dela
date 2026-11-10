@@ -28,7 +28,7 @@ import java.util.List;
 public class DoorActivity extends Activity {
     static final int REQ_BIND = 71, REQ_CFG = 72;
     private AppWidgetHost host; private AppWidgetManager mgr;
-    private LinearLayout cards, list, addBox; private EditText flt, nameIn;
+    private LinearLayout cards, list, addBox; private TextView logTv; private EditText flt, nameIn;
     private final Handler h = new Handler(Looper.getMainLooper());
     private List<DoorStore.E> doors; private int pendWid = -1; private String pendName = "", pendProv = "";
     private boolean listening = false; private int gen = 0;
@@ -39,7 +39,7 @@ public class DoorActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        mgr = AppWidgetManager.getInstance(this); host = new AppWidgetHost(this, DoorStore.HOST_ID);
+        mgr = AppWidgetManager.getInstance(this); host = DoorStore.host(this);
         ScrollView sv = new ScrollView(this); sv.setBackgroundColor(Color.parseColor("#14121f"));
         LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(18), dp(22), dp(18), dp(40)); sv.addView(box); setContentView(sv);
         box.addView(tv("Домофон: виджеты для голоса", 22, "#ffffff", true));
@@ -52,11 +52,13 @@ public class DoorActivity extends Activity {
         flt = new EditText(this); flt.setHint("фильтр по названию (например: дом)"); flt.setTextColor(Color.WHITE); flt.setHintTextColor(Color.GRAY); addBox.addView(flt);
         flt.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s, int a, int c, int d) { } public void onTextChanged(CharSequence s, int a, int c, int d) { } public void afterTextChanged(Editable e) { fill(); } });
         list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); addBox.addView(list);
+        box.addView(tv("Журнал (для диагностики):", 12, "#7d7699", true));
+        logTv = tv("", 11, "#7d7699", false); logTv.setTextIsSelectable(true); box.addView(logTv);
         doors = DoorStore.load(this);
         build();
     }
-    @Override protected void onStart() { super.onStart(); try { host.startListening(); listening = true; } catch (Throwable e) { } for (DoorStore.E e : doors) { AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(e.wid); if (pi != null) DoorStore.refresh(this, pi, e.wid); } }
-    @Override protected void onStop() { super.onStop(); gen++; try { host.stopListening(); } catch (Throwable e) { } listening = false; }
+    @Override protected void onStart() { super.onStart(); DoorStore.host(this); for (DoorStore.E e : doors) { AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(e.wid); if (pi != null) DoorStore.refresh(this, pi, e.wid); } }
+    @Override protected void onStop() { super.onStop(); gen++; }   // слушатель НЕ выключаем: иначе система сбрасывает вид виджета
 
     // ---------- сохранённые виджеты ----------
     private void build() {
@@ -72,12 +74,13 @@ public class DoorActivity extends Activity {
             if (pi == null) { c.addView(tv("Виджет не привязан (удалён системой). Забудьте и добавьте заново.", 12, "#ff8a80", false)); }
             else {
                 c.addView(tv(pi.provider.flattenToShortString(), 11, "#7d7699", false));
-                final AppWidgetHostView hv = host.createView(getApplicationContext(), e.wid, pi);
+                final AppWidgetHostView hv = DoorStore.view(this, e.wid, pi);
+                if (hv.getParent() instanceof ViewGroup) ((ViewGroup) hv.getParent()).removeView(hv);
                 c.addView(hv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(Math.max(90, pi.minHeight > 0 ? (int) (pi.minHeight / getResources().getDisplayMetrics().density) : 100))));
                 final LinearLayout btns = new LinearLayout(this); btns.setOrientation(LinearLayout.VERTICAL); c.addView(btns);
                 poll(e, hv, btns, gen, 0);
             }
-            c.addView(bt("Забыть этот виджет", new View.OnClickListener() { public void onClick(View v) { try { host.deleteAppWidgetId(e.wid); } catch (Throwable x) { } doors.remove(e); DoorStore.save(DoorActivity.this, doors); build(); } }));
+            c.addView(bt("Забыть этот виджет", new View.OnClickListener() { public void onClick(View v) { try { host.deleteAppWidgetId(e.wid); } catch (Throwable x) { } DoorStore.forget(e.wid); doors.remove(e); DoorStore.save(DoorActivity.this, doors); build(); } }));
             cards.addView(c);
         }
     }
@@ -86,7 +89,10 @@ public class DoorActivity extends Activity {
     private void poll(final DoorStore.E e, final AppWidgetHostView hv, final LinearLayout btns, final int g, final int n) {
         if (g != gen) return;
         final List<View> found = new ArrayList<View>(); DoorStore.walk(hv, found);
-        if (found.size() > 0 || n >= 20) { showBtns(e, found, btns); if (found.size() > 0 || n >= 20) return; }
+        if (found.size() > 0 || n >= 40) { showBtns(e, found, btns); if (logTv != null) logTv.setText(DoorStore.logText()); return; }
+        if (n == 3 || n == 14) { AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(e.wid); if (pi != null) DoorStore.nudge(this, pi, e.wid, hv, 0); }
+        if (n == 8) { AppWidgetProviderInfo pi = mgr.getAppWidgetInfo(e.wid); if (pi != null) DoorStore.nudge(this, pi, e.wid, hv, 1); }
+        if (logTv != null) logTv.setText(DoorStore.logText());
         h.postDelayed(new Runnable() { public void run() { poll(e, hv, btns, g, n + 1); } }, 500);
     }
 
