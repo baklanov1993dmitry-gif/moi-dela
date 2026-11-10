@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "09.11 20:50";
+const BUILD = "10.11 09:39";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -809,7 +809,7 @@ function splitLinks(title, note) {
 function addTask(f) {
   if (f && f.title) f = Object.assign({}, f, splitLinks(f.title, f.note));
   const t = Object.assign({ id: uid(), parent_id: null, list_id: null, title: "", done: false, done_at: null, due: null, category: null, starred: false, my_day: false, my_day_date: null, note: "", steps: [], est_minutes: null, status: "active", created_at: nowISO(), remind_at: null, repeat_rule: null, files: [], plan_start: null }, f);
-  S.tasks[t.id] = t; uRec(t.id, null, true); mark("tasks", t.id, "u"); return t;
+  S.tasks[t.id] = t; uRec(t.id, null, true); mark("tasks", t.id, "u"); if (PR.wlim && t.due) setTimeout(() => wkCheck(t.id), 0); return t;
 }
 const kidsOf = id => Object.values(S.tasks).filter(x => x.parent_id === id);
 function upd(id, patch) {
@@ -819,6 +819,26 @@ function upd(id, patch) {
   if ("remind_at" in patch && !patch.remind_at && !("title" in patch) && /^⏰/.test(t.title || "")) patch = Object.assign({}, patch, { title: t.title.replace(/^⏰\s*/, "") });   // убрали напоминание — убираем и значок «громко»
   uRec(id, t); Object.assign(t, patch); t._t = nowISO(); mark("tasks", id, "u");
   if ("list_id" in patch) kidsOf(id).forEach(k => upd(k.id, { list_id: patch.list_id }));   // подзадачи едут в тот же список
+  if (PR.wlim && ("due" in patch || "est_minutes" in patch || "list_id" in patch)) setTimeout(() => wkCheck(id), 0);   // неделя переполнена → предупреждение
+}
+
+// ---- «горшочек» недели: лимит часов по задачам списка «Работа» (срок = дата, неделя с понедельника) ----
+const wkMon = iso => { const d = parseISO(iso), k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return isoLocal(d); };
+const wkLists = () => new Set(listsArr().filter(l => !l.archived && /работ/i.test(l.name || "")).map(l => l.id));
+const wkTasks = () => { const L = wkLists(); return Object.values(S.tasks).filter(t => !t.done && !t.parent_id && t.due && L.has(t.list_id)); };
+function wkLd(mon, skipId) { let m = 0, n = 0, un = 0; wkTasks().forEach(t => { if (t.id === skipId || t.due < mon || t.due > addDays(mon, 6)) return; if (t.est_minutes) m += t.est_minutes; else un++; n++; }); return { m, n, un }; }
+const wkRange = mon => { const a = parseISO(mon), b = parseISO(addDays(mon, 6)), M = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]; return a.getDate() + (a.getMonth() === b.getMonth() ? "" : " " + M[a.getMonth()]) + "–" + b.getDate() + " " + M[b.getMonth()]; };
+const wkHrs = m => (Math.round(m / 6) / 10).toString().replace(".", ",") + " ч";
+function wkCheck(id) {
+  const t = S.tasks[id], lim = (PR.wlim || 0) * 60; if (!t || !lim || t.done || t.parent_id || !t.due || !t.est_minutes || !wkLists().has(t.list_id)) return;
+  const mon = wkMon(t.due), ld = wkLd(mon);
+  if (ld.m <= lim) return;
+  ui.wkw = ui.wkw || {}; if (Date.now() - (ui.wkw[mon] || 0) < 8000) return; ui.wkw[mon] = Date.now();   // не дублировать предупреждение
+  let k = 1; while (k <= 12 && wkLd(addDays(mon, 7 * k), id).m + t.est_minutes > lim) k++;
+  const msg = "Неделя " + wkRange(mon) + " заполнена: " + wkHrs(ld.m) + " из " + wkHrs(lim);
+  if (k > 12) { toast(msg + ". Свободных недель впереди не нашлось", { ms: 7000 }); return; }
+  const nd = addDays(t.due, 7 * k);
+  toast(msg, { ms: 9000, buttons: [["На " + wkRange(wkMon(nd)), () => { upd(id, { due: nd }); render(); }]] });
 }
 const inMyDay = t => t.my_day_date === today;
 function setMyDay(id, on) { upd(id, { my_day: !!on, my_day_date: on ? today : null }); }
@@ -1548,7 +1568,8 @@ const dayChanges = {
   "rp-to"(v) { if (ui.dsheet && v) { ui.dsheet.to = v; render(); } },
   "s-ds"(v) { PR.dayStart = +v; if (PR.dayEnd <= PR.dayStart) PR.dayEnd = PR.dayStart + 1; savePrefs(); render(); },
   "s-de"(v) { PR.dayEnd = Math.max(+v, PR.dayStart + 1); savePrefs(); render(); },
-  "s-rs"(v) { PR.reserve = +v; savePrefs(); render(); }
+  "s-rs"(v) { PR.reserve = +v; savePrefs(); render(); },
+  "s-wl"(v) { PR.wlim = +v; savePrefs(); render(); }
 };
 function dayInput(id, v) { if (id === "ds-q" && ui.dsheet && ui.dsheet.t === "pick") { ui.dsheet.q = v; render(); } }
 
@@ -2787,6 +2808,7 @@ const addCSS = `
 .addbar.v2 .arow{display:flex;align-items:center;gap:12px;height:48px;padding:0 14px}
 .addbar.v2 .arow input{height:100%}
 .achips{display:flex;align-items:center;gap:6px;padding:4px 10px 8px 14px;border-top:1px solid var(--ln)}
+.wkbar{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;padding:8px 14px 2px}.wkc{flex:1 1 150px;min-width:140px;max-width:260px;background:var(--card,rgba(127,127,127,.12));border-radius:10px;padding:7px 10px;font-size:calc(12px*var(--z,1))}.wkt{display:flex;justify-content:space-between;gap:6px}.wkt span{opacity:.6}.wkp{height:6px;border-radius:4px;background:rgba(127,127,127,.25);margin:5px 0 3px;overflow:hidden}.wkp i{display:block;height:100%;background:#3fb950;border-radius:4px}.wkc.wa .wkp i{background:#e3b341}.wkc.ov .wkp i{background:#f85149}.wkc.ov .wkn{color:#f85149;font-weight:600}.wkn{opacity:.85}.wkbar .tool{align-self:center}
 .achip{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--sub);border-radius:6px;padding:5px 9px;font-size:calc(12px*var(--z,1));cursor:pointer}
 .achip:hover{background:var(--hov)} .achip.on{background:var(--sel);color:var(--acc)}
 .abtn{border:1px solid var(--ln);background:transparent;color:var(--sub);border-radius:6px;padding:5px 14px;font-size:calc(12.5px*var(--z,1));cursor:pointer}
@@ -4350,6 +4372,24 @@ function rowBase(t, showList, depth) {
     '<div class="tbody"><div class="ttl">' + esc(t.title) + "</div>" + metaHTML(t, showList, depth === 0 && !!t.parent_id) + "</div>" +
     subBtn(t) + (!t.parent_id && !t.done ? (ORK[t.id] ? '<button class="ordb" data-a="ordtog" data-id="' + t.id + '" title="Очередь выполнения. Клик или Пробел — снять; Alt+↑↓ — сдвинуть">' + ORK[t.id] + "</button>" : '<button class="ordb ghost" data-a="ordtog" data-id="' + t.id + '" title="В очередь (Пробел)">№</button>') : "") + '<button class="star ' + (t.starred ? "on" : "") + '" data-a="star" data-id="' + t.id + '" title="Важно">' + (t.starred ? icf("star", 18) : ic("star", 18)) + "</button></div>";
 }
+
+
+const WK_HEADS = ["Задача", "Срок", "День", "Неделя", "Длительность, ч", "Длительность, мин", "Список", "Категория", "Важно", "Подзадачи", "Заметка", "Напоминание", "Повтор"];
+function wkRows() {
+  const L = {}, DW = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"]; listsArr().forEach(l => { L[l.id] = l.name; });
+  const dt = v => { if (!v) return ""; const x = new Date(v); return isNaN(x) ? "" : isoLocal(x) + " " + pad(x.getHours()) + ":" + pad(x.getMinutes()); };
+  return wkTasks().sort((a, b) => a.due.localeCompare(b.due) || String(a.created_at || "").localeCompare(String(b.created_at || ""))).map(t => [t.title, t.due, DW[parseISO(t.due).getDay()], wkRange(wkMon(t.due)),
+    t.est_minutes ? Math.round(t.est_minutes / 6) / 10 : "", t.est_minutes || "", L[t.list_id] || "", t.category || "", t.starred ? "да" : "", kidsOf(t.id).map(k => k.title).join("; "), (t.note || "").replace(/\s+/g, " ").trim(), dt(t.remind_at), t.repeat_rule ? repeatText(t.repeat_rule) : ""]);
+}
+function wkBarHTML() {
+  const lim = PR.wlim * 60, m0 = wkMon(todayISO()), nm = ["Эта неделя", "Следующая", "Через неделю", "Через 2 недели"];
+  let h = '<div class="wkbar">';
+  for (let k = 0; k < 4; k++) {
+    const mon = addDays(m0, 7 * k), ld = wkLd(mon), pc = Math.min(100, Math.round(ld.m * 100 / lim)), cls = ld.m > lim ? "ov" : ld.m > lim * .8 ? "wa" : "ok";
+    h += '<div class="wkc ' + cls + '" title="' + wkRange(mon) + (ld.un ? " · без оценки времени: " + ld.un : "") + '"><div class="wkt"><b>' + nm[k] + "</b><span>" + wkRange(mon) + '</span></div><div class="wkp"><i style="width:' + pc + '%"></i></div><div class="wkn">' + wkHrs(ld.m) + " из " + wkHrs(lim) + (ld.m > lim ? " · перебор" : "") + (ld.un ? " · +" + ld.un + " без оценки" : "") + "</div></div>";
+  }
+  return h + '<button class="tool" data-a="wkexp" title="Скопировать задачи списка «Работа» для вставки в Excel">' + ic("copy", 16) + '<span class="tl"> Для Excel</span></button><button class="tool" data-a="wkxlsx" title="Скачать .xlsx">' + ic("down", 16) + '<span class="tl"> .xlsx</span></button></div>';
+}
 function mainHTML(items, done, vi) {
   ordBuild(items);
   const fr = freshTask(items), grid = false, showList = view.indexOf("list:") !== 0, sorted = sortItems((fr ? items.filter(t => t !== fr) : items).slice());
@@ -4363,6 +4403,7 @@ function mainHTML(items, done, vi) {
       '<button class="tool" data-a="pop" data-p="sort">' + ic("sort", 16) + '<span class="tl"> Сортировка</span></button><button class="tool" data-a="pop" data-p="group">' + ic("group", 16) + '<span class="tl"> Группировать</span></button>' + fltBtns() + '<button class="tool" data-a="trgo" title="Пройти задачи по одной и расставить сроки">⚡<span class="tl"> Разобрать</span></button>' : "") + "</div>" +
     '<div class="msub mrow"><span class="mrc">' + (vi.sub ? esc(vi.sub) : "") + '</span><span class="mchips">' + (view === "search" ? srchModeHTML() : "") + (isMobile() ? "" : sc && view !== "search" ? '<span class="sortchip"><button data-a="pop" data-p="sort" title="Настроить сортировку" style="font:inherit;color:inherit;display:inline-flex;align-items:center;gap:6px">' + ic(sc.dir === 1 ? "up" : "down", 13) + ' <span class="dsk">Сортировка:</span> ' + SORTS[sc.by].n.toLowerCase() + '</button> <button data-a="sortclr" style="color:var(--sub);display:flex">' + ic("x", 13) + "</button></span>" : "") + (isMobile() ? "" : fltBarHTML()) + "</span></div>" + (isMobile() && view !== "search" ? mToolsHTML() + (items.length ? '<div class="trgrow"><button class="trgo" data-a="trgo">⚡ Разобрать сроки · ' + items.length + "</button></div>" : "") : "");
   if (view !== "search" && !isMobile()) h += addBarHTML();
+  if (PR.wlim && vi.list && wkLists().has(vi.list.id)) h += wkBarHTML();
   if (view === "myday" && ui.sugg) {
     const sg = suggestions();
     h += '<div class="sugg"><div class="st">Предложения<span style="flex:1"></span><button data-a="sugg" class="ibtn" style="width:26px;height:26px">' + ic("x", 14) + "</button></div>" +
@@ -4526,6 +4567,7 @@ function settingsHTML() {
     G("Рабочий день",
       R("Начало дня", "Для плана и сетки «День»", sel("s-ds", PR.dayStart, [6, 7, 8, 9, 10].map(h => [h, "с " + h + ":00"]))) +
       R("Конец дня", "", sel("s-de", PR.dayEnd, [14, 15, 16, 17, 18, 19, 20, 21, 22].map(h => [h, "до " + h + ":00"]))) +
+      R("Лимит недели (список «Работа»)", "Сколько часов задач помещается в неделю; при переполнении предупрежу и предложу следующую", sel("s-wl", PR.wlim || 0, [0, 20, 25, 30, 32, 35, 40, 45, 50].map(h => [h, h ? h + " ч" : "без лимита"]))) +
       R("Резерв времени", "Запас на непредвиденное в плане дня", sel("s-rs", PR.reserve, [0, 10, 20, 25, 30, 40].map(p => [p, p + "%"])))) +
     G("План и напоминания",
       (isLite() ? "" : R("Утренний план", "Сам открывается при первом входе за день", TG("s-rit", !PR.ritOff && !PR.ritHide))) +
@@ -5573,6 +5615,16 @@ const acts = {
   nstick() { jset("mytasks_nstick", !stickOn()); syncStick(); toast(stickOn() ? "Уведомления будут висеть, пока не нажмёшь" : "Уведомления будут исчезать сами"); render(); },
   openadd() { jset("mytasks_openadd", !jget("mytasks_openadd", false)); toast(jget("mytasks_openadd", false) ? "При запуске приложения сразу откроется «Новая задача» (удобно для голосовой команды «Открой Мои дела»)" : "Выключено"); render(); },
   meetset() { location.href = "moidela://meet"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
+  wkexp() {
+    const r = wkRows(); if (!r.length) { toast("В списке «Работа» нет открытых задач со сроком"); return; }
+    const tx = [WK_HEADS].concat(r).map(x => x.map(c => String(c).replace(/[\t\r\n]+/g, " ")).join("\t")).join("\n");
+    try { navigator.clipboard.writeText(tx).then(() => toast("Скопировано задач: " + r.length + ". Вставь в Excel (Ctrl+V)"), () => toast("Не удалось скопировать")); } catch (e) { toast("Не удалось скопировать"); }
+  },
+  wkxlsx() {
+    const r = wkRows(); if (!r.length) { toast("В списке «Работа» нет открытых задач со сроком"); return; }
+    bkDownload("moi-dela-rabota-" + todayISO() + ".xlsx", new Blob([xlsxBook([{ name: "Работа", heads: WK_HEADS, widths: [46, 12, 6, 14, 10, 10, 14, 14, 7, 40, 40, 17, 18], rows: r }])], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    toast("Файл скачан: задач " + r.length);
+  },
   doorset() { location.href = "moidela://door"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
   lyrset() { location.href = "moidela://lyrics"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
   voiceset() { location.href = "moidela://voice"; setTimeout(() => toast("Нужна свежая версия APK из релиза apk-latest"), 1500); },
@@ -7327,7 +7379,7 @@ async function checkBuild() {
   } catch (e) {}
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
-if (CFG0.TEST) window.__t = { TM, mvOpen, themeFx, TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge };
+if (CFG0.TEST) window.__t = { TM, mvOpen, themeFx, TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge, wkRows, wkLd, wkMon, wkCheck, wkBarHTML, wkLists };
 let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
 function loadHealth() {
   if (hlLoading || HLM) return; hlLoading = true;
