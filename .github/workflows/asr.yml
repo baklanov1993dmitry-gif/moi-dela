@@ -25,4 +25,4 @@ jobs:
         run: |
           cd out
           gh release delete asr -y --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
-          gh release create asr asr-ru.zip --repo "$GITHUB_REPOSITORY" --title "Распознавание речи (ru)" --notes "GigaAM v3 CTC с пунктуацией (лицензия MIT) + Silero VAD для расшифровки совещаний в приложении." 
+          gh release create asr asr-ru.zip p/model.int8.onnx --repo "$GITHUB_REPOSITORY" --title "Распознавание речи (ru)" --notes "GigaAM v3 CTC с пунктуацией (лицензия MIT) + Silero VAD для расшифровки совещаний в приложении." 

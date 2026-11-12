@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "12.11 10:19";
+const BUILD = "12.11 16:32";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -479,6 +479,7 @@ const IC = {
   star: '<polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   tag: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.2"/>',
+  mic: '<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>',
   heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   link: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
@@ -3895,6 +3896,7 @@ const CSS = `
 .dcard{background:var(--card);box-shadow:var(--shadow);border:var(--cbd);border-radius:var(--rad);margin-bottom:6px;overflow:hidden;flex-shrink:0}
 .dcard.grow{flex:1 0 220px;display:flex;flex-direction:column;margin-bottom:0}
 .nfoot{display:none}
+body.dropfile.asrv::after{content:"Отпусти запись — она пойдёт на расшифровку"}
 body.dropfile::after{content:"Отпусти файл — он прикрепится к открытой задаче или попадёт в список «Файлы»";position:fixed;inset:10px;z-index:9998;border:3px dashed var(--acc);border-radius:16px;background:rgba(61,143,224,.10);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--acc);pointer-events:none;text-align:center;padding:20px}
 .imgrow{align-items:flex-start;gap:8px}.athumb{display:block;max-width:calc(100% - 36px);max-height:220px;border-radius:8px;object-fit:contain;background:var(--hov);cursor:zoom-in;min-height:40px;min-width:60px}.lbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out}.lbox img{max-width:94vw;max-height:90vh;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5)}.lbdl{position:absolute;right:16px;top:14px;color:#fff;background:rgba(255,255,255,.16);padding:7px 14px;border-radius:18px;font-size:14px;text-decoration:none}
 .dcard.grow{position:relative}.nexp{position:absolute;right:8px;top:6px;z-index:2;font-size:calc(12.5px*var(--z,1));color:var(--sub);background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;cursor:pointer;opacity:.85}.nexp:hover{opacity:1;color:var(--tx);background:var(--hov)}
@@ -4118,6 +4120,7 @@ function viewInfo() {
   if (view === "files") return { svg: "clip", name: "Файлы", sub: "Хранилище: с компьютера на телефон и обратно" };
   if (view === "notes") return { svg: "bulb", name: "Заметки", sub: "Мысли, идеи, наблюдения — только для тебя" };
   if (view === "know") return { svg: "book", name: "Знания", sub: "Нейросети и Claude: выжимки и подробности" };
+  if (view === "asr") return { svg: "mic", name: "Расшифровка", sub: "Запись совещания → текст. Всё считается на этом компьютере" };
   if (view === "health") return { svg: "heart", name: "Здоровье", sub: "Дневник самочувствия — только для тебя" };
   if (view === "journal") return { svg: "note", name: "Журнал", sub: "Что делал: со временем или за период" };
   if (view === "starred") return { svg: "star", name: "Важно" };
@@ -4318,7 +4321,7 @@ function weekMainHTML(vi) {
 // порядок пунктов левого меню: PR.mord = { top:[...], dia:[...], wrk:[...] } (задаётся в режиме «Порядок меню»)
 const MNU_TOP = [["myday", "Мой день"], ["day", "День по часам"], ["files", "Файлы"], ["dia", "Дневники"], ["wrk", "Работа"], ["lists", "Списки"], ["arch", "Архив"]];
 const MNU_DIA = [["journal", "note", "Журнал", "#8764b8"], ["food", "food", "Питание", "#e3680c"], ["health", "heart", "Здоровье", "#e5484d"], ["notes", "bulb", "Заметки", "#2b88d8"], ["know", "book", "Знания", "#7c5cff"], ["trk", "pin", "Трекер", "#107c10"]];
-const MNU_WRK = [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"]];
+const MNU_WRK = [["team", "users", "Команда", "#8764b8"], ["week", "ccheck", "Итоги недели", "#038387"], ["asr", "mic", "Расшифровка", "#c2410c"]];
 function mnuOrder(k, items) {
   const ids = items.map(x => Array.isArray(x) ? x[0] : x), o = (PR.mord || {})[k] || [];
   const list = o.filter(x => ids.includes(x)).concat(ids.filter(x => !o.includes(x)));
@@ -5285,7 +5288,7 @@ function appHTML() {
     for (let i = items.length - 1; i >= 0; i--) if (hid(items[i])) items.splice(i, 1);
     for (let i = done.length - 1; i >= 0; i--) if (hid(done[i])) done.splice(i, 1); }
   done.sort((a, b) => String(b.done_at || "").localeCompare(String(a.done_at || "")));
-  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "know" ? (KNM ? KNM.html(viewInfo()) : "") : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (view === "files" ? filesDetailHTML() : selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + triageHTML() + mvHTML() + trkHTML() + tmeHTML();
+  return topHTML() + '<div id="body">' + leftHTML(c) + (view === "day" ? dayMainHTML(viewInfo()) : view === "week" ? weekMainHTML(viewInfo()) : view.indexOf("team") === 0 ? teamMainHTML(viewInfo()) : view === "journal" ? journalMainHTML(viewInfo()) : view === "files" ? filesMainHTML(viewInfo()) : view === "food" ? nutriMainHTML(viewInfo()) : view === "notes" ? (NTM ? NTM.html(viewInfo()) : "") : view === "know" ? (KNM ? KNM.html(viewInfo()) : "") : view === "asr" ? (ASRM ? ASRM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Расшифровку»…</div></div></div>') : view === "health" ? (HLM ? HLM.html(viewInfo()) : '<div id="main" class="pane" style="flex:1">' + mtopHTML(viewInfo(), 1, "") + '<div class="scroll" id="list"><div style="padding:70px 20px;text-align:center;color:var(--sub)">Загружаю «Здоровье»…</div></div></div>') : mainHTML(items, done, viewInfo())) + (view === "files" ? filesDetailHTML() : selId ? detailHTML(S.tasks[selId]) : "") + "</div>" + (ui.settings ? settingsHTML() : "") + noteFullHTML() + qaHTML() + popHTML() + dsheetHTML() + ritualHTML() + triageHTML() + mvHTML() + trkHTML() + tmeHTML();
 }
 function renderSoon() { if (down) { want = true; return; } render(); }
 function morphKeep(o, n, keep, nk) {
@@ -5407,9 +5410,10 @@ function menuSlideOpen() {
 function render() {
   want = false;
   if (ui.mv && !ui.mv.busy) { try { mvRead(); } catch (e) {} }   // правки в окне переноса не теряются при фоновых перерисовках
-  if (isLite()) { if (view === "journal" || view === "food" || view === "notes" || view === "know" || view === "health" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
+  if (isLite()) { if (view === "journal" || view === "food" || view === "notes" || view === "know" || view === "health" || view === "asr" || view.indexOf("team") === 0) view = "all"; if (ui.trk) ui.trk = false; }
   try { updBadge(); } catch (e) {}
   if (view === "health" && !HLM) loadHealth();
+  if (view === "asr" && !ASRM) loadAsr();
   const app = $("app"); if (!app) return;
   const ae = document.activeElement, fid = ae && ae.id && app.contains(ae) ? ae.id : null;
   let rs = null; if (ae && ae.classList && ae.classList.contains("rte") && ae.id && app.contains(ae)) { try { rteFlush(); const sl = getSelection(); if (sl.rangeCount) { const r0 = sl.getRangeAt(0); rs = [ae.id, rteCount(ae, r0.startContainer, r0.startOffset), rteCount(ae, r0.endContainer, r0.endOffset), ae.scrollTop]; } } catch (e) {} }   // редактор заметки: сохраняем и позицию курсора
@@ -7345,11 +7349,12 @@ function init() {
   app.addEventListener("dragstart", e => { const r = e.target.closest && e.target.closest(".taskrow"); if (r) { e.dataTransfer.setData("text/plain", ui.multi && ui.multi[r.dataset.id] && mIds().length > 1 ? mIds().join(",") : r.dataset.id); e.dataTransfer.effectAllowed = "move"; ui.dragId = r.dataset.id; } });
   app.addEventListener("dragend", () => { ui.dragId = null; document.querySelectorAll(".taskrow.dropb").forEach(x => x.classList.remove("dropb")); });
   const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].indexOf("Files") >= 0;   // перетаскивание файлов С КОМПЬЮТЕРА (внутренние перетаскивания задач не трогаем)
-  document.addEventListener("dragover", e => { if (!S.user || isLite() || !hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); document.body.classList.add("dropfile"); }, true);
+  document.addEventListener("dragover", e => { if (!S.user || isLite() || !hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); document.body.classList.toggle("asrv", view === "asr"); document.body.classList.add("dropfile"); }, true);
   document.addEventListener("dragleave", e => { if (!e.relatedTarget) document.body.classList.remove("dropfile"); }, true);
   document.addEventListener("drop", e => {
     if (!S.user || isLite() || !hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); document.body.classList.remove("dropfile");
     const fs = [...e.dataTransfer.files]; if (!fs.length) return;
+    if (view === "asr" && ASRM) { ASRM.add(fs); return; }   // в «Расшифровке» файл идёт на расшифровку, а не в «Файлы»
     if (selId && S.tasks[selId]) uploadAll(fs, selId); else fileTransfer(fs);
   }, true);
   app.addEventListener("dragover", e => { if (e.target.closest && e.target.closest(".chip[data-lid]")) return; const r = e.target.closest && e.target.closest("#main .taskrow"); if (r && ui.dragId && r.dataset.id !== ui.dragId) { e.preventDefault(); document.querySelectorAll(".taskrow.dropb").forEach(x => { if (x !== r) x.classList.remove("dropb"); }); r.classList.add("dropb"); } });
@@ -7446,6 +7451,13 @@ async function checkBuild() {
 }
 ["jrmk", "jrsum", "jran", "jrhist", "jrxl", "jrimp"].forEach(n => { const f = acts[n]; acts[n] = function () { jrState().menu = false; jrState().tg = false; const r = f.apply(this, arguments); if (n === "jrxl" || n === "jrimp") render(); return r; }; });
 if (CFG0.TEST) window.__t = { TM, mvOpen, themeFx, TRK, trkMetroPath, trkMetroGraph, trkMetro, trkBuild, trkPack, trkUnpack, trkRuns, trkSimplify, localParse, TM, S, getP: () => P, flush, loadAll, getView: () => view, todayISO, addDays, addTask, toggleDone, nextDue, acts, render, ui, PR, goView, setMyDay, upd, checkReminders, sortItems, groupItems, matches, buildIcs, gcalUrl, parseTimeText, pushOn, buildXlsx, reportRows, dayBlocks, daySubmit, addLogX: addLog, NG, ngTick, ngShow, ngBoxHTML, ngBadge, wkRows, wkLd, wkMon, wkCheck, wkBarHTML, wkLists };
+let ASRM = null, asrLoading = false;   // «Расшифровка» (asr.js): тоже лениво
+function loadAsr() {
+  if (asrLoading || ASRM) return; asrLoading = true;
+  const ok = () => { try { ASRM = window.ASR_INIT({ ic, esc, $, render, toast, mtopHTML, acts }); } catch (e) { console.error(e); toast("Не удалось открыть «Расшифровку»"); } asrLoading = false; render(); };
+  if (window.ASR_INIT) return ok();
+  const sc = document.createElement("script"); sc.src = "asr.js?v=1"; sc.onload = ok; sc.onerror = () => { asrLoading = false; toast("Нет связи: «Расшифровка» не загрузилась"); }; document.head.appendChild(sc);
+}
 let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
 function loadHealth() {
   if (hlLoading || HLM) return; hlLoading = true;

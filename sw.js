@@ -1,5 +1,5 @@
 // Версию поднимай при каждом обновлении оболочки (иконки/манифест). index.html отдаётся из кэша мгновенно и обновляется в фоне.
-const CACHE = "moidela-shell-v290";
+const CACHE = "moidela-shell-v291";
 const SHELL = ["./", "./index.html", "./webshooter.png", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./manifest-journal.json", "./manifest-food.json", "./manifest-tasks.json", "./notes.js", "./knowledge.js", "./knowledge-data.js", "./health.js", "./icon-journal-192.png", "./icon-food-192.png", "./icon-tasks-192.png", "./foods.json?v=4"];
 
 self.addEventListener("install", e => {
@@ -8,7 +8,7 @@ self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html"]).then(() => Promise.all(SHELL.map(u => c.add(u).catch(() => {}))))));
 });
 self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== "moidela-prefs").map(k => caches.delete(k)))));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== "moidela-prefs" && k !== "moidela-asr" && k !== "moidela-asr-lib").map(k => caches.delete(k)))));
   self.clients.claim();
 });
 // Chrome не разрешает отвечать на переход по ссылке ответом, который прошёл через редирект (Cloudflare Pages: /index.html → /): будет ERR_FAILED, то есть «This site can\'t be reached».
@@ -22,6 +22,11 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;          // Supabase и всё чужое — мимо кэша, всегда напрямую
   if (url.pathname.endsWith("build.txt")) return;
+  if (url.pathname.indexOf("/asr-model/") >= 0) return;   // модель расшифровки (≈225 МБ): только напрямую, в кэш оболочки не кладём
+  if (url.pathname.indexOf("/asr/") >= 0) {               // библиотеки расшифровки (ONNX Runtime ≈15 МБ): сначала свой долгий кэш, версия — в ?v=
+    e.respondWith(caches.open("moidela-asr-lib").then(c => c.match(req).then(hit => hit || fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }))));
+    return;
+  }
   if (url.searchParams.has("fresh")) return;           // принудительно с сервера (обновление версии)      // метка версии — всегда с сервера
   const isShell = req.mode === "navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("index.html") || url.pathname.endsWith("manifest.json");
   if (isShell) {                                        // страница: мгновенно из кэша, свежая версия подтягивается в фоне (новый билд подхватит checkBuild)
