@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "10.11 22:22";
+const BUILD = "12.11 09:23";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -4621,8 +4621,17 @@ function authHTML() {
     '<form id="authform"><input id="a-email" class="inp" type="email" autocomplete="username" placeholder="Почта" style="margin-bottom:8px">' +
     '<input id="a-pass" class="inp" type="password" autocomplete="current-password" placeholder="Пароль (минимум 6 символов)" style="margin-bottom:12px">' +
     '<div style="display:flex;gap:8px"><button type="button" class="btn" data-a="login" style="flex:1">Войти</button><button type="button" class="btn ghost" data-a="signup" style="flex:1">Создать аккаунт</button></div><button type="submit" hidden></button></form>' +
+    '<div style="margin-top:10px"><a href="#" data-a="forgot" style="font-size:calc(13px*var(--z,1));color:var(--sub);text-decoration:underline">Забыли пароль?</a></div>' +
     msgHTML() + '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-a="ping">📡 Проверить связь</button>' + (cfg.baked ? "" : '<button class="btn ghost" data-a="resetcfg">Сменить подключение</button>') + '</div>' +
     '<div style="margin-top:18px;font-size:calc(11px*var(--z,1));color:var(--sub);opacity:.7">сборка ' + BUILD + "</div></div></div>";
+}
+function recovHTML() {
+  return '<div class="authwrap"><div class="authbox"><div style="font-size:1.9em;font-weight:700">Новый пароль</div>' +
+    '<div style="margin:4px 0 16px;font-size:calc(14px*var(--z,1));color:var(--sub)">Придумайте пароль — им вы будете входить в «Мои дела»</div>' +
+    '<form id="recform"><input id="r-p1" class="inp" type="password" autocomplete="new-password" placeholder="Новый пароль (минимум 6 символов)" style="margin-bottom:8px">' +
+    '<input id="r-p2" class="inp" type="password" autocomplete="new-password" placeholder="Повторите пароль" style="margin-bottom:12px">' +
+    '<button type="button" class="btn" data-a="recsave" style="width:100%">Сохранить и войти</button><button type="submit" hidden></button></form>' +
+    msgHTML() + '<div style="margin-top:12px"><button class="btn ghost" data-a="reccancel">Отмена</button></div></div></div>';
 }
 function setupHTML() {
   return '<div class="authwrap"><div class="authbox" style="width:min(520px,92vw)"><div style="font-size:1.9em;font-weight:700">Подключение к облаку</div>' +
@@ -5401,7 +5410,7 @@ function render() {
   if (pendingOpen && S.tasks[pendingOpen]) { selId = pendingOpen; pendingOpen = null; ui.left = false; }
   const kbKeep = !!(ui.qa && document.activeElement && document.activeElement.id === "qa-input");   // клавиатура была открыта — не закрываем
   const gh = ghostGrab();   // «призраки» уходящих элементов — чтобы закрытие было плавным, а не мгновенным
-  const html = screen === "setup" ? setupHTML() : (!S.user ? authHTML() : ui.mfaGate ? mfaGateHTML() : appHTML());
+  const html = screen === "setup" ? setupHTML() : ui.recov ? recovHTML() : (!S.user ? authHTML() : ui.mfaGate ? mfaGateHTML() : appHTML());
   let kept = false;   // поиск: поле ввода остаётся живым (не теряем клавиатуру/композицию), перерисовывается всё вокруг
   if ((fid === "q" || (fid === "qa-input" && ui.qa) || (rs && fid)) && S.user && screen !== "setup") { try { const tmp = document.createElement(app.tagName); tmp.innerHTML = html; const nk = tmp.querySelector("#" + fid); if (nk) kept = morphKeep(app, tmp, ae, nk); } catch (e) { kept = false; } }   // поле ввода (в т.ч. редактор заметки задачи) остаётся живым: курсор не пересоздаётся
   if (kept) rs = null;
@@ -5434,6 +5443,31 @@ async function doAuth(kind) {
     const sess = r.data && r.data.session;
     if (sess) { showMsg("", true); setUser(sess.user); }
     else showMsg("Аккаунт создан, но Supabase требует подтвердить почту. Подтвердите письмо или отключите «Confirm email» и нажмите «Войти».", false);
+  } catch (e) { showMsg(authErr(e), false); }
+  finally { ui.busy = false; }
+}
+async function doForgot() {
+  const email = (($("a-email") || {}).value || "").trim();
+  if (!email) return showMsg("Впишите свою почту в поле выше и нажмите «Забыли пароль?» ещё раз", false);
+  if (ui.busy) return; ui.busy = true; showMsg("Отправляю письмо…", true);
+  try {
+    const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (r.error) return showMsg(authErr(r.error), false);
+    showMsg("Письмо отправлено на " + email + ". Откройте его и перейдите по ссылке (проверьте «Спам»). Ссылка действует недолго.", true);
+  } catch (e) { showMsg(authErr(e), false); }
+  finally { ui.busy = false; }
+}
+async function doRecSave() {
+  const p1 = ($("r-p1") || {}).value || "", p2 = ($("r-p2") || {}).value || "";
+  if (p1.length < 6) return showMsg("Пароль — минимум 6 символов", false);
+  if (p1 !== p2) return showMsg("Пароли не совпадают", false);
+  if (ui.busy) return; ui.busy = true; showMsg("Сохраняю…", true);
+  try {
+    const r = await sb.auth.updateUser({ password: p1 });
+    if (r.error) return showMsg(/same|different/i.test(r.error.message || "") ? "Новый пароль должен отличаться от старого" : authErr(r.error), false);
+    ui.recov = false; showMsg("", true);
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    const g = await sb.auth.getSession(); setUser(g && g.data && g.data.session && g.data.session.user); render();
   } catch (e) { showMsg(authErr(e), false); }
   finally { ui.busy = false; }
 }
@@ -5538,10 +5572,16 @@ async function logout() {
 }
 async function boot() {
   cfg = getCfg();
+  try {
+    const hh = location.hash || "";
+    if (/type=recovery/.test(hh)) ui.recov = true;
+    else if (/error_code=otp_expired|error_description=.*(expired|invalid)/i.test(hh)) { ui.msg = "Ссылка из письма устарела или уже использована. Нажмите «Забыли пароль?» и запросите новое письмо."; ui.msgOk = false; history.replaceState(null, "", location.pathname); }
+  } catch (e) {}
   if (!cfg.url || !cfg.key) { screen = "setup"; render(); return; }
   if (!window.supabase || !window.supabase.createClient) { $("app").textContent = "Не загрузилась библиотека Supabase. Пересоберите файл."; return; }
   sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { storageKey: "mytasks-auth", persistSession: true, autoRefreshToken: true } });
   sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === "PASSWORD_RECOVERY") { ui.recov = true; setTimeout(render, 0); return; }   // пришли по ссылке «Забыли пароль» — просим новый пароль
     if (ev === "INITIAL_SESSION") return;   // уже обработали явно в boot() — там учтён офлайн-кэш; если это событие тоже сработает, оно может затереть восстановленного из кэша пользователя
     if (!session && !navigator.onLine) return;   // нет сети — не разлогиниваем, продолжаем работать из кэша
     setTimeout(() => setUser(session && session.user), 0);
@@ -5799,6 +5839,7 @@ const acts = {
   mfastart() { mfaStart(); }, mfaok() { mfaEnrollOk(); },
   mfacancel() { const f = ui.mfaEnr && ui.mfaEnr.fid; ui.mfaEnr = null; if (f) sb.auth.mfa.unenroll({ factorId: f }).catch(() => {}); render(); },
   async mfaoff() { if (!ui.mfaF || !ui.mfaF.fid || !confirm("Отключить двухфакторную защиту?")) return; try { const r = await sb.auth.mfa.unenroll({ factorId: ui.mfaF.fid }); if (r.error) throw r.error; ui.mfaF = { on: false }; render(); toast("2FA отключена"); } catch (e) { showMsg("Не вышло отключить: " + ((e && e.message) || e), false); } },
+  forgot(a, e) { if (e && e.preventDefault) e.preventDefault(); doForgot(); }, recsave() { doRecSave(); }, reccancel() { ui.recov = false; sb.auth.signOut().catch(() => {}); try { history.replaceState(null, "", location.pathname); } catch (e) {} render(); },
   login() { doAuth("login"); }, signup() { doAuth("signup"); }, savecfg() { saveCfg(); },
   resetcfg() { try { localStorage.removeItem(LSK.cfg); } catch (e) {} cfg = getCfg(); screen = "setup"; ui.msg = ""; render(); },
   delTask() { if (!selId) return; deleteTask(selId); render(); },
@@ -7195,6 +7236,7 @@ function init() {
     else if (id === "qaform") submitQA();
     else if (e.target.classList && e.target.classList.contains("subadd")) subSubmit(e.target);
     else if (id === "authform") doAuth("login");
+    else if (id === "recform") doRecSave();
     else if (id === "mfaform") mfaGateSubmit();
     else if (id === "dtpform") dtpActs.dok();
     else daySubmit(id);
