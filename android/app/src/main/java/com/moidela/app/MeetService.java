@@ -49,7 +49,7 @@ public class MeetService extends Service {
         } catch (Throwable e) { }
     }
     static File modelDir(Context c) { return new File(c.getApplicationContext().getFilesDir(), "asr"); }
-    static boolean modelReady(Context c) { File d = modelDir(c); return new File(d, "model.int8.onnx").exists() && new File(d, "tokens.txt").exists() && new File(d, "silero_vad.onnx").exists() && new File(d, ".ok").exists(); }
+    static boolean modelReady(Context c) { File d = modelDir(c); return new File(d, "model.int8.onnx").exists() && new File(d, "tokens.txt").exists() && new File(d, "silero_vad.onnx").exists() && new File(d, "ver3").exists() && new File(d, ".ok").exists(); }
 
     @Override public IBinder onBind(Intent i) { return null; }
 
@@ -131,7 +131,7 @@ public class MeetService extends Service {
 
     // ---------------- расшифровка ----------------
     private void startTr(final String wav) {
-        log(this, "расшифровка: старт " + wav); tr = true; stop = false; prog = 0; segs = 0; lines = 0; peakAll = 0; trName = new File(wav).getName(); status = "Расшифровка…";
+        log(this, "расшифровка: старт " + wav); hpX = 0; hpY = 0; tr = true; stop = false; prog = 0; segs = 0; lines = 0; peakAll = 0; trName = new File(wav).getName(); status = "Расшифровка…";
         new Thread(new Runnable() { public void run() {
             File txt = new File(wav.replace(".wav", ".txt")), part = new File(wav.replace(".wav", ".part"));
             OfflineRecognizer rc = null; Vad vad = null; java.io.Writer w = null; FileInputStream in = null;
@@ -151,6 +151,7 @@ public class MeetService extends Service {
                 while (!stop && (n = in.read(bb)) > 0) {
                     float[] fs = new float[n / 2];
                     for (int i = 0; i < fs.length; i++) { fs[i] = (short) ((bb[2 * i] & 0xff) | (bb[2 * i + 1] << 8)) / 32768f; float av = Math.abs(fs[i]); if (av > peakAll) peakAll = av; }
+                    hp(fs);   // срез гула до детектора речи и распознавания
                     vad.acceptWaveform(fs); done += n;
                     drain(rc, vad, w);
                     prog = (int) (done * 100 / Math.max(1, len));
@@ -175,6 +176,28 @@ public class MeetService extends Service {
         } }).start();
     }
 
+    // ---- подготовка звука: срез низкого гула (кондиционер, стук по столу, ветер) — 1-го порядка, ~90 Гц; состояние переносится между кусками ----
+    private float hpX = 0, hpY = 0;
+    private void hp(float[] x) {
+        final float a = 0.9658f;   // exp(-2*pi*90/16000)
+        for (int i = 0; i < x.length; i++) { float v = x[i]; float y = a * (hpY + v - hpX); hpX = v; hpY = y; x[i] = y; }
+    }
+
+    // ---- словарь автозамены: типичные аббревиатуры, которые распознаются буквами/строчными ----
+    private static final String[][] DICT = {
+        {"н\\s?к\\s?у|эн\\s?ку", "НКУ"}, {"в\\s?р\\s?у", "ВРУ"}, {"а\\s?в\\s?р", "АВР"}, {"у\\s?з\\s?о", "УЗО"},
+        {"т\\s?к\\s?п", "ТКП"}, {"т\\s?з", "ТЗ"}, {"к\\s?з", "КЗ"}, {"о\\s?т\\s?р", "ОТР"}, {"р\\s?у\\s?н\\s?н", "РУНН"},
+        {"гост", "ГОСТ"}, {"ср\\s?н\\s?к\\s?у\\s?(?:1|один)", "СРНКУ1"}, {"ш\\s?о\\s?т", "ШОТ"}, {"с\\s?о\\s?п\\s?т", "СОПТ"},
+    };
+    private static java.util.regex.Pattern[] DP;
+    private static String fixTerms(String s) {
+        if (DP == null) { java.util.regex.Pattern[] p = new java.util.regex.Pattern[DICT.length];
+            for (int i = 0; i < DICT.length; i++) p[i] = java.util.regex.Pattern.compile("(?<![\\p{L}\\p{N}])(?:" + DICT[i][0] + ")(?![\\p{L}\\p{N}])", java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
+            DP = p; }
+        for (int i = 0; i < DICT.length; i++) s = DP[i].matcher(s).replaceAll(DICT[i][1]);
+        return s;
+    }
+
     private void drain(OfflineRecognizer rc, Vad vad, java.io.Writer w) throws Exception {
         while (!vad.empty()) {
             SpeechSegment s = vad.front(); float[] x = s.getSamples(); int t = s.getStart() / 16000; vad.pop(); segs++;
@@ -183,15 +206,18 @@ public class MeetService extends Service {
     }
 
     private void fallback(OfflineRecognizer rc, String wav, java.io.Writer w) throws Exception {
-        FileInputStream in = new FileInputStream(wav); in.skip(44); byte[] bb = new byte[16000 * 2 * 15]; int n, t = 0;
-        while (!stop && (n = in.read(bb)) > 0) { float[] x = new float[n / 2]; for (int i = 0; i < x.length; i++) x[i] = (short) ((bb[2 * i] & 0xff) | (bb[2 * i + 1] << 8)) / 32768f; decodeOut(rc, x, t, w); t += 15; }
+        hpX = 0; hpY = 0; FileInputStream in = new FileInputStream(wav); in.skip(44); byte[] bb = new byte[16000 * 2 * 15]; int n, t = 0;
+        while (!stop && (n = in.read(bb)) > 0) { float[] x = new float[n / 2]; for (int i = 0; i < x.length; i++) x[i] = (short) ((bb[2 * i] & 0xff) | (bb[2 * i + 1] << 8)) / 32768f; hp(x); decodeOut(rc, x, t, w); t += 15; }
         in.close();
     }
 
     private void decodeOut(OfflineRecognizer rc, float[] x, int t, java.io.Writer w) throws Exception {
         {
             float pk = 0; for (float v : x) { float a = Math.abs(v); if (a > pk) pk = a; }
-            if (pk > 0.002f && pk < 0.5f) { float g = Math.min(20f, 0.7f / pk); for (int i = 0; i < x.length; i++) x[i] *= g; }   // тихая запись с телефона на столе: подтягиваем громкость
+            if (pk > 0.002f) {   // выравниваем громкость по среднему уровню (RMS), а не по пику: одиночный щелчок не мешает подтянуть тихую речь
+                double sq = 0; for (float v : x) sq += v * v; float rms = (float) Math.sqrt(sq / Math.max(1, x.length));
+                if (rms > 0.0005f && rms < 0.06f) { float g = Math.min(20f, 0.08f / rms); g = Math.min(g, 0.95f / pk); if (g > 1.05f) for (int i = 0; i < x.length; i++) x[i] *= g; }
+            }
             log(this, "декодирую кусок " + x.length / 16000 + " с, пик " + Math.round(pk * 100) + "%");
             OfflineStream st = rc.createStream(); log(this, "  поток создан");
             st.acceptWaveform(x, 16000); log(this, "  звук передан");
@@ -199,7 +225,8 @@ public class MeetService extends Service {
             com.k2fsa.sherpa.onnx.OfflineRecognizerResult rr = rc.getResult(st); log(this, "  результат получен");
             String txt = rr.getText().trim(); log(this, "  текст: «" + txt + "»"); st.release();
             if (txt.length() == 0) return;
-            txt = Character.toUpperCase(txt.charAt(0)) + txt.substring(1) + ".";
+            txt = fixTerms(txt); txt = Character.toUpperCase(txt.charAt(0)) + txt.substring(1);
+            char lc = txt.charAt(txt.length() - 1); if (lc != '.' && lc != '!' && lc != '?' && lc != '…') txt += ".";   // у GigaAM v3 пунктуация уже есть — не дублируем
             w.write(String.format(Locale.US, "[%02d:%02d:%02d] %s\n", t / 3600, (t / 60) % 60, t % 60, txt)); w.flush(); lines++;
         }
     }

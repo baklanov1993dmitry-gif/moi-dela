@@ -9,13 +9,13 @@ jobs:
   asr:
     runs-on: ubuntu-latest
     steps:
-      - name: Pack GigaAM v2 (ru) + Silero VAD
+      - name: Pack GigaAM v3 CTC punct (ru) + Silero VAD
         run: |
           mkdir -p out && cd out
-          curl -fsSL -o m.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-ctc-giga-am-v2-russian-2025-04-19.tar.bz2"
+          curl -fsSL -o m.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-ctc-punct-giga-am-v3-russian-2025-12-16.tar.bz2"
           mkdir x && tar xjf m.tar.bz2 -C x
           d=$(ls -d x/*/ | head -1)
-          mkdir -p p && cp "$d/model.int8.onnx" "$d/tokens.txt" p/
+          mkdir -p p && cp "$d/model.int8.onnx" "$d/tokens.txt" p/ && echo v3p > p/ver3
           curl -fsSL -o p/silero_vad.onnx "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
           (cd p && zip -qr9 ../asr-ru.zip .)
           ls -la asr-ru.zip p
@@ -25,4 +25,4 @@ jobs:
         run: |
           cd out
           gh release delete asr -y --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
-          gh release create asr asr-ru.zip --repo "$GITHUB_REPOSITORY" --title "Распознавание речи (ru)" --notes "GigaAM v2 (лицензия некоммерческая, личное использование) + Silero VAD для расшифровки совещаний в приложении." 
+          gh release create asr asr-ru.zip --repo "$GITHUB_REPOSITORY" --title "Распознавание речи (ru)" --notes "GigaAM v3 CTC с пунктуацией (лицензия MIT) + Silero VAD для расшифровки совещаний в приложении." 
