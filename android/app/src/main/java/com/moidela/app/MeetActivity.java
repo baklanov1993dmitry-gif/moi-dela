@@ -37,7 +37,7 @@ import java.util.zip.ZipInputStream;
 
 /** Совещания: запись (с экраном «живой» службы), скачивание модели, расшифровка, текст/поделиться/сохранить в Загрузки. */
 public class MeetActivity extends Activity {
-    static final String URL_MODEL = "https://github.com/baklanov1993dmitry-gif/moi-dela/releases/download/asr/asr-ru.zip";
+    static final String URL_MODEL = "https://github.com/baklanov1993dmitry-gif/moi-dela/releases/download/asr/asr-ru-rnnt.zip";
     static volatile String dlStatus = ""; static volatile boolean dlBusy = false;
     private LinearLayout box;
     private final Handler h = new Handler(Looper.getMainLooper());
@@ -71,7 +71,7 @@ public class MeetActivity extends Activity {
         box.addView(tv("Совещания", 22, "#ffffff", true));
         box.addView(tv("Запись → расшифровка на самом телефоне, без интернета. Текст никуда не отправляется.", 13, "#9a93b8", false));
         if (!MeetService.modelReady(this)) {
-            box.addView(tv(dlBusy ? dlStatus : "Для расшифровки нужна модель распознавания русской речи (≈230 МБ, скачивается один раз; GigaAM v3 — точнее прежней, сразу со знаками препинания).", 14, "#e6e1ff", false));
+            box.addView(tv(dlBusy ? dlStatus : "Для расшифровки нужна модель распознавания русской речи (≈232 МБ, скачивается один раз; GigaAM v3 RNNT — точнее прежней, со знаками препинания).", 14, "#e6e1ff", false));
             if (!dlBusy) box.addView(bt("Скачать модель", new View.OnClickListener() { public void onClick(View v) { download(); } }));
         }
         if (MeetService.rec) {

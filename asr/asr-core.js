@@ -1,4 +1,4 @@
-/* Расшифровка речи в браузере: GigaAM v3 (CTC, пунктуация) + Silero VAD на onnxruntime-web.
+/* Расшифровка речи в браузере: GigaAM v3 RNNT (пунктуация), резка по тихим местам на onnxruntime-web.
    Ядро без интерфейса: работает и в браузере (window.ASRCORE), и в Node (для тестов). */
 (function (root) {
   "use strict";
@@ -128,7 +128,7 @@
     return segs;
   }
 
-  // ---------- распознавание одного куска ----------
+  // ---------- распознавание одного куска (CTC — старая модель, оставлено для сравнения) ----------
   async function recognize(ort, sess, id2, x) {
     const f = fbank(x); if (!f.T) return "";
     const feat = new ort.Tensor("float32", f.data, [1, NB, f.T]), len = new ort.Tensor("int64", BigInt64Array.from([BigInt(f.T)]), [1]);
@@ -136,27 +136,83 @@
     const o = r.log_probs; return ctcText(o.data, o.dims[1], o.dims[2], id2);
   }
 
+  // ---------- GigaAM v3 RNNT: энкодер + предсказатель (LSTM) + joiner, жадный поиск ----------
+  // m = { enc, dec, join } — сессии ORT. Точнее CTC: меньше «мусорных» слов (замер 12.11: сходство 0,81 → 0,86).
+  async function recognizeRnnt(ort, m, id2, x) {
+    const f = fbank(x); if (!f.T) return "";
+    const er = await m.enc.run({ audio_signal: new ort.Tensor("float32", f.data, [1, NB, f.T]), length: new ort.Tensor("int64", BigInt64Array.from([BigInt(f.T)]), [1]) });
+    const E = er.encoded, D = E.dims[1], T = E.dims[2], ed = E.data;
+    const H = 320, ONE = new ort.Tensor("int32", Int32Array.from([1]), [1]);
+    let h = new Float32Array(H), c = new Float32Array(H);
+    async function step(tok) {
+      const r = await m.dec.run({ x: new ort.Tensor("int32", Int32Array.from([tok]), [1, 1]), "unused_x_len.1": ONE, "h.1": new ort.Tensor("float32", h, [1, 1, H]), "c.1": new ort.Tensor("float32", c, [1, 1, H]) });
+      return { dec: r.dec.data.slice(), h: r.h.data.slice(), c: r.c.data.slice() };
+    }
+    const blank = id2.length - 1;   // <blk> — последний токен словаря
+    let s = await step(blank), dec = s.dec; const out = [];
+    const et = new Float32Array(D);
+    for (let t = 0; t < T; t++) {
+      for (let k = 0; k < D; k++) et[k] = ed[k * T + t];
+      for (let sym = 0; sym < 5; sym++) {
+        const jr = await m.join.run({ enc: new ort.Tensor("float32", et, [1, D, 1]), dec: new ort.Tensor("float32", dec, [1, 320, 1]) });
+        const lg = jr.joint.data, V = lg.length;
+        let bi = 0, bv = -1e30; for (let v = 0; v < V; v++) if (lg[v] > bv) { bv = lg[v]; bi = v; }
+        if (bi === blank) break;
+        out.push(bi); h = s.h; c = s.c; s = await step(bi); dec = s.dec;
+      }
+    }
+    return out.map(i => id2[i] != null ? id2[i] : "").join("").replace(/▁/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  // ---------- резка без детектора речи: куски ~L секунд, граница — в самом тихом месте ±3 с ----------
+  function chunkCuts(x, L) {
+    const W = Math.round((L || 25) * SR), A = 3 * SR, win = 3200, hop = 1600, cuts = [0];
+    let pos = 0;
+    while (x.length - pos > W + A) {
+      const tg = pos + W; let best = tg, bv = Infinity;
+      for (let c0 = tg - A; c0 + win <= tg + A && c0 + win <= x.length; c0 += hop) { let e = 0; for (let k = 0; k < win; k++) { const v = x[c0 + k]; e += v * v; } if (e < bv) { bv = e; best = c0 + win / 2; } }
+      cuts.push(best); pos = best;
+    }
+    cuts.push(x.length); return cuts;
+  }
+  function gain(x) {   // тихий кусок подтягиваем к RMS 0.1 (до ×20); числа float — «перегруза» нет
+    let sq = 0; for (let i = 0; i < x.length; i++) sq += x[i] * x[i];
+    const rms = Math.sqrt(sq / Math.max(1, x.length)); if (rms <= 1e-5) return false;
+    const g = Math.min(20, 0.1 / rms); for (let i = 0; i < x.length; i++) x[i] *= g; return true;
+  }
+  // «э-э», «а-а-а», «м-м» и т.п. — убираем, расставленные вокруг них запятые чиним
+  const FILL = /(^|[\s,.;:—(«"-])(?:[эЭ]+(?:-[эЭ]+)*|[аА]+(?:-[аА]+)+|[аА]{3,}|[мМ]+(?:-[мМ]+)+|[мМ]{2,}|[ыЫ]+(?:-[ыЫ]+)+)(?=[\s,.!?;:…»")]|$)/g;
+  function clean(t) {
+    let s = t; for (let i = 0; i < 2; i++) s = s.replace(FILL, "$1");
+    s = s.replace(/\s+([,.!?;:…])/g, "$1").replace(/([,;:])(?:\s*[,;:])+/g, "$1").replace(/,\s*([.!?…])/g, "$1").replace(/([.!?…])\s*[,;:]+/g, "$1")
+      .replace(/\s{2,}/g, " ").replace(/^[\s,.;:—-]+/, "").trim();
+    s = s.replace(/([.!?…]\s+)([а-яё])/g, (q, a, b) => a + b.toUpperCase());
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
   const T2 = t => String(t).padStart(2, "0");
   const stamp = sec => T2(Math.floor(sec / 3600)) + ":" + T2(Math.floor(sec / 60) % 60) + ":" + T2(Math.floor(sec) % 60);
 
-  // Полная расшифровка: pcm — Float32Array 16 кГц моно. Возвращает [{t, text}]
-  async function transcribe(ort, asr, vad, id2, pcm, o) {
+  // Полная расшифровка: pcm — Float32Array 16 кГц моно, m = {enc, dec, join}. Возвращает [{t, text}] — абзацы ~25 с.
+  async function transcribe(ort, m, id2, pcm, o) {
     o = o || {}; const out = [], st = { x: 0, y: 0 };
     const x = Float32Array.from(pcm); highpass(x, st);
-    const segs = await vadSegments(ort, vad, x, o.vad || {}, p => o.onProgress && o.onProgress(p * 0.1, "поиск речи"));
-    for (let i = 0; i < segs.length; i++) {
+    const cuts = chunkCuts(x, o.len || 25), n = cuts.length - 1;
+    for (let i = 0; i < n; i++) {
       if (o.cancel && o.cancel()) break;
-      const part = x.slice(segs[i][0], segs[i][1]); levelUp(part);
-      let t = await recognize(ort, asr, id2, part); if (!t) continue;
-      t = fixTerms(t, o.extra); t = t.charAt(0).toUpperCase() + t.slice(1);
+      const part = x.slice(cuts[i], cuts[i + 1]);
+      if (part.length < SR * 0.3 || !gain(part)) continue;
+      let t = await recognizeRnnt(ort, m, id2, part); if (t) t = clean(fixTerms(t, o.extra));
+      if (o.onProgress) o.onProgress((i + 1) / n, "расшифровка");
+      if (!t) continue;
+      t = t.charAt(0).toUpperCase() + t.slice(1);
       if (!/[.!?…]$/.test(t)) t += ".";
-      out.push({ t: Math.floor(segs[i][0] / SR), text: t });
-      if (o.onProgress) o.onProgress(0.1 + 0.9 * (i + 1) / segs.length, "расшифровка");
+      out.push({ t: Math.floor(cuts[i] / SR), text: t });
       if (o.onLine) o.onLine(out[out.length - 1]);
     }
     return out;
   }
 
-  const API = { fbank, parseTokens, ctcText, fixTerms, vadSegments, recognize, transcribe, stamp, SR };
+  const API = { fbank, parseTokens, ctcText, fixTerms, vadSegments, recognize, recognizeRnnt, chunkCuts, gain, clean, transcribe, stamp, SR };
   if (typeof module !== "undefined" && module.exports) module.exports = API; else root.ASRCORE = API;
 })(typeof self !== "undefined" ? self : this);

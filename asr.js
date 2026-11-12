@@ -1,11 +1,12 @@
-/* «Расшифровка» — запись совещания → текст прямо в браузере (GigaAM v3 + Silero VAD на onnxruntime-web). Звук не уходит с компьютера.
+/* «Расшифровка» — запись совещания → текст прямо в браузере (GigaAM v3 RNNT на onnxruntime-web). Звук не уходит с компьютера.
    Грузится лениво (как «Здоровье»). Тяжёлая часть — воркеры asr/asr-worker.js; модель (≈225 МБ) хранится в Cache Storage «moidela-asr». */
 window.ASR_INIT = function (X) {
   const { ic, esc, $, render, toast, mtopHTML, acts } = X;
-  const V = 1;                                                   // версия библиотек в asr/ (поднимать при их замене — сбрасывает кэш)
-  const BASE = new URL("asr/", location.href).href, KEY = new URL("asr-model/model.int8.onnx", location.href).href, MSIZE = 224893661;
-  const HF = "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-ctc-punct-giga-am-v3-russian-2025-12-16/resolve/main/model.int8.onnx";
-  const REL = "https://github.com/baklanov1993dmitry-gif/moi-dela/releases/download/asr/model.int8.onnx";
+  const V = 2;                                                   // версия библиотек в asr/ (поднимать при их замене — сбрасывает кэш)
+  const BASE = new URL("asr/", location.href).href, KEY = new URL("asr-model/encoder.int8.onnx", location.href).href, MSIZE = 224570820,
+    OLD = new URL("asr-model/model.int8.onnx", location.href).href;   // прежняя CTC-модель: удаляем, чтобы не занимала 225 МБ
+  const HF = "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-punct-giga-am-v3-russian-2025-12-16/resolve/main/encoder.int8.onnx";
+  const REL = "https://github.com/baklanov1993dmitry-gif/moi-dela/releases/download/asr/encoder.int8.onnx";
   const LS = { hist: "mytasks_asr_hist", dict: "mytasks_asr_dict", thr: "mytasks_asr_thr" };
   const jg = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
   const js = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast("Не хватило места в браузере — старые расшифровки лучше удалить"); } };
@@ -28,7 +29,7 @@ window.ASR_INIT = function (X) {
   document.head.appendChild(css);
 
   /* ---------- модель ---------- */
-  async function checkModel() { try { const c = await caches.open("moidela-asr"); A0.model = (await c.match(KEY)) ? "ok" : "no"; } catch (e) { A0.model = "no"; A0.msg = "Браузер не даёт хранить большие файлы (режим инкогнито?)"; } render(); }
+  async function checkModel() { try { const c = await caches.open("moidela-asr"); try { await c.delete(OLD); } catch (e) {} A0.model = (await c.match(KEY)) ? "ok" : "no"; } catch (e) { A0.model = "no"; A0.msg = "Браузер не даёт хранить большие файлы (режим инкогнито?)"; } render(); }
   async function putModel(blob) { const c = await caches.open("moidela-asr"); await c.put(KEY, new Response(blob, { headers: { "Content-Type": "application/octet-stream" } })); A0.model = "ok"; A0.msg = ""; render(); toast("Модель готова — можно расшифровывать"); }
   async function download() {
     if (A0.model === "dl") return; A0.model = "dl"; A0.pct = 0; A0.msg = "Подключаюсь…"; render();
@@ -45,7 +46,7 @@ window.ASR_INIT = function (X) {
     A0.model = "no"; A0.msg = "Не скачалось автоматически (" + errs.join("; ") + "). Скачай файл вручную по ссылке ниже и выбери его здесь."; render();
   }
   async function modelFile(f) {
-    if (!f) return; if (Math.abs(f.size - MSIZE) > 2e6) { A0.msg = "Это не тот файл: нужен model.int8.onnx размером около " + mb(MSIZE) + " МБ (у выбранного " + mb(f.size) + " МБ)."; render(); return; }
+    if (!f) return; if (Math.abs(f.size - MSIZE) > 2e6) { A0.msg = "Это не тот файл: нужен encoder.int8.onnx размером около " + mb(MSIZE) + " МБ (у выбранного " + mb(f.size) + " МБ)."; render(); return; }
     try { await putModel(f); } catch (e) { A0.msg = "Не удалось сохранить: " + (e.message || e); render(); }
   }
 
@@ -78,7 +79,7 @@ window.ASR_INIT = function (X) {
   function stText(j) {
     if (j.stage !== "run") return j.msg;
     const el = (Date.now() - j.t0run) / 1000, eta = j.pct > 0.04 ? el / j.pct * (1 - j.pct) : 0;
-    return "Расшифровка " + Math.round(j.pct * 100) + "%" + (eta ? " · осталось около " + dur(eta) : "") + " · фраз: " + j.lines.length;
+    return "Расшифровка " + Math.round(j.pct * 100) + "%" + (eta ? " · осталось около " + dur(eta) : "") + " · абзацев: " + j.lines.length;
   }
   function liveUpd() { const j = A0.job, e = $("asr-live"); if (!j || !e) return; const L = j.lines.slice().sort((a, b) => a.t - b.t); e.innerHTML = L.slice(-400).map(l => "<b>[" + hms(l.t) + "]</b> " + esc(l.text)).join("\n"); e.scrollTop = e.scrollHeight; }
   function finish(j, state) {

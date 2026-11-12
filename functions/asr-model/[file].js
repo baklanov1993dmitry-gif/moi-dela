@@ -1,5 +1,5 @@
 // Прокси для модели расшифровки: GitHub не отдаёт файлы релиза в браузер напрямую (нет CORS), поэтому сайт тянет их сам и стримит дальше.
-const OK = { "model.int8.onnx": 1, "tokens.txt": 1 };
+const OK = { "encoder.int8.onnx": 1, "model.int8.onnx": 1, "tokens.txt": 1 };
 export async function onRequestGet({ params }) {
   const f = String(params.file || "");
   if (!OK[f]) return new Response("not found", { status: 404 });

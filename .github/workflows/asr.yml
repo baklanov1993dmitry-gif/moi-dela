@@ -19,10 +19,19 @@ jobs:
           curl -fsSL -o p/silero_vad.onnx "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
           (cd p && zip -qr9 ../asr-ru.zip .)
           ls -la asr-ru.zip p
+      - name: Pack GigaAM v3 RNNT punct (ru) — точнее CTC (Android ver4 + браузер)
+        run: |
+          cd out
+          curl -fsSL -o r.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-transducer-punct-giga-am-v3-russian-2025-12-16.tar.bz2"
+          mkdir y && tar xjf r.tar.bz2 -C y
+          d=$(ls -d y/*/ | head -1)
+          mkdir -p q && cp "$d/encoder.int8.onnx" "$d/decoder.onnx" "$d/joiner.onnx" "$d/tokens.txt" q/ && echo rnnt > q/ver4
+          (cd q && zip -qr9 ../asr-ru-rnnt.zip .)
+          ls -la asr-ru-rnnt.zip q
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd out
           gh release delete asr -y --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
-          gh release create asr asr-ru.zip p/model.int8.onnx --repo "$GITHUB_REPOSITORY" --title "Распознавание речи (ru)" --notes "GigaAM v3 CTC с пунктуацией (лицензия MIT) + Silero VAD для расшифровки совещаний в приложении." 
+          gh release create asr asr-ru.zip asr-ru-rnnt.zip p/model.int8.onnx q/encoder.int8.onnx --repo "$GITHUB_REPOSITORY" --title "Распознавание речи (ru)" --notes "GigaAM v3 (лицензия MIT): RNNT с пунктуацией (asr-ru-rnnt.zip, encoder.int8.onnx — основная), CTC + Silero VAD (asr-ru.zip, model.int8.onnx — прежняя)."

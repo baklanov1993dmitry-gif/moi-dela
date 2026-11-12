@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "12.11 16:32";
+const BUILD = "12.11 23:13";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -7456,7 +7456,7 @@ function loadAsr() {
   if (asrLoading || ASRM) return; asrLoading = true;
   const ok = () => { try { ASRM = window.ASR_INIT({ ic, esc, $, render, toast, mtopHTML, acts }); } catch (e) { console.error(e); toast("Не удалось открыть «Расшифровку»"); } asrLoading = false; render(); };
   if (window.ASR_INIT) return ok();
-  const sc = document.createElement("script"); sc.src = "asr.js?v=1"; sc.onload = ok; sc.onerror = () => { asrLoading = false; toast("Нет связи: «Расшифровка» не загрузилась"); }; document.head.appendChild(sc);
+  const sc = document.createElement("script"); sc.src = "asr.js?v=2"; sc.onload = ok; sc.onerror = () => { asrLoading = false; toast("Нет связи: «Расшифровка» не загрузилась"); }; document.head.appendChild(sc);
 }
 let HLM = null, hlLoading = false;   // «Здоровье» грузится лениво: отдельный файл, только при первом открытии раздела
 function loadHealth() {
