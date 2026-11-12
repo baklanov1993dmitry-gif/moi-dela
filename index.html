@@ -66,7 +66,7 @@ window.APP_CONFIG = {
 <script src="notes.js"></script>
 <script>(function () {
 "use strict";
-const BUILD = "12.11 09:23";
+const BUILD = "12.11 10:19";
 /* ===== p1: утилиты, конфиг, состояние, темы, иконки ===== */
 const LSK = { cfg: "mytasks_cfg_v1", theme: "mytasks_theme_v1", cache: "mytasks_cache_v1", pending: "mytasks_pending_v1", view: "mytasks_view_v1", prefs: "mytasks_prefs_v1", notified: "mytasks_notified_v1" };
 const jget = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -95,18 +95,28 @@ const localDate = iso => iso ? isoLocal(new Date(iso)) : "";
 const toLocalInput = iso => { const d = new Date(iso); return isoLocal(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
 const atTime = (isoDate, h) => { const d = parseISO(isoDate); d.setHours(h, 0, 0, 0); return d.toISOString(); };
 // поиск: режим «t» — только название (и тема), «a» — везде: ещё и заметки (PR.sm, переключатель над результатами)
+// запрос в кавычках: "бо" — только слово целиком (не «работа», «собор»); без кавычек — подстрока, как раньше
+function qParse(raw) {
+  let q = String(raw || "").trim().toLowerCase(), whole = false;
+  const o = /^["“”«„]/.test(q);
+  if (o) { q = q.slice(1); if (/["“”»‟]$/.test(q)) { q = q.slice(0, -1); whole = true; } q = q.trim(); }
+  let re = null;
+  if (whole && q) { try { re = new RegExp("(?<![\\p{L}\\p{N}])" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\p{L}\\p{N}])", "u"); } catch (e) { re = null; } }
+  return { q, re };
+}
+const qHas = (txt, P) => P.re ? P.re.test(txt) : txt.indexOf(P.q) >= 0;
 function srchHit(t) {
-  const q = (ui.q || "").trim().toLowerCase(); if (!q) return 0;
+  const P = qParse(ui.q), q = P.q; if (!q) return 0;
   const f = ui.sf;
   if (f && (f.l || f.c || f.s)) {   // фильтры поиска: список / тема / только важные (подзадача наследует от родителя)
     const pt = t.parent_id && S.tasks[t.parent_id], lid = t.list_id || (pt && pt.list_id), cat = t.category || (pt && pt.category) || "";
     if ((f.l && lid !== f.l) || (f.c && cat !== f.c) || (f.s && !t.starred && !(pt && pt.starred))) return 0;
   }
-  if ((t.title + " " + (t.category || "")).toLowerCase().indexOf(q) >= 0) return 2;
-  return PR.sm === "a" && String(t.note || "").toLowerCase().indexOf(q) >= 0 ? 1 : 0;
+  if (qHas((t.title + " " + (t.category || "")).toLowerCase(), P)) return 2;
+  return PR.sm === "a" && qHas(String(t.note || "").toLowerCase(), P) ? 1 : 0;
 }
 function srchSnip(t) {
-  const q = (ui.q || "").trim().toLowerCase(), n = String(t.note || "").replace(/\s+/g, " "), i = n.toLowerCase().indexOf(q); if (i < 0) return "";
+  const P = qParse(ui.q), q = P.q, n = String(t.note || "").replace(/\s+/g, " "), m = P.re ? n.toLowerCase().match(P.re) : null, i = P.re ? (m ? m.index + (m[0].length - q.length) : -1) : n.toLowerCase().indexOf(q); if (i < 0) return "";
   return (i > 24 ? "…" : "") + n.slice(Math.max(0, i - 24), i + q.length + 40).trim() + (n.length > i + q.length + 40 ? "…" : "");
 }
 function srchModeHTML() {
@@ -1364,7 +1374,7 @@ async function loadDone() {
     else if (view === "starred") q = q.eq("starred", true);
     else if (view === "planned") q = q.not("due", "is", null);
     else if (view === "someday") q = q.eq("status", "someday");
-    else if (view === "search") q = q.ilike("title", "%" + ui.q.replace(/[%,]/g, " ") + "%");
+    else if (view === "search") q = q.ilike("title", "%" + qParse(ui.q).q.replace(/[%,]/g, " ") + "%");
     const off = ui.dOff[k] || 0, r = await q.order("done_at", { ascending: false, nullsFirst: false }).order("id").range(off, off + 199);
     if (r.error) throw r.error;
     const d = r.data || []; d.forEach(x => { if (!S.tasks[x.id] && !P.tasks[x.id]) { S.tasks[x.id] = norm("tasks", x); } DL.add(x.id); });
@@ -4120,7 +4130,7 @@ function viewInfo() {
 function mtopHTML(vi, cnt, extra) {
   if (!isMobile()) return "";
   if (mIds().length && view !== "journal" && view !== "food" && view !== "notes" && view !== "know" && view !== "health") return '<div class="mtop msb"><button class="ibtn" data-a="mclear" title="Снять выделение">' + ic("x", 22) + '</button><span class="mcnt">' + mIds().length + '</span><span style="flex:1"></span><button class="ibtn" data-a="mmore" title="Действия">' + ic("dotsv", 22) + "</button></div>";
-  if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
+  if (ui.msearch || ui.q) return '<div class="mtop"><div class="searchbox mob">' + ic("search", 16) + '<input id="q" placeholder="Поиск · в кавычках: &quot;бо&quot; — слово целиком" autocomplete="off" value="' + esc(ui.q) + '"></div><button class="ibtn" data-a="msclose">' + ic("x", 20) + "</button></div>";
   return '<div class="mtop"><button class="ibtn" data-a="menu">' + ic("arrowl", 22) + '</button>' + (cnt != null && vi ? '<span class="mttl">' + (vi.emoji ? '<span class="mte">' + esc(vi.emoji) + "</span>" : ic(vi.svg, 20)) + '<span class="mtn">' + esc(vi.name) + "</span></span>" : '<span style="flex:1"></span>') + (extra || "") + '<button class="ibtn" data-a="msearch">' + ic("search", 20) + '</button><button class="ibtn" data-a="pop" data-p="bell">' + ic("bell", 20) + '<span class="badge" id="bellbadge" style="' + (ui.alerts.length ? "display:flex" : "") + '">' + ui.alerts.length + '</span></button>' + (view === "journal" || view === "food" || view === "notes" ? "" : '<button class="ibtn" data-a="pop" data-p="mmenu" data-id="' + (vi.list ? vi.list.id : "") + '">' + ic("dotsv", 22) + "</button>") + "</div>";
 }
 function lheadHTML() {
@@ -4143,7 +4153,7 @@ function topHTML() {
   if (isMobile()) return "";
   const em = S.user ? (S.user.email || "?").slice(0, 2).toUpperCase() : "";
   return '<div id="top"><button class="ibtn" data-a="rail" title="Свернуть/развернуть меню" style="margin-left:6px">' + ic("menu", 20) + '</button><div class="brand" style="padding-left:6px">Мои дела</div>' +
-    '<div class="searchbox">' + ic("search", 16) + '<input id="q" placeholder="Поиск" autocomplete="off" value="' + esc(ui.q) + '">' + (ui.q ? '<button class="qx" data-a="qclear">' + ic("x", 14) + "</button>" : "") + "</div>" +
+    '<div class="searchbox">' + ic("search", 16) + '<input id="q" placeholder="Поиск · в кавычках: &quot;бо&quot; — слово целиком" autocomplete="off" value="' + esc(ui.q) + '">' + (ui.q ? '<button class="qx" data-a="qclear">' + ic("x", 14) + "</button>" : "") + "</div>" +
     '<span id="sync" data-a="sync"></span>' +
     '<button class="ibtn" data-a="settings" title="Настройки">' + ic("gear", 19) + "</button>" +
     '<button class="ibtn" data-a="pop" data-p="help" title="Справка">' + ic("help", 19) + "</button>" +
