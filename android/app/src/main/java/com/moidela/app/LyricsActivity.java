@@ -17,6 +17,14 @@ import android.widget.TextView;
 public class LyricsActivity extends Activity {
     private LinearLayout box;
     private TextView head, st;
+    private static LyricsActivity vis;      // экран открыт прямо сейчас
+    private volatile String curKey = "";
+
+    /** Вызывает LyricsListener при смене трека: если текст открыт — переключаем его вместе с песней. */
+    static void push(final String artist, final String title) {
+        final LyricsActivity a = vis; if (a == null) return;
+        a.runOnUiThread(new Runnable() { public void run() { a.load(artist, title); } });
+    }
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + .5f); }
 
@@ -30,7 +38,11 @@ public class LyricsActivity extends Activity {
         load(getIntent());
     }
     @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); setIntent(i); load(i); }
-    @Override protected void onResume() { super.onResume(); }
+    @Override protected void onResume() { super.onResume(); vis = this;
+        String a = Store.p(this).getString("lyr_artist", ""), t = Store.p(this).getString("lyr_title", "");
+        if (t.length() > 0 && !(a + "|" + t).equals(curKey)) load(a, t);   // пока экран был свёрнут, песня сменилась
+    }
+    @Override protected void onPause() { super.onPause(); if (vis == this) vis = null; }
 
     private TextView tv(String s, int sp, String col, boolean bold) {
         TextView t = new TextView(this); t.setText(s); t.setTextSize(sp); t.setTextColor(Color.parseColor(col)); t.setTypeface(null, bold ? Typeface.BOLD : Typeface.NORMAL);
@@ -42,9 +54,15 @@ public class LyricsActivity extends Activity {
     }
 
     private void load(Intent in) {
-        while (box.getChildCount() > 2) box.removeViewAt(2);
         String a = in.getStringExtra("artist"), t = in.getStringExtra("title");
         if (a == null || t == null) { a = Store.p(this).getString("lyr_artist", ""); t = Store.p(this).getString("lyr_title", ""); }
+        load(a, t);
+    }
+
+    private void load(String a, String t) {
+        while (box.getChildCount() > 2) box.removeViewAt(2);
+        curKey = a + "|" + t;
+        ((ScrollView) box.getParent()).scrollTo(0, 0);
         if (!accessOn()) {
             st.setText("Чтобы тексты появлялись под плеером, включите «Мои дела» в списке доступа к уведомлениям. Если Android пишет «Ограниченная настройка» — откройте «О приложении» → ⋮ → «Разрешить ограниченные настройки».");
             Button bt = new Button(this); bt.setText("Открыть настройки доступа");
@@ -58,10 +76,10 @@ public class LyricsActivity extends Activity {
         rb.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { new Thread(new Runnable() { public void run() { RingMark.mark(getApplicationContext(), ra, rt); } }).start(); } });
         box.addView(rb);
         if (accessOn()) st.setText("Ищу текст…");
-        final String fa = a, ft = t;
+        final String fa = a, ft = t, key = curKey;
         new Thread(new Runnable() { public void run() {
             final LyricsFetch.Res r = LyricsFetch.get(getApplicationContext(), fa, ft);
-            runOnUiThread(new Runnable() { public void run() { show(r); } });
+            runOnUiThread(new Runnable() { public void run() { if (key.equals(curKey)) show(r); } });
         } }).start();
     }
 

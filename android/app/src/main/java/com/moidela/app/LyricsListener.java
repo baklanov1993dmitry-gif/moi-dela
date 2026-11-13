@@ -73,6 +73,7 @@ public class LyricsListener extends NotificationListenerService {
         if (key.equals(lastKey)) return;
         lastKey = key; wantKey = key;
         Store.p(this).edit().putString("lyr_artist", artist).putString("lyr_title", title).apply();
+        LyricsActivity.push(artist, title);
         final Context c = getApplicationContext();
         new Thread(new Runnable() { public void run() {
             LyricsFetch.Res r = null;

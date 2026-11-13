@@ -36,6 +36,24 @@ final class LyricsFetch {
         s = s.toLowerCase().replace("&", " and ").replaceAll("[^a-z0-9 ]", " ").trim().replaceAll("\\s+", "_");
         return s;
     }
+    /** Перевод нормальный, если это русский текст: без «кракозябр» (U+FFFD, Ð/Ñ-мойибаке, значков) и не копия оригинала. Иначе — пустая строка. */
+    static String goodT(String t, String o) {
+        if (t == null) return "";
+        t = t.replace('\u00a0', ' ').trim();
+        if (t.length() == 0) return "";
+        int cyr = 0, lat = 0, bad = 0, other = 0;
+        for (int i = 0; i < t.length(); i++) {
+            char ch = t.charAt(i);
+            if (ch >= 0x0400 && ch <= 0x04FF) cyr++;
+            else if (ch < 0x80 && Character.isLetter(ch)) lat++;
+            else if (ch == 0xFFFD || (ch >= 0x80 && ch <= 0xBF) || ch == 0xD0 || ch == 0xD1 || ch == 0xC3 || ch == 0xC2) bad++;
+            else if (!Character.isWhitespace(ch) && !Character.isLetterOrDigit(ch) && ".,!?:;—–-…'\"«»()[]/".indexOf(ch) < 0) other++;
+        }
+        if (bad > 0 || cyr == 0 || other * 3 > Math.max(cyr + lat, 1) || t.equalsIgnoreCase(o == null ? "" : o.trim())) return "";
+        return t;
+    }
+    static void sanitize(Res r) { for (int i = 0; i < r.t.length; i++) r.t[i] = goodT(r.t[i], i < r.o.length ? r.o[i] : ""); }
+
     static boolean mostlyCyr(String[] lines) {
         int c = 0, l = 0;
         for (String x : lines) for (int i = 0; i < x.length(); i++) { char ch = x.charAt(i); if (Character.isLetter(ch)) { l++; if (ch >= 0x0400 && ch <= 0x04FF) c++; } }
@@ -51,7 +69,7 @@ final class LyricsFetch {
         try {
             File f = cacheFile(c, artist, title); if (!f.exists()) return null;
             FileInputStream in = new FileInputStream(f); ByteArrayOutputStream b = new ByteArrayOutputStream(); byte[] buf = new byte[4096]; int n; while ((n = in.read(buf)) > 0) b.write(buf, 0, n); in.close();
-            JSONObject j = new JSONObject(b.toString("UTF-8")); Res r = new Res(); r.src = j.optString("s"); r.o = arr(j.optJSONArray("o")); r.t = arr(j.optJSONArray("t"));
+            JSONObject j = new JSONObject(b.toString("UTF-8")); Res r = new Res(); r.src = j.optString("s"); r.o = arr(j.optJSONArray("o")); r.t = arr(j.optJSONArray("t")); sanitize(r);
             return r.o.length > 0 ? r : null;
         } catch (Throwable e) { return null; }
     }
@@ -76,7 +94,7 @@ final class LyricsFetch {
             try {
                 JSONArray la = new JSONArray(); for (String x : r.o) la.put(x);
                 String resp = Net.post(Store.api(c, "lyrtr", null), new JSONObject().put("lines", la).toString());
-                if (resp != null) { JSONObject j = new JSONObject(resp); JSONArray t = j.optJSONArray("t"); if (t != null && t.length() == r.o.length) { r.t = arr(t); r.src += " + перевод Gemini"; } }
+                if (resp != null) { JSONObject j = new JSONObject(resp); JSONArray t = j.optJSONArray("t"); if (t != null && t.length() == r.o.length) { r.t = arr(t); sanitize(r); r.src += " + перевод Gemini"; } }
             } catch (Throwable e) { }
         }
         save(c, artist, title, r);
@@ -109,7 +127,7 @@ final class LyricsFetch {
             Matcher m = Pattern.compile("class=\"original\"[^>]*>(.*?)</div>\\s*<div[^>]*class=\"translate\"[^>]*>(.*?)</div>", Pattern.DOTALL).matcher(html);
             while (m.find()) { o.add(strip(m.group(1))); t.add(strip(m.group(2))); }
             if (o.size() < 3) continue;
-            Res r = new Res(); r.o = o.toArray(new String[0]); r.t = t.toArray(new String[0]); r.src = "Амальгама";
+            Res r = new Res(); r.o = o.toArray(new String[0]); r.t = t.toArray(new String[0]); r.src = "Амальгама"; sanitize(r);
             return r;
         }
         return null;
